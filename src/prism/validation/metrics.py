@@ -19,8 +19,8 @@ for honest backtest reporting:
   * `deflated_sharpe_ratio(returns, trial_sharpes)` — Bailey & López de
     Prado (2014). PSR with the benchmark set to the *expected maximum*
     Sharpe under the null of no skill across N trials (`expected_max_sharpe`
-    via the False Strategy Theorem). This is the half of M3 that needed a
-    real hyperparameter-grid trial count (Phase 2.7) before it could be
+    via the False Strategy Theorem). This is the half of audit M3 that
+    needed a real hyperparameter-grid trial count before it could be
     computed honestly — the trial Sharpes are the per-config OOS Sharpes
     from the sweep, and N is the (honestly counted) grid size.
 """

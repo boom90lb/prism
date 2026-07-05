@@ -1,6 +1,6 @@
 """Thin MLflow wrappers for the WFO outer loop.
 
-Phase 2.2 deliverable: per-fold metric + parameter + artifact logging on
+Per-fold metric + parameter + artifact logging on
 top of MLflow's file-store backend. The tracking URI defaults to
 ``file://{PROJECT_DIR}/mlruns`` via ``prism.config.MLFLOW_TRACKING_URI`` and
 can be overridden by setting the ``MLFLOW_TRACKING_URI`` env var (e.g. to
@@ -17,11 +17,27 @@ import os
 from pathlib import Path
 from typing import Any, Mapping, Optional, Union
 
-import mlflow
+# mlflow ships in the [research] extra only. Degrading to None here (instead
+# of in each script) keeps every research module importable on a slim core
+# install; the wrappers below raise the one informative error on first use
+# (N7: loud, and before any expensive work in callers that guard early).
+try:
+    import mlflow
+except ImportError:  # slim core install: research extra absent
+    mlflow = None  # type: ignore[assignment]
 
 from prism.config import MLFLOW_TRACKING_URI
 
 logger = logging.getLogger(__name__)
+
+
+def require_mlflow(context: str) -> None:
+    """Fail loud when mlflow is missing, naming the caller and the remedy."""
+    if mlflow is None:
+        raise ImportError(
+            f"{context} needs mlflow from the research extra; "
+            "install with: uv pip install -e '.[research]'"
+        )
 
 
 def init_mlflow(experiment_name: str) -> str:
@@ -32,6 +48,7 @@ def init_mlflow(experiment_name: str) -> str:
     mlflow.start_run(experiment_id=…)`` (or rely on the default since
     ``set_experiment`` makes it implicit).
     """
+    require_mlflow("init_mlflow")
     if str(MLFLOW_TRACKING_URI).startswith("file://"):
         os.environ.setdefault("MLFLOW_ALLOW_FILE_STORE", "true")
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
@@ -55,6 +72,7 @@ def log_metrics_safe(
     eval) so the WFO loop needs a tolerant logger to avoid losing the whole
     fold's metrics over one bad scalar.
     """
+    require_mlflow("log_metrics_safe")
     for key, value in metrics.items():
         try:
             v = float(value)
@@ -73,6 +91,7 @@ def log_params_safe(params: Mapping[str, Any]) -> None:
     Anything that can't be cleanly stringified (large arrays, dataframes)
     should be logged as an artifact instead.
     """
+    require_mlflow("log_params_safe")
     for key, value in params.items():
         if value is None:
             continue
@@ -92,4 +111,5 @@ def log_artifact_dir(path: Union[str, Path], artifact_path: Optional[str] = None
     convert ``Path`` to ``str``. ``artifact_path`` is the subdirectory
     within the run's artifact store (None = root).
     """
+    require_mlflow("log_artifact_dir")
     mlflow.log_artifacts(str(path), artifact_path=artifact_path)

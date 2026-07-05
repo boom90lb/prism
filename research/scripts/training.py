@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 """Train the time series ensemble model with Purged Walk-Forward CV.
 
-Phase 2.2: replaces the previous one-shot 80/20 split with an outer
+Replaces the previous one-shot 80/20 split with an outer
 PurgedWalkForward loop per symbol. Each fold:
 
   1. Slices the per-symbol enhanced frame to (train_idx, test_idx).
   2. Refits FeatureEngineer scalers + clip_bounds on the fold's TRAIN
-     slice only (the leakage fix from Phase 2.8 audit b only protects
+     slice only (the audit-b leakage fix only protects
      against transform-time leaks if fit_scalers is called per fold).
   3. Builds a fresh EnsembleModel; policy members' ``*_X_train_with_close``
      kwargs are the fold's unscaled TRAIN slice.
@@ -29,9 +29,21 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import mlflow
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
+
+# mlflow_utils is import-safe on a slim core install (mlflow degrades to None
+# inside it and every wrapper raises an informative ImportError on first use),
+# so this module's pure helpers (build_features, clean_data_for_training,
+# build_fold_metadata, ...) stay importable without the research extra.
+from research.tracking.mlflow_utils import (
+    init_mlflow,
+    log_artifact_dir,
+    log_metrics_safe,
+    log_params_safe,
+    mlflow,
+    require_mlflow,
+)
 
 from prism.config import (
     DEFAULT_MODEL_WEIGHTS,
@@ -45,12 +57,6 @@ from prism.features import FeatureEngineer, forward_return_column, is_label_colu
 from prism.models.ensemble import EnsembleModel
 from prism.sentiment_analysis import SentimentAnalyzer
 from prism.logging_utils import configure_logging, get_symbol_logger
-from research.tracking.mlflow_utils import (
-    init_mlflow,
-    log_artifact_dir,
-    log_metrics_safe,
-    log_params_safe,
-)
 from prism.validation.walk_forward import PurgedWalkForward
 
 # Suppress specific Pandas warnings (like DataFrame fragmentation)
@@ -183,7 +189,7 @@ def parse_args():
     parser.add_argument(
         "--universe", type=str, default=None,
         help="Path to a universe file (one symbol per line, '#' comments); "
-             "overrides --symbols when given (Phase 4 §4.3).",
+             "overrides --symbols when given.",
     )
     parser.add_argument(
         "--universe_asof", type=str, default=None,
@@ -305,10 +311,10 @@ def clean_data_for_training(df: pd.DataFrame) -> pd.DataFrame:
 
     Outlier clipping is intentionally NOT done here — that lives in
     ``FeatureEngineer.transform_features`` which uses train-only bounds
-    (Phase 2.8 audit b). Doing 5×IQR clipping on the full frame here
+    (audit b). Doing 5×IQR clipping on the full frame here
     would re-introduce a row-level future-leak via the IQR computation.
     """
-    # Phase 4 §4.2: the whole pipeline (point-in-time sentiment join, date
+    # The whole pipeline (point-in-time sentiment join, date
     # filtering) assumes an ET-localized index. Fail loud if feature building
     # dropped the tz rather than letting naive timestamps leak downstream.
     if isinstance(df.index, pd.DatetimeIndex):
@@ -340,7 +346,7 @@ def build_features(
 
     Technical indicators (rolling/ewm/pct_change) are causal so they may
     be computed once on the full series. Sentiment join is point-in-time
-    (Phase 2.8 fix). FE scaling + outlier clipping happens per fold inside
+    (the B9 fix). FE scaling + outlier clipping happens per fold inside
     ``train_symbol_wfo`` so this frame is intentionally UNSCALED.
     """
     df = feature_engineer.create_features(raw_df)
@@ -464,7 +470,7 @@ def train_symbol_wfo(
     ``symbol_dir``.
 
     ``weighting_strategy``/``target_vol``/``position_cap`` parametrize the
-    EnsembleConfig built per fold so a hyperparameter sweep (Phase 2.7) can
+    EnsembleConfig built per fold so a hyperparameter sweep can
     vary them; defaults reproduce the pre-sweep behavior (dynamic weighting,
     unit vol target, unit cap).
     """
@@ -605,7 +611,7 @@ def train_symbol_wfo(
 
 def load_universe(path: str) -> List[str]:
     """Read a tracked universe file: one symbol per line, '#' comments and
-    blank lines ignored (Phase 4 §4.3).
+    blank lines ignored.
 
     Order is preserved and duplicates dropped (first occurrence wins) so the
     file reads as the canonical investable set for a given as-of date.
@@ -650,6 +656,7 @@ def filter_universe_asof(
 
 def main():
     """Main function."""
+    require_mlflow("research/scripts/training.py")
     args = parse_args()
     model_names = parse_model_names(args.models)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

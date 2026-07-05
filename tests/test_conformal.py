@@ -1,6 +1,6 @@
-"""Tests for src/conformal/ primitives + EnsembleModel integration.
+"""Tests for src/prism/conformal/ primitives + EnsembleModel integration.
 
-Phase 2.5: covers EnbPI marginal coverage, ACI online adaptation,
+Covers EnbPI marginal coverage, ACI online adaptation,
 ensemble fit/predict_band/save/load round-trip, and the band+signal
 feedback wiring.
 """

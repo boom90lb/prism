@@ -1,4 +1,4 @@
-"""Phase 3.2 / M10 — RL overfitting controls.
+"""Audit M10 — RL overfitting controls.
 
 Three concerns, all without training a real RL agent (the heavy fit is
 exercised by the driver E2E offline, not in CI):
@@ -16,14 +16,18 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from prism.config import EnsembleConfig, ExecutionConfig, ModelConfig, TradingConfig
-from prism.execution import ExecutionModel
-from prism.models.base import BaseModel
-from prism.models.ensemble import EnsembleModel
-from research.models.lstm_ppo import LSTMPPO, TradingEnvironment
-from prism.trading import TradingStrategy
+pytest.importorskip("jax", reason="needs the [research] extra")
+pytest.importorskip("mlflow", reason="needs the [research] extra")
+pytestmark = pytest.mark.research
 
-from research.scripts.rl_seed_eval import summarize_member
+from prism.config import EnsembleConfig, ExecutionConfig, ModelConfig, TradingConfig  # noqa: E402
+from prism.execution import ExecutionModel  # noqa: E402
+from prism.models.base import BaseModel  # noqa: E402
+from prism.models.ensemble import EnsembleModel  # noqa: E402
+from research.models.lstm_ppo import LSTMPPO, TradingEnvironment  # noqa: E402
+from prism.trading import TradingStrategy  # noqa: E402
+
+from research.scripts.rl_seed_eval import summarize_member  # noqa: E402
 
 
 # --------------------------------------------------------------------------

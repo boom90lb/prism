@@ -1,4 +1,4 @@
-"""Dividend cash-credit tests (Phase 4 §4.1).
+"""Dividend cash-credit tests (SPEC §5).
 
 Prices are split- but NOT dividend-adjusted, so a held position takes a
 mark-to-market markdown across an ex-date; the dividend credit (long) / debit

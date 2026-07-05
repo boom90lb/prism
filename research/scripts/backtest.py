@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 """WFO backtest the ensemble against a training run's per-fold models.
 
-Phase 2.2: replaces the one-shot backtest with a per-symbol per-fold
+Replaces the one-shot backtest with a per-symbol per-fold
 outer loop that iterates the exact PurgedWalkForward fold structure
-saved by ``src/prism/scripts/training.py``. Within each symbol:
+saved by ``research/scripts/training.py``. Within each symbol:
 
   * One TradingStrategy instance, ``_reset_state()`` called once before
     fold 0 — cash, positions, transaction log persist across folds.
@@ -30,24 +30,36 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
-import mlflow
 import numpy as np
 import pandas as pd
 
+# mlflow_utils is import-safe on a slim core install (mlflow degrades to None
+# inside it and every wrapper raises an informative ImportError on first use),
+# so this module's pure helpers (_fold_model_data, run_symbol_wfo plumbing)
+# stay importable without the research extra.
+from research.tracking.mlflow_utils import (
+    init_mlflow,
+    log_artifact_dir,
+    log_metrics_safe,
+    log_params_safe,
+    mlflow,
+    require_mlflow,
+)
+
 from research.scripts.training import (
     FOLD_METADATA_SCHEMA_VERSION,
-    build_features,
     index_sha256,
     index_utc_ns,
     parse_model_names,
     reject_sentiment_flag,
 )
-from research.baselines import BuyAndHold, MACrossover, TSMOM
-from prism.config import (
-    ExecutionConfig,
-    RESULTS_DIR,
-    TradingConfig,
+from research.scripts._cli_common import (
+    add_execution_args,
+    build_execution_and_trading_configs,
+    build_usable_symbol_frame,
 )
+from research.baselines import BuyAndHold, MACrossover, TSMOM
+from prism.config import RESULTS_DIR
 from prism.data_loader import DataLoader
 from prism.execution import ExecutionModel
 from prism.execution.target_weights import (
@@ -60,12 +72,6 @@ from prism.features import FeatureEngineer, forward_return_column
 from prism.models.base import BaseModel
 from prism.models.ensemble import EnsembleModel
 from prism.sentiment_analysis import SentimentAnalyzer
-from research.tracking.mlflow_utils import (
-    init_mlflow,
-    log_artifact_dir,
-    log_metrics_safe,
-    log_params_safe,
-)
 from prism.logging_utils import configure_logging, get_symbol_logger
 from prism.trading import TradingStrategy
 from prism.validation.metrics import (
@@ -106,41 +112,28 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description=(
             "WFO backtest the ensemble using per-fold models from a "
-            "src/prism/scripts/training.py run."
+            "research/scripts/training.py run."
         ),
     )
 
     parser.add_argument(
         "--training_run", type=str, required=True,
-        help="Path to runs/{run_name}/ produced by src/prism/scripts/training.py",
+        help="Path to runs/{run_name}/ produced by research/scripts/training.py",
     )
     parser.add_argument(
         "--symbols", type=str, default=None,
         help="Optional subset of training-run symbols (comma-separated)",
     )
 
-    # Execution config (mirrors training-side flags).
-    parser.add_argument("--initial_capital", type=float, default=10000.0)
-    parser.add_argument("--position_size", type=float, default=0.1)
-    parser.add_argument("--stop_loss", type=float, default=0.02)
-    parser.add_argument("--take_profit", type=float, default=0.05)
-    parser.add_argument("--commission_bps", type=float, default=1.0)
-    parser.add_argument("--spread_bps", type=float, default=1.0)
-    parser.add_argument("--slippage_coeff", type=float, default=10.0)
-    parser.add_argument("--adv_impact_coeff", type=float, default=0.0)
-    parser.add_argument("--adv_impact_model", type=str, default="linear", choices=["linear", "sqrt"])
-    parser.add_argument("--adv_floor_dollars", type=float, default=100000.0)
-    parser.add_argument("--borrow_bps_annual", type=float, default=50.0)
-    parser.add_argument(
-        "--order_type", type=str, default="MOO", choices=["MOO", "MOC"],
-    )
+    # Execution config (mirrors training-side flags; shared across the CLIs).
+    add_execution_args(parser, include_adv=True)
     parser.add_argument(
         "--execution_style",
         type=str,
         default="target_weights",
         choices=["legacy_orders", "target_weights"],
         help=(
-            "Portfolio accounting mode. src/prism/scripts/backtest.py defaults to "
+            "Portfolio accounting mode. research/scripts/backtest.py defaults to "
             "target_weights; use --legacy_orders to preserve per-symbol "
             "ternary order packets."
         ),
@@ -163,7 +156,7 @@ def parse_args():
     parser.add_argument("--no_baselines", action="store_true")
     parser.add_argument(
         "--no_dividends", action="store_true",
-        help="Skip dividend cash credit (Phase 4 §4.1); avoids /dividends API calls.",
+        help="Skip dividend cash credit (SPEC §5); avoids /dividends API calls.",
     )
     parser.add_argument("--ma_fast", type=int, default=20)
     parser.add_argument("--ma_slow", type=int, default=50)
@@ -184,7 +177,7 @@ def parse_args():
 
     # DSR: path to a sweep's trial_sharpes JSON ({"trial_sharpes": [...]}).
     # When given, the report deflates the ensemble's Sharpe against the
-    # honestly-counted trial set (Phase 2.7). Absent → DSR shown as n/a.
+    # honestly-counted trial set. Absent → DSR shown as n/a.
     parser.add_argument("--trial_sharpes_json", type=str, default=None)
 
     # MLflow.
@@ -214,7 +207,7 @@ def load_training_run(
     if not config_path.exists():
         raise FileNotFoundError(
             f"training_config.json not found in {training_run_dir}; "
-            "is this a Phase 2.2 training run?"
+            "was this run produced by research/scripts/training.py?"
         )
     with open(config_path) as f:
         training_config = json.load(f)
@@ -241,40 +234,13 @@ def load_training_run(
 
 
 def load_fold_ensemble(fold_dir: Path, horizon: int) -> EnsembleModel:
-    """Load the EnsembleModel pickled by src/prism/scripts/training.py for one fold."""
+    """Load the EnsembleModel pickled by research/scripts/training.py for one fold."""
     state_path = fold_dir / "ensemble_model" / f"ensemble_state_h{horizon}.pkl"
     if not state_path.exists():
         raise FileNotFoundError(f"Missing ensemble state at {state_path}")
     ensemble = EnsembleModel(target_column="close", horizon=horizon)
     ensemble.load(state_path)
     return ensemble
-
-
-def _build_execution_and_trading_configs(args) -> Tuple[ExecutionConfig, TradingConfig]:
-    execution_config = ExecutionConfig(
-        spread_bps=args.spread_bps,
-        slippage_coeff=args.slippage_coeff,
-        commission_bps=args.commission_bps,
-        borrow_rate_bps_annual=args.borrow_bps_annual,
-        adv_impact_coeff=getattr(args, "adv_impact_coeff", 0.0),
-        adv_impact_model=getattr(args, "adv_impact_model", "linear"),
-        adv_floor_dollars=getattr(args, "adv_floor_dollars", 100000.0),
-        default_order_type=args.order_type,
-    )
-    trading_config = TradingConfig(
-        initial_capital=args.initial_capital,
-        position_size=args.position_size,
-        stop_loss=args.stop_loss,
-        take_profit=args.take_profit,
-        # Sweep (Phase 2.7) varies this; absent on a plain backtest → 0.1.
-        signal_threshold=getattr(args, "signal_threshold", 0.1),
-        execution_style=getattr(args, "execution_style", "legacy_orders"),
-        rebalance_band_weight=getattr(args, "rebalance_band_weight", 0.0),
-        rebalance_cost_multiplier=getattr(args, "rebalance_cost_multiplier", 1.0),
-        max_gross_exposure=getattr(args, "max_gross_exposure", 1.0),
-        execution=execution_config,
-    )
-    return execution_config, trading_config
 
 
 def _load_fold_metadata(fold_dir: Path) -> Dict[str, Any]:
@@ -442,7 +408,7 @@ def run_symbol_wfo(
     State persistence (Q3 Recommended): ``_reset_state()`` once before
     fold 0; ``execution_model.drop_pending()`` after every fold.
     """
-    execution_config, trading_config = _build_execution_and_trading_configs(args)
+    execution_config, trading_config = build_execution_and_trading_configs(args)
     strategy = TradingStrategy(
         model=model,
         config=trading_config,
@@ -550,7 +516,7 @@ def run_symbol_baselines(
     runs across all folds; state persistence + drop_pending semantics
     match the ensemble path exactly so PBO comparisons are apples-to-apples.
     Dividends are credited on the same total-return basis as the ensemble so a
-    BuyAndHold over a dividend payer isn't unfairly penalized (Phase 4 §4.1).
+    BuyAndHold over a dividend payer isn't unfairly penalized (SPEC §5).
     """
     records: List[Dict[str, Any]] = []
     for baseline in _build_baselines(args):
@@ -602,7 +568,7 @@ def _generate_symbol_shared_target_weights(
     horizon: int,
 ) -> pd.DataFrame:
     """Generate unhedged targets from signed ensemble scores via shared construct."""
-    _, trading_config = _build_execution_and_trading_configs(args)
+    _, trading_config = build_execution_and_trading_configs(args)
     segments: List[pd.DataFrame] = []
     target_col = forward_return_column(horizon)
 
@@ -686,7 +652,7 @@ def generate_symbol_target_weights(
             horizon=horizon,
         )
 
-    execution_config, trading_config = _build_execution_and_trading_configs(args)
+    execution_config, trading_config = build_execution_and_trading_configs(args)
     first_model = load_fold_ensemble(fold_dirs[0], horizon)
     strategy = TradingStrategy(
         model=first_model,
@@ -777,7 +743,9 @@ def run_portfolio_target_weight_wfo(
     trained_models: Any,
 ) -> Dict[str, Any]:
     """Run one shared-capital target-weight portfolio WFO and write artifacts."""
-    execution_config, trading_config = _build_execution_and_trading_configs(args)
+    # Logs metrics at the end of the run — fail before the expensive WFO, not after.
+    require_mlflow("run_portfolio_target_weight_wfo")
+    execution_config, trading_config = build_execution_and_trading_configs(args)
     targets_by_symbol: Dict[str, pd.DataFrame] = {}
     open_prices: Dict[str, pd.Series] = {}
     dollar_volumes: Dict[str, pd.Series] = {}
@@ -787,30 +755,19 @@ def run_portfolio_target_weight_wfo(
     for symbol, fold_dirs in fold_dirs_per_symbol.items():
         sym_log = get_symbol_logger(logger, symbol)
         sym_log.info("Generating target weights across %d folds", len(fold_dirs))
-        raw_df = data_loader.fetch_historical_data(
+        built = build_usable_symbol_frame(
+            data_loader=data_loader,
+            feature_engineer=feature_engineer,
             symbol=symbol,
-            interval=training_config["timeframe"],
+            timeframe=training_config["timeframe"],
             start_date=training_config["start_date"],
             end_date=training_config.get("end_date"),
-        )
-        if raw_df.empty:
-            logger.warning(f"No data for {symbol}; skipping")
-            continue
-        full_df = build_features(
-            raw_df=raw_df,
-            symbol=symbol,
-            feature_engineer=feature_engineer,
-            sentiment_analyzer=sentiment_analyzer,
             horizon=horizon,
+            sentiment_analyzer=sentiment_analyzer,
         )
-        target_col = forward_return_column(horizon)
-        if target_col not in full_df.columns:
-            logger.error(
-                f"{target_col} missing from features for {symbol}; "
-                "training config mismatch"
-            )
+        if built is None:
             continue
-        usable = full_df.dropna(subset=[target_col])
+        raw_df, full_df, usable = built
         targets = generate_symbol_target_weights(
             symbol=symbol,
             fold_dirs=fold_dirs,
@@ -1129,6 +1086,7 @@ def _plot_equity(
 
 
 def main():
+    require_mlflow("research/scripts/backtest.py")
     args = parse_args()
     configure_logging(verbose=args.verbose, run_name="backtest")
 
@@ -1236,18 +1194,22 @@ def main():
             sym_log = get_symbol_logger(logger, symbol)
             sym_log.info("WFO backtest across %d folds", len(fold_dirs))
 
-            raw_df = data_loader.fetch_historical_data(
+            built = build_usable_symbol_frame(
+                data_loader=data_loader,
+                feature_engineer=feature_engineer,
                 symbol=symbol,
-                interval=training_config["timeframe"],
+                timeframe=training_config["timeframe"],
                 start_date=training_config["start_date"],
                 end_date=training_config.get("end_date"),
+                horizon=horizon,
+                sentiment_analyzer=sentiment_analyzer,
             )
-            if raw_df.empty:
-                logger.warning(f"No data for {symbol}; skipping")
+            if built is None:
                 continue
+            _raw_df, full_df, usable = built
 
-            # Phase 4 §4.1: dividends credited as cash (prices are split- but
-            # not dividend-adjusted). Empty/None when disabled or unavailable.
+            # Dividends credited as cash — prices are split- but not
+            # dividend-adjusted (SPEC §5). Empty/None when disabled or unavailable.
             symbol_dividends = None
             if not args.no_dividends:
                 symbol_dividends = data_loader.fetch_dividends(
@@ -1255,22 +1217,6 @@ def main():
                     start_date=training_config["start_date"],
                     end_date=training_config.get("end_date"),
                 )
-
-            full_df = build_features(
-                raw_df=raw_df,
-                symbol=symbol,
-                feature_engineer=feature_engineer,
-                sentiment_analyzer=sentiment_analyzer,
-                horizon=horizon,
-            )
-            target_col = forward_return_column(horizon)
-            if target_col not in full_df.columns:
-                logger.error(
-                    f"{target_col} missing from features for {symbol}; "
-                    "training config mismatch"
-                )
-                continue
-            usable = full_df.dropna(subset=[target_col])
 
             symbol_out = output_root / symbol
             symbol_out.mkdir(parents=True, exist_ok=True)

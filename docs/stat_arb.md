@@ -25,9 +25,12 @@ of only ranking single-symbol directional forecasts.
 
 ## CLI
 
+Run from the repo root with the `[research]` extra installed
+(`uv sync --extra research`).
+
 ```bash
 # Rolling walk-forward evaluation. Prefer this for any reported result.
-python -m scripts.stat_arb_wfo --symbols AAPL,MSFT,GOOG,AMZN,META,NVDA \
+python -m research.scripts.stat_arb_wfo --symbols AAPL,MSFT,GOOG,AMZN,META,NVDA \
     --start_date 2020-01-01 --formation_bars 504 --test_bars 63 --max_pairs 5
 
 ```
@@ -123,19 +126,19 @@ are fixed — and in v1 they are frozen at the config defaults.
 
 ```bash
 # Mechanics smoke on a small cached panel (plumbing only, not a result).
-python -m scripts.stat_arb_residual_wfo --symbols AAPL,MSFT,GOOG,AMZN \
+python -m research.scripts.stat_arb_residual_wfo --symbols AAPL,MSFT,GOOG,AMZN \
     --n_factors 2 --start_date 2020-01-01
 
 # Broad liquid subset first: top ~100 names by trailing dollar volume.
-python -m scripts.stat_arb_residual_wfo --universe data/universe/sp500-2026-06-11.txt \
+python -m research.scripts.stat_arb_residual_wfo --universe data/universe/sp500-2026-06-11.txt \
     --top_liquid 100 --start_date 2020-01-01
 
 # Full current-S&P run (survivorship-biased universe; see Limitations).
-python -m scripts.stat_arb_residual_wfo --universe data/universe/sp500-2026-06-11.txt \
+python -m research.scripts.stat_arb_residual_wfo --universe data/universe/sp500-2026-06-11.txt \
     --start_date 2020-01-01
 
 # ETF-factor mode: regress on the 11 SPDR sector ETFs instead of PCA factors.
-python -m scripts.stat_arb_residual_wfo --universe data/universe/sp500-2026-06-11.txt \
+python -m research.scripts.stat_arb_residual_wfo --universe data/universe/sp500-2026-06-11.txt \
     --factor_mode etf --start_date 2020-01-01 --end_date 2026-06-10
 ```
 

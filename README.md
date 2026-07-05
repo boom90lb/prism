@@ -194,8 +194,12 @@ Environment (Python 3.12+, [uv](https://github.com/astral-sh/uv)):
 ```bash
 git clone https://github.com/boom90lb/prism.git
 cd prism
-uv venv && uv pip install -e .
+uv sync --extra research   # full research env: core + jax/torch/mlflow + dev tools
 ```
+
+The core `prism` package itself installs slim (`uv pip install -e .` — no
+JAX/torch/mlflow, SPEC N8). Every `research/scripts` CLI below needs the
+`[research]` extra, so use the `uv sync --extra research` form to run them.
 
 API keys in a `.env` (Twelvedata for bars/dividends; Polygon for sentiment):
 

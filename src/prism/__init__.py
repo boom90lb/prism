@@ -7,4 +7,4 @@ plug-in signal node. Package, distribution, and repository are all named
 rename (SPEC.md §12).
 """
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"

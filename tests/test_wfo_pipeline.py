@@ -1,7 +1,7 @@
-"""Phase 2.2: regression tests for the WFO outer-loop primitives.
+"""Regression tests for the WFO outer-loop primitives.
 
-Covers the surface area that the WFO loops in src/prism/scripts/training.py and
-src/prism/scripts/backtest.py depend on:
+Covers the surface area that the WFO loops in research/scripts/training.py and
+research/scripts/backtest.py depend on:
 
   * ``TradingStrategy._reset_state`` zeroes per-backtest mutables.
   * ``TradingStrategy.run_segment`` does NOT reset state — state carries
@@ -20,7 +20,6 @@ import json
 from pathlib import Path
 from typing import List, Tuple
 
-import mlflow
 import numpy as np
 import pandas as pd
 import pytest
@@ -33,6 +32,10 @@ from prism.models.base import BaseModel
 from prism.models.ensemble import EnsembleModel
 from prism.trading import TradingStrategy
 
+# Only the tests that actually drive MLflow are research-gated (per-test
+# importorskip + marker); the TradingStrategy/WFO invariants above them must
+# keep running in the per-push slim CI job.
+
 
 def _make_gbm_df(n: int, seed: int = 0, start: str = "2024-01-02") -> pd.DataFrame:
     """Synthetic OHLCV with positive close drift so BuyAndHold accumulates pnl."""
@@ -40,7 +43,7 @@ def _make_gbm_df(n: int, seed: int = 0, start: str = "2024-01-02") -> pd.DataFra
     log_returns = rng.normal(loc=0.001, scale=0.01, size=n)
     close = 100.0 * np.exp(np.cumsum(log_returns))
     # tz-aware ET index: data_loader always localizes bars, and
-    # clean_data_for_training asserts a tz-aware index (Phase 4 §4.2).
+    # clean_data_for_training asserts a tz-aware index.
     idx = pd.bdate_range(start=start, periods=n, tz="America/New_York")
     df = pd.DataFrame(
         {
@@ -108,7 +111,7 @@ def _build_strategy() -> Tuple[TradingStrategy, pd.DataFrame, ExecutionConfig]:
     )
     cfg = TradingConfig(
         initial_capital=10_000.0, position_size=0.5,
-        stop_loss=0.02, take_profit=0.05, execution=exec_cfg,
+        execution=exec_cfg,
     )
     strat = TradingStrategy(
         model=bah, config=cfg, sentiment_analyzer=None,
@@ -237,7 +240,7 @@ def test_finalize_results_concatenated_segments_one_continuous_curve():
     assert out["drawdown"].iloc[-1] == pytest.approx(1 - 99.0 / 115.5)
 
 
-# -- Phase 2.5: conformal / ACI integration through the backtest loop ---------
+# -- Conformal / ACI integration through the backtest loop --------------------
 
 
 def _make_conformal_frame(n: int = 300, seed: int = 7) -> pd.DataFrame:
@@ -281,7 +284,7 @@ def _build_conformal_ensemble(df: pd.DataFrame, horizon: int = 5) -> EnsembleMod
 
 
 def test_run_segment_drives_aci_online_update(monkeypatch):
-    """Phase 2.5 integration: an ensemble-with-conformal run through the
+    """Integration: an ensemble-with-conformal run through the
     backtest loop must FIRE ACI online updates. run_segment's per-symbol FIFO
     realizes each band h bars later against the realized ideal position (the
     same target the calibrator regressed on) and feeds the in-band outcome to
@@ -298,7 +301,7 @@ def test_run_segment_drives_aci_online_update(monkeypatch):
     )
     cfg = TradingConfig(
         initial_capital=10_000.0, position_size=0.5,
-        stop_loss=0.02, take_profit=0.05, execution=exec_cfg,
+        execution=exec_cfg,
     )
     strat = TradingStrategy(
         model=ensemble, config=cfg, sentiment_analyzer=None,
@@ -410,7 +413,7 @@ def test_run_segment_keeps_policy_members_on_raw_model_frame():
     )
     cfg = TradingConfig(
         initial_capital=10_000.0, position_size=0.1,
-        stop_loss=0.02, take_profit=0.05, execution=exec_cfg,
+        execution=exec_cfg,
     )
     strat = TradingStrategy(
         model=ensemble, config=cfg, sentiment_analyzer=None,
@@ -433,7 +436,9 @@ def test_run_segment_keeps_policy_members_on_raw_model_frame():
 # -- MLflow utility tests -----------------------------------------------------
 
 
+@pytest.mark.research
 def test_init_mlflow_returns_experiment_id(monkeypatch, tmp_path):
+    mlflow = pytest.importorskip("mlflow", reason="needs the [research] extra")
     # Redirect both the module-level constant AND the live mlflow URI.
     import research.tracking.mlflow_utils as mu
     monkeypatch.setattr(mu, "MLFLOW_TRACKING_URI", f"file://{tmp_path}")
@@ -447,7 +452,9 @@ def test_init_mlflow_returns_experiment_id(monkeypatch, tmp_path):
     assert exp_id == exp_id2
 
 
+@pytest.mark.research
 def test_log_metrics_safe_filters_non_finite(monkeypatch, tmp_path):
+    mlflow = pytest.importorskip("mlflow", reason="needs the [research] extra")
     import research.tracking.mlflow_utils as mu
     monkeypatch.setattr(mu, "MLFLOW_TRACKING_URI", f"file://{tmp_path}")
     mlflow.set_tracking_uri(f"file://{tmp_path}")
@@ -477,8 +484,9 @@ def test_log_metrics_safe_filters_non_finite(monkeypatch, tmp_path):
         assert bad not in logged
 
 
+@pytest.mark.research
 def test_train_symbol_wfo_produces_per_fold_artifacts(monkeypatch, tmp_path):
-    """End-to-end smoke for src/prism/scripts/training.py's per-symbol WFO loop.
+    """End-to-end smoke for research/scripts/training.py's per-symbol WFO loop.
 
     Uses a 200-bar synthetic frame and an xgboost-only static-weighted
     ensemble (no policy members + no meta-learner OOF) so the fit budget
@@ -492,6 +500,7 @@ def test_train_symbol_wfo_produces_per_fold_artifacts(monkeypatch, tmp_path):
     """
     import types
 
+    mlflow = pytest.importorskip("mlflow", reason="needs the [research] extra")
     import research.tracking.mlflow_utils as mu
     monkeypatch.setattr(mu, "MLFLOW_TRACKING_URI", f"file://{tmp_path}")
     mlflow.set_tracking_uri(f"file://{tmp_path}")
@@ -812,7 +821,6 @@ def test_backtest_wfo_persists_state_and_drops_pending_between_folds(
 
     args = types.SimpleNamespace(
         initial_capital=10_000.0, position_size=0.5,
-        stop_loss=0.02, take_profit=0.05,
         commission_bps=1.0, spread_bps=1.0, slippage_coeff=0.0,
         borrow_bps_annual=0.0, order_type="MOO",
     )
@@ -909,7 +917,6 @@ def test_backtest_wfo_swaps_model_per_fold(monkeypatch, tmp_path):
 
     args = types.SimpleNamespace(
         initial_capital=10_000.0, position_size=0.5,
-        stop_loss=0.02, take_profit=0.05,
         commission_bps=1.0, spread_bps=1.0, slippage_coeff=0.0,
         borrow_bps_annual=0.0, order_type="MOO",
     )
@@ -1015,7 +1022,9 @@ def test_missing_fold_metadata_fails_loud_for_ensemble_replay(tmp_path):
         )
 
 
+@pytest.mark.research
 def test_log_params_safe_coerces_to_strings(monkeypatch, tmp_path):
+    mlflow = pytest.importorskip("mlflow", reason="needs the [research] extra")
     import research.tracking.mlflow_utils as mu
     monkeypatch.setattr(mu, "MLFLOW_TRACKING_URI", f"file://{tmp_path}")
     mlflow.set_tracking_uri(f"file://{tmp_path}")

@@ -39,8 +39,8 @@ def _tz_aware_filter(ts: Optional[str]) -> Optional[pd.Timestamp]:
 
 
 # Cache filenames encode the *requested* date range so a file's coverage is
-# visible from its name (Phase 4 §4.4). A None start (no lower bound) encodes
-# as this sentinel.
+# visible from its name. A None start (no lower bound) encodes as this
+# sentinel.
 CACHE_START_SENTINEL = "min"
 
 
@@ -188,7 +188,7 @@ class DataLoader:
         Returns:
             DataFrame with historical price data
 
-        Corporate actions (M6, Phase 4 §4.1):
+        Corporate actions (audit M6; SPEC §5):
             Prices are fetched with ``adjust=splits`` — split-adjusted but NOT
             dividend-adjusted, so the series is a faithful tradeable price.
             Dividends are handled as explicit cash in the backtest (see
@@ -204,8 +204,8 @@ class DataLoader:
             end_date = datetime.now().strftime("%Y-%m-%d")
 
         # Look for a cached file whose *requested* range covers [start, end].
-        # Coverage is checked by filename range (Phase 4 §4.4) so a narrow cache
-        # can no longer silently satisfy a wider request by returning a slice.
+        # Coverage is checked by filename range so a narrow cache cannot
+        # silently satisfy a wider request by returning a slice.
         cache_hit = self._find_covering_cache(symbol, interval, start_date, end_date)
         if cache_hit is not None:
             try:
@@ -250,8 +250,8 @@ class DataLoader:
                 "apikey": self.api_key,
                 "format": "json",
                 "outputsize": output_size,
-                # Phase 4 §4.1: split-adjusted (deterministic, not relying on
-                # the vendor default); dividends credited as cash downstream.
+                # Split-adjusted (deterministic, not relying on the vendor
+                # default); dividends credited as cash downstream (SPEC §5).
                 "adjust": "splits",
             }
 
@@ -302,7 +302,7 @@ class DataLoader:
 
             # Cache under a range-encoded filename so coverage is visible from
             # the name and a future wider request triggers a refetch instead of
-            # trusting a narrow slice (Phase 4 §4.4).
+            # trusting a narrow slice.
             start_token = start_date if start_date else CACHE_START_SENTINEL
             cache_file = self.cache_dir / f"{symbol}_{interval}_{start_token}_{end_date}.parquet"
             try:
@@ -327,8 +327,8 @@ class DataLoader:
 
         Returns a tz-aware (ET) Series indexed by ex-date, split-adjusted to
         match the ``adjust=splits`` prices from ``fetch_historical_data`` so
-        the cash credited per (split-adjusted) share is consistent (Phase 4
-        §4.1). Empty Series when the symbol pays no dividends in range or the
+        the cash credited per (split-adjusted) share is consistent (SPEC
+        §5). Empty Series when the symbol pays no dividends in range or the
         API is unavailable — the backtest treats that as a no-op. Cached with
         the same range-encoded scheme as prices (``{symbol}_dividends_*``); an
         empty result is a valid cached answer (not refetched).
@@ -410,7 +410,7 @@ class DataLoader:
     ) -> Dict[str, pd.DataFrame]:
         """Fetch full per-symbol OHLCV frames for WFO training.
 
-        Phase 2.2: train/test splitting is now handled by the WFO outer
+        Train/test splitting is handled by the WFO outer
         loop via ``PurgedWalkForward``, so this returns one frame per
         symbol with no preemptive split. Symbols that come back empty are
         omitted from the result dict.

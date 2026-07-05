@@ -37,7 +37,7 @@ def _bucket_articles_by_bar(dates: pd.DatetimeIndex, articles: List[Dict]) -> Di
 
     Article belongs to bar ``t`` iff ``bar_close[t-1] < published_utc <= bar_close[t]``,
     where ``bar_close[t] = dates[t] + 16h`` interpreted in America/New_York. This is
-    the B9 leakage guard (Phase 2.8): an article published after a bar's 16:00 ET
+    the B9 leakage guard: an article published after a bar's 16:00 ET
     close attaches to the NEXT bar, never the bar it was published in by
     calendar-date string slicing. Articles published after the last bar's close
     have no bar to attach to and are dropped.
@@ -207,9 +207,6 @@ class SentimentAnalyzer:
         if not self.api_key:
             logger.warning("No Polygon API key provided, sentiment analysis will be limited")
         self.request_timeout = float(request_timeout)
-
-        # Cache for sentiment data
-        self.sentiment_cache: Dict[str, Dict[pd.Timestamp, Dict]] = {}  # {symbol: {date: sentiment_data}}
 
     def fetch_news(
         self, symbol: str, start_date: Optional[str] = None, end_date: Optional[str] = None, limit: int = 100

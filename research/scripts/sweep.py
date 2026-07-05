@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-"""Phase 2.7 — hyperparameter-grid sweep that unlocks the Deflated Sharpe Ratio.
+"""Hyperparameter-grid sweep that unlocks the Deflated Sharpe Ratio.
 
 DSR (Bailey & López de Prado 2014) deflates an observed Sharpe by the
 expected maximum Sharpe of N skill-less trials. It is only honest when N is a
 *real, fully-counted* trial set — which is exactly what this sweep produces.
 
-Per the Phase 2.7 scope (confirmed with the user):
+Scope (confirmed with the owner):
 
   * **Search space:** ensemble-layer knobs only — ``target_vol``,
     ``signal_threshold``, ``weighting_strategy``. Members are forecast-only
@@ -24,7 +24,7 @@ Outputs under ``runs/sweep_{ts}/``:
   * ``sweep_results.json`` — every trial's config + Sharpe, plus the DSR
     summary (selected config, sr_obs, sr_null, PSR, DSR, N).
   * ``trial_sharpes.json`` — ``{"trial_sharpes": [...]}`` consumable by
-    ``src/prism/scripts/backtest.py --trial_sharpes_json`` to render DSR in the report.
+    ``research/scripts/backtest.py --trial_sharpes_json`` to render DSR in the report.
   * ``selected_config.json`` — the winning hyperparameters.
 
 One MLflow parent run ``sweep_{ts}`` with a nested run per trial (and per
@@ -46,6 +46,7 @@ import numpy as np
 import pandas as pd
 
 from research.scripts.backtest import load_fold_ensemble, run_symbol_wfo
+from research.scripts._cli_common import add_execution_args
 from research.scripts.training import (
     build_features,
     parse_model_names,
@@ -193,19 +194,14 @@ def summarize_sweep(trials: List[TrialResult]) -> Dict[str, Any]:
 
 
 def _backtest_args(args, signal_threshold: float) -> SimpleNamespace:
-    """Build the args namespace ``run_symbol_wfo`` reads for cost config."""
-    return SimpleNamespace(
-        initial_capital=args.initial_capital,
-        position_size=args.position_size,
-        stop_loss=args.stop_loss,
-        take_profit=args.take_profit,
-        commission_bps=args.commission_bps,
-        spread_bps=args.spread_bps,
-        slippage_coeff=args.slippage_coeff,
-        borrow_bps_annual=args.borrow_bps_annual,
-        order_type=args.order_type,
-        signal_threshold=signal_threshold,
-    )
+    """Build the args namespace ``run_symbol_wfo`` reads for cost config.
+
+    Derived from the parsed CLI namespace so the field set tracks
+    ``add_execution_args`` automatically; the sweep CLI registers no
+    ``signal_threshold`` flag (it is a grid axis), so the per-trial value
+    cannot collide.
+    """
+    return SimpleNamespace(**vars(args), signal_threshold=signal_threshold)
 
 
 def run_trial(
@@ -499,7 +495,7 @@ def prepare_sweep_data(args) -> Dict[str, pd.DataFrame]:
 
 def parse_args():
     p = argparse.ArgumentParser(
-        description="Hyperparameter-grid sweep with DSR (Phase 2.7).",
+        description="Hyperparameter-grid sweep with DSR.",
     )
     p.add_argument("--symbols", type=str,
                    default=",".join(DEFAULT_TRAINING_CONFIG.symbols))
@@ -520,17 +516,8 @@ def parse_args():
                    default=DEFAULT_TRAINING_CONFIG.embargo_pct)
     p.add_argument("--rolling", action="store_true")
 
-    # Execution / trading config.
-    p.add_argument("--initial_capital", type=float, default=10000.0)
-    p.add_argument("--position_size", type=float, default=0.1)
-    p.add_argument("--stop_loss", type=float, default=0.02)
-    p.add_argument("--take_profit", type=float, default=0.05)
-    p.add_argument("--commission_bps", type=float, default=1.0)
-    p.add_argument("--spread_bps", type=float, default=1.0)
-    p.add_argument("--slippage_coeff", type=float, default=10.0)
-    p.add_argument("--borrow_bps_annual", type=float, default=50.0)
-    p.add_argument("--order_type", type=str, default="MOO",
-                   choices=["MOO", "MOC"])
+    # Execution / trading config (shared across the research CLIs).
+    add_execution_args(p)
 
     # Grid override + MLflow.
     p.add_argument(

@@ -4,35 +4,30 @@ build-backend = "hatchling.build"
 
 [project]
 name = "prism"
-version = "0.3.0"
-authors = [
-    {name = "Brendon Reperttang", email = "boom90lb@mit.alum.edu"},
-]
+version = "0.3.1"
 description = "Prism — a cross-sectional systematic trading engine (score → residualize → construct → execute), evaluated under a purged-WFO, cost-realistic, deflation-adjusted honesty harness"
 readme = "README.md"
+license = "MIT"
 requires-python = ">=3.12"
+authors = [
+    { name = "Brendon Reperttang", email = "boom90lb@alum.mit.edu" },
+]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
 
+# Core = the production import path (SPEC N8): no JAX/torch/mlflow. The
+# research heavyweights live in the `research` extra below. `prophet` stays
+# core as a forecast member (SPEC §7.1); it transitively provides matplotlib,
+# which no prism module imports at module scope (tests/test_import_hygiene.py).
 dependencies = [
-    "jax[cuda12]>=0.5.3",
-    "flax>=0.10.5",
-    "distrax>=0.1.5",
-    "optax>=0.2.4",
     "numpy>=1.24.0",
     "pandas>=2.0.0",
     "scikit-learn>=1.2.0",
-    "matplotlib>=3.7.0",
     "statsmodels>=0.14.0",
     "prophet>=1.1.0",
     "xgboost>=1.7.0",
-    "torch>=2.0.0",
-    "transformers>=4.40.0",
-    "gymnasium>=0.29.0",
-    "mlflow>=3.0.0",
     "pyarrow>=10.0.0",
     "tqdm>=4.64.0",
     "python-dotenv>=1.0.0",
@@ -40,11 +35,29 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Everything the quarantined research/ tree (RL members, mlflow tracking,
+# batch WFO CLIs) needs on top of the core. `transformers` rides here because
+# it drags torch; the FinBERT sentiment scorer imports it lazily.
+research = [
+    "jax[cuda12]>=0.5.3",
+    "flax>=0.10.5",
+    "distrax>=0.1.5",
+    "optax>=0.2.4",
+    "torch>=2.0.0",
+    "transformers>=4.40.0",
+    "gymnasium>=0.29.0",
+    "mlflow>=3.0.0",
+    "matplotlib>=3.7.0",
+]
+
+# Dev tooling is a PEP 735 dependency group (installed by a bare `uv sync`,
+# never shipped as an extra). flake8 was dropped in 0.3.1: its pyproject
+# config was inert (flake8 does not read pyproject.toml) and nothing ran it.
+[dependency-groups]
 dev = [
     "pytest>=7.0.0",
     "black>=22.10.0",
     "isort>=5.10.0",
-    "flake8>=6.0.0",
     "mypy>=1.0.0",
     "pandas-stubs>=2.2.3.250308",
     "types-tqdm>=4.64.0.20250328",
@@ -69,9 +82,6 @@ packages = ["src/prism"]
 line-length = 119
 target-version = ["py312"]
 
-[tool.flake8]
-max-line-length = 119
-
 [tool.isort]
 profile = "black"
 
@@ -86,3 +96,6 @@ python_files = "test_*.py"
 # depend on a (possibly stale) editable install. "." exposes the quarantined
 # top-level `research` package (SPEC §9), which ships no wheel.
 pythonpath = ["src", "."]
+markers = [
+    "research: needs the [research] extra (torch/jax/mlflow heavy deps)",
+]

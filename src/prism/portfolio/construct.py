@@ -7,8 +7,12 @@ capacity costs remain in ``prism.execution.target_weights``.
 
 from __future__ import annotations
 
+import logging
+
 import numpy as np
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 
 def cap_book(targets: pd.DataFrame, max_gross: float, max_symbol_abs_weight: float) -> pd.DataFrame:
@@ -30,8 +34,39 @@ def cap_book(targets: pd.DataFrame, max_gross: float, max_symbol_abs_weight: flo
 def _band_step(held: np.ndarray, target: np.ndarray, thr: np.ndarray) -> np.ndarray:
     """The one hysteresis rule shared by the batch and online band forms: move a
     name to its target only where the target is more than ``thr`` from what is
-    held. A NaN threshold never triggers (freezes the name)."""
+    held. Thresholds arrive from ``_coerce_band_thresholds`` as finite values
+    or +inf (an explicit never-trade pin — the comparison never triggers)."""
     return np.where(np.abs(target - held) > thr, target, held)
+
+
+def _coerce_band_thresholds(band: float | pd.Series, index: pd.Index) -> np.ndarray:
+    """One band-threshold policy for the batch and online forms.
+
+    Numeric-coerce and clip negatives to 0. A +inf band is a legitimate
+    explicit never-trade pin and passes through. A NaN (or -inf) band is
+    DISABLED (0.0) with a loud warning: a degenerate estimate to surface, not
+    a hold-forever instruction (SPEC N7). A name absent from a per-name
+    Series simply has no band (0.0), without a warning.
+    """
+    if isinstance(band, pd.Series):
+        aligned = pd.to_numeric(band.reindex(index), errors="coerce").to_numpy(dtype=float)
+        valid = np.isfinite(aligned) | (aligned == np.inf)
+        if not valid.all():
+            degenerate = index.isin(band.index) & ~valid
+            n_degenerate = int(degenerate.sum())
+            if n_degenerate:
+                logger.warning(
+                    "no-trade band disabled for %d name(s) with NaN/-inf band values: %s%s",
+                    n_degenerate,
+                    [str(s) for s in index[degenerate][:10]],
+                    " ..." if n_degenerate > 10 else "",
+                )
+        return np.clip(np.where(valid, aligned, 0.0), 0.0, None)
+    value = float(band)
+    if np.isnan(value) or value == -np.inf:
+        logger.warning("no-trade band disabled: NaN/-inf scalar band %r", band)
+        value = 0.0
+    return np.full(len(index), max(value, 0.0))
 
 
 def apply_no_trade_band(targets: pd.DataFrame, band: float | pd.Series) -> pd.DataFrame:
@@ -42,17 +77,17 @@ def apply_no_trade_band(targets: pd.DataFrame, band: float | pd.Series) -> pd.Da
     ``step_no_trade_band`` instead — calling this on a one-row frame every day
     silently resets hysteresis to flat and defeats the band.
 
-    NB: a NaN entry in a per-name ``band`` Series freezes that name for the whole
-    frame here (NaN threshold never triggers), whereas ``step_no_trade_band``
-    coerces NaN to 0 (band disabled). Pass finite bands to get identical
-    semantics from both forms.
+    Band policy (shared with ``step_no_trade_band``, pinned by
+    ``tests/test_online_band.py``): +inf pins a name at its held weight;
+    negative, NaN, or -inf values disable the band for that name (threshold
+    0), the degenerate ones with a loud warning.
     """
-    if isinstance(band, pd.Series):
-        thr = np.array([max(float(band.get(c, 0.0)), 0.0) for c in targets.columns], dtype=float)
-    else:
-        if band <= 0:
-            return targets
-        thr = np.full(targets.shape[1], float(band))
+    thr = _coerce_band_thresholds(band, targets.columns)
+    # Scalar fast path only: a Series band always runs the loop so the output
+    # is a fresh float frame with NaN targets coerced to held weights, exactly
+    # like every banded path.
+    if not isinstance(band, pd.Series) and not np.any(thr > 0.0):
+        return targets
     mat = targets.to_numpy(dtype=float)
     out = np.empty_like(mat)
     held = np.zeros(mat.shape[1])
@@ -76,10 +111,13 @@ def step_no_trade_band(
     takes the prior book as input rather than replaying from flat, so a daily loop
     that calls it once per session preserves hysteresis across days.
 
-    ``band`` is a scalar half-width or a per-name Series (negative/NaN -> 0). The
-    two Series are aligned on the union of their indices; a name absent from
-    ``prev_held`` is treated as held-flat (0.0), a name absent from ``target``
-    keeps its held weight (no decision today). Returns the new held weights.
+    ``band`` is a scalar half-width or a per-name Series, coerced by the shared
+    policy (+inf -> never-trade pin; negative/NaN/-inf -> band disabled, the
+    degenerate ones warned loudly — see ``_coerce_band_thresholds``). The two
+    Series are aligned on the union of
+    their indices; a name absent from ``prev_held`` is treated as held-flat
+    (0.0), a name absent from ``target`` keeps its held weight (no decision
+    today). Returns the new held weights.
     """
     index = prev_held.index.union(target.index)
     held = pd.to_numeric(prev_held.reindex(index), errors="coerce").fillna(0.0).to_numpy(dtype=float)
@@ -87,10 +125,7 @@ def step_no_trade_band(
     # No decision for a name (NaN target) -> hold prior.
     tgt = np.where(np.isfinite(tgt), tgt, held)
 
-    if isinstance(band, pd.Series):
-        thr = pd.to_numeric(band.reindex(index), errors="coerce").fillna(0.0).clip(lower=0.0).to_numpy(dtype=float)
-    else:
-        thr = np.full(index.shape[0], max(float(band), 0.0))
+    thr = _coerce_band_thresholds(band, index)
 
     new_held = _band_step(held, tgt, thr)
     return pd.Series(new_held, index=index, name=getattr(target, "name", None))

@@ -1,7 +1,10 @@
-"""Universe loading + point-in-time as-of filtering (Phase 4 §4.3)."""
+"""Universe loading + point-in-time as-of filtering."""
 
 import pandas as pd
 
+# research.scripts.training is import-safe on a slim install (mlflow degrades
+# to None inside mlflow_utils), so these pure-helper tests are NOT
+# research-gated and run in the per-push slim CI job.
 from research.scripts.training import filter_universe_asof, load_universe
 from prism.data_loader import BAR_TZ
 

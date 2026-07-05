@@ -1,4 +1,4 @@
-"""Tests for the Phase 5.1 structured-logging helper (src/logging_utils.py).
+"""Tests for the structured-logging helper (src/prism/logging_utils.py).
 
 JAX-free and filesystem-isolated: every test configures logging into a
 pytest ``tmp_path`` and restores the root logger's original handlers on

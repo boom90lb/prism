@@ -50,7 +50,7 @@ def _make_gbm_df(n: int, seed: int = 7, start: str = "2021-01-04") -> pd.DataFra
 
 
 def _build_enhanced(n: int, horizon: int) -> tuple[pd.DataFrame, str, FeatureEngineer]:
-    """Mirror src/prism/scripts/training.build_features exactly: features + lags + target,
+    """Mirror research/scripts/training.build_features exactly: features + lags + target,
     then ``clean_data_for_training`` (Inf->NaN, drop >30%-NaN feature cols,
     feature ffill/fillna(0)) which removes the warmup-period feature NaNs
     Prophet rejects while preserving missing forward labels. Returns

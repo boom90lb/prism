@@ -1,4 +1,4 @@
-"""Tests for TransformerSentimentAnalyzer (Phase 3.1, FinBERT interim).
+"""Tests for TransformerSentimentAnalyzer (FinBERT interim).
 
 The real ProsusAI/finbert weights (~440MB) are NOT downloaded in CI. Unit tests
 monkeypatch the HuggingFace `from_pretrained` calls with a fake tokenizer/model
@@ -22,9 +22,13 @@ from unittest.mock import patch
 import numpy as np
 import pandas as pd
 import pytest
-import torch
 
-from prism.sentiment_analysis import TransformerSentimentAnalyzer
+pytest.importorskip("torch", reason="needs the [research] extra")
+pytestmark = pytest.mark.research
+
+import torch  # noqa: E402
+
+from prism.sentiment_analysis import TransformerSentimentAnalyzer  # noqa: E402
 
 
 # --- Fakes -------------------------------------------------------------------

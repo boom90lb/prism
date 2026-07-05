@@ -1,5 +1,7 @@
 """Tests for the single-step online no-trade band (SPEC.md §7.3)."""
 
+import logging
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -70,3 +72,78 @@ class TestStepNoTradeBand:
         tgt = pd.Series({"A": 0.1000001})
         out = step_no_trade_band(prev, tgt, 0.0)
         assert out["A"] == pytest.approx(0.1000001)
+
+
+class TestNaNBandPolicy:
+    """Pin the ONE degenerate-band policy shared by both forms (SPEC N7):
+    a NaN or -inf band value DISABLES the band for that name (trade straight
+    to target) and warns loudly, while +inf is a legitimate explicit
+    never-trade pin (no warning). Historically the batch form froze a
+    NaN-band name forever while the online form silently disabled it. A
+    future "freeze" policy variant for NaN would be one more parametrized
+    branch here — see ``_band_step``'s docstring for where it would live.
+    """
+
+    _LOGGER = "prism.portfolio.construct"
+
+    @staticmethod
+    def _run_batch(band):
+        targets = pd.DataFrame({"A": [0.10, 0.20], "B": [0.10, 0.20]})
+        return apply_no_trade_band(targets, band)
+
+    @staticmethod
+    def _run_online(band):
+        prev = pd.Series({"A": 0.10, "B": 0.10})
+        tgt = pd.Series({"A": 0.11, "B": 0.11})
+        return step_no_trade_band(prev, tgt, band)
+
+    @pytest.mark.parametrize("form", ["batch", "online"])
+    @pytest.mark.parametrize("degenerate", [np.nan, -np.inf])
+    def test_degenerate_band_name_equals_disabled_band(self, form, degenerate, caplog):
+        run = self._run_batch if form == "batch" else self._run_online
+        bad_band = pd.Series({"A": degenerate, "B": 0.15})
+        zero_band = pd.Series({"A": 0.0, "B": 0.15})
+        with caplog.at_level(logging.WARNING, logger=self._LOGGER):
+            with_bad = run(bad_band)
+        baseline = run(zero_band)
+        if form == "batch":
+            pd.testing.assert_frame_equal(with_bad, baseline)
+        else:
+            pd.testing.assert_series_equal(with_bad, baseline)
+        assert any("NaN/-inf" in r.getMessage() for r in caplog.records)
+
+    @pytest.mark.parametrize("form", ["batch", "online"])
+    def test_posinf_band_pins_name_without_warning(self, form, caplog):
+        run = self._run_batch if form == "batch" else self._run_online
+        band = pd.Series({"A": np.inf, "B": 0.15})
+        with caplog.at_level(logging.WARNING, logger=self._LOGGER):
+            out = run(band)
+        if form == "batch":
+            # A pinned at the flat start for the whole frame; B trades once
+            # its target clears the 0.15 band.
+            assert (out["A"] == 0.0).all()
+            assert out["B"].tolist() == pytest.approx([0.0, 0.20])
+        else:
+            assert out["A"] == pytest.approx(0.10)  # held at prev
+        assert not caplog.records
+
+    @pytest.mark.parametrize("form", ["batch", "online"])
+    def test_nan_scalar_band_disables_banding(self, form, caplog):
+        run = self._run_batch if form == "batch" else self._run_online
+        with caplog.at_level(logging.WARNING, logger=self._LOGGER):
+            with_nan = run(float("nan"))
+        baseline = run(0.0)
+        if form == "batch":
+            pd.testing.assert_frame_equal(with_nan, baseline)
+        else:
+            pd.testing.assert_series_equal(with_nan, baseline)
+        assert any("NaN/-inf" in r.getMessage() for r in caplog.records)
+
+    def test_absent_name_has_no_band_and_no_warning(self, caplog):
+        prev = pd.Series({"A": 0.10})
+        tgt = pd.Series({"A": 0.11})
+        band = pd.Series({"B": 0.5})  # A absent from the band Series
+        with caplog.at_level(logging.WARNING, logger=self._LOGGER):
+            out = step_no_trade_band(prev, tgt, band)
+        assert out["A"] == pytest.approx(0.11)  # no band -> moved
+        assert not caplog.records

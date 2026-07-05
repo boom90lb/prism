@@ -6,10 +6,8 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, TypedDict, Union
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from matplotlib.dates import DateFormatter
 
 from prism.config import RESULTS_DIR, TradingConfig
 from prism.execution import ExecutionModel, Fill, Order, OrderType
@@ -89,8 +87,8 @@ class TradingStrategy:
     ) -> Tuple[Position, float]:
         """Translate an ensemble position ∈ [-1, 1] into a discrete trade.
 
-        After Phase 1.2 the ensemble emits unified positions, so this function
-        no longer re-derives expected return from price. Sign → LONG/SHORT/FLAT;
+        The ensemble emits unified positions, so this function
+        never re-derives expected return from price. Sign → LONG/SHORT/FLAT;
         magnitude → confidence. `current_price` is kept in the signature for
         downstream callers but is no longer used for signal direction.
 
@@ -99,7 +97,7 @@ class TradingStrategy:
         confidence boost. Passing it is required — an empty frame makes the
         ensemble's vol-sizing raise "requires 'close'" and the boost no-ops.
 
-        Phase 2.5: when band_width is provided (from conformal predict_band),
+        When band_width is provided (from conformal predict_band),
         scales confidence down by the width of the position-space band. Wider
         bands (high uncertainty) reduce confidence; tight bands increase it.
         """
@@ -160,7 +158,7 @@ class TradingStrategy:
             except Exception as e:
                 logger.error(f"Error incorporating sentiment data: {e}")
 
-        # Phase 2.5: scale confidence by conformal band width. Band width is
+        # Scale confidence by conformal band width. Band width is
         # in position space [0, 2*position_cap]; normalize and apply as a
         # tightness factor. Tight bands (high confidence) boost; wide bands
         # (high uncertainty) dampen confidence.
@@ -173,8 +171,7 @@ class TradingStrategy:
 
         # Minimum magnitude to avoid overtrading on noise. Default 0.1 ≈ 10% of
         # full bet — matches the spirit of the old 0.2% return threshold scaled
-        # by a typical 2% daily vol. Configurable (Phase 2.7) so a sweep can
-        # vary it.
+        # by a typical 2% daily vol. Configurable so a sweep can vary it.
         threshold = self.config.signal_threshold
 
         if position_target > threshold:
@@ -464,7 +461,7 @@ class TradingStrategy:
         """Credit (long) / debit (short) cash dividends on the ex-date for any
         open position. Returns net cash applied (negative => net debit).
 
-        Phase 4 §4.1: prices are split-adjusted but NOT dividend-adjusted, so a
+        Prices are split-adjusted but NOT dividend-adjusted (SPEC §5), so a
         long held over an ex-date takes a markdown loss equal to the dividend
         in mark-to-market; crediting ``shares * amount`` makes the bar
         total-return neutral. A short pays the dividend (debit), mirroring
@@ -789,7 +786,7 @@ class TradingStrategy:
                     logger.error(f"Error creating sentiment features for {symbol}: {e}")
                     sentiment_data[symbol] = pd.DataFrame(index=all_dates)
 
-        # Phase 2.5: per-symbol FIFO of conformal bands awaiting their
+        # Per-symbol FIFO of conformal bands awaiting their
         # horizon-h realized ideal position. Local to this segment so ACI
         # adapts within a fold and resets cleanly across WFO folds (the model
         # itself re-inits self.aci on every refit). Entries are
@@ -863,7 +860,7 @@ class TradingStrategy:
                 if self.model.target_column in symbol_model_data.columns:
                     model_price = float(symbol_model_data[self.model.target_column].iloc[cur_pos])
 
-                # Phase 2.5: realize matured conformal bands → ACI online
+                # Realize matured conformal bands → ACI online
                 # update. A band queued at t is scored at t+h against the
                 # realized ideal position (perfect-foresight bet on the actual
                 # h-bar return), the same target the calibrator regressed on.
@@ -896,7 +893,7 @@ class TradingStrategy:
                     # predict() returns one position per fed row; the LAST row
                     # is this bar's decision (windowed members emit a vector).
                     latest_prediction = predictions[-1:] if len(predictions) else predictions
-                    # Phase 2.5: compute conformal bands if available, and queue
+                    # Compute conformal bands if available, and queue
                     # this band for ACI realization h bars ahead.
                     band_width = None
                     if conformal_on:
@@ -942,7 +939,7 @@ class TradingStrategy:
             # 5. Daily borrow on open shorts (mark-to-market).
             self.accrue_borrow(current_prices, date)
 
-            # 5b. Cash dividends on ex-date for open positions (Phase 4 §4.1).
+            # 5b. Cash dividends on ex-date for open positions (SPEC §5).
             self.apply_dividends(dividends, date)
 
             # 6. Final mark + record.
@@ -1089,6 +1086,17 @@ class TradingStrategy:
         if results.empty:
             logger.warning("No results to plot")
             return
+
+        # Deferred so the production import path stays matplotlib-free (SPEC N8);
+        # plotting is the only consumer.
+        try:
+            import matplotlib.pyplot as plt
+            from matplotlib.dates import DateFormatter
+        except ImportError as exc:
+            raise ImportError(
+                "plot_results requires matplotlib, which is not part of the core "
+                "install; install the 'research' extra (pip install 'prism[research]')."
+            ) from exc
 
         # Create figure
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10), sharex=True, gridspec_kw={"height_ratios": [3, 1]})

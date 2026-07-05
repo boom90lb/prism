@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Multi-seed RL overfitting study (Phase 3.2 / M10).
+"""Multi-seed RL overfitting study (audit M10).
 
 Single-seed RL Sharpes are noise-dominated. This opt-in driver re-fits each
 RL agent over ``seed ∈ {0,1,2,3,4}`` and reports the **mean ± std of net
@@ -8,7 +8,7 @@ seed set is a secondary line). It closes M10 part 1; parts 2 and 3 (held-out
 eval on the same WFO test folds; reward = price[t+1]-price[t] only) are
 already structural and are pinned by tests rather than rebuilt here.
 
-Design (scoped via AskUserQuestion, Phase 3.2):
+Design:
   * **Bare agents, no meta-learner.** Each (member, symbol, seed) fits a
     1-member *static-weight* EnsembleModel whose sole member is the seeded RL
     agent. Static weighting skips ``_fit_meta_learner_weights`` → no
@@ -16,7 +16,7 @@ Design (scoped via AskUserQuestion, Phase 3.2):
     fold per seed.
   * **Same WFO test folds as forecast members.** Symbols and per-fold split
     indices are read from an existing ``--training_run`` (the contract
-    ``src/prism/scripts/backtest.py`` already uses), so RL ``predict()`` is evaluated on
+    ``research/scripts/backtest.py`` already uses), so RL ``predict()`` is evaluated on
     the same held-out test slices — never on a training env.
   * **Net periodic Sharpe via the canonical path.** Each seed's positions are
     routed through ``scripts.backtest.run_symbol_wfo`` →
@@ -44,7 +44,8 @@ from research.scripts.backtest import (
     run_symbol_wfo,
 )
 from research.scripts.sweep import combine_symbol_returns
-from research.scripts.training import build_features, reject_sentiment_flag, select_rl_features
+from research.scripts.training import reject_sentiment_flag, select_rl_features
+from research.scripts._cli_common import add_execution_args, build_usable_symbol_frame
 from prism.config import PROJECT_DIR, EnsembleConfig, ModelConfig
 from prism.data_loader import DataLoader
 from prism.features import FeatureEngineer, forward_return_column, is_label_column
@@ -75,11 +76,11 @@ DEFAULT_MEMBERS = ["lstm_ppo", "xlstm_ppo", "xlstm_grpo"]
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Multi-seed RL overfitting study (Phase 3.2 / M10).",
+        description="Multi-seed RL overfitting study (audit M10).",
     )
     parser.add_argument(
         "--training_run", type=str, required=True,
-        help="Path to runs/{run_name}/ produced by src/prism/scripts/training.py "
+        help="Path to runs/{run_name}/ produced by research/scripts/training.py "
              "(supplies the symbol list + per-fold split indices).",
     )
     parser.add_argument(
@@ -98,7 +99,7 @@ def parse_args():
     parser.add_argument(
         "--rl_timesteps", type=int, default=100000,
         help="PPO timesteps per fit (xlstm_grpo uses //100 updates, "
-             "mirroring src/prism/scripts/training.py).",
+             "mirroring research/scripts/training.py).",
     )
     parser.add_argument("--gpu", action="store_true")
     parser.add_argument(
@@ -111,19 +112,9 @@ def parse_args():
     )
 
     # Execution config — consumed by run_symbol_wfo's TradingStrategy. Defaults
-    # match src/prism/scripts/backtest.py so the net-Sharpe convention is identical.
-    parser.add_argument("--initial_capital", type=float, default=10000.0)
-    parser.add_argument("--position_size", type=float, default=0.1)
-    parser.add_argument("--stop_loss", type=float, default=0.02)
-    parser.add_argument("--take_profit", type=float, default=0.05)
-    parser.add_argument("--commission_bps", type=float, default=1.0)
-    parser.add_argument("--spread_bps", type=float, default=1.0)
-    parser.add_argument("--slippage_coeff", type=float, default=10.0)
-    parser.add_argument("--borrow_bps_annual", type=float, default=50.0)
-    parser.add_argument(
-        "--order_type", type=str, default="MOO", choices=["MOO", "MOC"],
-    )
-    parser.add_argument("--signal_threshold", type=float, default=0.1)
+    # match research/scripts/backtest.py so the net-Sharpe convention is
+    # identical (shared across the research CLIs).
+    add_execution_args(parser, include_signal_threshold=True)
 
     parser.add_argument(
         "--experiment", type=str, default="prism_rl_seed_eval",
@@ -147,7 +138,7 @@ def make_seeded_fold_model_factory(
     The returned closure fits a fresh 1-member *static* EnsembleModel — whose
     sole member is ``member`` constructed at ``seed`` — on the fold's TRAIN
     slice (read from ``fold_dir/split_idx.npz``). Scalers/clip-bounds are fit
-    on TRAIN only per fold, mirroring ``train_symbol_wfo`` so the Phase 2.8
+    on TRAIN only per fold, mirroring ``train_symbol_wfo`` so the audit-b
     leak guard applies. Static weighting → no meta-learner → one RL fit/fold.
     """
 
@@ -163,7 +154,7 @@ def make_seeded_fold_model_factory(
         train_raw = usable.iloc[train_idx]
 
         # Per-fold TRAIN-only scaling (overwrites symbol clip_bounds → the
-        # Phase 2.8 audit-b leak guard takes effect per fold).
+        # audit-b leak guard takes effect per fold).
         feature_engineer.fit_scalers(train_raw, symbol)
         train_scaled = feature_engineer.transform_features(
             train_raw, symbol, is_train=True,
@@ -342,25 +333,21 @@ def main():
     symbol_to_frames: Dict[str, pd.DataFrame] = {}
     symbol_to_dividends: Dict[str, Optional[pd.Series]] = {}
     for symbol in list(fold_dirs_per_symbol):
-        raw_df = data_loader.fetch_historical_data(
+        built = build_usable_symbol_frame(
+            data_loader=data_loader,
+            feature_engineer=feature_engineer,
             symbol=symbol,
-            interval=training_config["timeframe"],
+            timeframe=training_config["timeframe"],
             start_date=training_config["start_date"],
             end_date=training_config.get("end_date"),
+            horizon=horizon,
+            sentiment_analyzer=sentiment_analyzer,
         )
-        if raw_df.empty:
-            logger.warning(f"No data for {symbol}; dropping from study")
+        if built is None:
             fold_dirs_per_symbol.pop(symbol)
             continue
-        full_df = build_features(
-            raw_df=raw_df, symbol=symbol, feature_engineer=feature_engineer,
-            sentiment_analyzer=sentiment_analyzer, horizon=horizon,
-        )
-        if target_col not in full_df.columns:
-            logger.error(f"{target_col} missing for {symbol}; training config mismatch")
-            fold_dirs_per_symbol.pop(symbol)
-            continue
-        symbol_to_frames[symbol] = full_df.dropna(subset=[target_col])
+        _raw_df, _full_df, usable = built
+        symbol_to_frames[symbol] = usable
         symbol_to_dividends[symbol] = (
             None if args.no_dividends else data_loader.fetch_dividends(
                 symbol=symbol,

@@ -32,11 +32,14 @@ from prism.residual.factors import (
     etf_factor_portfolios,
     volume_time_weights,
 )
+# cap_book/apply_no_trade_band/cost_aware_band are re-exported here as the
+# legacy stat-arb import surface (tests and research import them from this
+# module); the surface folds into the R1/R2 residual rework, not before.
 from prism.portfolio.construct import (
-    apply_no_trade_band,
+    apply_no_trade_band,  # noqa: F401  (re-export)
     build_residual_book_row as build_book_row,
     cap_book,
-    cost_aware_band,
+    cost_aware_band,  # noqa: F401  (re-export)
 )
 
 _EPS = 1e-12

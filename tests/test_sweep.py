@@ -1,4 +1,4 @@
-"""Phase 2.7: tests for the hyperparameter-grid sweep + DSR wiring.
+"""Tests for the hyperparameter-grid sweep + DSR wiring.
 
 Split into:
   * Pure-helper unit tests (deterministic): grid expansion, equal-weight
@@ -15,20 +15,24 @@ import json
 import sys
 from types import SimpleNamespace
 
-import mlflow
 import numpy as np
 import pandas as pd
 import pytest
 
-from research.scripts.sweep import (
+pytest.importorskip("mlflow", reason="needs the [research] extra")
+pytestmark = pytest.mark.research
+
+import mlflow  # noqa: E402
+
+from research.scripts.sweep import (  # noqa: E402
     TrialResult,
     combine_symbol_returns,
     expand_grid,
     run_sweep,
     summarize_sweep,
 )
-from prism.validation.metrics import periodic_sharpe, probabilistic_sharpe_ratio
-from prism.validation.trials import CLAIM_TIERS, validate_claim_packet_dir
+from prism.validation.metrics import periodic_sharpe, probabilistic_sharpe_ratio  # noqa: E402
+from prism.validation.trials import CLAIM_TIERS, validate_claim_packet_dir  # noqa: E402
 
 
 def test_r0_quarantine_defaults_and_explicit_rejections(monkeypatch) -> None:
@@ -57,7 +61,7 @@ def _make_gbm_df(n: int, seed: int = 0, start: str = "2024-01-02") -> pd.DataFra
     log_returns = rng.normal(loc=0.001, scale=0.01, size=n)
     close = 100.0 * np.exp(np.cumsum(log_returns))
     # tz-aware ET index (data_loader localizes bars; clean_data_for_training
-    # asserts a tz-aware index, Phase 4 §4.2).
+    # asserts a tz-aware index).
     idx = pd.bdate_range(start=start, periods=n, tz="America/New_York")
     return pd.DataFrame(
         {
@@ -207,7 +211,6 @@ def test_run_sweep_end_to_end(monkeypatch, tmp_path) -> None:
         start_date="2024-01-02", end_date=None,
         n_splits=2, embargo_pct=0.01, rolling=False, use_sentiment=False,
         initial_capital=10_000.0, position_size=0.2,
-        stop_loss=0.02, take_profit=0.05,
         commission_bps=1.0, spread_bps=1.0, slippage_coeff=0.0,
         borrow_bps_annual=0.0, order_type="MOO",
         rl_timesteps=0, experiment="sweep_e2e_test",

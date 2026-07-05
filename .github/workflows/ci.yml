@@ -1,0 +1,59 @@
+# Two jobs (SPEC N8 enforcement lives in `core`):
+#   core — every push and pull request: slim install (no research extra), the
+#          "not research" test subset including the import-hygiene contract,
+#          wheel build, and a slim-install smoke proving no heavyweight leaks
+#          into the core.
+#   full — workflow_dispatch + weekly cron only: the [research] extra is a
+#          multi-GB install (jax pulls a cu12 stack AND torch a cu13 stack)
+#          on CPU-only runners, too heavy to pay per push.
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 9 * * 1"
+
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    # Same-repo PR branches also fire the push event; skip the duplicate run.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          cache-suffix: core
+      - name: Install core + dev group (no research extra)
+        run: uv sync
+      - name: Core tests + N8 import contract
+        run: uv run pytest -q -m "not research"
+      - name: Build wheel + sdist
+        run: uv build
+      - name: Slim wheel-install smoke
+        run: |
+          uv venv /tmp/slim
+          uv pip install --python /tmp/slim/bin/python dist/*.whl
+          if uv pip list --python /tmp/slim/bin/python | grep -Ei "^(jax|flax|torch|mlflow|gymnasium|distrax|optax|transformers) "; then
+            echo "research heavyweight leaked into the slim install" >&2
+            exit 1
+          fi
+          /tmp/slim/bin/python -c "import prism, prism.features, prism.trading, prism.models.ensemble, prism.portfolio.construct, prism.sentiment_analysis"
+
+  full:
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free runner disk (dual CUDA stacks need ~12-16 GB installed)
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          cache-suffix: full
+      - name: Install with research extra
+        run: uv sync --extra research
+      - name: Full suite
+        run: uv run pytest -q

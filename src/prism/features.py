@@ -1,11 +1,10 @@
-"""Feature engineering for the time series ensemble model using NNX."""
+"""Feature engineering for the time series ensemble model."""
 
 import logging
 import pickle
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import flax.nnx as nnx
 import numpy as np
 import pandas as pd
 
@@ -22,22 +21,21 @@ def forward_return_column(horizon: int) -> str:
     return f"pct_change_{horizon}"
 
 
-class ScalerModule(nnx.Module):
-    """NNX module for feature scaling."""
+class ScalerModule:
+    """Per-group feature scaler holding train-fitted state as plain numpy."""
 
-    def __init__(self, *, scaler_type: str = "minmax", rngs: Optional[nnx.Rngs] = None):
+    def __init__(self, *, scaler_type: str = "minmax"):
         """Initialize the scaler module.
 
         Args:
             scaler_type: Type of scaler ('minmax', 'standard', or 'none')
-            rngs: Random number generators
         """
         self.scaler_type = scaler_type.lower()
-        self.is_fitted = nnx.Param(False)
-        self.mean = nnx.Param(np.array([0.0]))
-        self.std = nnx.Param(np.array([1.0]))
-        self.min_vals = nnx.Param(np.array([0.0]))
-        self.max_vals = nnx.Param(np.array([1.0]))
+        self.is_fitted = False
+        self.mean = np.array([0.0])
+        self.std = np.array([1.0])
+        self.min_vals = np.array([0.0])
+        self.max_vals = np.array([1.0])
 
     def fit(self, data: np.ndarray) -> None:
         """Fit the scaler to the data.
@@ -49,21 +47,19 @@ class ScalerModule(nnx.Module):
             return
 
         if self.scaler_type == "standard":
-            self.mean.set_value(np.nanmean(data, axis=0))
-            self.std.set_value(np.nanstd(data, axis=0))
+            self.mean = np.nanmean(data, axis=0)
+            std = np.nanstd(data, axis=0)
             # Avoid division by zero
-            std = self.std.get_value()
-            self.std.set_value(np.where(std == 0, 1.0, std))
+            self.std = np.where(std == 0, 1.0, std)
         elif self.scaler_type == "minmax":
-            self.min_vals.set_value(np.nanmin(data, axis=0))
-            self.max_vals.set_value(np.nanmax(data, axis=0))
+            self.min_vals = np.nanmin(data, axis=0)
+            max_vals = np.nanmax(data, axis=0)
             # Avoid division by zero
-            min_vals = self.min_vals.get_value()
-            range_vals = self.max_vals.get_value() - min_vals
+            range_vals = max_vals - self.min_vals
             range_vals = np.where(range_vals == 0, 1.0, range_vals)
-            self.max_vals.set_value(min_vals + range_vals)
+            self.max_vals = self.min_vals + range_vals
 
-        self.is_fitted.set_value(True)
+        self.is_fitted = True
 
     def transform(self, data: np.ndarray) -> np.ndarray:
         """Transform the data using the fitted scaler.
@@ -74,22 +70,21 @@ class ScalerModule(nnx.Module):
         Returns:
             Transformed data
         """
-        if self.scaler_type == "none" or not self.is_fitted.get_value() or data.size == 0:
+        if self.scaler_type == "none" or not self.is_fitted or data.size == 0:
             return data
 
         result = data.copy()
 
         if self.scaler_type == "standard":
-            result = (result - self.mean.get_value()) / self.std.get_value()
+            result = (result - self.mean) / self.std
         elif self.scaler_type == "minmax":
-            min_vals = self.min_vals.get_value()
-            result = (result - min_vals) / (self.max_vals.get_value() - min_vals)
+            result = (result - self.min_vals) / (self.max_vals - self.min_vals)
 
         return result
 
 
-class FeatureEngineer(nnx.Module):
-    """Feature engineering for time series data using NNX."""
+class FeatureEngineer:
+    """Feature engineering for time series data."""
 
     def __init__(
         self,
@@ -98,7 +93,6 @@ class FeatureEngineer(nnx.Module):
         volume_scaler: str = "minmax",
         technical_scaler: str = "standard",
         sentiment_scaler: str = "standard",
-        rngs: Optional[nnx.Rngs] = None,
     ):
         """Initialize the feature engineer.
 
@@ -107,7 +101,6 @@ class FeatureEngineer(nnx.Module):
             volume_scaler: Scaler for volume features ('minmax', 'standard', or 'none')
             technical_scaler: Scaler for technical indicators ('minmax', 'standard', or 'none')
             sentiment_scaler: Scaler for sentiment features ('minmax', 'standard', or 'none')
-            rngs: Random number generators
         """
         self.price_scaler_type = price_scaler
         self.volume_scaler_type = volume_scaler
@@ -155,21 +148,21 @@ class FeatureEngineer(nnx.Module):
     def _scaler_state(scaler: ScalerModule) -> Dict[str, Any]:
         return {
             "scaler_type": scaler.scaler_type,
-            "is_fitted": bool(scaler.is_fitted.get_value()),
-            "mean": np.asarray(scaler.mean.get_value(), dtype=float),
-            "std": np.asarray(scaler.std.get_value(), dtype=float),
-            "min_vals": np.asarray(scaler.min_vals.get_value(), dtype=float),
-            "max_vals": np.asarray(scaler.max_vals.get_value(), dtype=float),
+            "is_fitted": bool(scaler.is_fitted),
+            "mean": np.asarray(scaler.mean, dtype=float),
+            "std": np.asarray(scaler.std, dtype=float),
+            "min_vals": np.asarray(scaler.min_vals, dtype=float),
+            "max_vals": np.asarray(scaler.max_vals, dtype=float),
         }
 
     @staticmethod
     def _scaler_from_state(state: Dict[str, Any]) -> ScalerModule:
         scaler = ScalerModule(scaler_type=str(state["scaler_type"]))
-        scaler.is_fitted.set_value(bool(state["is_fitted"]))
-        scaler.mean.set_value(np.asarray(state["mean"], dtype=float))
-        scaler.std.set_value(np.asarray(state["std"], dtype=float))
-        scaler.min_vals.set_value(np.asarray(state["min_vals"], dtype=float))
-        scaler.max_vals.set_value(np.asarray(state["max_vals"], dtype=float))
+        scaler.is_fitted = bool(state["is_fitted"])
+        scaler.mean = np.asarray(state["mean"], dtype=float)
+        scaler.std = np.asarray(state["std"], dtype=float)
+        scaler.min_vals = np.asarray(state["min_vals"], dtype=float)
+        scaler.max_vals = np.asarray(state["max_vals"], dtype=float)
         return scaler
 
     def to_plain_state(
@@ -178,7 +171,7 @@ class FeatureEngineer(nnx.Module):
         symbol: Optional[str] = None,
         feature_columns: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
-        """Serialize fitted scaler state without depending on NNX internals."""
+        """Serialize fitted scaler state as plain builtins and numpy arrays."""
         symbols = [symbol] if symbol is not None else sorted(
             set(self.price_scalers)
             | set(self.volume_scalers)
@@ -296,12 +289,12 @@ class FeatureEngineer(nnx.Module):
         group_name: str,
         n_columns: int,
     ) -> None:
-        if not bool(scaler.is_fitted.get_value()):
+        if not bool(scaler.is_fitted):
             return
         if scaler.scaler_type == "minmax":
-            fitted = int(np.asarray(scaler.min_vals.get_value()).shape[0])
+            fitted = int(np.asarray(scaler.min_vals).shape[0])
         elif scaler.scaler_type == "standard":
-            fitted = int(np.asarray(scaler.mean.get_value()).shape[0])
+            fitted = int(np.asarray(scaler.mean).shape[0])
         else:
             return
         if fitted != n_columns:

@@ -45,8 +45,8 @@ class EnsembleConfig:
     models: List[ModelConfig]
     weighting_strategy: str = "static"  # "static" or "dynamic"
     # Vol-targeting knobs for the forecast→position mapping. Exposed here
-    # (Phase 2.7) so a hyperparameter sweep can vary them as first-class,
-    # persisted config rather than poking post-construction attrs.
+    # so a hyperparameter sweep can vary them as first-class, persisted
+    # config rather than poking post-construction attrs.
     target_vol: float = 1.0
     position_cap: float = 1.0
 
@@ -61,10 +61,10 @@ class EnsembleConfig:
 class TrainingConfig:
     """Configuration for model training.
 
-    Phase 2.2 retired ``train_test_split`` and ``cv_folds`` — train/test
-    folding is now driven entirely by the WFO knobs (``n_splits``,
+    ``train_test_split`` and ``cv_folds`` are retired — train/test
+    folding is driven entirely by the WFO knobs (``n_splits``,
     ``purge_horizon``, ``embargo_pct``, ``expanding``) consumed by
-    ``PurgedWalkForward`` in src/prism/scripts/training.py and src/prism/scripts/backtest.py.
+    ``PurgedWalkForward`` in research/scripts/training.py and research/scripts/backtest.py.
     """
 
     symbols: List[str]
@@ -169,13 +169,11 @@ class TradingConfig:
 
     initial_capital: float = 10000.0
     position_size: float = 0.1
-    stop_loss: float = 0.02
-    take_profit: float = 0.05
     risk_free_rate: float = 0.02
     # Minimum |position_target| to emit a LONG/SHORT signal (else FLAT).
-    # Exposed as config (Phase 2.7) so a sweep can vary the trade threshold.
+    # Exposed as config so a sweep can vary the trade threshold.
     signal_threshold: float = 0.1
-    # Library default remains the original ternary order path; src/prism/scripts/backtest.py
+    # Library default remains the original ternary order path; research/scripts/backtest.py
     # opts into target weights by default at the CLI layer.
     execution_style: str = "legacy_orders"
     # Absolute weight band around the currently filled target. In target-weight
@@ -191,7 +189,6 @@ class TradingConfig:
         assert 0 < self.position_size <= 1, (
             f"position_size must be in (0, 1]; got {self.position_size}"
         )
-        assert 0 <= self.stop_loss < 1, f"stop_loss must be in [0, 1); got {self.stop_loss}"
         assert self.initial_capital > 0, (
             f"initial_capital must be > 0; got {self.initial_capital}"
         )
@@ -238,8 +235,6 @@ DEFAULT_ENSEMBLE_CONFIG = EnsembleConfig(
 DEFAULT_TRADING_CONFIG = TradingConfig(
     initial_capital=10000.0,
     position_size=0.1,
-    stop_loss=0.02,
-    take_profit=0.05,
     risk_free_rate=0.02,
 )
 

@@ -56,18 +56,18 @@ class EnsembleModel(BaseModel):
         # overridden after construction without re-instantiating the ensemble.
         self.vol_window: int = 20
         self.vol_floor: float = 5e-3
-        # Read vol-targeting knobs from config (Phase 2.7) so a sweep can vary
+        # Read vol-targeting knobs from config so a sweep can vary
         # them; default to 1.0 when the config predates these fields.
         self.target_vol: float = getattr(self.config, "target_vol", 1.0)
         self.position_cap: float = getattr(self.config, "position_cap", 1.0)
-        # Phase 2.1: PurgedWalkForward params for meta-learner OOF.
+        # PurgedWalkForward params for meta-learner OOF.
         # Used for both forecast members (was sklearn KFold) and policy
         # members (was in-sample-leaky train-tail holdout via
         # meta_policy_holdout, now retired).
         self.meta_cv_folds: int = 3
         self.meta_embargo_pct: float = 0.01
 
-        # Phase 2.5: position-level conformal layer over OOF residuals.
+        # Position-level conformal layer over OOF residuals.
         # Populated by fit() when a meta-learner is configured (dynamic
         # weighting). predict_band() falls back to ±position_cap bands when
         # conformal is None (e.g. static-weighted ensembles).
@@ -122,7 +122,7 @@ class EnsembleModel(BaseModel):
             seed: Optional PRNG seed for policy (RL) members. When ``None``
                 (the default, used by the production fit + OOF refit paths) the
                 agent's own constructor default applies — no behavior change.
-                The multi-seed eval driver (Phase 3.2) passes an explicit seed
+                The multi-seed eval driver (research/scripts/rl_seed_eval.py) passes an explicit seed
                 so each RL agent's ``jax.random.key(seed)`` differs per trial.
                 Ignored by forecast members, which are deterministic given data.
 
@@ -181,7 +181,7 @@ class EnsembleModel(BaseModel):
         persist: bool,
     ) -> bool:
         """Fit one policy member. Centralizes the per-policy dispatch so
-        the OOF refit (Phase 2.1) and the top-level fit share one code
+        the OOF refit and the top-level fit share one code
         path. `persist=True` writes the model's save artifact and stashes
         the path on self; OOF folds set persist=False.
         """
@@ -282,7 +282,7 @@ class EnsembleModel(BaseModel):
         """Replace inverse-MAE-on-train weighting (B5) with a constrained
         meta-learner fit to OOF positions vs. ideal positions.
 
-        Phase 2.1: both forecast and policy members produce OOF via
+        Both forecast and policy members produce OOF via
         PurgedWalkForward (k refits each). Policy refits need the original
         fit_kwargs so we can re-pass features and per-fold sliced
         X_train_with_close.
@@ -346,7 +346,7 @@ class EnsembleModel(BaseModel):
         }
         logger.info(f"Meta-learner weights: {self.weights}")
 
-        # Phase 2.5: fit position-level conformal calibrator on the same OOF
+        # Fit the position-level conformal calibrator on the same OOF
         # residuals the meta-learner just regressed against. The blended OOF
         # uses the freshly-fit weights so the calibration matches inference
         # behavior of predict().
@@ -383,7 +383,7 @@ class EnsembleModel(BaseModel):
     ) -> Dict[str, pd.Series]:
         """Produce per-model OOF position vectors aligned to X.index.
 
-        Phase 2.1: every member is OOF'd via PurgedWalkForward. Forecast
+        Every member is OOF'd via PurgedWalkForward. Forecast
         members refit cheaply per fold; policy members refit too (the old
         train-tail-holdout shortcut was in-sample-leaky because the same
         model was already trained on those rows). Caller is on the hook
@@ -908,7 +908,7 @@ class EnsembleModel(BaseModel):
         self.meta_cv_folds = loaded_state.get("meta_cv_folds", 3)
         self.meta_embargo_pct = loaded_state.get("meta_embargo_pct", 0.01)
 
-        # Phase 2.5: restore conformal calibrator + ACI state when present.
+        # Restore conformal calibrator + ACI state when present.
         self.conformal_alpha_target = loaded_state.get("conformal_alpha_target", 0.10)
         self.conformal_aci_gamma = loaded_state.get("conformal_aci_gamma", 0.01)
         residuals = loaded_state.get("conformal_abs_residuals")

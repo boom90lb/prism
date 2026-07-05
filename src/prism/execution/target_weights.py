@@ -138,32 +138,6 @@ def _empty_costs(index: pd.Index) -> pd.DataFrame:
     )
 
 
-def _cost_row(
-    trade: pd.Series,
-    weights: pd.Series,
-    execution: ExecutionConfig,
-    *,
-    cost_multiplier: float,
-    dividend_return: float,
-    dollar_volume: pd.Series | None = None,
-    initial_capital: float = 1.0,
-) -> dict[str, float]:
-    aligned_dollar_volume = (
-        None
-        if dollar_volume is None
-        else dollar_volume.reindex(trade.index).to_numpy(dtype=float)
-    )
-    return _cost_values(
-        trade.to_numpy(dtype=float),
-        weights.to_numpy(dtype=float),
-        execution,
-        cost_multiplier=cost_multiplier,
-        dividend_return=dividend_return,
-        dollar_volume=aligned_dollar_volume,
-        initial_capital=initial_capital,
-    )
-
-
 def _cost_values(
     trade: np.ndarray,
     weights: np.ndarray,
@@ -234,13 +208,6 @@ def _dividend_frame(
         .reindex(columns=symbols, fill_value=0.0)
         .fillna(0.0)
     )
-
-
-def _target_from_row(row: pd.Series, current_weights: pd.Series) -> pd.Series | None:
-    """Resolve a target row, treating all-NaN as "drop/no new pending target"."""
-    if row.isna().all():
-        return None
-    return row.where(row.notna(), current_weights).astype(float)
 
 
 def _target_from_values(row: np.ndarray, current_weights: np.ndarray) -> np.ndarray | None:

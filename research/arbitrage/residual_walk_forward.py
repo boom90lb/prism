@@ -47,7 +47,7 @@ from research.arbitrage.walk_forward import (
 from prism.config import ExecutionConfig
 from prism.validation.metrics import periodic_sharpe
 
-# Conviction multiplier cap for sizing_mode="strength" (plan 005): a documented
+# Conviction multiplier cap for sizing_mode="strength": a documented
 # modeling constant, NOT fitted on the backtest.
 _SIZE_CAP = 2.0
 

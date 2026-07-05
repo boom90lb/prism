@@ -3,7 +3,7 @@
 The previous transform_features path recomputed mean/std from the dataframe
 being transformed, then clipped values using those stats. When called on test
 data this used test-set statistics — a row-level leak where a bar's clipped
-value depended on later bars in the test window. Phase 2.8 audit (b) replaced
+value depended on later bars in the test window. Audit (b) replaced
 the recompute with stored fit-time bounds from fit_scalers.
 """
 
@@ -169,7 +169,7 @@ def test_feature_transform_raises_on_scaler_shape_drift():
     test_df = fe.create_features(_ohlcv(seed=1))
     fe.fit_scalers(train, "AAPL")
 
-    min_vals = fe.price_scalers["AAPL"].min_vals
-    min_vals.set_value(min_vals.get_value()[:-1])
+    scaler = fe.price_scalers["AAPL"]
+    scaler.min_vals = scaler.min_vals[:-1]
     with pytest.raises(ValueError, match="price scaler shape mismatch"):
         fe.transform_features(test_df, "AAPL", is_train=False)

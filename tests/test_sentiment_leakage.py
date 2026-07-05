@@ -1,6 +1,6 @@
 """Regression tests for B9 (sentiment-join leak) + B12 (tz-naive bar index).
 
-These tests pin down the strict point-in-time semantics introduced in Phase 2.8:
+These tests pin down the strict point-in-time semantics of the B9 guard:
 - News with published_utc > bar_close attaches to a LATER bar, not the bar it
   was published in by calendar-date string slicing.
 - No across-bar ffill: a bar with no news in its (prev_close, bar_close] window

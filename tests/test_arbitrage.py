@@ -321,7 +321,7 @@ def test_residualize_cross_sectional_removes_market_and_stays_positive() -> None
 
 
 # ---------------------------------------------------------------------------
-# construction_mode: shrunk_candidates (ported from main, plan 007)
+# construction_mode: shrunk_candidates
 # ---------------------------------------------------------------------------
 
 
@@ -432,7 +432,7 @@ def test_candidate_prior_composes_with_shrunk_candidates() -> None:
 
 
 # ---------------------------------------------------------------------------
-# residualize_pca: causal multi-factor residual prices (plan 008)
+# residualize_pca: causal multi-factor residual prices
 # ---------------------------------------------------------------------------
 
 

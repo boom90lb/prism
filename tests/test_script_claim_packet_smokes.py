@@ -15,6 +15,15 @@ from prism.features import forward_return_column
 from prism.models.base import BaseModel
 from prism.validation.trials import validate_claim_packet_dir
 
+# The smokes drive research/scripts CLIs (mlflow at module scope) in-process;
+# mlflow is a reliable sentinel for the whole [research] extra here.
+pytest.importorskip("mlflow", reason="needs the [research] extra")
+pytestmark = pytest.mark.research
+
+# The per-symbol fetch→features loop lives in _cli_common, so that is the
+# monkeypatch seam for build_features.
+import research.scripts._cli_common as cli_common  # noqa: E402
+
 
 class _DummyRun:
     def __enter__(self):
@@ -224,7 +233,7 @@ def test_backtest_main_target_weights_emits_root_claim_packet(monkeypatch, tmp_p
     monkeypatch.setattr(mod, "DataLoader", _Loader)
     monkeypatch.setattr(mod, "load_training_run", lambda _path: (config, {"AAA": [fold_dir]}))
     monkeypatch.setattr(
-        mod,
+        cli_common,
         "build_features",
         lambda raw_df, symbol, feature_engineer, sentiment_analyzer, horizon: _feature_frame(raw_df, horizon),
     )
@@ -305,7 +314,7 @@ def test_backtest_main_shared_construct_opt_in_emits_claim_packet(monkeypatch, t
     monkeypatch.setattr(mod, "DataLoader", _Loader)
     monkeypatch.setattr(mod, "load_training_run", lambda _path: (config, {"AAA": [fold_dir]}))
     monkeypatch.setattr(
-        mod,
+        cli_common,
         "build_features",
         lambda raw_df, symbol, feature_engineer, sentiment_analyzer, horizon: _feature_frame(raw_df, horizon),
     )
@@ -368,7 +377,7 @@ def test_rl_seed_eval_main_emits_member_claim_packet(monkeypatch, tmp_path: Path
     monkeypatch.setattr(mod, "DataLoader", _Loader)
     monkeypatch.setattr(mod, "load_training_run", lambda _path: (config, {"AAA": [fold_dir]}))
     monkeypatch.setattr(
-        mod,
+        cli_common,
         "build_features",
         lambda raw_df, symbol, feature_engineer, sentiment_analyzer, horizon: _feature_frame(raw_df, horizon),
     )

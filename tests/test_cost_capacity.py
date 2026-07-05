@@ -1,11 +1,11 @@
-"""Capacity-aware (ADV-scaled) price impact on the target-weight engine (plan 003, re-applied).
+"""Capacity-aware (ADV-scaled) price impact on the target-weight engine.
 
-main's portfolio backtester (src/execution/target_weights.py) charges impact keyed on a
+main's portfolio backtester (src/prism/execution/target_weights.py) charges impact keyed on a
 name's portfolio-weight fraction, not its liquidity, so the broad book charges ~0 impact
 regardless of how illiquid a name is. This adds an opt-in term keyed on participation
 (traded $ / trailing ADV $). Default ``adv_impact_coeff=0`` reproduces current numbers;
 the tests cover parity-off, the illiquidity penalty, and the floor that bounds a
-near-zero-ADV name. (Re-implemented against main's per-row ``_cost_row`` engine after the
+near-zero-ADV name. (Re-implemented against the ``_cost_values`` cost engine after the
 residual-statarb merge; the branch's original patched the old vectorized backtester.)
 """
 
