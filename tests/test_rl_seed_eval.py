@@ -20,10 +20,10 @@ from prism.config import EnsembleConfig, ExecutionConfig, ModelConfig, TradingCo
 from prism.execution import ExecutionModel
 from prism.models.base import BaseModel
 from prism.models.ensemble import EnsembleModel
-from prism.models.lstm_ppo import LSTMPPO, TradingEnvironment
+from research.models.lstm_ppo import LSTMPPO, TradingEnvironment
 from prism.trading import TradingStrategy
 
-from prism.scripts.rl_seed_eval import summarize_member
+from research.scripts.rl_seed_eval import summarize_member
 
 
 # --------------------------------------------------------------------------

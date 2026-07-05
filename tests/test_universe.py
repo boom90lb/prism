@@ -2,7 +2,7 @@
 
 import pandas as pd
 
-from prism.scripts.training import filter_universe_asof, load_universe
+from research.scripts.training import filter_universe_asof, load_universe
 from prism.data_loader import BAR_TZ
 
 

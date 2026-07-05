@@ -39,18 +39,18 @@ import mlflow
 import numpy as np
 import pandas as pd
 
-from prism.scripts.backtest import (
+from research.scripts.backtest import (
     load_training_run,
     run_symbol_wfo,
 )
-from prism.scripts.sweep import combine_symbol_returns
-from prism.scripts.training import build_features, reject_sentiment_flag, select_rl_features
+from research.scripts.sweep import combine_symbol_returns
+from research.scripts.training import build_features, reject_sentiment_flag, select_rl_features
 from prism.config import PROJECT_DIR, EnsembleConfig, ModelConfig
 from prism.data_loader import DataLoader
 from prism.features import FeatureEngineer, forward_return_column, is_label_column
 from prism.models.ensemble import EnsembleModel
 from prism.models.registry import POLICY_MODELS
-from prism.tracking.mlflow_utils import init_mlflow, log_metrics_safe, log_params_safe
+from research.tracking.mlflow_utils import init_mlflow, log_metrics_safe, log_params_safe
 from prism.validation.metrics import (
     deflated_sharpe_ratio,
     expected_max_sharpe,

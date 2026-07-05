@@ -45,7 +45,7 @@ from prism.features import FeatureEngineer, forward_return_column, is_label_colu
 from prism.models.ensemble import EnsembleModel
 from prism.sentiment_analysis import SentimentAnalyzer
 from prism.logging_utils import configure_logging, get_symbol_logger
-from prism.tracking.mlflow_utils import (
+from research.tracking.mlflow_utils import (
     init_mlflow,
     log_artifact_dir,
     log_metrics_safe,

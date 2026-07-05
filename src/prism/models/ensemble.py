@@ -24,7 +24,6 @@ from sklearn.metrics import (  # type: ignore
 from prism.config import MODELS_DIR, EnsembleConfig
 from prism.conformal import ACIState, EnbPICalibrator
 from prism.models.base import BaseModel
-from prism.models.lstm_ppo import LSTMPPO
 from prism.models.mapping import ideal_position, realized_vol, return_forecast_to_position
 from prism.models.registry import ModelKind, is_forecast, is_policy, model_kind
 from prism.validation.walk_forward import PurgedWalkForward
@@ -145,18 +144,21 @@ class EnsembleModel(BaseModel):
 
                 return XGBoostModel(target_column=self.target_column, horizon=self.horizon)
             elif model_name == "lstm_ppo":
-                # LSTM-PPO is now created directly
+                # RL members are quarantined in research/ (SPEC §9); import
+                # lazily so the production import path never touches JAX.
+                from research.models.lstm_ppo import LSTMPPO
+
                 policy_kwargs = {"seed": seed} if seed is not None else {}
                 return LSTMPPO(target_column=self.target_column, horizon=self.horizon, **policy_kwargs)
             elif model_name == "xlstm_ppo":
                 # Import the XLSTMPPOAgent model
-                from prism.models.xlstm_ppo import XLSTMPPOAgent
+                from research.models.xlstm_ppo import XLSTMPPOAgent
 
                 policy_kwargs = {"seed": seed} if seed is not None else {}
                 return XLSTMPPOAgent(target_column=self.target_column, horizon=self.horizon, **policy_kwargs)
             elif model_name == "xlstm_grpo":
                 # Import the XLSTMGRPOAgent model
-                from prism.models.xlstm_grpo import XLSTMGRPOAgent
+                from research.models.xlstm_grpo import XLSTMGRPOAgent
 
                 policy_kwargs = {"seed": seed} if seed is not None else {}
                 return XLSTMGRPOAgent(target_column=self.target_column, horizon=self.horizon, **policy_kwargs)
@@ -191,6 +193,8 @@ class EnsembleModel(BaseModel):
         model.features = features  # type: ignore[attr-defined]
 
         if name == "lstm_ppo":
+            from research.models.lstm_ppo import LSTMPPO
+
             timesteps = kwargs.get("lstm_ppo_timesteps", 100000)
             if not isinstance(model, LSTMPPO):
                 logger.error(f"{name} model is not an LSTMPPO instance.")
@@ -199,7 +203,7 @@ class EnsembleModel(BaseModel):
             if persist:
                 self.lstm_ppo_save_path = model.save()
         elif name == "xlstm_ppo":
-            from prism.models.xlstm_ppo import XLSTMPPOAgent
+            from research.models.xlstm_ppo import XLSTMPPOAgent
 
             timesteps = kwargs.get("xlstm_ppo_timesteps", 100000)
             if not isinstance(model, XLSTMPPOAgent):
@@ -209,7 +213,7 @@ class EnsembleModel(BaseModel):
             if persist:
                 self.xlstm_ppo_save_path = model.save()
         elif name == "xlstm_grpo":
-            from prism.models.xlstm_grpo import XLSTMGRPOAgent
+            from research.models.xlstm_grpo import XLSTMGRPOAgent
 
             updates = kwargs.get("xlstm_grpo_updates", 1000)
             if not isinstance(model, XLSTMGRPOAgent):
@@ -940,6 +944,8 @@ class EnsembleModel(BaseModel):
             if name == "lstm_ppo":
                 # Load LSTMPPO from its saved path string
                 try:
+                    from research.models.lstm_ppo import LSTMPPO
+
                     lstm_ppo_path_str = str(saved_model_info)
                     lstm_ppo_path = Path(lstm_ppo_path_str)
                     self.lstm_ppo_save_path = lstm_ppo_path  # Store the loaded path
@@ -958,7 +964,7 @@ class EnsembleModel(BaseModel):
             elif name == "xlstm_ppo":
                 # Load XLSTMPPOAgent from its saved path string
                 try:
-                    from prism.models.xlstm_ppo import XLSTMPPOAgent
+                    from research.models.xlstm_ppo import XLSTMPPOAgent
 
                     xlstm_ppo_path_str = str(saved_model_info)
                     xlstm_ppo_path = Path(xlstm_ppo_path_str)
@@ -978,7 +984,7 @@ class EnsembleModel(BaseModel):
             elif name == "xlstm_grpo":
                 # Load XLSTMGRPOAgent from its saved path string
                 try:
-                    from prism.models.xlstm_grpo import XLSTMGRPOAgent
+                    from research.models.xlstm_grpo import XLSTMGRPOAgent
 
                     xlstm_grpo_path_str = str(saved_model_info)
                     xlstm_grpo_path = Path(xlstm_grpo_path_str)

@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
 
-from prism.arbitrage.factors import (
+from prism.residual.factors import (
     ResidualStatArbConfig,
     batched_factor_ols,
     compute_eligibility,

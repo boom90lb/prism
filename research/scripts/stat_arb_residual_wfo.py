@@ -21,9 +21,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from prism.arbitrage.factors import ResidualStatArbConfig
-from prism.arbitrage.residual_walk_forward import residual_fold_to_dict, run_residual_stat_arb_walk_forward
-from prism.arbitrage.walk_forward import StatArbWalkForwardConfig
+from prism.residual.factors import ResidualStatArbConfig
+from research.arbitrage.residual_walk_forward import residual_fold_to_dict, run_residual_stat_arb_walk_forward
+from research.arbitrage.walk_forward import StatArbWalkForwardConfig
 from prism.config import ExecutionConfig, RESULTS_DIR
 from prism.data_loader import DataLoader
 from prism.logging_utils import configure_logging, get_symbol_logger
@@ -156,7 +156,7 @@ def _resolve_symbols(args: argparse.Namespace) -> list[str]:
         # Local import: scripts.training pulls the full ML stack (jax/torch)
         # at module level, which this numpy/pandas-only CLI must not pay for
         # unless a universe file is actually used.
-        from prism.scripts.training import load_universe
+        from research.scripts.training import load_universe
 
         return [s.upper() for s in load_universe(args.universe)]
     return [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
@@ -335,7 +335,7 @@ def main() -> None:
     symbols = _resolve_symbols(args)
     frames = _fetch_frames(symbols, args.start_date, args.end_date)
     if args.universe_asof:
-        from prism.scripts.training import filter_universe_asof  # heavy transitive imports; see _resolve_symbols
+        from research.scripts.training import filter_universe_asof  # heavy transitive imports; see _resolve_symbols
 
         frames = filter_universe_asof(frames, args.universe_asof)
     min_stocks = 2 if args.factor_mode == "etf" else args.n_factors + 2

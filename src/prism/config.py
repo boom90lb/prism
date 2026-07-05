@@ -216,14 +216,14 @@ class TradingConfig:
 
 
 # Single source of truth for ensemble member weights. Scripts must read from
-# here rather than hardcoding per-model overrides.
+# here rather than hardcoding per-model overrides. The RL policy members
+# (lstm_ppo, xlstm_ppo, xlstm_grpo) are quarantined in research/ (SPEC §9)
+# and are no longer default members; research entry points that opt into
+# them fall back to weight 1.0 via `.get(name, 1.0)`.
 DEFAULT_MODEL_WEIGHTS = {
     "arima": 1.0,
     "prophet": 1.0,
     "xgboost": 1.0,
-    "lstm_ppo": 1.0,
-    "xlstm_ppo": 1.0,
-    "xlstm_grpo": 1.0,
 }
 
 DEFAULT_MODELS = [

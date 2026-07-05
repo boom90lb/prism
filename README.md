@@ -47,7 +47,7 @@ gotchas (vendor tier, interval mapping, member contribution, per-bar cost).
 > check that the policy actually takes gradient steps and that a windowed
 > member produces non-flat positions before trusting any RL-attributed Sharpe
 > — under a small training budget an undertrained policy legitimately produces
-> ~zero positions and a NaN Sharpe. See `src/prism/scripts/rl_seed_eval.py` for the
+> ~zero positions and a NaN Sharpe. See `research/scripts/rl_seed_eval.py` for the
 > multi-seed overfitting study.
 
 ---
@@ -67,12 +67,12 @@ backtest. Two distinct leakage controls:
 - **Embargo** — a buffer after each test slice is excluded from *subsequent*
   folds (`embargo_pct`).
 
-Both `src/prism/scripts/training.py` and `src/prism/scripts/backtest.py` iterate the **same** fold
+Both `research/scripts/training.py` and `research/scripts/backtest.py` iterate the **same** fold
 structure: training writes `split_idx.npz` per fold; the backtest replays the
 identical test-date ranges. There is no 80/20 split anywhere.
 
 ### Execution model: target on close, fill at next open
-The default `src/prism/scripts/backtest.py` path uses
+The default `research/scripts/backtest.py` path uses
 `src/prism/execution/target_weights.py`: each model emits a continuous target weight
 at bar *t*'s close, the target fills at the next bar's open, and PnL accrues
 only after that fill. Fold-last targets are dropped so a pending order cannot
@@ -97,7 +97,7 @@ Costs applied in both paths:
 Reported PnL is **net** of all of the above on a fold-aligned equity curve.
 
 ### Baselines and legacy comparisons
-`src/prism/baselines/`: Buy-and-Hold, MA-crossover (`--ma_fast`/`--ma_slow`), and
+`research/baselines/`: Buy-and-Hold, MA-crossover (`--ma_fast`/`--ma_slow`), and
 time-series momentum (`--tsmom_lookback`). In `--legacy_orders` mode they
 traverse the *same* fold structure with the same costs, so the comparison is
 fair and the cross-strategy PBO is well-defined. The default target-weight mode
@@ -113,7 +113,7 @@ emits one shared portfolio packet rather than per-symbol baseline tables.
   IS-best strategy underperforms OOS. High PBO ⇒ the selection is overfit.
 - **DSR** (Deflated Sharpe Ratio) — PSR with the benchmark set to the *expected
   maximum* Sharpe under the False Strategy Theorem given the number of trials.
-  Computed by `src/prism/scripts/sweep.py` over a real hyperparameter grid; the default
+  Computed by `research/scripts/sweep.py` over a real hyperparameter grid; the default
   target-weight backtest records it in the root claim packet when you pass
   `--trial_sharpes_json`.
 
@@ -123,7 +123,7 @@ turn script outputs into a publishable claim surface. A packet records the
 strategy, config hash, code commit, data convention, artifact manifest,
 gross/net/cost metrics, trial count/DSR when available, and a claim tier:
 `mechanics_clean`, `gross_edge`, `net_edge`, or `robust_edge`.
-`src/prism/scripts/backtest.py`, `src/prism/scripts/sweep.py`, `src/prism/scripts/rl_seed_eval.py`, and the
+`research/scripts/backtest.py`, `research/scripts/sweep.py`, `research/scripts/rl_seed_eval.py`, and the
 stat-arb CLIs write `claim_packet.json`; new strategy surfaces should do the
 same before any result is described as more than a mechanics smoke.
 
@@ -147,7 +147,7 @@ and `src/prism/features.py` plus `tests/test_sentiment_leakage.py` /
 
 ## How to read the backtest output
 
-By default, `src/prism/scripts/backtest.py` writes one shared-capital portfolio under
+By default, `research/scripts/backtest.py` writes one shared-capital portfolio under
 `results/wfo_backtest_*`:
 
 - `target_weights.csv` — close-time portfolio targets.
@@ -208,35 +208,35 @@ POLYGON_API_KEY=...
 
 ```bash
 # Per-symbol purged WFO; writes runs/{run_name}/{symbol}/fold_*/.
-python -m prism.scripts.training --symbols AAPL,MSFT,GOOG --start_date 2018-01-01 \
+python -m research.scripts.training --symbols AAPL,MSFT,GOOG --start_date 2018-01-01 \
     --horizon 5 --n_splits 5
 
 # Universe file + as-of point-in-time inclusion guard.
-python -m prism.scripts.training --universe data/universe/2026-05-30.txt \
+python -m research.scripts.training --universe data/universe/2026-05-30.txt \
     --universe_asof 2018-01-01
 
 # RL members at a real training budget (the default 100k is heavy).
-python -m prism.scripts.training --symbols AAPL --models xgboost,lstm_ppo \
+python -m research.scripts.training --symbols AAPL --models xgboost,lstm_ppo \
     --rl_timesteps 200000
 ```
 
 ### 2. Backtest (requires a training run; never a bare symbol list)
 
 ```bash
-python -m prism.scripts.backtest --training_run runs/{run_name}
+python -m research.scripts.backtest --training_run runs/{run_name}
 
 # With a sweep's trial Sharpes so the report shows DSR:
-python -m prism.scripts.backtest --training_run runs/{run_name} \
+python -m research.scripts.backtest --training_run runs/{run_name} \
     --trial_sharpes_json results/{sweep}/trial_sharpes.json
 
 # Preserve the old per-symbol order/backtest table path:
-python -m prism.scripts.backtest --training_run runs/{run_name} --legacy_orders
+python -m research.scripts.backtest --training_run runs/{run_name} --legacy_orders
 ```
 
 ### 3. Hyperparameter sweep → honest DSR (forecast-only)
 
 ```bash
-python -m prism.scripts.sweep --symbols AAPL,MSFT
+python -m research.scripts.sweep --symbols AAPL,MSFT
 # writes selected_config.json + trial_sharpes.json (feed the latter to backtest)
 ```
 
@@ -244,7 +244,7 @@ python -m prism.scripts.sweep --symbols AAPL,MSFT
 
 ```bash
 # EXPENSIVE: |members| x |symbols| x |folds| x |seeds| bare RL fits.
-python -m prism.scripts.rl_seed_eval --training_run runs/{run_name} \
+python -m research.scripts.rl_seed_eval --training_run runs/{run_name} \
     --members lstm_ppo --seeds 0,1,2 --rl_timesteps 50000
 ```
 
@@ -252,7 +252,7 @@ python -m prism.scripts.rl_seed_eval --training_run runs/{run_name} \
 
 ```bash
 # Rolling formation/test walk-forward. This is the credible research path.
-python -m prism.scripts.stat_arb_wfo --symbols AAPL,MSFT,GOOG,AMZN,META,NVDA \
+python -m research.scripts.stat_arb_wfo --symbols AAPL,MSFT,GOOG,AMZN,META,NVDA \
     --start_date 2020-01-01 --formation_bars 504 --test_bars 63 --max_pairs 5
 
 ```
@@ -334,33 +334,36 @@ mind.
 ## Project layout
 
 ```
-src/prism/
+src/prism/             (the distribution — production import path)
   config.py            single source of truth for weights / hyperparams / dirs
   data_loader.py       Twelvedata bars + dividends, range-keyed cache
   features.py          technical indicators, train-only clip bounds
   sentiment_analysis.py keyword + FinBERT analyzers, PIT bucketing
   trading.py           target generation, signals, legacy position accounting
   logging_utils.py     configure_logging + per-symbol adapter (Phase 5.1)
-  models/              arima, prophet, xgboost, {lstm,xlstm}_ppo, xlstm_grpo,
-                       ensemble, registry (forecast vs policy), mapping (vol-sizing)
-  baselines/           buy-and-hold, MA-crossover, TSMOM
+  models/              arima, prophet, xgboost, ensemble,
+                       registry (forecast vs policy), mapping (vol-sizing)
   execution/           target-weight accounting, ExecutionModel + cost functions,
                        participation gate
   portfolio/           book construction: caps, no-trade bands (batch + online step)
   regime/              curve / vol / net-liquidity regime state ($0 sources)
+  residual/            factor model + causal OU s-scores + hedged book builder
   validation/          PurgedWalkForward, metrics (PSR/PBO/DSR/Calmar + FLAM breadth),
                        capacity / cost-toll, research claim packets
   conformal/           EnbPI + ACI
-  arbitrage/           cointegration pair scan, causal spread signals,
-                       capped portfolio accounting
+  scripts/             build_sp500_universe (periodic PIT universe build)
+research/              (quarantined per SPEC §9 — not in the wheel; may import
+                        prism, never the reverse)
+  models/              RL policy members: lstm_ppo, xlstm_ppo, xlstm_grpo (JAX)
+  baselines/           buy-and-hold, MA-crossover, TSMOM
+  arbitrage/           cointegration pair scan + stat-arb WFO fold ledgers
   tracking/            MLflow wrappers
-src/prism/scripts/
-  training.py          per-symbol purged-WFO training → runs/{run_name}/
-  backtest.py          target-weight WFO, legacy order WFO + baselines/PBO
-  sweep.py             ensemble-layer grid → DSR
-  rl_seed_eval.py      multi-seed RL overfitting study
-  stat_arb_wfo.py      rolling formation/test pairs stat-arb WFO
-  prediction.py        point predictions from a saved model
+  scripts/             batch CLIs, run as `python -m research.scripts.<name>`:
+    training.py          per-symbol purged-WFO training → runs/{run_name}/
+    backtest.py          target-weight WFO, legacy order WFO + baselines/PBO
+    sweep.py             ensemble-layer grid → DSR
+    rl_seed_eval.py      multi-seed RL overfitting study
+    stat_arb_wfo.py      rolling formation/test pairs stat-arb WFO
 tests/                 ~450 offline tests (validation, leakage, execution, conformal, logging)
 ```
 
@@ -368,8 +371,10 @@ tests/                 ~450 offline tests (validation, leakage, execution, confo
 
 `src/prism/config.py` is the single source of truth.
 
-- `DEFAULT_MODEL_WEIGHTS` registers every ensemble member; scripts read weights
-  from here rather than hardcoding per-model overrides.
+- `DEFAULT_MODEL_WEIGHTS` registers the default (forecast) ensemble members;
+  scripts read weights from here rather than hardcoding per-model overrides.
+  The quarantined RL members are opt-in via research CLIs and fall back to
+  weight 1.0.
 - `TrainingConfig`/`ExecutionConfig`/`TradingConfig` validate their fields in
   `__post_init__` (e.g. `n_splits >= 2`, `0 <= embargo_pct < 1`,
   `0 < position_size <= 1`, `borrow_rate_bps_annual >= 0`). Invalid CLI

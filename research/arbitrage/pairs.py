@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 from statsmodels.tsa.stattools import adfuller, coint  # type: ignore
 
-from prism.arbitrage.factors import batched_factor_ols, compute_returns, estimate_eigenportfolios
+from prism.residual.factors import batched_factor_ols, compute_returns, estimate_eigenportfolios
 
 
 _EPS = 1e-12

@@ -9,12 +9,12 @@ from pathlib import Path
 
 import pandas as pd
 
-from prism.scripts.stat_arb_data import fetch_price_matrices as _fetch_matrices
-from prism.arbitrage.pairs import (
+from research.scripts.stat_arb_data import fetch_price_matrices as _fetch_matrices
+from research.arbitrage.pairs import (
     PairSelectionConfig,
     PairSignalConfig,
 )
-from prism.arbitrage.walk_forward import (
+from research.arbitrage.walk_forward import (
     StatArbWalkForwardConfig,
     fold_result_to_dict,
     run_stat_arb_walk_forward,

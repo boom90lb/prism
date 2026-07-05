@@ -55,12 +55,11 @@ dev = [
 "Homepage" = "https://github.com/boom90lb/trading-ensemble"
 "Bug Tracker" = "https://github.com/boom90lb/trading-ensemble/issues"
 
-[project.scripts]
-trading-backtest = "prism.scripts.backtest:main"
-trading-prediction = "prism.scripts.prediction:main"
-trading-stat-arb-residual-wfo = "prism.scripts.stat_arb_residual_wfo:main"
-trading-stat-arb-wfo = "prism.scripts.stat_arb_wfo:main"
-trading-training = "prism.scripts.training:main"
+# No console entry points: the batch CLIs are quarantined under research/
+# (SPEC §9) and are not part of the distribution — run them as modules from
+# the repo root (`python -m research.scripts.training`). Whether the retained
+# universe builder (prism.scripts.build_sp500_universe) gets a `prism-*`
+# entry point is a publication-time decision (HANDOFF §B).
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/prism"]
@@ -83,5 +82,6 @@ ignore_missing_imports = true
 testpaths = ["tests"]
 python_files = "test_*.py"
 # src-layout: make `prism` importable from the source tree so tests do not
-# depend on a (possibly stale) editable install.
-pythonpath = ["src"]
+# depend on a (possibly stale) editable install. "." exposes the quarantined
+# top-level `research` package (SPEC §9), which ships no wheel.
+pythonpath = ["src", "."]

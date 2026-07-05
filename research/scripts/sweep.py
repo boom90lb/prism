@@ -45,8 +45,8 @@ import mlflow
 import numpy as np
 import pandas as pd
 
-from prism.scripts.backtest import load_fold_ensemble, run_symbol_wfo
-from prism.scripts.training import (
+from research.scripts.backtest import load_fold_ensemble, run_symbol_wfo
+from research.scripts.training import (
     build_features,
     parse_model_names,
     train_symbol_wfo,
@@ -61,7 +61,7 @@ from prism.config import (
 from prism.features import forward_return_column
 from prism.data_loader import DataLoader
 from prism.features import FeatureEngineer
-from prism.tracking.mlflow_utils import (
+from research.tracking.mlflow_utils import (
     init_mlflow,
     log_artifact_dir,
     log_metrics_safe,

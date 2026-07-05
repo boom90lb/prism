@@ -10,7 +10,7 @@ src/prism/scripts/backtest.py depend on:
     composition ``_reset_state → run_segment → drop_pending → _finalize_results``.
   * ``_finalize_results`` computes daily_return / cumulative_return /
     drawdown over a concatenated multi-segment frame.
-  * ``prism.tracking.mlflow_utils.init_mlflow`` returns an experiment id and
+  * ``research.tracking.mlflow_utils.init_mlflow`` returns an experiment id and
     is idempotent; ``log_metrics_safe`` filters NaN/Inf without raising.
 """
 
@@ -25,7 +25,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from prism.baselines import BuyAndHold
+from research.baselines import BuyAndHold
 from prism.config import EnsembleConfig, ExecutionConfig, ModelConfig, TradingConfig
 from prism.execution import ExecutionModel
 from prism.features import forward_return_column, is_label_column
@@ -65,7 +65,7 @@ def _write_fold_replay_artifacts(
     train_idx: np.ndarray,
     test_idx: np.ndarray,
 ) -> None:
-    from prism.scripts.training import build_fold_metadata
+    from research.scripts.training import build_fold_metadata
     from prism.features import FeatureEngineer
 
     train_raw = usable.iloc[train_idx]
@@ -435,7 +435,7 @@ def test_run_segment_keeps_policy_members_on_raw_model_frame():
 
 def test_init_mlflow_returns_experiment_id(monkeypatch, tmp_path):
     # Redirect both the module-level constant AND the live mlflow URI.
-    import prism.tracking.mlflow_utils as mu
+    import research.tracking.mlflow_utils as mu
     monkeypatch.setattr(mu, "MLFLOW_TRACKING_URI", f"file://{tmp_path}")
     mlflow.set_tracking_uri(f"file://{tmp_path}")
 
@@ -448,7 +448,7 @@ def test_init_mlflow_returns_experiment_id(monkeypatch, tmp_path):
 
 
 def test_log_metrics_safe_filters_non_finite(monkeypatch, tmp_path):
-    import prism.tracking.mlflow_utils as mu
+    import research.tracking.mlflow_utils as mu
     monkeypatch.setattr(mu, "MLFLOW_TRACKING_URI", f"file://{tmp_path}")
     mlflow.set_tracking_uri(f"file://{tmp_path}")
     mu.init_mlflow("wfo_log_filter_test")
@@ -492,12 +492,12 @@ def test_train_symbol_wfo_produces_per_fold_artifacts(monkeypatch, tmp_path):
     """
     import types
 
-    import prism.tracking.mlflow_utils as mu
+    import research.tracking.mlflow_utils as mu
     monkeypatch.setattr(mu, "MLFLOW_TRACKING_URI", f"file://{tmp_path}")
     mlflow.set_tracking_uri(f"file://{tmp_path}")
     exp_id = mu.init_mlflow("wfo_training_smoke")
 
-    from prism.scripts.training import build_features, train_symbol_wfo
+    from research.scripts.training import build_features, train_symbol_wfo
     from prism.config import EnsembleConfig, ModelConfig, TrainingConfig
     from prism.features import FeatureEngineer
     from prism.validation.walk_forward import PurgedWalkForward
@@ -527,7 +527,7 @@ def test_train_symbol_wfo_produces_per_fold_artifacts(monkeypatch, tmp_path):
 
     # Override ensemble weighting to "static" so meta-learner OOF is skipped
     # (keeps the test under ~5s by avoiding meta_cv_folds * xgboost refits).
-    import prism.scripts.training as training_mod
+    import research.scripts.training as training_mod
     orig_ensemble = training_mod.EnsembleModel
 
     class _StaticEnsemble(orig_ensemble):
@@ -606,7 +606,7 @@ def test_train_symbol_wfo_produces_per_fold_artifacts(monkeypatch, tmp_path):
 
 
 def test_build_features_preserves_unobserved_forward_targets():
-    from prism.scripts.training import build_features
+    from research.scripts.training import build_features
     from prism.features import FeatureEngineer
 
     horizon = 5
@@ -635,8 +635,8 @@ def test_build_features_preserves_unobserved_forward_targets():
 def test_train_symbol_wfo_writes_failed_fold_status(monkeypatch, tmp_path):
     import types
 
-    import prism.scripts.training as training_mod
-    from prism.scripts.training import build_features, train_symbol_wfo
+    import research.scripts.training as training_mod
+    from research.scripts.training import build_features, train_symbol_wfo
     from prism.config import ModelConfig, TrainingConfig
     from prism.features import FeatureEngineer
     from prism.validation.walk_forward import PurgedWalkForward
@@ -705,7 +705,7 @@ def test_train_symbol_wfo_writes_failed_fold_status(monkeypatch, tmp_path):
 
 
 def test_load_training_run_ignores_incomplete_folds(tmp_path):
-    from prism.scripts.backtest import load_training_run
+    from research.scripts.backtest import load_training_run
 
     training_run = tmp_path / "training_run"
     symbol_dir = training_run / "AAA"
@@ -728,7 +728,7 @@ def test_load_training_run_ignores_incomplete_folds(tmp_path):
 
 
 def test_load_training_run_raises_when_only_incomplete_folds(tmp_path):
-    from prism.scripts.backtest import load_training_run
+    from research.scripts.backtest import load_training_run
 
     training_run = tmp_path / "training_run"
     fold_dir = training_run / "AAA" / "fold_0"
@@ -758,8 +758,8 @@ def test_backtest_wfo_persists_state_and_drops_pending_between_folds(
     """
     import types
 
-    from prism.scripts.backtest import _fold_date_range, run_symbol_wfo
-    from prism.scripts.training import build_features
+    from research.scripts.backtest import _fold_date_range, run_symbol_wfo
+    from research.scripts.training import build_features
     from prism.execution import ExecutionModel
     from prism.features import FeatureEngineer
 
@@ -854,8 +854,8 @@ def test_backtest_wfo_swaps_model_per_fold(monkeypatch, tmp_path):
     swapped at every fold k>=1. We assert this by tracking calls."""
     import types
 
-    from prism.scripts.backtest import run_symbol_wfo
-    from prism.scripts.training import build_features
+    from research.scripts.backtest import run_symbol_wfo
+    from research.scripts.training import build_features
     from prism.features import FeatureEngineer
 
     raw = _make_gbm_df(n=120, seed=21)
@@ -935,8 +935,8 @@ def test_backtest_wfo_swaps_model_per_fold(monkeypatch, tmp_path):
 
 
 def test_fold_metadata_validates_replay_index(tmp_path):
-    from prism.scripts.backtest import _fold_date_range
-    from prism.scripts.training import build_features
+    from research.scripts.backtest import _fold_date_range
+    from research.scripts.training import build_features
     from prism.features import FeatureEngineer
 
     raw = _make_gbm_df(n=90, seed=31)
@@ -985,8 +985,8 @@ def test_fold_metadata_validates_replay_index(tmp_path):
 
 
 def test_missing_fold_metadata_fails_loud_for_ensemble_replay(tmp_path):
-    from prism.scripts.backtest import _fold_date_range
-    from prism.scripts.training import build_features
+    from research.scripts.backtest import _fold_date_range
+    from research.scripts.training import build_features
     from prism.features import FeatureEngineer
 
     raw = _make_gbm_df(n=60, seed=32)
@@ -1016,7 +1016,7 @@ def test_missing_fold_metadata_fails_loud_for_ensemble_replay(tmp_path):
 
 
 def test_log_params_safe_coerces_to_strings(monkeypatch, tmp_path):
-    import prism.tracking.mlflow_utils as mu
+    import research.tracking.mlflow_utils as mu
     monkeypatch.setattr(mu, "MLFLOW_TRACKING_URI", f"file://{tmp_path}")
     mlflow.set_tracking_uri(f"file://{tmp_path}")
     mu.init_mlflow("wfo_log_params_test")

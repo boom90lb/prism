@@ -9,9 +9,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from prism.scripts.stat_arb_residual_wfo import _append_trial, _config_hash, _load_trial_sharpes
-from prism.arbitrage.factors import ResidualStatArbConfig, etf_factor_portfolios
-from prism.arbitrage.residual import (
+from research.scripts.stat_arb_residual_wfo import _append_trial, _config_hash, _load_trial_sharpes
+from prism.residual.factors import ResidualStatArbConfig, etf_factor_portfolios
+from prism.residual.residual import (
     OUFit,
     apply_no_trade_band,
     build_book_row,
@@ -23,11 +23,11 @@ from prism.arbitrage.residual import (
     run_state_machine,
     sscore_batch,
 )
-from prism.arbitrage.residual_walk_forward import (
+from research.arbitrage.residual_walk_forward import (
     residual_fold_to_dict,
     run_residual_stat_arb_walk_forward,
 )
-from prism.arbitrage.walk_forward import StatArbWalkForwardConfig
+from research.arbitrage.walk_forward import StatArbWalkForwardConfig
 from prism.config import ExecutionConfig
 
 _FROZEN = ResidualStatArbConfig()

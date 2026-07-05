@@ -26,7 +26,7 @@ from gymnasium import spaces
 
 from prism.config import MODELS_DIR
 from prism.models.base import BaseModel
-from prism.models.lstm_ppo import TradingEnvironment
+from research.models.lstm_ppo import TradingEnvironment
 
 logger = logging.getLogger(__name__)
 

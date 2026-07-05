@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from prism.arbitrage.factors import (
+from prism.residual.factors import (
     ResidualStatArbConfig,
     batched_factor_ols,
     compute_eligibility,

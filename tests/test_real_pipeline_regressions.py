@@ -55,7 +55,7 @@ def _build_enhanced(n: int, horizon: int) -> tuple[pd.DataFrame, str, FeatureEng
     feature ffill/fillna(0)) which removes the warmup-period feature NaNs
     Prophet rejects while preserving missing forward labels. Returns
     (usable, target_col, fe)."""
-    from prism.scripts.training import clean_data_for_training
+    from research.scripts.training import clean_data_for_training
 
     fe = FeatureEngineer()
     df = fe.create_features(_make_gbm_df(n))
@@ -255,8 +255,8 @@ def test_evaluate_tolerates_some_nan_predictions(monkeypatch):
 
 
 def test_train_serve_prediction_parity_from_fold_feature_state(tmp_path: Path):
-    from prism.scripts.backtest import _fold_model_data
-    from prism.scripts.training import build_fold_metadata
+    from research.scripts.backtest import _fold_model_data
+    from research.scripts.training import build_fold_metadata
 
     horizon = 5
     usable, target_col, fe = _build_enhanced(n=260, horizon=horizon)

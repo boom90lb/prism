@@ -162,7 +162,7 @@ def test_legacy_unranged_cache_is_ignored(loader_with_counter):
 # §4.2 tz assert in the training cleanup
 # --------------------------------------------------------------------------- #
 def test_clean_data_asserts_tz_aware_index():
-    from prism.scripts.training import clean_data_for_training
+    from research.scripts.training import clean_data_for_training
 
     naive = pd.DataFrame(
         {"close": [1.0, 2.0, 3.0]},

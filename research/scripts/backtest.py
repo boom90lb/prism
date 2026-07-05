@@ -34,7 +34,7 @@ import mlflow
 import numpy as np
 import pandas as pd
 
-from prism.scripts.training import (
+from research.scripts.training import (
     FOLD_METADATA_SCHEMA_VERSION,
     build_features,
     index_sha256,
@@ -42,7 +42,7 @@ from prism.scripts.training import (
     parse_model_names,
     reject_sentiment_flag,
 )
-from prism.baselines import BuyAndHold, MACrossover, TSMOM
+from research.baselines import BuyAndHold, MACrossover, TSMOM
 from prism.config import (
     ExecutionConfig,
     RESULTS_DIR,
@@ -60,7 +60,7 @@ from prism.features import FeatureEngineer, forward_return_column
 from prism.models.base import BaseModel
 from prism.models.ensemble import EnsembleModel
 from prism.sentiment_analysis import SentimentAnalyzer
-from prism.tracking.mlflow_utils import (
+from research.tracking.mlflow_utils import (
     init_mlflow,
     log_artifact_dir,
     log_metrics_safe,

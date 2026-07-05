@@ -190,7 +190,7 @@ def test_end_to_end_parse_then_reconstruct() -> None:
 def test_write_universe_file_matches_load_universe_contract(tmp_path) -> None:
     path = tmp_path / "sp500_pit_2026-01-01.txt"
     write_universe_file(["B", "A", "x", "A"], path, asof="2026-01-01")
-    # Mirror prism.scripts.training.load_universe: strip '#' comments, dedupe in order.
+    # Mirror research.scripts.training.load_universe: strip '#' comments, dedupe in order.
     loaded: list[str] = []
     for line in path.read_text().splitlines():
         token = line.split("#", 1)[0].strip()

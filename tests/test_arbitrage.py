@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from prism.arbitrage.pairs import (
+from research.arbitrage.pairs import (
     PairCandidate,
     PairSelectionConfig,
     PairSignalConfig,
@@ -18,8 +18,8 @@ from prism.arbitrage.pairs import (
     scan_cointegrated_pairs,
     scan_cointegrated_pairs_with_report,
 )
-from prism.arbitrage.pairs import _evidence_weights
-from prism.arbitrage.walk_forward import (
+from research.arbitrage.pairs import _evidence_weights
+from research.arbitrage.walk_forward import (
     StatArbWalkForwardConfig,
     fold_result_to_dict,
     run_stat_arb_walk_forward,
@@ -304,7 +304,7 @@ def test_candidate_prior_config_validation() -> None:
 
 
 def test_residualize_cross_sectional_removes_market_and_stays_positive() -> None:
-    from prism.arbitrage.pairs import residualize_cross_sectional
+    from research.arbitrage.pairs import residualize_cross_sectional
 
     rng = np.random.default_rng(1)
     n = 200
@@ -458,7 +458,7 @@ def _mean_abs_pairwise_corr(prices: pd.DataFrame) -> float:
 
 
 def test_residualize_pca_positive_and_masked() -> None:
-    from prism.arbitrage.pairs import residualize_pca
+    from research.arbitrage.pairs import residualize_pca
 
     prices = _market_and_sector_panel()
     prices.iloc[150:160, 0] = np.nan  # a post-warmup input gap
@@ -469,7 +469,7 @@ def test_residualize_pca_positive_and_masked() -> None:
 
 
 def test_residualize_pca_removes_more_than_market_demean() -> None:
-    from prism.arbitrage.pairs import residualize_cross_sectional, residualize_pca
+    from research.arbitrage.pairs import residualize_cross_sectional, residualize_pca
 
     prices = _market_and_sector_panel()
     pca = residualize_pca(prices, n_factors=3, corr_window=60, rebalance_every=5)
@@ -479,7 +479,7 @@ def test_residualize_pca_removes_more_than_market_demean() -> None:
 
 
 def test_residualize_pca_causal() -> None:
-    from prism.arbitrage.pairs import residualize_pca
+    from research.arbitrage.pairs import residualize_pca
 
     prices = _market_and_sector_panel()
     full = residualize_pca(prices, n_factors=3, corr_window=60, rebalance_every=5)

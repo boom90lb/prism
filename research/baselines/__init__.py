@@ -8,8 +8,8 @@ date lookup. Each instance binds to one symbol's close series, so multi-symbol
 backtests instantiate one baseline per (model_class, symbol).
 """
 
-from prism.baselines.buy_and_hold import BuyAndHold
-from prism.baselines.ma_crossover import MACrossover
-from prism.baselines.tsmom import TSMOM
+from research.baselines.buy_and_hold import BuyAndHold
+from research.baselines.ma_crossover import MACrossover
+from research.baselines.tsmom import TSMOM
 
 __all__ = ["BuyAndHold", "MACrossover", "TSMOM"]

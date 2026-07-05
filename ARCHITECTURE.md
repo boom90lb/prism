@@ -17,12 +17,14 @@ covers operational gotchas.
 >
 > **Production / research boundary (`SPEC.md §9`):** KEEP `validation/`,
 > `execution/`, `portfolio/construct.py`, `conformal/`, `universe_sp500.py`,
-> `logging_utils.py`. ADAPT `data_loader.py`, the forecast members. QUARANTINE the
-> RL trio, the batch `src/prism/scripts/` WFO layer, the net-negative `arbitrage/` CLIs, and
-> `mlflow`. New v0.3.0 modules: `validation/{metrics breadth diagnostics,
-> capacity}`, `execution/participation`, `portfolio.step_no_trade_band`, `regime/`.
-> The map below describes the **current** (v0.2.x) wiring, which v0.3.0 keeps
-> importable while re-founding the spine around it.
+> `logging_utils.py`. ADAPT `data_loader.py`, the forecast members. QUARANTINED
+> (done, post-v0.3.0): the RL trio, the batch WFO layer, the net-negative
+> stat-arb CLIs, baselines, and `mlflow` now live in top-level `research/`
+> (outside the wheel; `research` imports `prism`, never the reverse), and the
+> stat-arb signal core promoted to `src/prism/residual/`. New v0.3.0 modules:
+> `validation/{metrics breadth diagnostics, capacity}`, `execution/participation`,
+> `portfolio.step_no_trade_band`, `regime/`. The map below describes this wiring
+> as it stands after the quarantine.
 
 ## Data flow
 
@@ -107,7 +109,7 @@ close/open matrix ──► rolling formation/test folds ──► train-only pa
   `submit_signal_order` → next-bar fill → mark-to-market → borrow → record.
   `backtest` = `_reset_state → run_segment → drop_pending → _finalize_results`.
 
-### 6. Evaluation — `src/prism/validation/metrics.py`, `src/prism/baselines/`
+### 6. Evaluation — `src/prism/validation/metrics.py`, `research/baselines/`
 - `metrics.py`: PSR, PBO (CSCV), DSR (False Strategy Theorem), Calmar.
 - `validation/trials.py`: canonical research claim packets with config hash,
   code commit, data convention, artifact manifest, gross/net/cost metrics,
@@ -116,7 +118,12 @@ close/open matrix ──► rolling formation/test folds ──► train-only pa
   comparison path so PBO is computed across a fold-aligned strategy set.
 - `conformal/`: EnbPI block-cross-conformal + ACI online α-adaptation.
 
-### 7. Statistical arbitrage — `src/prism/arbitrage/`, `src/prism/scripts/stat_arb*.py`
+### 7. Statistical arbitrage — `src/prism/residual/` (signal core), `research/arbitrage/` (WFO), `research/scripts/stat_arb*.py`
+
+The signal core (`factors.py`, `residual.py`) is production-side under
+`src/prism/residual/`; the pair scan and the walk-forward/ledger machinery
+(`pairs.py`, `walk_forward.py`, `residual_walk_forward.py`) are quarantined
+under `research/arbitrage/`.
 - `pairs.py`: train-only Engle-Granger pair scan, residual ADF check,
   Benjamini-Hochberg FDR control, half-life and beta-drift filters, and causal
   spread-z target generation. The report variant also records raw candidates,
@@ -142,7 +149,11 @@ close/open matrix ──► rolling formation/test folds ──► train-only pa
 - This is the market-neutral research path. It does not use the single-symbol
   ensemble, because independent ticker forecasts are not an arbitrage book.
 
-## Scripts (`src/prism/scripts/`) — the entry points
+## Scripts (`research/scripts/`) — the batch entry points (quarantined)
+
+Run as modules from the repo root, e.g. `python -m research.scripts.training`;
+no console entry points ship. The only production-side script is the periodic
+universe builder, `src/prism/scripts/build_sp500_universe.py`.
 
 | Script | Role | Key output |
 |---|---|---|
@@ -152,11 +163,13 @@ close/open matrix ──► rolling formation/test folds ──► train-only pa
 | `rl_seed_eval.py` | multi-seed RL overfitting study | `rl_seed_eval.json` |
 | `stat_arb_wfo.py` | rolling formation/test stat-arb WFO with fold-selection ledgers | `folds.json`, `pairs.json`, `summary.json`, weights/costs CSVs |
 | `stat_arb_residual_wfo.py` | residual (Avellaneda-Lee) WFO over a universe file + cross-run trial ledger | `folds.json`, `summary.json`, `config.json`, weights/costs CSVs, `stat_arb_residual_trials.jsonl` |
-| `prediction.py` | point predictions from a saved model | CSV + plot |
+
+(`prediction.py` was dropped per SPEC §9 — train/serve feature skew and a dead
+pickle path.)
 
 `config.py` is the single source of truth (weights, hyperparams, dirs, dataclass
-configs). `tracking/mlflow_utils.py` wraps MLflow logging. `logging_utils.py`
-installs console+rotating-file logging.
+configs). `research/tracking/mlflow_utils.py` wraps MLflow logging.
+`logging_utils.py` installs console+rotating-file logging.
 
 ## Cross-cutting invariants worth knowing
 
@@ -172,6 +185,6 @@ installs console+rotating-file logging.
 - **Directional WFO is now portfolio-level by default.** A strategy claiming a
   directional ensemble result should point to the root target/fill/cost/equity
   artifacts and `claim_packet.json`, not only per-symbol logs.
-- **Arbitrage logic lives in `src/prism/arbitrage/`**, not in the directional
-  ensemble. A strategy claiming arbitrage should produce cross-asset hedged
+- **Arbitrage logic lives in `src/prism/residual/` + `research/arbitrage/`**, not
+  in the directional ensemble. A strategy claiming arbitrage should produce cross-asset hedged
   target weights and portfolio-level PnL, not independent symbol signals.

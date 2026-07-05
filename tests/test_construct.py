@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from prism.arbitrage.residual import build_book_row
+from prism.residual.residual import build_book_row
 from prism.portfolio.construct import (
     build_residual_book_row,
     construct_directional_targets,

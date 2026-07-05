@@ -20,9 +20,9 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-from prism.arbitrage.factors import ResidualStatArbConfig, consensus_trading_days
+from prism.residual.factors import ResidualStatArbConfig, consensus_trading_days
 from prism.execution.target_weights import PortfolioBacktestResult, backtest_target_weights
-from prism.arbitrage.residual import (
+from prism.residual.residual import (
     ResidualSignalPanel,
     compute_residual_signal_panel,
     run_state_machine,
@@ -34,7 +34,7 @@ from prism.portfolio.construct import (
     cost_aware_band,
     strength_multiplier,
 )
-from prism.arbitrage.walk_forward import (
+from research.arbitrage.walk_forward import (
     StatArbWalkForwardConfig,
     _empty_targets,
     _fold_metrics_from_result,
