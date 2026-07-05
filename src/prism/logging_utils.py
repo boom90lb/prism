@@ -1,4 +1,4 @@
-"""Structured logging setup for the trading-ensemble scripts (Phase 5.1).
+"""Structured logging setup for the Prism scripts (Phase 5.1).
 
 Replaces the per-script ``logging.basicConfig`` calls with a single
 ``configure_logging`` entry point that installs:

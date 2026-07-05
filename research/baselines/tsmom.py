@@ -1,4 +1,3 @@
-# src/baselines/tsmom.py
 """Time-series momentum baseline.
 
 LONG if the K-bar return is positive, SHORT if negative, FLAT if exactly zero

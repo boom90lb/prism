@@ -225,7 +225,7 @@ def parse_args():
                         help="Use rolling-window train (default: expanding)")
 
     # MLflow
-    parser.add_argument("--experiment", type=str, default="trading_ensemble",
+    parser.add_argument("--experiment", type=str, default="prism",
                         help="MLflow experiment name")
 
     parser.add_argument("--verbose", action="store_true",

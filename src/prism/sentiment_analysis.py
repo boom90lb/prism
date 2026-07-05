@@ -1,4 +1,3 @@
-# src/sentiment_analysis.py
 """Sentiment analysis module for news data.
 
 Two analyzers share the same point-in-time (PIT) feature contract:

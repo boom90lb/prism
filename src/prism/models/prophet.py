@@ -1,4 +1,3 @@
-# src/models/prophet.py
 """Prophet model implementation for time series forecasting."""
 
 import logging

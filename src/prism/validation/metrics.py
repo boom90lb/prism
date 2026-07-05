@@ -1,4 +1,3 @@
-# src/validation/metrics.py
 """Performance and overfitting metrics.
 
 Implements the López de Prado / Bailey overfitting-adjusted metrics needed

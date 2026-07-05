@@ -1,4 +1,3 @@
-# src/baselines/__init__.py
 """Baseline strategies for fair comparison against the ensemble.
 
 Each baseline implements `BaseModel` and emits positions in [-1, 1]. Baselines

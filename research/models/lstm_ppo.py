@@ -1,4 +1,3 @@
-# src/models/lstm_ppo.py
 """LSTM-PPO model implementation using JAX/Flax for reinforcement learning trading."""
 
 import logging

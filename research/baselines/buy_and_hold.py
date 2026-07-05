@@ -1,4 +1,3 @@
-# src/baselines/buy_and_hold.py
 """Buy-and-hold baseline: constant LONG (+1) position."""
 
 from pathlib import Path

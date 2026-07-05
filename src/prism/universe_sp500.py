@@ -184,7 +184,7 @@ def fetch_sp500_wikipedia(url: str = WIKI_URL, timeout: float = 30.0) -> tuple[l
     """
     import requests  # local import: keep module importable without network stack
 
-    resp = requests.get(url, timeout=timeout, headers={"User-Agent": "trading-ensemble/universe-builder"})
+    resp = requests.get(url, timeout=timeout, headers={"User-Agent": "prism/universe-builder"})
     resp.raise_for_status()
     tables = extract_tables(resp.text)
     return parse_constituents_table(tables), parse_changes_table(tables)

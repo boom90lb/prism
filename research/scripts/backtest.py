@@ -189,7 +189,7 @@ def parse_args():
 
     # MLflow.
     parser.add_argument(
-        "--experiment", type=str, default="trading_ensemble_backtest",
+        "--experiment", type=str, default="prism_backtest",
         help="MLflow experiment name",
     )
 

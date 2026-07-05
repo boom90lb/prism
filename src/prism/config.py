@@ -1,4 +1,3 @@
-# src/prism/config.py
 """Configuration settings for the Prism engine."""
 
 import os

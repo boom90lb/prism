@@ -1,4 +1,3 @@
-# src/models/xlstm_ppo.py
 """xLSTM-PPO implementation using JAX/Flax NNX for reinforcement learning trading.
 
 The xLSTM cell (sLSTMBlock) implements the stabilizer + normalizer variant from

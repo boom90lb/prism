@@ -1,4 +1,3 @@
-# src/models/base.py
 """Base model class for time series forecasting models."""
 
 import logging

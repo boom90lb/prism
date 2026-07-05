@@ -13,9 +13,9 @@ re-teach them.
 market up to a prism and decompose returns across frequencies and into
 factor / residual / regime components. The importable package is `prism` under
 src-layout (`src/prism/`, shipped in v0.3.0 — §11 item 8). The Python
-distribution and the GitHub repository stay `trading-ensemble` until the single
-publication-time rename (§12, `HANDOFF.md`). Where this spec says "the engine"
-it means Prism.
+distribution and the GitHub repository were renamed to `prism` in the single
+publication-time identity break, 2026-07-05 (§12). Where this spec says "the
+engine" it means Prism.
 
 ---
 
@@ -614,12 +614,13 @@ sequence R0→R4 of `docs/audit.md` (which this spec subsumes and does not repla
 - **Package:** `prism`, under src-layout (`src/prism/`), as of v0.3.0 (§11
   item 8). This fixed a real packaging defect — the wheel previously installed
   generically-named top-level `src` and `scripts` packages.
-- **Distribution & repository:** stay `trading-ensemble` in the tree. Renaming
-  them is a **single publication-time identity break** — GitHub repo rename
-  (old URLs redirect) + `[project] name` + `[project.urls]` in one commit —
-  tracked in `HANDOFF.md`. Naming note: bare "prism" is heavily overloaded
-  across the software ecosystem; prefer a qualified name (e.g.
-  `prism-trading`) if the repo will ever be public or published to PyPI.
+- **Distribution & repository:** renamed to `prism` in the **single
+  publication-time identity break** (2026-07-05) — GitHub repo rename (old
+  URLs redirect) + `[project] name` + `[project.urls]` in one commit. Bare
+  "prism" is overloaded across the software ecosystem (Prism.js, Stoplight
+  Prism, …); the owner weighed that and chose it anyway. If PyPI publication
+  is ever pursued and the name is unavailable there, qualify the
+  *distribution* name only — the import package stays `prism`.
 - **System identity:** *Prism* in all docs and new modules.
 - **SemVer intent:** 0.3.0 is a foundation-level re-architecture (new organizing
   abstraction, new invariants, quarantine boundary) plus a mechanical package

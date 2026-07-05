@@ -1,4 +1,3 @@
-# src/models/xlstm_grpo.py
 """xLSTM-GRPO implementation using JAX/Flax NNX.
 
 Group Relative Policy Optimization (DeepSeekMath, 2024) adapted to a continuous

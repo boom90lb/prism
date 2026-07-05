@@ -537,7 +537,7 @@ def parse_args():
         "--grid_json", type=str, default=None,
         help='JSON {"axis": [values]} overriding the default 18-point grid.',
     )
-    p.add_argument("--experiment", type=str, default="trading_ensemble_sweep")
+    p.add_argument("--experiment", type=str, default="prism_sweep")
     return p.parse_args()
 
 

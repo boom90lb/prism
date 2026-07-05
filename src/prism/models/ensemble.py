@@ -1,4 +1,3 @@
-# src/models/ensemble.py
 """Ensemble model. Emits unified position outputs in [-1, 1].
 
 Forecast members (ARIMA, Prophet, LSTM, XGBoost) produce expected h-bar

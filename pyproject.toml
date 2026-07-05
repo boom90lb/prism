@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "trading-ensemble"
+name = "prism"
 version = "0.3.0"
 authors = [
     {name = "Brendon Reperttang", email = "boom90lb@mit.alum.edu"},
@@ -52,14 +52,15 @@ dev = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/boom90lb/trading-ensemble"
-"Bug Tracker" = "https://github.com/boom90lb/trading-ensemble/issues"
+"Homepage" = "https://github.com/boom90lb/prism"
+"Bug Tracker" = "https://github.com/boom90lb/prism/issues"
 
-# No console entry points: the batch CLIs are quarantined under research/
-# (SPEC §9) and are not part of the distribution — run them as modules from
-# the repo root (`python -m research.scripts.training`). Whether the retained
-# universe builder (prism.scripts.build_sp500_universe) gets a `prism-*`
-# entry point is a publication-time decision (HANDOFF §B).
+# The batch WFO / sweep / stat-arb CLIs are quarantined under research/
+# (SPEC §9), ship no entry points, and run as modules from the repo root
+# (`python -m research.scripts.training`). Only the production-side periodic
+# universe builder gets a console script.
+[project.scripts]
+prism-build-universe = "prism.scripts.build_sp500_universe:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/prism"]

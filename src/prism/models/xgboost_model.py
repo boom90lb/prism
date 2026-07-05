@@ -1,4 +1,3 @@
-# src/models/xgboost_model.py
 """XGBoost model implementation for time series forecasting."""
 
 import logging

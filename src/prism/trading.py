@@ -1,4 +1,3 @@
-# src/trading.py
 """Trading strategy and backtesting module."""
 
 import logging

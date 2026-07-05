@@ -126,7 +126,7 @@ def parse_args():
     parser.add_argument("--signal_threshold", type=float, default=0.1)
 
     parser.add_argument(
-        "--experiment", type=str, default="trading_ensemble_rl_seed_eval",
+        "--experiment", type=str, default="prism_rl_seed_eval",
     )
     return parser.parse_args()
 

@@ -1,4 +1,3 @@
-# src/baselines/ma_crossover.py
 """Moving-average crossover baseline.
 
 LONG when fast SMA > slow SMA, SHORT otherwise. Until `prepare(close)` is

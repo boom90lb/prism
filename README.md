@@ -1,4 +1,4 @@
-# trading-ensemble → Prism (v0.3.0)
+# Prism
 
 > **v0.3.0 re-founds this project.** The authoritative documents are now
 > [`SPEC.md`](SPEC.md) (the constitution — the cross-sectional
@@ -6,9 +6,9 @@
 > tiers, and the kill-criterion) and [`MARKETS.md`](MARKETS.md) (the zero-budget
 > market-structure analysis: which markets are core execution vs regime signal).
 > The "ensemble of models" is no longer the organizing abstraction — it is
-> demoted to *one* plug-in signal node. The distribution is still named
-> `trading-ensemble` this release; the `src → prism` package rename is a tracked
-> follow-on. **Read `SPEC.md` first.** The sections below describe the honest
+> demoted to *one* plug-in signal node. Package, distribution, and repository
+> are all named `prism` (formerly `trading-ensemble`; old GitHub URLs
+> redirect). **Read `SPEC.md` first.** The sections below describe the honest
 > evaluation harness, which v0.3.0 keeps almost intact and builds on.
 >
 > Status of the alpha itself is unchanged and stated plainly: **no configuration
@@ -192,8 +192,8 @@ and `metrics.json` first.
 Environment (Python 3.12+, [uv](https://github.com/astral-sh/uv)):
 
 ```bash
-git clone https://github.com/boom90lb/trading-ensemble.git
-cd trading-ensemble
+git clone https://github.com/boom90lb/prism.git
+cd prism
 uv venv && uv pip install -e .
 ```
 
