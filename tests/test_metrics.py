@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.validation.metrics import (
+from prism.validation.metrics import (
     calmar_ratio,
     deflated_sharpe_ratio,
     deflated_sharpe_ratio_with_n,

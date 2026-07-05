@@ -24,7 +24,7 @@ import pandas as pd
 import pytest
 import torch
 
-from src.sentiment_analysis import TransformerSentimentAnalyzer
+from prism.sentiment_analysis import TransformerSentimentAnalyzer
 
 
 # --- Fakes -------------------------------------------------------------------
@@ -145,8 +145,12 @@ def test_module_import_does_not_load_transformers():
     import subprocess
     import sys
 
-    code = "import sys; import src.sentiment_analysis; print('transformers' in sys.modules)"
-    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
+    # The fresh interpreter needs src/ on its path (src-layout; pytest's
+    # pythonpath setting does not propagate to subprocesses).
+    src_dir = os.path.join(os.path.dirname(__file__), "..", "src")
+    env = {**os.environ, "PYTHONPATH": os.pathsep.join(filter(None, [src_dir, os.environ.get("PYTHONPATH")]))}
+    code = "import sys; import prism.sentiment_analysis; print('transformers' in sys.modules)"
+    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=env)
     assert out.stdout.strip() == "False", out.stderr
 
 

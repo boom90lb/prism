@@ -15,9 +15,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.baselines import BuyAndHold, MACrossover, TSMOM
-from src.config import ExecutionConfig, TradingConfig
-from src.trading import TradingStrategy
+from prism.baselines import BuyAndHold, MACrossover, TSMOM
+from prism.config import ExecutionConfig, TradingConfig
+from prism.trading import TradingStrategy
 
 
 # ---------- BuyAndHold ----------

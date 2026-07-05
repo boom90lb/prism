@@ -6,7 +6,7 @@ import os
 import pandas as pd
 import pytest
 
-from src.data_loader import (
+from prism.data_loader import (
     BAR_TZ,
     DEFAULT_REQUEST_TIMEOUT_SECONDS,
     DataLoader,
@@ -102,7 +102,7 @@ def loader_with_counter(tmp_path, monkeypatch):
         calls["last_timeout"] = timeout
         return _FakeResp(_ts_payload(params["start_date"], params["end_date"]))
 
-    monkeypatch.setattr("src.data_loader.requests.get", fake_get)
+    monkeypatch.setattr("prism.data_loader.requests.get", fake_get)
     loader = DataLoader(api_key="test", cache_dir=tmp_path)
     return loader, calls, tmp_path
 
@@ -162,7 +162,7 @@ def test_legacy_unranged_cache_is_ignored(loader_with_counter):
 # §4.2 tz assert in the training cleanup
 # --------------------------------------------------------------------------- #
 def test_clean_data_asserts_tz_aware_index():
-    from scripts.training import clean_data_for_training
+    from prism.scripts.training import clean_data_for_training
 
     naive = pd.DataFrame(
         {"close": [1.0, 2.0, 3.0]},
@@ -236,7 +236,7 @@ def test_fetch_dividends_caches_filters_and_reuses(tmp_path, monkeypatch):
             }
         )
 
-    monkeypatch.setattr("src.data_loader.requests.get", fake_get)
+    monkeypatch.setattr("prism.data_loader.requests.get", fake_get)
     loader = DataLoader(api_key="test", cache_dir=tmp_path)
 
     s = loader.fetch_dividends("AAPL", "2021-01-01", "2021-12-31")

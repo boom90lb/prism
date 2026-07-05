@@ -10,10 +10,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.execution.target_weights import backtest_target_weights
-from src.features import forward_return_column
-from src.models.base import BaseModel
-from src.validation.trials import validate_claim_packet_dir
+from prism.execution.target_weights import backtest_target_weights
+from prism.features import forward_return_column
+from prism.models.base import BaseModel
+from prism.validation.trials import validate_claim_packet_dir
 
 
 class _DummyRun:
@@ -78,7 +78,7 @@ class _ConstModel(BaseModel):
 
 
 def test_stat_arb_wfo_main_emits_valid_claim_packet(monkeypatch, tmp_path: Path) -> None:
-    import scripts.stat_arb_wfo as mod
+    import prism.scripts.stat_arb_wfo as mod
 
     close = pd.DataFrame({"AAA": _bars()["close"], "BBB": _bars()["close"] * 0.99})
     open_ = pd.DataFrame({"AAA": _bars()["open"], "BBB": _bars()["open"] * 0.99})
@@ -125,7 +125,7 @@ def test_stat_arb_wfo_main_emits_valid_claim_packet(monkeypatch, tmp_path: Path)
 
 
 def test_stat_arb_residual_wfo_main_emits_valid_claim_packet(monkeypatch, tmp_path: Path) -> None:
-    import scripts.stat_arb_residual_wfo as mod
+    import prism.scripts.stat_arb_residual_wfo as mod
 
     bars = _bars()
     frames = {
@@ -193,7 +193,7 @@ def test_stat_arb_residual_wfo_main_emits_valid_claim_packet(monkeypatch, tmp_pa
 
 
 def test_backtest_main_target_weights_emits_root_claim_packet(monkeypatch, tmp_path: Path) -> None:
-    import scripts.backtest as mod
+    import prism.scripts.backtest as mod
 
     _patch_mlflow(monkeypatch, mod)
     training_run = tmp_path / "training_run"
@@ -274,7 +274,7 @@ def test_backtest_main_target_weights_emits_root_claim_packet(monkeypatch, tmp_p
 
 
 def test_backtest_main_shared_construct_opt_in_emits_claim_packet(monkeypatch, tmp_path: Path) -> None:
-    import scripts.backtest as mod
+    import prism.scripts.backtest as mod
 
     _patch_mlflow(monkeypatch, mod)
     training_run = tmp_path / "training_run"
@@ -338,7 +338,7 @@ def test_backtest_main_shared_construct_opt_in_emits_claim_packet(monkeypatch, t
 
 
 def test_rl_seed_eval_main_emits_member_claim_packet(monkeypatch, tmp_path: Path) -> None:
-    import scripts.rl_seed_eval as mod
+    import prism.scripts.rl_seed_eval as mod
 
     _patch_mlflow(monkeypatch, mod)
     training_run = tmp_path / "training_run"
@@ -393,7 +393,7 @@ def test_rl_seed_eval_main_emits_member_claim_packet(monkeypatch, tmp_path: Path
 
 
 def test_rl_seed_eval_rejects_sentiment_before_data_loading(monkeypatch, tmp_path: Path) -> None:
-    import scripts.rl_seed_eval as mod
+    import prism.scripts.rl_seed_eval as mod
 
     training_run = tmp_path / "training_run"
     fold_dir = training_run / "AAA" / "fold_0"

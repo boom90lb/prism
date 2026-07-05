@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.validation.walk_forward import PurgedWalkForward
+from prism.validation.walk_forward import PurgedWalkForward
 
 
 @pytest.fixture

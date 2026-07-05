@@ -20,20 +20,20 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from scripts.sweep import (
+from prism.scripts.sweep import (
     TrialResult,
     combine_symbol_returns,
     expand_grid,
     run_sweep,
     summarize_sweep,
 )
-from src.validation.metrics import periodic_sharpe, probabilistic_sharpe_ratio
-from src.validation.trials import CLAIM_TIERS, validate_claim_packet_dir
+from prism.validation.metrics import periodic_sharpe, probabilistic_sharpe_ratio
+from prism.validation.trials import CLAIM_TIERS, validate_claim_packet_dir
 
 
 def test_r0_quarantine_defaults_and_explicit_rejections(monkeypatch) -> None:
-    import scripts.sweep as sweep_mod
-    from scripts.training import (
+    import prism.scripts.sweep as sweep_mod
+    from prism.scripts.training import (
         DEFAULT_MODEL_SELECTION,
         parse_model_names,
         reject_sentiment_flag,
@@ -83,7 +83,7 @@ def test_expand_grid_cartesian_count() -> None:
 
 
 def test_expand_grid_default_18() -> None:
-    from scripts.sweep import DEFAULT_GRID
+    from prism.scripts.sweep import DEFAULT_GRID
     assert len(expand_grid(DEFAULT_GRID)) == 18
 
 
@@ -187,9 +187,9 @@ def test_summarize_no_valid_trials() -> None:
 
 
 def test_run_sweep_end_to_end(monkeypatch, tmp_path) -> None:
-    import src.tracking.mlflow_utils as mu
-    from scripts.training import build_features
-    from src.features import FeatureEngineer
+    import prism.tracking.mlflow_utils as mu
+    from prism.scripts.training import build_features
+    from prism.features import FeatureEngineer
 
     monkeypatch.setattr(mu, "MLFLOW_TRACKING_URI", f"file://{tmp_path}/mlruns")
     mlflow.set_tracking_uri(f"file://{tmp_path}/mlruns")

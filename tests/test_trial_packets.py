@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.validation.trials import (
+from prism.validation.trials import (
     CLAIM_GROSS_EDGE,
     CLAIM_MECHANICS_CLEAN,
     CLAIM_NET_EDGE,
@@ -103,7 +103,7 @@ def test_current_git_state_hashes_dirty_material(monkeypatch) -> None:
             return subprocess.CompletedProcess(cmd, 0, stdout=status)
         raise AssertionError(f"unexpected command: {cmd}")
 
-    monkeypatch.setattr("src.validation.trials.subprocess.run", fake_run)
+    monkeypatch.setattr("prism.validation.trials.subprocess.run", fake_run)
 
     state = current_git_state("/repo")
     assert state.available is True

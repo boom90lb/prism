@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.features import FeatureEngineer
+from prism.features import FeatureEngineer
 
 
 def _ohlcv(seed: int, n: int = 200, mu: float = 0.0, sigma: float = 0.01) -> pd.DataFrame:

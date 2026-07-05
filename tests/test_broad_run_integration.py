@@ -17,10 +17,10 @@ import math
 import numpy as np
 import pandas as pd
 
-from src.arbitrage.factors import ResidualStatArbConfig
-from src.arbitrage.pairs import PairSelectionConfig, residualize_cross_sectional
-from src.arbitrage.residual_walk_forward import run_residual_stat_arb_walk_forward
-from src.arbitrage.walk_forward import StatArbWalkForwardConfig, run_stat_arb_walk_forward
+from prism.arbitrage.factors import ResidualStatArbConfig
+from prism.arbitrage.pairs import PairSelectionConfig, residualize_cross_sectional
+from prism.arbitrage.residual_walk_forward import run_residual_stat_arb_walk_forward
+from prism.arbitrage.walk_forward import StatArbWalkForwardConfig, run_stat_arb_walk_forward
 
 
 def _broad_panel(

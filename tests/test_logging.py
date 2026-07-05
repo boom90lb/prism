@@ -10,7 +10,7 @@ from logging.handlers import RotatingFileHandler
 
 import pytest
 
-from src.logging_utils import (
+from prism.logging_utils import (
     _BACKUP_COUNT,
     _MAX_BYTES,
     _SymbolDefaultFilter,

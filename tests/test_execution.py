@@ -14,15 +14,15 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.config import ExecutionConfig, TradingConfig
-from src.execution import ExecutionModel, Order, OrderType, backtest_target_weights
-from src.execution.costs import (
+from prism.config import ExecutionConfig, TradingConfig
+from prism.execution import ExecutionModel, Order, OrderType, backtest_target_weights
+from prism.execution.costs import (
     commission_dollars,
     daily_borrow_dollars,
     slippage_bps,
 )
-from src.models.base import BaseModel
-from src.trading import TradingStrategy
+from prism.models.base import BaseModel
+from prism.trading import TradingStrategy
 
 
 # ---------- pure cost functions ----------

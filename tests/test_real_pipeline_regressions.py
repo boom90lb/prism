@@ -26,9 +26,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.config import EnsembleConfig, ModelConfig
-from src.features import FeatureEngineer, forward_return_column, is_label_column
-from src.models.ensemble import EnsembleModel
+from prism.config import EnsembleConfig, ModelConfig
+from prism.features import FeatureEngineer, forward_return_column, is_label_column
+from prism.models.ensemble import EnsembleModel
 
 
 def _make_gbm_df(n: int, seed: int = 7, start: str = "2021-01-04") -> pd.DataFrame:
@@ -50,12 +50,12 @@ def _make_gbm_df(n: int, seed: int = 7, start: str = "2021-01-04") -> pd.DataFra
 
 
 def _build_enhanced(n: int, horizon: int) -> tuple[pd.DataFrame, str, FeatureEngineer]:
-    """Mirror scripts/training.build_features exactly: features + lags + target,
+    """Mirror src/prism/scripts/training.build_features exactly: features + lags + target,
     then ``clean_data_for_training`` (Inf->NaN, drop >30%-NaN feature cols,
     feature ffill/fillna(0)) which removes the warmup-period feature NaNs
     Prophet rejects while preserving missing forward labels. Returns
     (usable, target_col, fe)."""
-    from scripts.training import clean_data_for_training
+    from prism.scripts.training import clean_data_for_training
 
     fe = FeatureEngineer()
     df = fe.create_features(_make_gbm_df(n))
@@ -145,7 +145,7 @@ def test_loaded_ensemble_predicts_non_degenerate(tmp_path: Path):
 # --------------------------------------------------------------------------
 def test_prophet_fits_on_tz_aware_index():
     prophet = pytest.importorskip("prophet")  # noqa: F841
-    from src.models.prophet import ProphetModel
+    from prism.models.prophet import ProphetModel
 
     usable, target_col, fe = _build_enhanced(n=200, horizon=5)
     assert usable.index.tz is not None, "fixture must be tz-aware (production invariant)"
@@ -255,8 +255,8 @@ def test_evaluate_tolerates_some_nan_predictions(monkeypatch):
 
 
 def test_train_serve_prediction_parity_from_fold_feature_state(tmp_path: Path):
-    from scripts.backtest import _fold_model_data
-    from scripts.training import build_fold_metadata
+    from prism.scripts.backtest import _fold_model_data
+    from prism.scripts.training import build_fold_metadata
 
     horizon = 5
     usable, target_col, fe = _build_enhanced(n=260, horizon=horizon)
@@ -373,8 +373,8 @@ def test_score_does_not_renormalize_subunit_weights(monkeypatch):
 def test_calculate_signal_uses_features_for_agreement_boost(caplog):
     import logging
 
-    from src.config import TradingConfig
-    from src.trading import TradingStrategy
+    from prism.config import TradingConfig
+    from prism.trading import TradingStrategy
 
     horizon = 5
     usable, target_col, fe = _build_enhanced(n=320, horizon=horizon)
@@ -408,7 +408,7 @@ def test_calculate_signal_uses_features_for_agreement_boost(caplog):
     )
 
     preds = np.asarray(ensemble.predict(feat), dtype=float)
-    with caplog.at_level(logging.ERROR, logger="src.trading"):
+    with caplog.at_level(logging.ERROR, logger="prism.trading"):
         strat.calculate_signal(
             preds[-1:], float(feat["close"].iloc[-1]), "SYM",
             feat.index[-1], None, features=feat,

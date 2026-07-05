@@ -15,8 +15,8 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
-from src.data_loader import BAR_TZ, DEFAULT_REQUEST_TIMEOUT_SECONDS, _ensure_bar_tz
-from src.sentiment_analysis import SentimentAnalyzer
+from prism.data_loader import BAR_TZ, DEFAULT_REQUEST_TIMEOUT_SECONDS, _ensure_bar_tz
+from prism.sentiment_analysis import SentimentAnalyzer
 
 
 # --- Fixtures ----------------------------------------------------------------
@@ -141,7 +141,7 @@ def test_fetch_news_passes_default_timeout(monkeypatch):
         assert headers["Authorization"] == "Bearer test-key"
         return _Resp()
 
-    monkeypatch.setattr("src.sentiment_analysis.requests.get", fake_get)
+    monkeypatch.setattr("prism.sentiment_analysis.requests.get", fake_get)
     out = SentimentAnalyzer(api_key="test-key").fetch_news(
         "AAPL",
         start_date="2023-01-01",

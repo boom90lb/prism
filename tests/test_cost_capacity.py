@@ -15,8 +15,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.execution.target_weights import backtest_target_weights
-from src.config import ExecutionConfig
+from prism.execution.target_weights import backtest_target_weights
+from prism.config import ExecutionConfig
 
 _FREE = dict(spread_bps=0, commission_bps=0, slippage_coeff=0, borrow_rate_bps_annual=0)
 

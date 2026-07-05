@@ -2,8 +2,8 @@
 
 import pandas as pd
 
-from scripts.training import filter_universe_asof, load_universe
-from src.data_loader import BAR_TZ
+from prism.scripts.training import filter_universe_asof, load_universe
+from prism.data_loader import BAR_TZ
 
 
 def _frame(start: str, n: int = 10) -> pd.DataFrame:

@@ -4,11 +4,11 @@ build-backend = "hatchling.build"
 
 [project]
 name = "trading-ensemble"
-version = "0.2.2"
+version = "0.3.0"
 authors = [
     {name = "Brendon Reperttang", email = "boom90lb@mit.alum.edu"},
 ]
-description = "Time Series Ensemble Trading Model with RL-based decision making"
+description = "Prism — a cross-sectional systematic trading engine (score → residualize → construct → execute), evaluated under a purged-WFO, cost-realistic, deflation-adjusted honesty harness"
 readme = "README.md"
 requires-python = ">=3.12"
 classifiers = [
@@ -56,14 +56,14 @@ dev = [
 "Bug Tracker" = "https://github.com/boom90lb/trading-ensemble/issues"
 
 [project.scripts]
-trading-backtest = "scripts.backtest:main"
-trading-prediction = "scripts.prediction:main"
-trading-stat-arb-residual-wfo = "scripts.stat_arb_residual_wfo:main"
-trading-stat-arb-wfo = "scripts.stat_arb_wfo:main"
-trading-training = "scripts.training:main"
+trading-backtest = "prism.scripts.backtest:main"
+trading-prediction = "prism.scripts.prediction:main"
+trading-stat-arb-residual-wfo = "prism.scripts.stat_arb_residual_wfo:main"
+trading-stat-arb-wfo = "prism.scripts.stat_arb_wfo:main"
+trading-training = "prism.scripts.training:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src", "scripts"]
+packages = ["src/prism"]
 
 [tool.black]
 line-length = 119
@@ -82,3 +82,6 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = "test_*.py"
+# src-layout: make `prism` importable from the source tree so tests do not
+# depend on a (possibly stale) editable install.
+pythonpath = ["src"]

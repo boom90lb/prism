@@ -16,14 +16,14 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.config import EnsembleConfig, ExecutionConfig, ModelConfig, TradingConfig
-from src.execution import ExecutionModel
-from src.models.base import BaseModel
-from src.models.ensemble import EnsembleModel
-from src.models.lstm_ppo import LSTMPPO, TradingEnvironment
-from src.trading import TradingStrategy
+from prism.config import EnsembleConfig, ExecutionConfig, ModelConfig, TradingConfig
+from prism.execution import ExecutionModel
+from prism.models.base import BaseModel
+from prism.models.ensemble import EnsembleModel
+from prism.models.lstm_ppo import LSTMPPO, TradingEnvironment
+from prism.trading import TradingStrategy
 
-from scripts.rl_seed_eval import summarize_member
+from prism.scripts.rl_seed_eval import summarize_member
 
 
 # --------------------------------------------------------------------------

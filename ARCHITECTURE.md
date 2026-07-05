@@ -4,6 +4,26 @@ How the pieces connect, end to end. The README covers *why* (methodology) and
 *how to run* (usage); this is the *what calls what* map. `docs/operations.md`
 covers operational gotchas.
 
+> **v0.3.0 target architecture — see [`SPEC.md`](SPEC.md).** The organizing
+> abstraction is now a cross-sectional engine, not a per-symbol ensemble:
+>
+> ```
+> DATA → SIGNAL → RESIDUALIZE → CONSTRUCT → EXECUTE → LEDGER
+>              (ensemble = ONE node)   (breadth/cost-aware)   (t+1, sqrt-ADV,
+>                                                              participation gate)
+>        conditioned throughout by a REGIME layer (curve · vol · liquidity),
+>        gated by the HARNESS (purged WFO · DSR/PBO · N_eff · capacity · claim tiers).
+> ```
+>
+> **Production / research boundary (`SPEC.md §9`):** KEEP `validation/`,
+> `execution/`, `portfolio/construct.py`, `conformal/`, `universe_sp500.py`,
+> `logging_utils.py`. ADAPT `data_loader.py`, the forecast members. QUARANTINE the
+> RL trio, the batch `src/prism/scripts/` WFO layer, the net-negative `arbitrage/` CLIs, and
+> `mlflow`. New v0.3.0 modules: `validation/{metrics breadth diagnostics,
+> capacity}`, `execution/participation`, `portfolio.step_no_trade_band`, `regime/`.
+> The map below describes the **current** (v0.2.x) wiring, which v0.3.0 keeps
+> importable while re-founding the spine around it.
+
 ## Data flow
 
 ```
@@ -15,7 +35,7 @@ Twelvedata API ──► DataLoader ──► FeatureEngineer ──► PurgedWa
 
 The default directional WFO backtest uses `TradingStrategy` only to generate
 continuous close-time target weights from per-fold ensemble models. Portfolio
-accounting then happens once across all symbols in `src/execution/target_weights.py`.
+accounting then happens once across all symbols in `src/prism/execution/target_weights.py`.
 The legacy `--legacy_orders` path still uses `TradingStrategy.run_segment` and
 `ExecutionModel` directly for per-symbol LONG/SHORT/FLAT order accounting.
 
@@ -26,7 +46,7 @@ close/open matrix ──► rolling formation/test folds ──► train-only pa
                     (fixed candidates per fold)       (coint + ADF + FDR)      (z-score state machine)    (gross/symbol limits)     (costs + borrow)
 ```
 
-### 1. Ingestion — `src/data_loader.py`
+### 1. Ingestion — `src/prism/data_loader.py`
 - `DataLoader.fetch_historical_data` pulls split-adjusted daily bars, caches to
   `data/{symbol}_{interval}_{start}_{end}.parquet`, returns a tz-aware
   (America/New_York) OHLCV frame. Interval is normalized to the vendor's
@@ -34,20 +54,20 @@ close/open matrix ──► rolling formation/test folds ──► train-only pa
 - `fetch_dividends` pulls ex-date→amount cash dividends (credited in the
   backtest, not back-adjusted into prices).
 
-### 2. Features — `src/features.py`
+### 2. Features — `src/prism/features.py`
 - `create_features` (causal technical indicators) → `create_lagged_features` →
   `create_target_variable` (forward return `target_{h}`). Computed once on the
   full series (rolling/ewm/pct_change are causal).
 - `fit_scalers` / `transform_features` apply **train-only** clip bounds —
   refit per WFO fold so test-fold outliers never leak into the scaler.
 
-### 3. Splitting — `src/validation/walk_forward.py`
+### 3. Splitting — `src/prism/validation/walk_forward.py`
 - `PurgedWalkForward` yields expanding (or rolling) train/test index pairs with
   a **purge** (drop train rows whose label window overlaps test) and an
   **embargo** (skip a buffer after each test). One splitter drives both the
   outer training loop and the meta-learner's OOF.
 
-### 4. Models — `src/models/`
+### 4. Models — `src/prism/models/`
 - `registry.py` partitions members into **forecast** (`arima`, `prophet`,
   `lstm`, `xgboost` — emit ŷ price) and **policy** (`lstm_ppo`, `xlstm_ppo`,
   `xlstm_grpo` — emit positions). `base.py` is the shared interface;
@@ -66,7 +86,7 @@ close/open matrix ──► rolling formation/test folds ──► train-only pa
     path). A loaded ensemble must come back with every member `is_fitted`.
   - `predict_band` / `update_aci` provide EnbPI+ACI conformal bands.
 
-### 5. Execution + accounting — `src/execution/`, `src/trading.py`
+### 5. Execution + accounting — `src/prism/execution/`, `src/prism/trading.py`
 - `target_weights.py` is the default portfolio accounting path. It accepts
   close-time target weights, fills them at the next open, suppresses small
   rebalances by weight band, drops fold-last pending targets, carries existing
@@ -87,7 +107,7 @@ close/open matrix ──► rolling formation/test folds ──► train-only pa
   `submit_signal_order` → next-bar fill → mark-to-market → borrow → record.
   `backtest` = `_reset_state → run_segment → drop_pending → _finalize_results`.
 
-### 6. Evaluation — `src/validation/metrics.py`, `src/baselines/`
+### 6. Evaluation — `src/prism/validation/metrics.py`, `src/prism/baselines/`
 - `metrics.py`: PSR, PBO (CSCV), DSR (False Strategy Theorem), Calmar.
 - `validation/trials.py`: canonical research claim packets with config hash,
   code commit, data convention, artifact manifest, gross/net/cost metrics,
@@ -96,13 +116,13 @@ close/open matrix ──► rolling formation/test folds ──► train-only pa
   comparison path so PBO is computed across a fold-aligned strategy set.
 - `conformal/`: EnbPI block-cross-conformal + ACI online α-adaptation.
 
-### 7. Statistical arbitrage — `src/arbitrage/`, `scripts/stat_arb*.py`
+### 7. Statistical arbitrage — `src/prism/arbitrage/`, `src/prism/scripts/stat_arb*.py`
 - `pairs.py`: train-only Engle-Granger pair scan, residual ADF check,
   Benjamini-Hochberg FDR control, half-life and beta-drift filters, and causal
   spread-z target generation. The report variant also records raw candidates,
   the FDR cutoff, and rejection counts.
 - `portfolio.py`: compatibility exports for the shared target-weight portfolio
-  accounting in `src/execution/target_weights.py`.
+  accounting in `src/prism/execution/target_weights.py`.
 - `walk_forward.py`: rolls formation/test windows, freezes selected pairs per
   fold, forces fold-end targets flat, records pair turnover and fold metrics,
   and reports `pair_set_dsr` from selected pair-book trial Sharpes.
@@ -122,7 +142,7 @@ close/open matrix ──► rolling formation/test folds ──► train-only pa
 - This is the market-neutral research path. It does not use the single-symbol
   ensemble, because independent ticker forecasts are not an arbitrage book.
 
-## Scripts (`scripts/`) — the entry points
+## Scripts (`src/prism/scripts/`) — the entry points
 
 | Script | Role | Key output |
 |---|---|---|
@@ -152,6 +172,6 @@ installs console+rotating-file logging.
 - **Directional WFO is now portfolio-level by default.** A strategy claiming a
   directional ensemble result should point to the root target/fill/cost/equity
   artifacts and `claim_packet.json`, not only per-symbol logs.
-- **Arbitrage logic lives in `src/arbitrage/`**, not in the directional
+- **Arbitrage logic lives in `src/prism/arbitrage/`**, not in the directional
   ensemble. A strategy claiming arbitrage should produce cross-asset hedged
   target weights and portfolio-level PnL, not independent symbol signals.
