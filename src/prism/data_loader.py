@@ -11,6 +11,11 @@ import requests
 
 from prism.config import DATA_DIR, TWELVEDATA_API_KEY, TrainingConfig
 from prism.io.rate_limit import DataBudgetExhausted, TokenBucket
+from prism.io.store import (
+    DEFAULT_OVERLAP_BARS,
+    IncrementalBarStore,
+    SplitRewriteDetected,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -203,7 +208,13 @@ class DataLoader:
         return None
 
     def fetch_historical_data(
-        self, symbol: str, interval: str = "1d", start_date: Optional[str] = None, end_date: Optional[str] = None
+        self,
+        symbol: str,
+        interval: str = "1d",
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        *,
+        force_refresh: bool = False,
     ) -> pd.DataFrame:
         """Fetch historical price data from Twelvedata or cache.
 
@@ -212,6 +223,9 @@ class DataLoader:
             interval: Time interval (e.g., 1d, 1h)
             start_date: Start date (format: YYYY-MM-DD)
             end_date: End date (format: YYYY-MM-DD)
+            force_refresh: Skip the covering-cache lookup and go to the
+                network (used after a detected split back-rewrite, when every
+                cached file for the symbol holds a stale adjustment basis).
 
         Returns:
             DataFrame with historical price data
@@ -234,7 +248,9 @@ class DataLoader:
         # Look for a cached file whose *requested* range covers [start, end].
         # Coverage is checked by filename range so a narrow cache cannot
         # silently satisfy a wider request by returning a slice.
-        cache_hit = self._find_covering_cache(symbol, interval, start_date, end_date)
+        cache_hit = (
+            None if force_refresh else self._find_covering_cache(symbol, interval, start_date, end_date)
+        )
         if cache_hit is not None:
             try:
                 df = pd.read_parquet(cache_hit)
@@ -347,6 +363,106 @@ class DataLoader:
         except Exception as e:
             logger.error(f"Error fetching data for {symbol}: {e}")
             return pd.DataFrame()
+
+    def fetch_incremental(
+        self,
+        symbol: str,
+        interval: str = "1d",
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        *,
+        store: Optional[IncrementalBarStore] = None,
+        overlap_bars: int = DEFAULT_OVERLAP_BARS,
+    ) -> pd.DataFrame:
+        """Bars from the incremental store, delta-fetching only the missing tail.
+
+        The SPEC §7.0 read path, opt-in ahead of the R4 loader rework (the
+        legacy range-keyed ``fetch_historical_data`` stays the default). Per
+        (symbol, interval) the store holds one canonical series:
+
+        * empty store → seeded from every legacy range-cache file on disk
+          (no network) or, failing that, one full fetch;
+        * stored end < requested end → one delta fetch from ``overlap_bars``
+          before the stored end; the overlap validates the append;
+        * overlap disagreement (:class:`SplitRewriteDetected`) → one full
+          ``force_refresh`` fetch replaces the store — cached files hold the
+          stale adjustment basis and are deliberately bypassed.
+
+        An empty delta serves the stored series with a warning (stale is
+        visible, not silent); an empty *initial* fetch returns empty loudly.
+        Returns the stored series sliced to [start_date, end_date].
+        """
+        if not end_date:
+            end_date = datetime.now().strftime("%Y-%m-%d")
+        store = store or IncrementalBarStore(self.cache_dir / "store")
+
+        stored = store.read(symbol, interval)
+        if stored.empty:
+            seed = self._seed_from_legacy_cache(symbol, interval)
+            if seed is None or seed.empty:
+                seed = self.fetch_historical_data(symbol, interval, None, end_date)
+            if seed.empty:
+                logger.error(f"No bars available to seed the store for {symbol} {interval}")
+                return pd.DataFrame()
+            stored = store.replace(symbol, interval, seed)
+
+        end_ts = _tz_aware_filter(end_date)
+        if end_ts is not None and stored.index[-1] < end_ts:
+            overlap_start = stored.index[max(0, len(stored) - overlap_bars)]
+            tail = self.fetch_historical_data(
+                symbol, interval, overlap_start.strftime("%Y-%m-%d"), end_date
+            )
+            if tail.empty:
+                logger.warning(
+                    f"Delta fetch returned no bars for {symbol} {interval}; "
+                    f"serving stored series ending {stored.index[-1].date()} (possibly stale)"
+                )
+            else:
+                try:
+                    stored = store.append_tail(symbol, interval, tail)
+                except SplitRewriteDetected as e:
+                    logger.warning(f"{e}; refetching full history past the cache")
+                    full = self.fetch_historical_data(
+                        symbol, interval, None, end_date, force_refresh=True
+                    )
+                    if full.empty:
+                        logger.error(
+                            f"Full refetch after split rewrite failed for {symbol}; "
+                            "serving the PRE-REWRITE stored series"
+                        )
+                    else:
+                        stored = store.replace(symbol, interval, full)
+
+        start_ts = _tz_aware_filter(start_date)
+        out = stored
+        if start_ts is not None:
+            out = out[out.index >= start_ts]
+        if end_ts is not None:
+            out = out[out.index <= end_ts]
+        return out
+
+    def _seed_from_legacy_cache(self, symbol: str, interval: str) -> Optional[pd.DataFrame]:
+        """Union of every legacy range-cache file for (symbol, interval).
+
+        Free store seeding: the range-keyed files already on disk cover most
+        of history, so the first incremental read costs at most one delta
+        fetch instead of a full-history request. Later files win on
+        timestamp collisions (fresher adjustment basis).
+        """
+        frames = []
+        for path in sorted(self.cache_dir.glob(f"{symbol}_{interval}_*.parquet")):
+            if _parse_cache_range(path.name, symbol, interval) is None:
+                continue
+            try:
+                df = pd.read_parquet(path)
+                df.index = pd.to_datetime(df.index)
+                frames.append(_ensure_bar_tz(df))
+            except Exception as e:
+                logger.error(f"Error reading legacy cache {path}: {e}")
+        if not frames:
+            return None
+        merged = pd.concat(frames).sort_index()
+        return merged[~merged.index.duplicated(keep="last")]
 
     def fetch_dividends(
         self,
