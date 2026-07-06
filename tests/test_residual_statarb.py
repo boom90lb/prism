@@ -74,6 +74,41 @@ def _synthetic_panel(
 # ---------------------------------------------------------------------------
 
 
+def test_stale_rebalance_bench_degrosses_explicitly() -> None:
+    """When mid-window ineligibility thins the cross-section below the
+    re-estimation floor, rebalances skip and the old eigenportfolios stay in
+    force. Unbounded (frozen-v1 default) that means trading on arbitrarily
+    stale factors; ``max_stale_rebalances`` benches signal emission instead.
+    """
+    closes, volumes = _synthetic_panel(n_days=240)
+    # 5 of 8 names lose their liquidity eligibility from day 120: the 3
+    # survivors stay tradeable candidates, but 3 < n_factors + 2 = 4 means
+    # every subsequent rebalance is skipped.
+    volumes = volumes.copy()
+    volumes.iloc[120:, :5] = 0.001
+
+    unbounded = compute_residual_signal_panel(closes, volumes, _small_config())
+    bounded = compute_residual_signal_panel(
+        closes, volumes, _small_config(max_stale_rebalances=1)
+    )
+
+    assert unbounded.skipped_rebalances > 2
+    assert unbounded.n_stale_benched.sum() == 0
+    # Frozen-v1 behavior: signals keep flowing on the stale eigenportfolios.
+    assert np.isfinite(unbounded.sscore.iloc[140:].to_numpy()).any()
+
+    # Identical up to the collapse (the guard is inert while rebalances land).
+    pd.testing.assert_frame_equal(
+        bounded.sscore.iloc[:120], unbounded.sscore.iloc[:120]
+    )
+    benched = bounded.n_stale_benched.astype(bool)
+    assert benched.sum() > 0
+    # On benched days nothing is tradeable and no s-score is emitted.
+    assert not bounded.tradeable.to_numpy()[benched].any()
+    assert not np.isfinite(bounded.sscore.to_numpy()[benched]).any()
+    assert bounded.diagnostics()["stale_benched_days"] == float(benched.sum())
+
+
 def test_fit_ou_batch_recovers_ar1_parameters() -> None:
     rng = np.random.default_rng(42)
     n = 800
