@@ -632,9 +632,12 @@ def test_trial_ledger_roundtrip_and_corruption_handling(tmp_path) -> None:
     with ledger.open("a") as f:
         f.write("{not json}\n")
 
-    sharpes = _load_trial_sharpes(ledger)
+    sharpes, n_searched = _load_trial_sharpes(ledger)
     assert sharpes == [0.05, -0.01]
-    assert _load_trial_sharpes(tmp_path / "missing.jsonl") == []
+    # The NaN-Sharpe trial was searched and must count toward deflation N
+    # (SPEC N5); only the corrupt line is excluded (and warned about).
+    assert n_searched == 3
+    assert _load_trial_sharpes(tmp_path / "missing.jsonl") == ([], 0)
 
 
 def test_config_hash_is_stable_and_sensitive() -> None:

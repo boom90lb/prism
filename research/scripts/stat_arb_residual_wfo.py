@@ -3,7 +3,9 @@
 Flag defaults ARE the v1 frozen config. Every completed run appends one entry
 (config hash, OOS Sharpe) to a persistent JSONL trial ledger, and
 ``residual_set_dsr`` is the deflated Sharpe of *this* run's OOS returns against
-the ledger's full search history — so the first run reports NaN (one trial has
+the ledger's full search history — every searched trial counts toward the
+deflation N, degenerate NaN-Sharpe outcomes included (SPEC N5); dispersion is
+estimated from the finite Sharpes. The first run reports NaN (one trial has
 nothing to deflate against) and re-running with tweaked knobs automatically
 deflates against every previous attempt. Deleting the ledger and re-running is
 self-deception, not a fresh start.
@@ -27,7 +29,7 @@ from research.arbitrage.walk_forward import StatArbWalkForwardConfig
 from prism.config import ExecutionConfig, RESULTS_DIR
 from prism.data_loader import DataLoader
 from prism.logging_utils import configure_logging, get_symbol_logger
-from prism.validation.metrics import deflated_sharpe_ratio, deflated_sharpe_ratio_with_n
+from prism.validation.metrics import deflated_sharpe_ratio_with_n
 from prism.validation.trials import (
     current_git_commit,
     emit_research_claim_packet,
@@ -305,15 +307,22 @@ def _append_trial(ledger_path: Path, entry: dict[str, object]) -> None:
         f.write(json.dumps(entry, sort_keys=True, allow_nan=True) + "\n")
 
 
-def _load_trial_sharpes(ledger_path: Path) -> list[float]:
-    """All finite periodic OOS Sharpes recorded in the ledger.
+def _load_trial_sharpes(ledger_path: Path) -> tuple[list[float], int]:
+    """``(finite_sharpes, n_trials_searched)`` from the trial ledger.
+
+    Every parseable ledger entry counts toward ``n_trials_searched`` — a
+    NaN-Sharpe trial (a config that traded nothing, or blew up) was still a
+    searched configuration and must deflate the survivor (SPEC N5); only the
+    cross-trial *dispersion* is estimated from the finite Sharpes. Deflating
+    against the finite count alone sets the false-strategy benchmark too low.
 
     A corrupt line is logged loudly: silently dropping trials understates the
     search history and inflates the deflated Sharpe.
     """
     if not ledger_path.exists():
-        return []
+        return [], 0
     sharpes: list[float] = []
+    n_searched = 0
     for lineno, line in enumerate(ledger_path.read_text().splitlines(), start=1):
         line = line.strip()
         if not line:
@@ -323,10 +332,11 @@ def _load_trial_sharpes(ledger_path: Path) -> list[float]:
         except json.JSONDecodeError:
             logger.warning(f"Trial ledger {ledger_path} line {lineno} is corrupt; DSR will understate trials")
             continue
+        n_searched += 1
         sharpe = entry.get("oos_periodic_sharpe")
         if isinstance(sharpe, (int, float)) and np.isfinite(sharpe):
             sharpes.append(float(sharpe))
-    return sharpes
+    return sharpes, n_searched
 
 
 def main() -> None:
@@ -449,19 +459,22 @@ def main() -> None:
             "config": payload,
         },
     )
-    trial_sharpes = _load_trial_sharpes(ledger_path)
-    if args.design_trials > 0:
-        residual_set_dsr = deflated_sharpe_ratio_with_n(
-            result.portfolio.returns, np.asarray(trial_sharpes), args.design_trials
-        )
-    else:
-        residual_set_dsr = deflated_sharpe_ratio(result.portfolio.returns, np.asarray(trial_sharpes))
+    trial_sharpes, n_trials_searched = _load_trial_sharpes(ledger_path)
+    # Deflate against every *searched* trial (degenerate outcomes included),
+    # never only the finite-Sharpe survivors; design_trials can pre-register a
+    # still-larger grid but can never lower the count below the ledger's.
+    n_deflation = max(int(args.design_trials), n_trials_searched)
+    residual_set_dsr = deflated_sharpe_ratio_with_n(
+        result.portfolio.returns, np.asarray(trial_sharpes), n_deflation
+    )
 
     summary: dict[str, object] = {
         "output_dir": str(out_dir),
         "config_hash": config_hash,
         "trial_ledger": str(ledger_path),
-        "ledger_trials": len(trial_sharpes),
+        "ledger_trials": n_trials_searched,
+        "ledger_trials_finite_sharpe": len(trial_sharpes),
+        "deflation_trials": int(n_deflation),
         "design_trials": int(args.design_trials),
         "initial_capital": float(args.initial_capital),
         **result.summary,

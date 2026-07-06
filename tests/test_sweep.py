@@ -165,6 +165,28 @@ def test_summarize_selects_argmax_and_deflates() -> None:
     assert summary["sr_null"] is not None and summary["sr_null"] > 0.0
 
 
+def test_summarize_deflates_against_searched_not_finite_count() -> None:
+    """A NaN-Sharpe grid point was still searched: it must raise the
+    false-strategy benchmark (SPEC N5), not vanish from the deflation N.
+    """
+    finite = [_trial(i, mu=0.0005 * i, seed=i) for i in range(4)]
+    degenerate = [
+        TrialResult(
+            trial_id=100 + j, config={"mu": None}, sharpe=float("nan"),
+            combined_returns=pd.Series(np.zeros(10)),
+        )
+        for j in range(6)
+    ]
+    finite_only = summarize_sweep(finite)
+    with_degenerates = summarize_sweep(finite + degenerate)
+    assert with_degenerates["n_trials"] == 10
+    assert with_degenerates["n_valid"] == 4
+    # Same dispersion estimate, larger N -> strictly higher null benchmark
+    # and a strictly smaller deflated Sharpe.
+    assert with_degenerates["sr_null"] > finite_only["sr_null"]
+    assert with_degenerates["dsr"] < finite_only["dsr"]
+
+
 def test_summarize_single_valid_trial_dsr_none() -> None:
     trials = [_trial(0, mu=0.002, seed=1)]
     summary = summarize_sweep(trials)

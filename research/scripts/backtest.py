@@ -75,7 +75,7 @@ from prism.sentiment_analysis import SentimentAnalyzer
 from prism.logging_utils import configure_logging, get_symbol_logger
 from prism.trading import TradingStrategy
 from prism.validation.metrics import (
-    deflated_sharpe_ratio,
+    deflated_sharpe_ratio_with_n,
     periodic_sharpe,
     probability_backtest_overfitting,
 )
@@ -827,15 +827,19 @@ def run_portfolio_target_weight_wfo(
         initial_capital=trading_config.initial_capital,
     )
 
-    trial_sharpes = _load_trial_sharpes(args.trial_sharpes_json)
+    loaded_trials = _load_trial_sharpes(args.trial_sharpes_json)
     dsr_value = float("nan")
-    if trial_sharpes is not None:
+    n_trials_searched: Optional[int] = None
+    if loaded_trials is not None:
+        trial_sharpes, n_trials_searched = loaded_trials
         daily = result.returns.dropna()
-        dsr_value = deflated_sharpe_ratio(daily, trial_sharpes)
+        dsr_value = deflated_sharpe_ratio_with_n(
+            daily, trial_sharpes, n_trials_searched
+        )
         log_metrics_safe({
             "portfolio/dsr": float(dsr_value),
             "portfolio/selected_daily_sharpe": float(periodic_sharpe(daily)),
-            "portfolio/n_trials": float(trial_sharpes.size),
+            "portfolio/n_trials": float(n_trials_searched),
         })
 
     artifacts = {
@@ -907,8 +911,8 @@ def run_portfolio_target_weight_wfo(
     if getattr(args, "construct_style", "legacy") == "shared":
         packet_summary["claim_blocker"] = "train_serve_prediction_parity_required_for_directional_edge_claims"
         packet_min_obs = max(20, len(result.returns) + 1)
-    if trial_sharpes is not None:
-        packet_summary["n_trials"] = int(trial_sharpes.size)
+    if n_trials_searched is not None:
+        packet_summary["n_trials"] = int(n_trials_searched)
     packet = emit_research_claim_packet(
         output_root,
         filename=artifacts["claim_packet"],
@@ -971,8 +975,14 @@ def _build_returns_matrix(
     return df
 
 
-def _load_trial_sharpes(path: Optional[str]) -> Optional[np.ndarray]:
-    """Load the sweep's trial Sharpes for DSR; None when not supplied."""
+def _load_trial_sharpes(path: Optional[str]) -> Optional[Tuple[np.ndarray, int]]:
+    """Load the sweep's ``(finite_sharpes, n_trials_searched)`` for DSR.
+
+    ``n_trials_searched`` prefers the payload's ``n_trials`` (the sweep's
+    full grid, NaN-Sharpe points included — SPEC N5) and never drops below
+    the raw list length; only dispersion comes from the finite entries.
+    Returns None when not supplied or unusable.
+    """
     if not path:
         return None
     p = Path(path)
@@ -981,14 +991,15 @@ def _load_trial_sharpes(path: Optional[str]) -> Optional[np.ndarray]:
         return None
     with open(p) as f:
         payload = json.load(f)
-    arr = np.asarray(payload.get("trial_sharpes", []), dtype=float)
-    arr = arr[np.isfinite(arr)]
+    raw = np.asarray(payload.get("trial_sharpes", []), dtype=float)
+    arr = raw[np.isfinite(raw)]
+    n_searched = max(int(payload.get("n_trials", 0)), int(raw.size))
     if arr.size < 2:
         logger.warning(
             f"trial_sharpes has <2 finite entries ({arr.size}); DSR skipped"
         )
         return None
-    return arr
+    return arr, n_searched
 
 
 def _format_comparison_table(
@@ -1280,15 +1291,19 @@ def main():
                 # DSR: deflate the ensemble's daily Sharpe against the sweep's
                 # honestly-counted trial set, when one was supplied.
                 dsr_value = float("nan")
-                trial_sharpes = _load_trial_sharpes(args.trial_sharpes_json)
+                n_trials_searched: Optional[int] = None
+                loaded_trials = _load_trial_sharpes(args.trial_sharpes_json)
                 eq = ensemble_result["equity_curve"]
-                if trial_sharpes is not None and "daily_return" in eq:
+                if loaded_trials is not None and "daily_return" in eq:
+                    trial_sharpes, n_trials_searched = loaded_trials
                     daily = eq["daily_return"].dropna()
-                    dsr_value = deflated_sharpe_ratio(daily, trial_sharpes)
+                    dsr_value = deflated_sharpe_ratio_with_n(
+                        daily, trial_sharpes, n_trials_searched
+                    )
                     log_metrics_safe({
                         "dsr": float(dsr_value),
                         "selected_daily_sharpe": float(periodic_sharpe(daily)),
-                        "n_trials": float(trial_sharpes.size),
+                        "n_trials": float(n_trials_searched),
                     })
 
                 # Render + persist comparison table.
@@ -1392,8 +1407,8 @@ def main():
                     "universe_policy": "training_run_symbol_list",
                 }
                 packet_summary: Dict[str, Any] = {"dsr": dsr_value}
-                if trial_sharpes is not None:
-                    packet_summary["n_trials"] = int(trial_sharpes.size)
+                if n_trials_searched is not None:
+                    packet_summary["n_trials"] = int(n_trials_searched)
                 symbol_packet = emit_research_claim_packet(
                     symbol_out,
                     filename=symbol_artifacts["claim_packet"],

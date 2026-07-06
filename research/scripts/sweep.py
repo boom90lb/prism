@@ -69,8 +69,8 @@ from research.tracking.mlflow_utils import (
     log_params_safe,
 )
 from prism.validation.metrics import (
-    deflated_sharpe_ratio,
-    expected_max_sharpe,
+    deflated_sharpe_ratio_with_n,
+    expected_max_sharpe_with_n,
     periodic_sharpe,
     probabilistic_sharpe_ratio,
 )
@@ -149,8 +149,12 @@ def summarize_sweep(trials: List[TrialResult]) -> Dict[str, Any]:
     """Select the best trial and deflate its Sharpe over the full trial set.
 
     Selection is argmax of the periodic Sharpe; ``sr_obs`` is that same
-    selected trial's daily Sharpe (so DSR corrects the selection bias). DSR
-    is NaN when <2 trials produced a finite Sharpe (nothing to deflate).
+    selected trial's daily Sharpe (so DSR corrects the selection bias). The
+    deflation N is the number of trials *searched* — a grid point that
+    produced a NaN Sharpe (traded nothing, blew up) was still searched and
+    must deflate the survivor (SPEC N5); only the cross-trial dispersion is
+    estimated from the finite Sharpes. DSR is NaN when <2 trials produced a
+    finite Sharpe (no dispersion estimate).
     """
     valid = [t for t in trials if np.isfinite(t.sharpe)]
     trial_table = [
@@ -172,9 +176,11 @@ def summarize_sweep(trials: List[TrialResult]) -> Dict[str, Any]:
 
     best = max(valid, key=lambda t: t.sharpe)
     trial_sharpes = np.array([t.sharpe for t in valid], dtype=float)
-    sr_null = expected_max_sharpe(trial_sharpes)
+    sr_null = expected_max_sharpe_with_n(trial_sharpes, len(trials))
     psr = probabilistic_sharpe_ratio(best.combined_returns, sr_benchmark=0.0)
-    dsr = deflated_sharpe_ratio(best.combined_returns, trial_sharpes)
+    dsr = deflated_sharpe_ratio_with_n(
+        best.combined_returns, trial_sharpes, len(trials)
+    )
 
     def _f(x: float) -> Optional[float]:
         return float(x) if np.isfinite(x) else None
