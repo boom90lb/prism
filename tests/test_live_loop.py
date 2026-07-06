@@ -1,0 +1,298 @@
+"""live/ durable-state protocol (SPEC §7.7, the R2 paper-instrument core).
+
+Pins the crash window the module exists for: orders decided at close *t*
+survive a process restart between decision and fill — resumed, never lost,
+never double-submitted, never re-decided — and every fill lands in the
+append-only I-9 ledger beside its decision-close reference price.
+"""
+
+from __future__ import annotations
+
+import json
+
+import numpy as np
+import pandas as pd
+import pytest
+
+from prism.live import (
+    Broker,
+    DuplicateOrder,
+    Fill,
+    LiveLoopContext,
+    LoopState,
+    Order,
+    StateStore,
+    decide_and_submit,
+    read_fills_ledger,
+    settle,
+    targets_to_orders,
+)
+
+
+class FakeBroker(Broker):
+    """In-memory venue: idempotent ids, fills at a settable open price."""
+
+    def __init__(self, cash: float = 10_000.0) -> None:
+        self._cash = cash
+        self._positions: dict[str, float] = {}
+        self.orders: dict[str, Order] = {}
+        self.submit_calls = 0
+        self.fail_after_n_submits: int | None = None
+        self.open_prices: dict[str, float] = {}
+
+    def positions(self) -> dict[str, float]:
+        return dict(self._positions)
+
+    def cash(self) -> float:
+        return self._cash
+
+    def submit(self, order: Order) -> None:
+        if self.fail_after_n_submits is not None and self.submit_calls >= self.fail_after_n_submits:
+            raise ConnectionError("simulated venue outage")
+        if order.client_order_id in self.orders:
+            raise DuplicateOrder(order.client_order_id)
+        self.submit_calls += 1
+        self.orders[order.client_order_id] = order
+
+    def submitted_order_ids(self) -> set[str]:
+        return set(self.orders)
+
+    def fills_for(self, client_order_ids: set[str]) -> list[Fill]:
+        fills = []
+        for oid in sorted(client_order_ids & set(self.orders)):
+            order = self.orders[oid]
+            price = self.open_prices.get(order.symbol, order.reference_price)
+            self._positions[order.symbol] = self._positions.get(order.symbol, 0.0) + order.qty
+            self._cash -= order.qty * price
+            fills.append(
+                Fill(
+                    client_order_id=oid,
+                    symbol=order.symbol,
+                    qty=order.qty,
+                    price=price,
+                    filled_bar="fill-bar",
+                )
+            )
+        return fills
+
+
+@pytest.fixture()
+def ctx(tmp_path):
+    return LiveLoopContext(
+        store=StateStore(tmp_path / "state.json"),
+        broker=FakeBroker(),
+        fills_ledger=tmp_path / "fills.jsonl",
+    )
+
+
+def _targets(**weights: float) -> pd.Series:
+    return pd.Series(weights, dtype=float)
+
+
+_PRICES = pd.Series({"AAA": 100.0, "BBB": 50.0})
+
+
+# ---------------------------------------------------------------------------
+# StateStore
+# ---------------------------------------------------------------------------
+
+
+def test_state_round_trip_atomic(tmp_path) -> None:
+    store = StateStore(tmp_path / "s.json")
+    assert store.load() is None  # fresh loop
+    state = LoopState(
+        positions={"AAA": 10.0},
+        cash=123.45,
+        pending_orders=[Order("d1:AAA", "AAA", 5.0, "d1", 100.0)],
+        pending_decision_bar="d1",
+        last_settled_bar="d0",
+    )
+    store.save(state)
+    assert not (tmp_path / "s.json.tmp").exists()  # atomic rename left no temp
+    loaded = store.load()
+    assert loaded == state
+    assert loaded.pending_orders[0].reference_price == 100.0
+
+
+def test_corrupt_state_refuses_to_start_flat(tmp_path) -> None:
+    path = tmp_path / "s.json"
+    path.write_text("{ not json", encoding="utf-8")
+    with pytest.raises(ValueError, match="refusing to start flat"):
+        StateStore(path).load()
+
+
+def test_wrong_schema_version_raises(tmp_path) -> None:
+    path = tmp_path / "s.json"
+    path.write_text(json.dumps({"schema_version": 99}), encoding="utf-8")
+    with pytest.raises(ValueError, match="schema_version"):
+        StateStore(path).load()
+
+
+# ---------------------------------------------------------------------------
+# targets_to_orders
+# ---------------------------------------------------------------------------
+
+
+def test_targets_diff_against_held_shares() -> None:
+    orders = targets_to_orders(
+        _targets(AAA=0.5, BBB=-0.2),
+        positions={"AAA": 30.0},
+        prices=_PRICES,
+        equity=10_000.0,
+        decision_bar="2026-07-06",
+    )
+    by_symbol = {o.symbol: o for o in orders}
+    # AAA: target 0.5*10000/100 = 50 shares, held 30 -> buy 20.
+    assert by_symbol["AAA"].qty == pytest.approx(20.0)
+    # BBB: target -0.2*10000/50 = -40 shares, held 0 -> sell 40.
+    assert by_symbol["BBB"].qty == pytest.approx(-40.0)
+    assert by_symbol["AAA"].client_order_id == "2026-07-06:AAA"
+    assert by_symbol["AAA"].reference_price == 100.0
+
+
+def test_nan_target_holds_and_dust_dropped() -> None:
+    orders = targets_to_orders(
+        _targets(AAA=np.nan, BBB=0.0001),
+        positions={"AAA": 30.0},
+        prices=_PRICES,
+        equity=10_000.0,
+        decision_bar="d",
+        min_order_notional=5.0,
+    )
+    assert orders == []  # NaN = hold; BBB order is $1 of stock, under the floor
+
+
+def test_missing_price_for_target_raises() -> None:
+    with pytest.raises(ValueError, match="no usable decision price"):
+        targets_to_orders(
+            _targets(ZZZ=0.1), positions={}, prices=_PRICES, equity=1_000.0, decision_bar="d"
+        )
+
+
+# ---------------------------------------------------------------------------
+# decide_and_submit: write-ahead + idempotent resume
+# ---------------------------------------------------------------------------
+
+
+def test_decision_persisted_before_submit_and_submitted(ctx) -> None:
+    submitted = decide_and_submit(ctx, "2026-07-06", _targets(AAA=0.5), _PRICES)
+    assert len(submitted) == 1
+    state = ctx.store.load()
+    assert state.pending_decision_bar == "2026-07-06"
+    assert {o.client_order_id for o in state.pending_orders} == {"2026-07-06:AAA"}
+    assert ctx.broker.submitted_order_ids() == {"2026-07-06:AAA"}
+
+
+def test_crash_between_persist_and_submit_resumes_without_redeciding(ctx) -> None:
+    ctx.broker.fail_after_n_submits = 1  # accept AAA, die before BBB
+    with pytest.raises(ConnectionError):
+        decide_and_submit(ctx, "d1", _targets(AAA=0.4, BBB=0.4), _PRICES)
+    assert ctx.broker.submitted_order_ids() == {"d1:AAA"}  # partial submit happened
+
+    # "Restart": same bar, DIFFERENT targets — the persisted decision wins.
+    ctx.broker.fail_after_n_submits = None
+    resumed = decide_and_submit(ctx, "d1", _targets(AAA=0.9), _PRICES)
+    assert {o.client_order_id for o in resumed} == {"d1:AAA", "d1:BBB"}
+    assert ctx.broker.submitted_order_ids() == {"d1:AAA", "d1:BBB"}
+    # AAA was not re-submitted (still exactly one accepted order, original qty).
+    assert ctx.broker.orders["d1:AAA"].qty == pytest.approx(0.4 * 10_000 / 100.0)
+    assert ctx.broker.submit_calls == 2
+
+
+def test_new_bar_with_unsettled_pending_raises(ctx) -> None:
+    decide_and_submit(ctx, "d1", _targets(AAA=0.5), _PRICES)
+    with pytest.raises(RuntimeError, match="unsettled"):
+        decide_and_submit(ctx, "d2", _targets(AAA=0.5), _PRICES)
+
+
+def test_redeciding_a_settled_bar_raises(ctx) -> None:
+    decide_and_submit(ctx, "d1", _targets(AAA=0.5), _PRICES)
+    settle(ctx, "d2")
+    with pytest.raises(RuntimeError, match="not after last settled"):
+        decide_and_submit(ctx, "d1", _targets(AAA=0.5), _PRICES)
+
+
+# ---------------------------------------------------------------------------
+# settle: fills ledgered with reference price, state re-anchored
+# ---------------------------------------------------------------------------
+
+
+def test_settle_ledgers_fills_and_reanchors_state(ctx) -> None:
+    decide_and_submit(ctx, "d1", _targets(AAA=0.5), _PRICES)
+    ctx.broker.open_prices["AAA"] = 101.0  # next-open fill, 1.0 above reference
+
+    fills = settle(ctx, "d2")
+    assert len(fills) == 1 and fills[0].price == 101.0
+
+    ledger = read_fills_ledger(ctx.fills_ledger)
+    assert len(ledger) == 1
+    row = ledger.iloc[0]
+    assert row["reference_price"] == 100.0
+    assert row["fill_price"] == 101.0  # arrival slippage is recoverable (I-9)
+    assert row["decision_bar"] == "d1"
+
+    state = ctx.store.load()
+    assert state.pending_orders == [] and state.pending_decision_bar is None
+    assert state.last_settled_bar == "d2"
+    assert state.positions["AAA"] == pytest.approx(50.0)
+    assert state.cash == pytest.approx(10_000.0 - 50.0 * 101.0)
+
+    # The loop continues: next decision diffs against the filled book.
+    # Marked at the fill price the book shows no MTM move: equity is
+    # cash (10000 - 50*101) + 50*101 = exactly 10000.
+    orders = decide_and_submit(ctx, "d3", _targets(AAA=0.5), pd.Series({"AAA": 101.0}))
+    expected_delta = 0.5 * 10_000.0 / 101.0 - 50.0
+    assert len(orders) == 1
+    assert orders[0].qty == pytest.approx(expected_delta)
+
+
+def test_settle_with_missing_fill_raises(ctx) -> None:
+    decide_and_submit(ctx, "d1", _targets(AAA=0.5), _PRICES)
+    del ctx.broker.orders["d1:AAA"]  # the venue lost/rejected it
+    with pytest.raises(RuntimeError, match="no fill at settle"):
+        settle(ctx, "d2")
+
+
+def test_settle_without_pending_is_noop(ctx) -> None:
+    assert settle(ctx, "d1") == []
+    assert read_fills_ledger(ctx.fills_ledger).empty
+
+
+def test_ledger_appends_across_days(ctx) -> None:
+    for bar, nxt in [("d1", "d2"), ("d3", "d4")]:
+        decide_and_submit(ctx, bar, _targets(AAA=0.5 if bar == "d1" else 0.2), _PRICES)
+        settle(ctx, nxt)
+    ledger = read_fills_ledger(ctx.fills_ledger)
+    assert list(ledger["decision_bar"]) == ["d1", "d3"]
+
+
+# ---------------------------------------------------------------------------
+# reconcile: broker truth wins, loudly
+# ---------------------------------------------------------------------------
+
+
+def test_reconcile_adopts_broker_truth_with_warning(ctx, caplog) -> None:
+    import logging
+
+    ctx.store.save(LoopState(positions={"AAA": 999.0}, cash=1.0))
+    ctx.broker._positions = {"AAA": 10.0}
+    with caplog.at_level(logging.WARNING):
+        decide_and_submit(ctx, "d1", _targets(AAA=0.0), pd.Series({"AAA": 100.0}))
+    assert "reconcile" in caplog.text
+    state = ctx.store.load()
+    # The decision was sized off broker truth (10 shares), not the stale 999.
+    assert [o.qty for o in state.pending_orders] == [pytest.approx(-10.0)]
+
+
+# ---------------------------------------------------------------------------
+# Order validation
+# ---------------------------------------------------------------------------
+
+
+def test_order_validation() -> None:
+    with pytest.raises(ValueError, match="zero-qty"):
+        Order("id", "AAA", 0.0, "d", 100.0)
+    with pytest.raises(ValueError, match="reference_price"):
+        Order("id", "AAA", 1.0, "d", 0.0)
+    with pytest.raises(ValueError, match="client_order_id"):
+        Order("", "AAA", 1.0, "d", 100.0)
