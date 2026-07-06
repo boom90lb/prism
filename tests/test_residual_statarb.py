@@ -439,6 +439,33 @@ def test_walk_config_rejects_negative_no_trade_band() -> None:
         StatArbWalkForwardConfig(no_trade_band=-0.1)
 
 
+def test_online_band_hysteresis_tracks_actually_held_weights() -> None:
+    """The WFO band now runs the online form (step_no_trade_band) with the
+    post-cap row fed back as held state — the same semantics a live loop has.
+    The retired batch+recap form compared tomorrow's target against weights
+    the book never held (pre-recap), the divergence machine-checked in
+    formal/PrismFormal/Band.lean.
+    """
+    from research.arbitrage.residual_walk_forward import _online_banded_targets
+
+    cfg = StatArbWalkForwardConfig(max_gross=1.0, max_symbol_abs_weight=1.0)
+    idx = pd.date_range("2024-01-01", periods=3, freq="B")
+    targets = pd.DataFrame(
+        [[0.8, 0.0], [0.8, 0.6], [0.65, 0.42]], index=idx, columns=["A", "B"]
+    )
+    out = _online_banded_targets(targets, 0.1, cfg)
+
+    # Day 0: adopt A, under cap.
+    assert out.iloc[0].tolist() == [0.8, 0.0]
+    # Day 1: adopt B -> gross 1.4 -> proportional recap; the *scaled* row is
+    # what the book holds.
+    assert out.iloc[1].to_numpy() == pytest.approx([0.8 / 1.4, 0.6 / 1.4])
+    # Day 2: both targets sit within the band of the scaled held weights, so
+    # the book does not move. The batch+recap form would have traded here
+    # (|0.65 - 0.8| and |0.42 - 0.6| both exceed the band).
+    assert out.iloc[2].to_numpy() == pytest.approx(out.iloc[1].to_numpy())
+
+
 def test_no_trade_band_cuts_turnover_in_wfo() -> None:
     closes, volumes = _synthetic_panel()
     base = _run_wfo(closes, volumes)
