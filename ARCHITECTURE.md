@@ -23,8 +23,12 @@ covers operational gotchas.
 > (outside the wheel; `research` imports `prism`, never the reverse), and the
 > stat-arb signal core promoted to `src/prism/residual/`. New v0.3.0 modules:
 > `validation/{metrics breadth diagnostics, capacity}`, `execution/participation`,
-> `portfolio.step_no_trade_band`, `regime/`. The map below describes this wiring
-> as it stands after the quarantine.
+> `portfolio.step_no_trade_band`, `regime/`. R1 adds `signal/` — the typed
+> Signal contract (`SPEC.md §7.1`) plus the JAX-free forecast ensemble node
+> (`EnsembleSignalNode`: XGBoost + per-bar-causal ARIMA, standardized
+> `E[r_h]/(σ√h)` scores, conformal score band); the legacy `models/` path below
+> still serves the research CLIs until vocabulary convergence completes. The
+> map below describes this wiring as it stands after the quarantine.
 
 ## Data flow
 
