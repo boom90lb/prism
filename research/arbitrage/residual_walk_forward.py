@@ -26,7 +26,7 @@ from prism.execution.target_weights import PortfolioBacktestResult, backtest_tar
 from prism.residual.residual import (
     ResidualSignalPanel,
     compute_residual_signal_panel,
-    run_state_machine,
+    next_states,
 )
 from prism.portfolio.construct import (
     build_residual_book_row,
@@ -127,6 +127,23 @@ def _fold_cost_share(result: PortfolioBacktestResult, test_index: pd.Index) -> f
     return costs / max(abs(gross_pnl), 1e-9)
 
 
+def _smoothed_sscores(sscore: pd.DataFrame, config: ResidualStatArbConfig) -> np.ndarray:
+    """Causal EWMA of the s-score panel (demotion_design.md §2); 0 = raw scores.
+
+    Recursive form (``adjust=False``) so a live incremental EWMA reproduces it
+    exactly; decay is per bar regardless of gaps (``ignore_na=False``), and the
+    smoothed panel is re-masked to the raw panel's NaNs — smoothing carries
+    state across an invalid-OU gap but never resurrects a day that had no
+    valid fit.
+    """
+    if config.sscore_ewma_halflife_bars <= 0.0:
+        return sscore.to_numpy()
+    smoothed = sscore.ewm(
+        halflife=config.sscore_ewma_halflife_bars, adjust=False, ignore_na=False
+    ).mean()
+    return smoothed.where(sscore.notna()).to_numpy()
+
+
 def _online_banded_targets(
     targets: pd.DataFrame,
     band: float | pd.Series,
@@ -134,6 +151,7 @@ def _online_banded_targets(
     *,
     dollar_volume: pd.DataFrame | None = None,
     aum: float = 1.0,
+    decision_every: int = 1,
 ) -> pd.DataFrame:
     """Apply the no-trade band with online (held-state) semantics over a fold.
 
@@ -160,6 +178,12 @@ def _online_banded_targets(
     held = pd.Series(0.0, index=targets.columns)
     out = np.empty((len(targets.index), len(targets.columns)))
     for i, day in enumerate(targets.index):
+        if i % decision_every != 0:
+            # Non-decision bar (demotion_design.md §2): no band step, no gate,
+            # no trade — the emitted row repeats the held book exactly, which
+            # the weight-space backtest prices as zero trade.
+            out[i] = held.to_numpy(dtype=float)
+            continue
         stepped = step_no_trade_band(held, targets.loc[day], band)
         capped = cap_book(
             stepped.to_frame().T,
@@ -197,12 +221,26 @@ def _windowed_targets(
     One construction for both consumers: the test-window build, and the
     closed-form band's formation-window replay — which estimates target-change
     variance on formation bars only and feeds NOTHING forward (r2_design.md §1).
+
+    ``signal_config.decision_every`` restricts state-machine decisions to bars
+    where ``(t - window.start) % decision_every == 0`` (the first bar of every
+    window is a decision bar); between decision bars the target row is frozen
+    at the last decision row (demotion_design.md §2). At the default 1 every
+    bar is a decision bar and this is the frozen-v1 path bit-for-bit. Both
+    consumers share the rule, so the closed-form band's ``sigma2_target``
+    reflects cadence-consistent target changes.
     """
-    states = run_state_machine(sscores[window], tradeable[window], signal_config)
+    s_win = sscores[window]
+    ok_win = tradeable[window]
+    current = np.zeros(len(symbols), dtype=np.int8)
     rows = np.zeros((window.stop - window.start, len(symbols)))
     for offset, t in enumerate(range(window.start, window.stop)):
+        if offset % signal_config.decision_every != 0:
+            rows[offset] = rows[offset - 1]
+            continue
+        current = next_states(current, s_win[offset], ok_win[offset], signal_config)
         q_idx = int(panel.q_index[t])
-        if q_idx < 0 or not states[offset].any():
+        if q_idx < 0 or not current.any():
             continue
         size_scale = None
         if signal_config.sizing_mode == "strength":
@@ -212,7 +250,7 @@ def _windowed_targets(
             entry = min(abs(signal_config.s_entry_long), abs(signal_config.s_entry_short))
             size_scale = strength_multiplier(sscores[t], entry, cap=_SIZE_CAP)
         rows[offset] = build_residual_book_row(
-            states[offset],
+            current,
             panel.beta[t],
             panel.eigenportfolios[q_idx],
             signal_config.position_unit,
@@ -283,7 +321,10 @@ def run_residual_stat_arb_walk_forward(
     full_targets = _empty_targets(closes.index, symbols)
     fold_shells: list[dict[str, object]] = []
     all_test_index = pd.Index([])
-    sscores = panel.sscore.to_numpy()
+    # Smoothed once for the whole panel (causal, so pre-window history is fair
+    # game); the state machine AND strength sizing both consume the smoothed
+    # scores (demotion_design.md §2).
+    sscores = _smoothed_sscores(panel.sscore, signal_config)
     tradeable = panel.tradeable.to_numpy()
 
     raw_dollar_volume = closes * vols
@@ -354,6 +395,7 @@ def run_residual_stat_arb_walk_forward(
                 walk_config,
                 dollar_volume=None if adv_trailing is None else adv_trailing.loc[test_index],
                 aum=initial_capital,
+                decision_every=signal_config.decision_every,
             )
         targets = _force_fold_flat(targets)
 

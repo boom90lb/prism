@@ -96,6 +96,22 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--position_unit", type=float, default=0.02)
     p.add_argument("--sizing_mode", type=str, default="unit", choices=["unit", "strength"])
     p.add_argument(
+        "--decision_every",
+        type=int,
+        default=1,
+        help="State-machine decisions and trading every k-th bar of each window "
+        "(demotion_design.md §2). 1 = frozen-v1 daily; any other value is a "
+        "counted demotion-budget trial.",
+    )
+    p.add_argument(
+        "--sscore_ewma_halflife",
+        type=float,
+        default=0.0,
+        help="Causal EWMA halflife (bars) on s-scores before the state machine "
+        "(demotion_design.md §2). 0 = off (frozen v1); any other value is a "
+        "counted demotion-budget trial.",
+    )
+    p.add_argument(
         "--volume_time",
         action="store_true",
         help="A-L §6 trading-time ablation: weight residual returns by typical/actual volume. "
@@ -423,6 +439,8 @@ def main() -> None:
         factor_mode=args.factor_mode,
         etf_symbols=tuple(etf_syms),
         sizing_mode=args.sizing_mode,
+        decision_every=args.decision_every,
+        sscore_ewma_halflife_bars=args.sscore_ewma_halflife,
     )
     walk_cfg = StatArbWalkForwardConfig(
         formation_bars=args.formation_bars,

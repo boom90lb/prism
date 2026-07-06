@@ -49,6 +49,13 @@ class ResidualStatArbConfig:
     default) allows this indefinitely; an integer ``k`` benches signal
     emission (explicit de-gross, SPEC N7) after more than ``k`` consecutive
     skipped rebalances, until a rebalance succeeds again.
+
+    ``decision_every`` and ``sscore_ewma_halflife_bars`` are the pre-registered
+    demotion knobs (docs/demotion_design.md §2): state-machine decisions and
+    trading restricted to every k-th bar of each walk-forward window, and a
+    causal EWMA of the s-score panel before the state machine. The defaults
+    (1, 0.0) are frozen-v1 parity; any other value is a counted demotion-budget
+    trial.
     """
 
     corr_window: int = 252
@@ -71,6 +78,8 @@ class ResidualStatArbConfig:
     etf_symbols: tuple[str, ...] = ()
     sizing_mode: str = "unit"
     max_stale_rebalances: int | None = None
+    decision_every: int = 1
+    sscore_ewma_halflife_bars: float = 0.0
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "etf_symbols", tuple(str(s).upper() for s in self.etf_symbols))
@@ -125,6 +134,15 @@ class ResidualStatArbConfig:
             raise ValueError("etf_symbols must be empty unless factor_mode='etf'")
         if self.sizing_mode not in ("unit", "strength"):
             raise ValueError(f"sizing_mode must be 'unit' or 'strength', got {self.sizing_mode!r}")
+        if self.decision_every < 1:
+            raise ValueError(f"decision_every must be >= 1, got {self.decision_every}")
+        if not (self.sscore_ewma_halflife_bars >= 0.0) or not np.isfinite(
+            self.sscore_ewma_halflife_bars
+        ):
+            raise ValueError(
+                "sscore_ewma_halflife_bars must be a finite value >= 0 (0 = off), "
+                f"got {self.sscore_ewma_halflife_bars}"
+            )
         if self.max_stale_rebalances is not None and self.max_stale_rebalances < 1:
             raise ValueError(
                 f"max_stale_rebalances must be None (unbounded) or >= 1, got {self.max_stale_rebalances}"

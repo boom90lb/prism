@@ -680,3 +680,139 @@ def test_fold_dict_round_trips_through_json() -> None:
     result = _run_wfo(closes, volumes)
     payload = [residual_fold_to_dict(f) for f in result.folds]
     assert json.loads(json.dumps(payload, allow_nan=True)) is not None
+
+
+# ---------------------------------------------------------------------------
+# Demotion mechanics (docs/demotion_design.md §2): decision cadence + s-EWMA
+# ---------------------------------------------------------------------------
+
+
+def _run_wfo_signal(
+    closes: pd.DataFrame,
+    volumes: pd.DataFrame,
+    *,
+    walk_overrides: dict | None = None,
+    **signal_overrides: object,
+):
+    walk: dict = dict(formation_bars=80, test_bars=40, min_test_bars=20)
+    walk.update(walk_overrides or {})
+    return run_residual_stat_arb_walk_forward(
+        closes,
+        closes.copy(),
+        volumes,
+        signal_config=_small_config(**signal_overrides),
+        walk_config=StatArbWalkForwardConfig(**walk),
+        execution=ExecutionConfig(spread_bps=0, commission_bps=0, slippage_coeff=0, borrow_rate_bps_annual=0),
+    )
+
+
+def test_demotion_knob_validation() -> None:
+    with pytest.raises(ValueError, match="decision_every"):
+        _small_config(decision_every=0)
+    with pytest.raises(ValueError, match="sscore_ewma_halflife_bars"):
+        _small_config(sscore_ewma_halflife_bars=-1.0)
+    with pytest.raises(ValueError, match="sscore_ewma_halflife_bars"):
+        _small_config(sscore_ewma_halflife_bars=float("inf"))
+
+
+def test_demotion_defaults_are_parity() -> None:
+    closes, volumes = _synthetic_panel()
+    default = _run_wfo(closes, volumes)
+    explicit = _run_wfo_signal(closes, volumes, decision_every=1, sscore_ewma_halflife_bars=0.0)
+    assert default.summary == explicit.summary
+
+
+def _assert_frozen_between_decision_bars(result, closes: pd.DataFrame, k: int) -> None:
+    """Emitted targets may move only on decision bars and the fold-end flatten.
+
+    Fold geometry is read off ``result.folds`` (the last fold can be short a
+    bar), and the final 2 rows of each fold are the ``_force_fold_flat`` tail.
+    """
+    tw = result.portfolio.target_weights
+    pos = {d: i for i, d in enumerate(closes.index)}
+    for fold in result.folds:
+        rows = closes.index[pos[fold.test_start] : pos[fold.test_end] + 1]
+        arr = tw.reindex(rows).to_numpy()
+        for offset in range(1, len(arr) - 2):
+            if offset % k != 0:
+                assert np.array_equal(arr[offset], arr[offset - 1]), (
+                    f"target moved on non-decision bar {offset} of fold {fold.fold}"
+                )
+
+
+def test_decision_cadence_freezes_targets_between_decision_bars() -> None:
+    closes, volumes = _synthetic_panel()
+    result = _run_wfo_signal(closes, volumes, decision_every=5)
+    _assert_frozen_between_decision_bars(result, closes, 5)
+
+
+def test_decision_cadence_freezes_through_online_band_and_gate() -> None:
+    closes, volumes = _synthetic_panel()
+    result = _run_wfo_signal(
+        closes,
+        volumes,
+        decision_every=5,
+        walk_overrides=dict(no_trade_band=0.02, max_participation=0.05),
+    )
+    _assert_frozen_between_decision_bars(result, closes, 5)
+
+
+def test_decision_cadence_cuts_turnover() -> None:
+    closes, volumes = _synthetic_panel()
+    daily = _run_wfo_signal(closes, volumes)
+    weekly = _run_wfo_signal(closes, volumes, decision_every=5)
+    assert weekly.summary["avg_turnover"] <= daily.summary["avg_turnover"]
+    assert weekly.summary["avg_turnover"] > 0
+
+
+def test_demotion_stack_smoke_runs_end_to_end() -> None:
+    # The D2/D5 configuration shape: trial-3 walk stack + weekly cadence + EWMA.
+    closes, volumes = _synthetic_panel()
+    result = _run_wfo_signal(
+        closes,
+        volumes,
+        decision_every=5,
+        sscore_ewma_halflife_bars=5.0,
+        walk_overrides=dict(band_mode="closed_form", spread_mode="bucket", max_participation=0.05),
+    )
+    assert (result.portfolio.costs["gross"] <= 1.0 + 1e-9).all()
+    assert "oos_periodic_sharpe" in result.summary
+
+
+def test_sscore_ewma_smoothing_properties() -> None:
+    from research.arbitrage.residual_walk_forward import _smoothed_sscores
+
+    idx = pd.date_range("2024-01-01", periods=5, freq="B")
+    raw = pd.DataFrame(
+        {"A": [1.0, np.nan, 0.0, 0.0, 0.0], "B": [2.0, 2.0, 2.0, 2.0, 2.0]}, index=idx
+    )
+    # halflife 0 = off: bit-identical to the raw panel.
+    off = _smoothed_sscores(raw, _small_config())
+    assert np.array_equal(off, raw.to_numpy(), equal_nan=True)
+
+    sm = _smoothed_sscores(raw, _small_config(sscore_ewma_halflife_bars=1.0))
+    # A NaN day (invalid OU fit) stays NaN — smoothing never resurrects it...
+    assert np.isnan(sm[1, 0])
+    # ...but EWMA state carries across the gap: the day after still remembers
+    # the pre-gap score (raw would be 0.0 exactly).
+    assert sm[2, 0] > 0.0
+    # A constant series is a fixed point of the recursive form.
+    assert sm[:, 1] == pytest.approx(np.full(5, 2.0))
+    # Causal: appending future bars never changes past smoothed values.
+    longer = pd.concat(
+        [raw, pd.DataFrame({"A": [5.0], "B": [5.0]}, index=[idx[-1] + pd.Timedelta(days=1)])]
+    )
+    sm_longer = _smoothed_sscores(longer, _small_config(sscore_ewma_halflife_bars=1.0))
+    assert np.array_equal(sm_longer[:5], sm, equal_nan=True)
+
+
+def test_demotion_knobs_change_config_hash() -> None:
+    # A knob that moved without moving the config hash would be an uncounted
+    # trial — the exact defect class SPEC N5 bans.
+    import dataclasses
+
+    base = {"signal": dataclasses.asdict(_small_config())}
+    cadence = {"signal": dataclasses.asdict(_small_config(decision_every=5))}
+    ewma = {"signal": dataclasses.asdict(_small_config(sscore_ewma_halflife_bars=5.0))}
+    assert _config_hash(base) != _config_hash(cadence)
+    assert _config_hash(base) != _config_hash(ewma)
