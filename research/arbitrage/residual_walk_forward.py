@@ -28,10 +28,10 @@ from prism.residual.residual import (
     run_state_machine,
 )
 from prism.portfolio.construct import (
-    apply_no_trade_band,
     build_residual_book_row,
     cap_book,
     cost_aware_band,
+    step_no_trade_band,
     strength_multiplier,
 )
 from research.arbitrage.walk_forward import (
@@ -94,6 +94,38 @@ def _fold_cost_share(result: PortfolioBacktestResult, test_index: pd.Index) -> f
     costs = float(result.costs.loc[rows, "total"].sum())
     gross_pnl = float((result.returns.loc[rows] + result.costs.loc[rows, "total"]).sum())
     return costs / max(abs(gross_pnl), 1e-9)
+
+
+def _online_banded_targets(
+    targets: pd.DataFrame,
+    band: float | pd.Series,
+    walk_config: StatArbWalkForwardConfig,
+) -> pd.DataFrame:
+    """Apply the no-trade band with online (held-state) semantics over a fold.
+
+    Each day's fresh target is banded against the weights the book actually
+    holds, via ``step_no_trade_band`` — the same call a live daily loop makes
+    (SPEC §7.3) — and the post-cap row is fed back as the next day's held
+    state. The retired batch form banded the whole frame first and re-capped
+    after, so its hysteresis state tracked weights the book never held; the
+    related batch-replay-from-zero divergence is machine-checked in
+    ``formal/PrismFormal/Band.lean``. The gross/per-symbol caps are enforced
+    last because they are hard risk limits: a capped scale-down is visible to
+    the band tomorrow as the true held book. Folds genuinely start flat, so
+    the held state starts at zero.
+    """
+    held = pd.Series(0.0, index=targets.columns)
+    out = np.empty((len(targets.index), len(targets.columns)))
+    for i, day in enumerate(targets.index):
+        stepped = step_no_trade_band(held, targets.loc[day], band)
+        capped = cap_book(
+            stepped.to_frame().T,
+            walk_config.max_gross,
+            walk_config.max_symbol_abs_weight,
+        ).iloc[0]
+        held = capped.reindex(targets.columns).fillna(0.0)
+        out[i] = held.to_numpy(dtype=float)
+    return pd.DataFrame(out, index=targets.index, columns=targets.columns)
 
 
 def run_residual_stat_arb_walk_forward(
@@ -185,6 +217,7 @@ def run_residual_stat_arb_walk_forward(
             )
         targets = pd.DataFrame(rows, index=test_index, columns=symbols)
         targets = cap_book(targets, walk_config.max_gross, walk_config.max_symbol_abs_weight)
+        band: float | pd.Series | None = None
         if walk_config.band_mode == "cost_aware":
             # Per-name band from each name's most-recent causal OU half-life (formation
             # window only, never the test window) and the linear round-trip cost.
@@ -194,11 +227,10 @@ def run_residual_stat_arb_walk_forward(
                 hl_hist.ffill().iloc[-1].to_numpy() if len(hl_hist) else np.full(len(symbols), np.nan)
             )
             band = pd.Series(cost_aware_band(hl_recent, per_trade_cost), index=symbols)
-            targets = apply_no_trade_band(targets, band)
-            targets = cap_book(targets, walk_config.max_gross, walk_config.max_symbol_abs_weight)
         elif walk_config.no_trade_band > 0:
-            targets = apply_no_trade_band(targets, walk_config.no_trade_band)
-            targets = cap_book(targets, walk_config.max_gross, walk_config.max_symbol_abs_weight)
+            band = walk_config.no_trade_band
+        if band is not None:
+            targets = _online_banded_targets(targets, band, walk_config)
         targets = _force_fold_flat(targets)
 
         full_targets.loc[test_index, symbols] = targets
