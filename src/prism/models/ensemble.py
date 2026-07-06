@@ -407,6 +407,12 @@ class EnsembleModel(BaseModel):
         if not folds:
             logger.warning("PurgedWalkForward yielded no folds; skipping OOF.")
             return oof
+        if len(folds) < self.meta_cv_folds:
+            logger.warning(
+                f"PurgedWalkForward yielded {len(folds)} of "
+                f"{self.meta_cv_folds} requested OOF folds; OOF coverage "
+                f"is reduced accordingly."
+            )
 
         sigma_full = realized_vol(
             X[self.target_column],
