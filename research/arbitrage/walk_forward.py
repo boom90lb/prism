@@ -46,7 +46,7 @@ class StatArbWalkForwardConfig:
     max_symbol_abs_weight: float = 0.35
     no_trade_band: float = 0.0
     band_mode: Literal["fixed", "cost_aware", "closed_form"] = "fixed"
-    # R2 knobs (docs/dev/R2_DESIGN.md §§2-3), both default-off for frozen-v1
+    # R2 knobs (docs/r2_design.md §§2-3), both default-off for frozen-v1
     # parity: "bucket" prices each name's spread from its formation-window
     # liquidity bucket; max_participation > 0 hard-caps each name-day trade to
     # that fraction of trailing ADV inside the online band loop.
