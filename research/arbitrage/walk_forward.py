@@ -45,7 +45,13 @@ class StatArbWalkForwardConfig:
     max_gross: float = 1.0
     max_symbol_abs_weight: float = 0.35
     no_trade_band: float = 0.0
-    band_mode: Literal["fixed", "cost_aware"] = "fixed"
+    band_mode: Literal["fixed", "cost_aware", "closed_form"] = "fixed"
+    # R2 knobs (docs/dev/R2_DESIGN.md §§2-3), both default-off for frozen-v1
+    # parity: "bucket" prices each name's spread from its formation-window
+    # liquidity bucket; max_participation > 0 hard-caps each name-day trade to
+    # that fraction of trailing ADV inside the online band loop.
+    spread_mode: Literal["flat", "bucket"] = "flat"
+    max_participation: float = 0.0
     close_positions_at_fold_end: bool = True
 
     def __post_init__(self) -> None:
@@ -65,8 +71,14 @@ class StatArbWalkForwardConfig:
             )
         if self.no_trade_band < 0:
             raise ValueError(f"no_trade_band must be >= 0, got {self.no_trade_band}")
-        if self.band_mode not in ("fixed", "cost_aware"):
-            raise ValueError(f"band_mode must be 'fixed' or 'cost_aware', got {self.band_mode!r}")
+        if self.band_mode not in ("fixed", "cost_aware", "closed_form"):
+            raise ValueError(
+                f"band_mode must be one of 'fixed', 'cost_aware', 'closed_form', got {self.band_mode!r}"
+            )
+        if self.spread_mode not in ("flat", "bucket"):
+            raise ValueError(f"spread_mode must be 'flat' or 'bucket', got {self.spread_mode!r}")
+        if self.max_participation < 0:
+            raise ValueError(f"max_participation must be >= 0, got {self.max_participation}")
         if not self.close_positions_at_fold_end:
             raise ValueError("carry rules are not implemented; folds must be flattened")
 

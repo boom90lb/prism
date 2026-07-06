@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 
 from prism.residual.factors import ResidualStatArbConfig, consensus_trading_days
+from prism.execution.participation import participation_capped_targets
 from prism.execution.target_weights import PortfolioBacktestResult, backtest_target_weights
 from prism.residual.residual import (
     ResidualSignalPanel,
@@ -30,6 +31,7 @@ from prism.residual.residual import (
 from prism.portfolio.construct import (
     build_residual_book_row,
     cap_book,
+    closed_form_band,
     cost_aware_band,
     step_no_trade_band,
     strength_multiplier,
@@ -50,6 +52,35 @@ from prism.validation.metrics import periodic_sharpe
 # Conviction multiplier cap for sizing_mode="strength": a documented
 # modeling constant, NOT fitted on the backtest.
 _SIZE_CAP = 2.0
+
+# Risk-aversion constant of the closed-form (Martin 2012 cube-root) band:
+# pre-registered at 1.0, never fitted or swept (docs/dev/R2_DESIGN.md §1).
+GAMMA_RISK = 1.0
+
+# Pre-registered conservative-upper spread schedule (docs/dev/R2_DESIGN.md §3,
+# I-9): (median formation-window dollar-volume floor, one-way spread bps),
+# descending floors. Not fitted; replaced only by fill calibration when fills
+# exist. Unknown liquidity (NaN median) lands in the widest bucket — fail-safe,
+# never cheap.
+SPREAD_BUCKET_SCHEDULE_V1: tuple[tuple[float, float], ...] = (
+    (500e6, 1.0),
+    (100e6, 2.0),
+    (25e6, 5.0),
+    (0.0, 10.0),
+)
+
+
+def bucket_spread_bps(median_dollar_volume: pd.Series) -> pd.Series:
+    """Map per-name median dollar volume through ``SPREAD_BUCKET_SCHEDULE_V1``."""
+    mdv = pd.to_numeric(median_dollar_volume, errors="coerce").to_numpy(dtype=float)
+    floors = SPREAD_BUCKET_SCHEDULE_V1[:-1]
+    with np.errstate(invalid="ignore"):
+        out = np.select(
+            [mdv >= floor for floor, _ in floors],
+            [bps for _, bps in floors],
+            default=SPREAD_BUCKET_SCHEDULE_V1[-1][1],
+        )
+    return pd.Series(out, index=median_dollar_volume.index, dtype=float)
 
 
 @dataclass(frozen=True)
@@ -100,6 +131,9 @@ def _online_banded_targets(
     targets: pd.DataFrame,
     band: float | pd.Series,
     walk_config: StatArbWalkForwardConfig,
+    *,
+    dollar_volume: pd.DataFrame | None = None,
+    aum: float = 1.0,
 ) -> pd.DataFrame:
     """Apply the no-trade band with online (held-state) semantics over a fold.
 
@@ -113,7 +147,16 @@ def _online_banded_targets(
     last because they are hard risk limits: a capped scale-down is visible to
     the band tomorrow as the true held book. Folds genuinely start flat, so
     the held state starts at zero.
+
+    When ``walk_config.max_participation > 0`` the hard participation gate
+    (R2_DESIGN §2) runs after band + caps against the held weights and that
+    day's trailing dollar volume, and the *gated* row becomes both the emitted
+    target and tomorrow's held state — the backtest charges gated trades, and
+    unfilled residual demand must re-clear the band tomorrow.
     """
+    gate = walk_config.max_participation > 0.0
+    if gate and dollar_volume is None:
+        raise ValueError("max_participation > 0 requires a dollar_volume panel")
     held = pd.Series(0.0, index=targets.columns)
     out = np.empty((len(targets.index), len(targets.columns)))
     for i, day in enumerate(targets.index):
@@ -123,9 +166,60 @@ def _online_banded_targets(
             walk_config.max_gross,
             walk_config.max_symbol_abs_weight,
         ).iloc[0]
+        if gate:
+            # adv_floor=0.0 deliberately: flooring ADV up would loosen the cap
+            # for exactly the illiquid names the gate protects (R2_DESIGN §2).
+            capped = participation_capped_targets(
+                held,
+                capped,
+                dollar_volume.loc[day],
+                aum=aum,
+                max_participation=walk_config.max_participation,
+                adv_floor=0.0,
+            )
         held = capped.reindex(targets.columns).fillna(0.0)
         out[i] = held.to_numpy(dtype=float)
     return pd.DataFrame(out, index=targets.index, columns=targets.columns)
+
+
+def _windowed_targets(
+    window: slice,
+    index: pd.Index,
+    symbols: list[str],
+    panel: ResidualSignalPanel,
+    sscores: np.ndarray,
+    tradeable: np.ndarray,
+    signal_config: ResidualStatArbConfig,
+    walk_config: StatArbWalkForwardConfig,
+) -> pd.DataFrame:
+    """Capped close-time targets over one panel window, state machine from flat.
+
+    One construction for both consumers: the test-window build, and the
+    closed-form band's formation-window replay — which estimates target-change
+    variance on formation bars only and feeds NOTHING forward (R2_DESIGN §1).
+    """
+    states = run_state_machine(sscores[window], tradeable[window], signal_config)
+    rows = np.zeros((window.stop - window.start, len(symbols)))
+    for offset, t in enumerate(range(window.start, window.stop)):
+        q_idx = int(panel.q_index[t])
+        if q_idx < 0 or not states[offset].any():
+            continue
+        size_scale = None
+        if signal_config.sizing_mode == "strength":
+            # Conviction multiplier in [0, _SIZE_CAP]: 0 at the entry band, growing
+            # with |s| past it (Da-Nagel-Xiu shrinkage of weak signals); cap_book
+            # then redistributes the fixed gross budget toward conviction.
+            entry = min(abs(signal_config.s_entry_long), abs(signal_config.s_entry_short))
+            size_scale = strength_multiplier(sscores[t], entry, cap=_SIZE_CAP)
+        rows[offset] = build_residual_book_row(
+            states[offset],
+            panel.beta[t],
+            panel.eigenportfolios[q_idx],
+            signal_config.position_unit,
+            size_scale=size_scale,
+        )
+    targets = pd.DataFrame(rows, index=index[window], columns=symbols)
+    return cap_book(targets, walk_config.max_gross, walk_config.max_symbol_abs_weight)
 
 
 def run_residual_stat_arb_walk_forward(
@@ -192,31 +286,35 @@ def run_residual_stat_arb_walk_forward(
     sscores = panel.sscore.to_numpy()
     tradeable = panel.tradeable.to_numpy()
 
+    raw_dollar_volume = closes * vols
+    gate_active = walk_config.max_participation > 0.0
+    adv_trailing: pd.DataFrame | None = None
+    if gate_active:
+        # The same trailing statistic the eligibility screen uses
+        # (compute_eligibility): rolling median dollar volume over
+        # dollar_volume_window bars, full-window min_periods — causal as of
+        # each close, never same-day volume alone.
+        adv_trailing = raw_dollar_volume.rolling(
+            signal_config.dollar_volume_window, min_periods=signal_config.dollar_volume_window
+        ).median()
+    backtest_spread_bps: pd.Series | None = None
+
     for slices in iter_walk_forward_slices(len(closes), walk_config):
         test_index = closes.index[slices.test]
-        states = run_state_machine(sscores[slices.test], tradeable[slices.test], signal_config)
-
-        rows = np.zeros((len(test_index), len(symbols)))
-        for offset, t in enumerate(range(slices.test.start, slices.test.stop)):
-            q_idx = int(panel.q_index[t])
-            if q_idx < 0 or not states[offset].any():
-                continue
-            size_scale = None
-            if signal_config.sizing_mode == "strength":
-                # Conviction multiplier in [0, _SIZE_CAP]: 0 at the entry band, growing
-                # with |s| past it (Da-Nagel-Xiu shrinkage of weak signals); cap_book
-                # then redistributes the fixed gross budget toward conviction.
-                entry = min(abs(signal_config.s_entry_long), abs(signal_config.s_entry_short))
-                size_scale = strength_multiplier(sscores[t], entry, cap=_SIZE_CAP)
-            rows[offset] = build_residual_book_row(
-                states[offset],
-                panel.beta[t],
-                panel.eigenportfolios[q_idx],
-                signal_config.position_unit,
-                size_scale=size_scale,
+        targets = _windowed_targets(
+            slices.test, closes.index, symbols, panel, sscores, tradeable, signal_config, walk_config
+        )
+        fold_spread_bps: pd.Series | None = None
+        if walk_config.spread_mode == "bucket":
+            fold_spread_bps = bucket_spread_bps(
+                raw_dollar_volume.iloc[slices.formation].median(axis=0, skipna=True)
             )
-        targets = pd.DataFrame(rows, index=test_index, columns=symbols)
-        targets = cap_book(targets, walk_config.max_gross, walk_config.max_symbol_abs_weight)
+            if backtest_spread_bps is None:
+                # One backtest prices the whole sample, so it carries the FIRST
+                # formation window's buckets — causal for every test bar (the
+                # same convention as the CLI's --top_liquid screen). Per-fold
+                # buckets still drive each fold's band cost below.
+                backtest_spread_bps = fold_spread_bps
         band: float | pd.Series | None = None
         if walk_config.band_mode == "cost_aware":
             # Per-name band from each name's most-recent causal OU half-life (formation
@@ -227,10 +325,36 @@ def run_residual_stat_arb_walk_forward(
                 hl_hist.ffill().iloc[-1].to_numpy() if len(hl_hist) else np.full(len(symbols), np.nan)
             )
             band = pd.Series(cost_aware_band(hl_recent, per_trade_cost), index=symbols)
+        elif walk_config.band_mode == "closed_form":
+            # sigma2_target from a formation-only replay of the exact test-window
+            # construction; the replay is discarded after the variance estimate
+            # (R2_DESIGN §1). Names with <2 finite diffs or zero variance -> band 0.
+            formation_targets = _windowed_targets(
+                slices.formation, closes.index, symbols, panel, sscores, tradeable, signal_config, walk_config
+            )
+            sigma2 = formation_targets.diff().iloc[1:].var(ddof=1)
+            spread_bps_i: float | np.ndarray = (
+                fold_spread_bps.reindex(symbols).to_numpy(dtype=float)
+                if fold_spread_bps is not None
+                else execution.spread_bps
+            )
+            round_trip = 2.0 * (execution.commission_bps + spread_bps_i) / 10_000.0
+            band = pd.Series(
+                closed_form_band(sigma2.to_numpy(dtype=float), round_trip, gamma_risk=GAMMA_RISK),
+                index=symbols,
+            )
         elif walk_config.no_trade_band > 0:
             band = walk_config.no_trade_band
-        if band is not None:
-            targets = _online_banded_targets(targets, band, walk_config)
+        if band is not None or gate_active:
+            # band 0.0 = pass-through banding so the gate still runs with
+            # held-state feedback when no band is configured.
+            targets = _online_banded_targets(
+                targets,
+                0.0 if band is None else band,
+                walk_config,
+                dollar_volume=None if adv_trailing is None else adv_trailing.loc[test_index],
+                aum=initial_capital,
+            )
         targets = _force_fold_flat(targets)
 
         full_targets.loc[test_index, symbols] = targets
@@ -246,13 +370,14 @@ def run_residual_stat_arb_walk_forward(
     if not fold_shells:
         raise ValueError("No walk-forward folds were produced")
 
-    dollar_volume = (closes * vols).reindex(index=opens.index, columns=opens.columns)
+    dollar_volume = raw_dollar_volume.reindex(index=opens.index, columns=opens.columns)
     full_portfolio = backtest_target_weights(
         opens,
         full_targets,
         execution=execution,
         dollar_volume=dollar_volume,
         initial_capital=initial_capital,
+        spread_bps_per_name=backtest_spread_bps,
     )
     portfolio = _slice_portfolio_result(full_portfolio, all_test_index)
 

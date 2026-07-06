@@ -143,6 +143,31 @@ def cost_aware_band(
     return np.where(np.isfinite(band), band, 0.0)
 
 
+def closed_form_band(
+    target_change_var: np.ndarray,
+    per_trade_cost_frac: float | np.ndarray,
+    gamma_risk: float = 1.0,
+) -> np.ndarray:
+    """Martin (2012) proportional-cost cube-root no-trade half-width.
+
+    ``((3/2) * cost * target_change_var / gamma_risk) ** (1/3)`` elementwise —
+    the proportional-cost tracking asymptotic: cost enters cube-root
+    (shallower than the sqrt heuristic above) and the driver is the variance
+    of day-over-day *target-weight changes*, not OU speed. ``gamma_risk`` is
+    pre-registered at 1.0 and never fitted (docs/dev/R2_DESIGN.md §1).
+    Non-finite or non-positive inputs disable the band for that name (0.0) —
+    the same finite ``>= 0`` output convention as ``cost_aware_band``.
+    """
+    var = np.asarray(target_change_var, dtype=float)
+    cost = np.asarray(per_trade_cost_frac, dtype=float)
+    var, cost = np.broadcast_arrays(var, cost)
+    gamma_ok = bool(np.isfinite(gamma_risk)) and gamma_risk > 0.0
+    valid = gamma_ok & np.isfinite(var) & (var > 0.0) & np.isfinite(cost) & (cost > 0.0)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        band = (1.5 * cost * var / gamma_risk) ** (1.0 / 3.0)
+    return np.where(valid & np.isfinite(band), band, 0.0)
+
+
 def strength_multiplier(sscores: np.ndarray, entry_band: float, cap: float = 2.0) -> np.ndarray:
     """Conviction multiplier from absolute s-score distance past entry."""
     if entry_band <= 0:

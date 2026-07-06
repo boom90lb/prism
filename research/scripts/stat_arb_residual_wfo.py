@@ -24,7 +24,12 @@ import numpy as np
 import pandas as pd
 
 from prism.residual.factors import ResidualStatArbConfig
-from research.arbitrage.residual_walk_forward import residual_fold_to_dict, run_residual_stat_arb_walk_forward
+from research.arbitrage.residual_walk_forward import (
+    GAMMA_RISK,
+    SPREAD_BUCKET_SCHEDULE_V1,
+    residual_fold_to_dict,
+    run_residual_stat_arb_walk_forward,
+)
 from research.arbitrage.walk_forward import StatArbWalkForwardConfig
 from prism.config import ExecutionConfig, RESULTS_DIR
 from prism.data_loader import DataLoader
@@ -124,9 +129,20 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--no_trade_band", type=float, default=0.0,
                    help="Proportional no-trade band on book weights (Davis-Norman/Garleanu-Pedersen): hold a "
                         "name until its target moves > band, cutting turnover. 0 = off (frozen-v1). A new ledger trial.")
-    p.add_argument("--band_mode", type=str, default="fixed", choices=["fixed", "cost_aware"],
+    p.add_argument("--band_mode", type=str, default="fixed", choices=["fixed", "cost_aware", "closed_form"],
                    help="'fixed' uses the scalar --no_trade_band (frozen-v1); 'cost_aware' sizes a per-name band "
-                        "from each name's OU half-life and round-trip cost (gamma=1.0, not fitted). A new ledger trial.")
+                        "from each name's OU half-life and round-trip cost (gamma=1.0, not fitted); 'closed_form' "
+                        "is the Martin (2012) cube-root band from formation-window target-change variance and "
+                        "round-trip cost (gamma_risk=1.0, pre-registered, R2_DESIGN §1). A new ledger trial.")
+    p.add_argument("--spread_mode", type=str, default="flat", choices=["flat", "bucket"],
+                   help="'flat' charges ExecutionConfig.spread_bps on every name (frozen-v1); 'bucket' prices each "
+                        "name's spread from its formation-window median dollar volume through "
+                        "SPREAD_BUCKET_SCHEDULE_V1 (conservative upper proxy, no fill data yet — R2_DESIGN §3). "
+                        "A new ledger trial.")
+    p.add_argument("--max_participation", type=float, default=0.0,
+                   help="Hard per-name participation gate: cap each name-day trade to this fraction of trailing "
+                        "median ADV inside the online band loop, before cost accounting (R2_DESIGN §2). "
+                        "0 = off (frozen-v1); pre-registered enable value 0.05. A new ledger trial.")
     # Execution costs.
     p.add_argument("--commission_bps", type=float, default=1.0)
     p.add_argument("--spread_bps", type=float, default=1.0)
@@ -260,8 +276,16 @@ def _config_payload(
     return {
         "strategy": STRATEGY_TAG,
         "signal": asdict(signal_cfg),
+        # band_mode / spread_mode / max_participation ride in via asdict(walk);
+        # the pre-registered constants they imply are pinned here so the hash
+        # changes if the schedule or gamma_risk ever changes (R2_DESIGN §§1,3).
         "walk": asdict(walk_cfg),
         "execution": asdict(execution),
+        "band_gamma_risk": float(GAMMA_RISK),
+        "spread_schedule": {
+            "name": "SPREAD_BUCKET_SCHEDULE_V1",
+            "buckets": [[float(floor), float(bps)] for floor, bps in SPREAD_BUCKET_SCHEDULE_V1],
+        },
         "initial_capital": float(args.initial_capital),
         "design_trials": int(args.design_trials),
         "start_date": args.start_date,
@@ -409,6 +433,8 @@ def main() -> None:
         max_symbol_abs_weight=args.max_symbol_abs_weight,
         no_trade_band=args.no_trade_band,
         band_mode=args.band_mode,
+        spread_mode=args.spread_mode,
+        max_participation=args.max_participation,
     )
     execution = ExecutionConfig(
         spread_bps=args.spread_bps,
