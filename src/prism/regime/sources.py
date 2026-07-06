@@ -68,7 +68,7 @@ VOL_SOURCES: tuple[RegimeSource, ...] = (
     ),
 )
 
-# Macro / liquidity (SPEC.md §4: all FRED).
+# Macro / liquidity (SPEC.md §4: all FRED; stablecoin float per §7.5 R4).
 LIQUIDITY_SOURCES: tuple[RegimeSource, ...] = (
     RegimeSource(
         key="fred_net_liquidity",
@@ -77,5 +77,40 @@ LIQUIDITY_SOURCES: tuple[RegimeSource, ...] = (
         cadence="weekly (WALCL) / daily (RRP, TGA)",
         auth="free API key",
         note="net_liquidity = WALCL - RRP - TGA; monitored diagnostic, IC-gated (I-8).",
+    ),
+    RegimeSource(
+        key="defillama_stablecoins",
+        provider="DefiLlama",
+        series_or_endpoint="https://stablecoins.llama.fi/stablecoins (aggregate circulating mcap)",
+        cadence="daily",
+        auth="none",
+        note="Stablecoin float: the fourth net-liquidity term (§7.5 R4) — structural "
+        "T-bill demand outside the Fed's balance sheet. $ units; rescale to FRED's "
+        "$millions before combining.",
+    ),
+)
+
+# Inflation expectations (SPEC.md §7.5 R4 follow-on: the repression observables).
+INFLATION_SOURCES: tuple[RegimeSource, ...] = (
+    RegimeSource(
+        key="fred_inflation_expectations",
+        provider="FRED",
+        series_or_endpoint="DFII10 (10Y TIPS real yield), T10YIE (10Y breakeven)",
+        cadence="daily (~1 business-day lag)",
+        auth="free API key",
+        note="regime.inflation consumes both; T10YIE = DGS10 - DFII10 by construction.",
+    ),
+)
+
+# After-cost hurdle anchor (SPEC.md §10: never an implicit nominal zero).
+HURDLE_SOURCES: tuple[RegimeSource, ...] = (
+    RegimeSource(
+        key="fred_tbill_3m",
+        provider="FRED",
+        series_or_endpoint="DTB3 (3M T-bill secondary market, discount basis)",
+        cadence="daily (~1 business-day lag)",
+        auth="free API key",
+        note="The cash book's opportunity cost — the minimum after-cost hurdle "
+        "anchor; the chosen hurdle and its basis are recorded in every claim packet.",
     ),
 )
