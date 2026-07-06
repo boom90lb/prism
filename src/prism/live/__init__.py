@@ -10,22 +10,37 @@ and nothing important may live only in memory:
 * ``state``  — the durable loop state (positions, cash, pending orders,
   last processed bar), atomic-write JSON, schema-versioned, fail-loud.
 * ``broker`` — the Broker contract (idempotent submit keyed by
-  ``client_order_id``) plus the Order/Fill types. Concrete network
-  adapters (Alpaca) land separately, once there are credentials to
-  exercise them against the paper API — an untested REST shell would be
-  drafted, not run.
+  ``client_order_id``) plus the Order/Fill types.
+* ``alpaca`` — the concrete Alpaca REST adapter, written against an
+  injectable session so every venue mapping is tested offline; only the
+  transport is network-gated.
 * ``loop``   — the write-ahead decision protocol: reconcile broker truth,
   turn constructed target weights into orders, persist pending orders
   BEFORE submitting, resume idempotently after a crash, settle fills into
   the append-only fills ledger (the I-9 calibration record).
+* ``daily``  — the one-cycle driver wiring delta-fetched panels → Signal
+  → online construction (caps, stateful band, participation gate) → the
+  decision protocol (``prism.scripts.paper_loop`` is its CLI shell).
 
-Production-import-path safe (N8): numpy/pandas only, no research
+Production-import-path safe (N8): numpy/pandas/requests only, no research
 heavyweights, no prophet/matplotlib.
 """
 
 from __future__ import annotations
 
+from prism.live.alpaca import (
+    LIVE_BASE_URL,
+    PAPER_BASE_URL,
+    AlpacaAPIError,
+    AlpacaBroker,
+)
 from prism.live.broker import Broker, DuplicateOrder, Fill, Order
+from prism.live.daily import (
+    DailyBookConfig,
+    DailyCycleResult,
+    fetch_universe_panels,
+    run_daily_cycle,
+)
 from prism.live.loop import (
     LiveLoopContext,
     decide_and_submit,
@@ -36,7 +51,13 @@ from prism.live.loop import (
 from prism.live.state import LoopState, StateStore
 
 __all__ = [
+    "LIVE_BASE_URL",
+    "PAPER_BASE_URL",
+    "AlpacaAPIError",
+    "AlpacaBroker",
     "Broker",
+    "DailyBookConfig",
+    "DailyCycleResult",
     "DuplicateOrder",
     "Fill",
     "LiveLoopContext",
@@ -44,7 +65,9 @@ __all__ = [
     "Order",
     "StateStore",
     "decide_and_submit",
+    "fetch_universe_panels",
     "read_fills_ledger",
+    "run_daily_cycle",
     "settle",
     "targets_to_orders",
 ]

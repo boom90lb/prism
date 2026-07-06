@@ -60,6 +60,7 @@ def targets_to_orders(
     equity: float,
     decision_bar: str,
     min_order_notional: float = 0.0,
+    whole_shares: bool = False,
 ) -> list[Order]:
     """Diff constructed target weights against held shares into orders.
 
@@ -67,7 +68,10 @@ def targets_to_orders(
     layer's no-opinion never forces a liquidation; construction emits an
     explicit 0.0 when it wants flat). A symbol with a target but no finite
     positive price cannot be sized and raises (N7). Orders below
-    ``min_order_notional`` dollars are dropped as dust.
+    ``min_order_notional`` dollars are dropped as dust. ``whole_shares``
+    rounds each share *delta* to the nearest integer (required by
+    market-on-open venue order types, e.g. Alpaca OPG); a delta that rounds
+    to zero is dropped like dust.
     """
     if equity <= 0:
         raise ValueError(f"equity must be > 0 to size a book, got {equity}")
@@ -84,6 +88,8 @@ def targets_to_orders(
         price = float(price)
         target_shares = float(weight) * equity / price
         delta = target_shares - positions.get(symbol, 0.0)
+        if whole_shares:
+            delta = float(round(delta))
         if abs(delta) * price < max(min_order_notional, 1e-9):
             continue
         orders.append(
@@ -104,6 +110,7 @@ def decide_and_submit(
     target_weights: pd.Series,
     prices: pd.Series,
     min_order_notional: float = 0.0,
+    whole_shares: bool = False,
 ) -> list[Order]:
     """One decision step: reconcile → decide once → write ahead → submit.
 
@@ -142,6 +149,7 @@ def decide_and_submit(
             equity,
             decision_bar,
             min_order_notional=min_order_notional,
+            whole_shares=whole_shares,
         )
         state.pending_decision_bar = decision_bar
         ctx.store.save(state)  # the write-ahead: persisted before any submit
