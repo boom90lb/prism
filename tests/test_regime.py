@@ -9,8 +9,10 @@ import pandas as pd
 import pytest
 
 from prism.regime import (
+    breakeven_divergence,
     curve_state,
     curve_state_panel,
+    inflation_state,
     net_liquidity,
     net_liquidity_change,
     realized_volatility,
@@ -102,3 +104,47 @@ class TestLiquidity:
     def test_change_is_diff(self):
         nl = pd.Series([1.0, 2.0, 4.0, 7.0])
         assert net_liquidity_change(nl, 1).tolist()[1:] == [1.0, 2.0, 3.0]
+
+    def test_stablecoin_float_is_additive_fourth_term(self):
+        idx = pd.to_datetime(["2026-01-05"])
+        base = net_liquidity(
+            pd.Series([8e6], index=idx), pd.Series([1e6], index=idx), pd.Series([5e5], index=idx)
+        )
+        with_stable = net_liquidity(
+            pd.Series([8e6], index=idx),
+            pd.Series([1e6], index=idx),
+            pd.Series([5e5], index=idx),
+            stablecoin_float=pd.Series([2.5e5], index=idx),
+        )
+        assert with_stable.iloc[0] == pytest.approx(base.iloc[0] + 2.5e5)
+
+    def test_stablecoin_float_ffills_causally(self):
+        # Stablecoin mcap known 01-06 carries to 01-09; pre-history stays NaN.
+        idx = pd.to_datetime(["2026-01-05", "2026-01-09"])
+        stable = pd.Series([2.5e5], index=pd.to_datetime(["2026-01-06"]))
+        nl = net_liquidity(
+            pd.Series([8e6, 8e6], index=idx),
+            pd.Series([1e6, 1e6], index=idx),
+            pd.Series([5e5, 5e5], index=idx),
+            stablecoin_float=stable,
+        )
+        assert np.isnan(nl.loc["2026-01-05"])  # float not yet known -> no backfill
+        assert nl.loc["2026-01-09"] == pytest.approx(8e6 - 1e6 - 5e5 + 2.5e5)
+
+
+class TestInflation:
+    def test_breakeven_divergence_vs_target(self):
+        be = pd.Series([2.6, 1.8], index=pd.to_datetime(["2026-01-05", "2026-01-06"]))
+        div = breakeven_divergence(be)
+        assert div.tolist() == pytest.approx([0.6, -0.2])
+        assert breakeven_divergence(be, target_pct=3.0).tolist() == pytest.approx([-0.4, -1.2])
+
+    def test_inflation_state_aligns_and_ffills_causally(self):
+        real = pd.Series([1.1], index=pd.to_datetime(["2026-01-06"]))
+        be = pd.Series([2.4, 2.5], index=pd.to_datetime(["2026-01-05", "2026-01-07"]))
+        state = inflation_state(real, be)
+        # Union calendar; real yield unknown on 01-05 stays NaN (no backfill).
+        assert np.isnan(state.loc["2026-01-05", "real_yield"])
+        # Carried forward on 01-07 (causal ffill within each series).
+        assert state.loc["2026-01-07", "real_yield"] == pytest.approx(1.1)
+        assert state.loc["2026-01-07", "breakeven_divergence"] == pytest.approx(0.5)

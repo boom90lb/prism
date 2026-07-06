@@ -29,7 +29,7 @@ from research.arbitrage.walk_forward import StatArbWalkForwardConfig
 from prism.config import ExecutionConfig, RESULTS_DIR
 from prism.data_loader import DataLoader
 from prism.logging_utils import configure_logging, get_symbol_logger
-from prism.validation.metrics import deflated_sharpe_ratio_with_n
+from prism.validation.metrics import after_cost_hurdle_periodic, deflated_sharpe_ratio_with_n
 from prism.validation.trials import (
     current_git_commit,
     emit_research_claim_packet,
@@ -147,6 +147,15 @@ def parse_args() -> argparse.Namespace:
                    help="Pre-registered floor on researcher degrees of freedom: count the design grid you "
                         "searched (configs tried AND discarded), not just runs logged. >0 deflates "
                         "residual_set_dsr against max(N, ledger rows). 0 = ledger-only (optimistic).")
+    p.add_argument("--hurdle_annual_pct", type=float, default=0.0,
+                   help="After-cost hurdle in percent per annum (SPEC §10): anchor at minimum to the "
+                        "prevailing T-bill yield (FRED DTB3), the cash book's opportunity cost. The "
+                        "hurdle and its basis are recorded in the summary and claim packet; the "
+                        "default 0.0 is an explicitly recorded nominal zero, never an implicit one.")
+    p.add_argument("--hurdle_basis", type=str, default="nominal_zero",
+                   choices=("nominal_zero", "tbill_nominal", "tbill_real"),
+                   help="Basis of --hurdle_annual_pct, recorded alongside it (SPEC §10: under "
+                        "financial repression a nominal-zero hurdle overstates viability).")
     p.add_argument("--verbose", action="store_true")
     return p.parse_args()
 
@@ -468,6 +477,19 @@ def main() -> None:
         result.portfolio.returns, np.asarray(trial_sharpes), n_deflation
     )
 
+    # The after-cost hurdle is a stated choice with a recorded basis (SPEC
+    # §10), never an implicit nominal zero. It is an evaluation lens, not a
+    # searched knob, so it is deliberately NOT part of the config hash — a
+    # re-judged hurdle is not a new trial.
+    oos_vol = float(result.portfolio.returns.dropna().std(ddof=1))
+    hurdle_block = {
+        "annual_pct": float(args.hurdle_annual_pct),
+        "basis": str(args.hurdle_basis),
+        "periodic_sharpe_hurdle": float(
+            after_cost_hurdle_periodic(args.hurdle_annual_pct / 100.0, oos_vol)
+        ),
+    }
+
     summary: dict[str, object] = {
         "output_dir": str(out_dir),
         "config_hash": config_hash,
@@ -479,6 +501,7 @@ def main() -> None:
         "initial_capital": float(args.initial_capital),
         **result.summary,
         "residual_set_dsr": float(residual_set_dsr),
+        "after_cost_hurdle": hurdle_block,
         "universe": universe_meta,
         "coverage_skipped": coverage_skipped,
     }

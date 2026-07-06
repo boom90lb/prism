@@ -5,12 +5,43 @@ import pandas as pd
 import pytest
 
 from prism.validation.metrics import (
+    after_cost_hurdle_periodic,
     effective_breadth,
     effective_breadth_from_cov,
     fundamental_law_diagnostic,
     information_ratio_ceiling,
     rank_information_coefficient,
 )
+
+
+class TestAfterCostHurdle:
+    def test_tbill_anchor_conversion(self):
+        # 5.04% annual over 252 days at 1% daily vol -> 0.02 daily Sharpe.
+        assert after_cost_hurdle_periodic(0.0504, 0.01) == pytest.approx(0.02)
+
+    def test_zero_hurdle_is_explicit_zero(self):
+        assert after_cost_hurdle_periodic(0.0, 0.01) == 0.0
+
+    def test_degenerate_vol_is_nan_not_zero(self):
+        assert np.isnan(after_cost_hurdle_periodic(0.05, 0.0))
+        assert np.isnan(after_cost_hurdle_periodic(float("nan"), 0.01))
+
+    def test_rejects_bad_periods(self):
+        with pytest.raises(ValueError, match="periods_per_year"):
+            after_cost_hurdle_periodic(0.05, 0.01, periods_per_year=0)
+
+    def test_feeds_viability_gate(self):
+        # A thin ceiling under a real-terms hurdle flips viability off.
+        hurdle = after_cost_hurdle_periodic(0.0504, 0.01)
+        diag = fundamental_law_diagnostic(
+            0.01, information_coefficient=0.002, effective_breadth_value=25.0,
+            after_cost_hurdle=hurdle,
+        )
+        assert diag["viable"] == 0.0  # ceiling 0.01 < hurdle 0.02
+        diag_zero = fundamental_law_diagnostic(
+            0.01, information_coefficient=0.002, effective_breadth_value=25.0,
+        )
+        assert diag_zero["viable"] == 1.0  # the implicit-zero overstatement
 
 
 class TestEffectiveBreadth:
