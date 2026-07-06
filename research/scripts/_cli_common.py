@@ -5,6 +5,10 @@ execution/trading cost flags, the args→config builders, and the per-symbol
 fetch → build_features → usable-frame loop. Extracted here verbatim so the
 three CLIs stay flag- and behavior-identical; nothing in this module changes
 a default or a choice list.
+
+``build_features`` and ``clean_data_for_training`` live here (not in
+training.py) so the shared plumbing never imports from an entry-point
+script; training.py consumes them like every other CLI.
 """
 
 from __future__ import annotations
@@ -13,14 +17,81 @@ import argparse
 import logging
 from typing import Optional, Tuple
 
+import numpy as np
 import pandas as pd
 
 from prism.config import ExecutionConfig, TradingConfig
 from prism.data_loader import DataLoader
-from prism.features import FeatureEngineer, forward_return_column
-from research.scripts.training import build_features
+from prism.features import FeatureEngineer, forward_return_column, is_label_column
+from prism.sentiment_analysis import SentimentAnalyzer
 
 logger = logging.getLogger(__name__)
+
+
+def clean_data_for_training(df: pd.DataFrame) -> pd.DataFrame:
+    """Conservative cleanup applied causally on the full enhanced frame.
+
+    * Inf -> NaN (row-wise, causal).
+    * Drop columns with >30% NaN (column-set decision; barely informative).
+    * Forward-fill remaining feature NaNs (past -> future, causal).
+    * Final feature fill-with-0 to handle warmup-period leading NaNs.
+
+    Label columns keep their NaNs: the final ``horizon`` rows have no observed
+    forward outcome and must be excluded by the downstream ``dropna(target)``.
+
+    Outlier clipping is intentionally NOT done here — that lives in
+    ``FeatureEngineer.transform_features`` which uses train-only bounds
+    (audit b). Doing 5×IQR clipping on the full frame here
+    would re-introduce a row-level future-leak via the IQR computation.
+    """
+    # The whole pipeline (point-in-time sentiment join, date
+    # filtering) assumes an ET-localized index. Fail loud if feature building
+    # dropped the tz rather than letting naive timestamps leak downstream.
+    if isinstance(df.index, pd.DatetimeIndex):
+        assert df.index.tz is not None, "training frame index lost its timezone"
+    result = df.replace([np.inf, -np.inf], np.nan)
+    label_cols = [col for col in result.columns if is_label_column(col)]
+    labels = result[label_cols].copy()
+    feature_cols = [col for col in result.columns if col not in label_cols]
+
+    nan_pct = result[feature_cols].isna().mean()
+    high_nan_cols = nan_pct[nan_pct > 0.3].index.tolist()
+    if high_nan_cols:
+        logger.warning(f"Dropping {len(high_nan_cols)} cols with >30% NaN")
+        result = result.drop(columns=high_nan_cols)
+    result = result.ffill().fillna(0)
+    for col in label_cols:
+        result[col] = labels[col]
+    return result
+
+
+def build_features(
+    raw_df: pd.DataFrame,
+    symbol: str,
+    feature_engineer: FeatureEngineer,
+    sentiment_analyzer: Optional[SentimentAnalyzer],
+    horizon: int,
+) -> pd.DataFrame:
+    """Causally build the full enhanced frame for one symbol.
+
+    Technical indicators (rolling/ewm/pct_change) are causal so they may
+    be computed once on the full series. Sentiment join is point-in-time
+    (the B9 fix). FE scaling + outlier clipping happens per fold inside
+    ``train_symbol_wfo`` so this frame is intentionally UNSCALED.
+    """
+    df = feature_engineer.create_features(raw_df)
+    df = feature_engineer.create_lagged_features(df, [1, 2, 5, 10])
+    df = feature_engineer.create_target_variable(df, "close", horizon)
+
+    if sentiment_analyzer is not None:
+        sentiment = sentiment_analyzer.create_sentiment_features(
+            symbol, pd.DatetimeIndex(df.index)  # type: ignore
+        )
+        if not sentiment.empty:
+            df = df.join(sentiment)
+
+    df = clean_data_for_training(df)
+    return df
 
 
 def add_execution_args(
