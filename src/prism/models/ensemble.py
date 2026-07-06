@@ -82,13 +82,9 @@ class EnsembleModel(BaseModel):
 
         for model_config in self.config.models:
             if model_config.enabled:
-                model_instance = self._create_model(model_config.name)
-                if model_instance:
-                    self.models[model_config.name] = model_instance
-                    self.weights[model_config.name] = model_config.weight
-                    self.kinds[model_config.name] = model_kind(model_config.name)
-                else:
-                    logger.warning(f"Failed to create model '{model_config.name}', excluding from ensemble.")
+                self.models[model_config.name] = self._create_model(model_config.name)
+                self.weights[model_config.name] = model_config.weight
+                self.kinds[model_config.name] = model_kind(model_config.name)
 
         self._normalize_weights()
 
@@ -114,8 +110,8 @@ class EnsembleModel(BaseModel):
             for key in self.weights:
                 self.weights[key] /= total_weight
 
-    def _create_model(self, model_name: str, seed: Optional[int] = None) -> Optional[BaseModel]:
-        """Create a model instance by name.
+    def _create_model(self, model_name: str, seed: Optional[int] = None) -> BaseModel:
+        """Create a model instance by name; unknown or unimportable raises (N7).
 
         Args:
             model_name: Name of the model to create
@@ -127,49 +123,44 @@ class EnsembleModel(BaseModel):
                 Ignored by forecast members, which are deterministic given data.
 
         Returns:
-            Model instance or None if not supported
+            Model instance. A policy member whose research dependencies are
+            not installed raises ImportError with install guidance — an
+            ensemble that silently drops configured members produces
+            all-zero positions with no visible defect.
         """
-        try:
-            if model_name == "arima":
-                from prism.models.arima import ARIMAModel
+        if model_name == "arima":
+            from prism.models.arima import ARIMAModel
 
-                return ARIMAModel(target_column=self.target_column, horizon=self.horizon)
-            elif model_name == "prophet":
-                from prism.models.prophet import ProphetModel
+            return ARIMAModel(target_column=self.target_column, horizon=self.horizon)
+        if model_name == "prophet":
+            from prism.models.prophet import ProphetModel
 
-                return ProphetModel(target_column=self.target_column, horizon=self.horizon)
-            elif model_name == "xgboost":
-                from prism.models.xgboost_model import XGBoostModel
+            return ProphetModel(target_column=self.target_column, horizon=self.horizon)
+        if model_name == "xgboost":
+            from prism.models.xgboost_model import XGBoostModel
 
-                return XGBoostModel(target_column=self.target_column, horizon=self.horizon)
-            elif model_name == "lstm_ppo":
-                # RL members are quarantined in research/ (SPEC §9); import
-                # lazily so the production import path never touches JAX.
-                from research.models.lstm_ppo import LSTMPPO
-
-                policy_kwargs = {"seed": seed} if seed is not None else {}
-                return LSTMPPO(target_column=self.target_column, horizon=self.horizon, **policy_kwargs)
-            elif model_name == "xlstm_ppo":
-                # Import the XLSTMPPOAgent model
-                from research.models.xlstm_ppo import XLSTMPPOAgent
-
-                policy_kwargs = {"seed": seed} if seed is not None else {}
-                return XLSTMPPOAgent(target_column=self.target_column, horizon=self.horizon, **policy_kwargs)
-            elif model_name == "xlstm_grpo":
-                # Import the XLSTMGRPOAgent model
-                from research.models.xlstm_grpo import XLSTMGRPOAgent
-
-                policy_kwargs = {"seed": seed} if seed is not None else {}
-                return XLSTMGRPOAgent(target_column=self.target_column, horizon=self.horizon, **policy_kwargs)
-            else:
-                logger.warning(f"Unsupported model: {model_name}")
-                return None
-        except ImportError as e:
-            logger.error(f"Could not import {model_name} model: {e}")
-            return None
-        except Exception as e:
-            logger.error(f"Error creating {model_name} model: {e}")
-            return None
+            return XGBoostModel(target_column=self.target_column, horizon=self.horizon)
+        if is_policy(model_name):
+            # RL members are quarantined in research/ (SPEC §9); import
+            # lazily so the production import path never touches JAX.
+            try:
+                if model_name == "lstm_ppo":
+                    from research.models.lstm_ppo import LSTMPPO as policy_cls
+                elif model_name == "xlstm_ppo":
+                    from research.models.xlstm_ppo import XLSTMPPOAgent as policy_cls
+                else:
+                    from research.models.xlstm_grpo import XLSTMGRPOAgent as policy_cls
+            except ImportError as e:
+                raise ImportError(
+                    f"Policy member {model_name!r} needs the research extra "
+                    f"(uv sync --extra research); underlying error: {e}"
+                ) from e
+            policy_kwargs = {"seed": seed} if seed is not None else {}
+            return policy_cls(target_column=self.target_column, horizon=self.horizon, **policy_kwargs)
+        raise ValueError(
+            f"Unsupported ensemble member {model_name!r}; register it in "
+            "prism.models.registry first."
+        )
 
     def _fit_policy_member(
         self,
@@ -447,8 +438,6 @@ class EnsembleModel(BaseModel):
         out = np.full(len(X), np.nan)
         for tr_idx, va_idx in folds:
             fold_model = self._create_model(name)
-            if fold_model is None:
-                continue
             fold_model.fit(X.iloc[tr_idx], y.iloc[tr_idx])
             preds = fold_model.predict(X.iloc[va_idx])
             if len(preds) != len(va_idx):
@@ -492,8 +481,6 @@ class EnsembleModel(BaseModel):
         out = np.full(len(X), np.nan)
         for tr_idx, va_idx in folds:
             fold_model = self._create_model(name)
-            if fold_model is None:
-                continue
             ok = self._fit_policy_member(
                 name=name,
                 model=fold_model,
@@ -1013,12 +1000,6 @@ class EnsembleModel(BaseModel):
                 # the fallback branch.
                 if isinstance(saved_model_info, dict) and "forecast_rel_path" in saved_model_info:
                     member = self._create_model(name)
-                    if member is None:
-                        logger.warning(
-                            f"Could not re-create member '{name}'; marking ensemble unfitted."
-                        )
-                        self.is_fitted = False
-                        continue
                     member_path = Path(model_path).parent / saved_model_info["forecast_rel_path"]
                     try:
                         member.load(member_path)
@@ -1044,11 +1025,9 @@ class EnsembleModel(BaseModel):
                     f"Model '{model_config.name}' defined in config but not found in saved state. "
                     f"Attempting to re-initialize."
                 )
-                model_instance = self._create_model(model_config.name)
-                if model_instance:
-                    self.models[model_config.name] = model_instance
-                    # Model will need refitting if loaded this way
-                    self.is_fitted = False  # Mark ensemble as not fully fitted if we had to re-initialize
+                self.models[model_config.name] = self._create_model(model_config.name)
+                # Model will need refitting if loaded this way
+                self.is_fitted = False  # Mark ensemble as not fully fitted if we had to re-initialize
 
         logger.info(f"Ensemble model state loaded from {model_path}")
 

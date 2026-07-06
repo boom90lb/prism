@@ -385,3 +385,31 @@ def test_ensemble_has_conformal_helper():
         config=EnsembleConfig(models=[]),
     )
     assert not ensemble.has_conformal()
+
+
+# ----- N7: member construction fails loud --------------------------------
+
+
+def test_create_model_unknown_member_raises():
+    ensemble = EnsembleModel(config=EnsembleConfig(models=[]))
+    with pytest.raises(ValueError, match="Unsupported ensemble member"):
+        ensemble._create_model("lightgbm")
+
+
+def test_create_model_missing_research_extra_raises(monkeypatch):
+    """A policy member without the research extra raises with install
+    guidance instead of degrading to a silently-dropped member (N7). The
+    import is blocked via sys.modules to simulate a slim wheel install."""
+    import sys
+
+    monkeypatch.setitem(sys.modules, "research.models.lstm_ppo", None)
+    ensemble = EnsembleModel(config=EnsembleConfig(models=[]))
+    with pytest.raises(ImportError, match="research extra"):
+        ensemble._create_model("lstm_ppo")
+
+
+def test_config_with_unknown_member_raises_at_construction():
+    with pytest.raises(ValueError):
+        EnsembleModel(
+            config=EnsembleConfig(models=[ModelConfig(name="not_a_model", enabled=True, weight=1.0)])
+        )
