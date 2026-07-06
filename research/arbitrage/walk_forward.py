@@ -53,6 +53,16 @@ class StatArbWalkForwardConfig:
     spread_mode: Literal["flat", "bucket"] = "flat"
     max_participation: float = 0.0
     close_positions_at_fold_end: bool = True
+    # Arm-B knobs (docs/demotion_design.md §§2b-3), all default-off for
+    # frozen-v1 parity: "momentum_only" runs the 12-1 cross-sectional momentum
+    # sleeve alone (B1); "two_speed" sums the residual and momentum target
+    # rows pre-cap and runs the combined book through the same
+    # cap/band/gate/cost stack (B2).
+    sleeve_mode: Literal["off", "momentum_only", "two_speed"] = "off"
+    mom_lookback_bars: int = 252
+    mom_skip_bars: int = 21
+    mom_decision_every: int = 21
+    mom_decile: float = 0.10
 
     def __post_init__(self) -> None:
         if self.formation_bars < 30:
@@ -81,6 +91,22 @@ class StatArbWalkForwardConfig:
             raise ValueError(f"max_participation must be >= 0, got {self.max_participation}")
         if not self.close_positions_at_fold_end:
             raise ValueError("carry rules are not implemented; folds must be flattened")
+        if self.sleeve_mode not in ("off", "momentum_only", "two_speed"):
+            raise ValueError(
+                f"sleeve_mode must be one of 'off', 'momentum_only', 'two_speed', got {self.sleeve_mode!r}"
+            )
+        if self.mom_skip_bars < 0:
+            raise ValueError(f"mom_skip_bars must be >= 0, got {self.mom_skip_bars}")
+        if self.mom_lookback_bars <= self.mom_skip_bars:
+            raise ValueError(
+                "mom_lookback_bars must exceed mom_skip_bars (the score window "
+                f"(t-lookback, t-skip] must be non-empty), got lookback={self.mom_lookback_bars}, "
+                f"skip={self.mom_skip_bars}"
+            )
+        if self.mom_decision_every < 1:
+            raise ValueError(f"mom_decision_every must be >= 1, got {self.mom_decision_every}")
+        if not 0.0 < self.mom_decile <= 0.5:
+            raise ValueError(f"mom_decile must be in (0, 0.5], got {self.mom_decile}")
 
     @property
     def effective_step_bars(self) -> int:

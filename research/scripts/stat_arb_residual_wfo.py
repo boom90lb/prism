@@ -159,6 +159,20 @@ def parse_args() -> argparse.Namespace:
                    help="Hard per-name participation gate: cap each name-day trade to this fraction of trailing "
                         "median ADV inside the online band loop, before cost accounting (r2_design.md §2). "
                         "0 = off (frozen-v1); pre-registered enable value 0.05. A new ledger trial.")
+    p.add_argument("--sleeve_mode", type=str, default="off", choices=["off", "momentum_only", "two_speed"],
+                   help="Arm-B momentum sleeve (demotion_design.md §§2b-3): 'momentum_only' runs the 12-1 "
+                        "cross-sectional momentum book alone (B1); 'two_speed' sums the residual and momentum "
+                        "target rows pre-cap and runs one combined book (B2). 'off' = frozen-v1. "
+                        "A new ledger trial.")
+    p.add_argument("--mom_lookback", type=int, default=252,
+                   help="Momentum formation lookback in bars (demotion_design.md §2b; pre-registered 252).")
+    p.add_argument("--mom_skip", type=int, default=21,
+                   help="Most-recent bars skipped by the momentum score (pre-registered 21: the 12-1 convention).")
+    p.add_argument("--mom_decision_every", type=int, default=21,
+                   help="Momentum component refresh cadence in bars (pre-registered 21 = monthly); the emitted "
+                        "row picks a refresh up at the next trading decision bar.")
+    p.add_argument("--mom_decile", type=float, default=0.10,
+                   help="Fraction of the eligible cross-section per momentum leg (pre-registered 0.10).")
     # Execution costs.
     p.add_argument("--commission_bps", type=float, default=1.0)
     p.add_argument("--spread_bps", type=float, default=1.0)
@@ -453,6 +467,11 @@ def main() -> None:
         band_mode=args.band_mode,
         spread_mode=args.spread_mode,
         max_participation=args.max_participation,
+        sleeve_mode=args.sleeve_mode,
+        mom_lookback_bars=args.mom_lookback,
+        mom_skip_bars=args.mom_skip,
+        mom_decision_every=args.mom_decision_every,
+        mom_decile=args.mom_decile,
     )
     execution = ExecutionConfig(
         spread_bps=args.spread_bps,

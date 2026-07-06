@@ -65,6 +65,34 @@ ledger trial; `--design_trials` on every run counts the full set here plus the
   (`strength_multiplier`, construct.py) and never counted; enabling it is a
   trial like any other.
 
+## 2b. Arm-B mechanics semantics (amended 2026-07-06, before any counted run)
+
+Fixes the seams §3's one-line B1/B2 descriptions left open. No §3 trial value
+changes; this section only pins how the mechanics behave, and it is committed
+before any demotion trial runs.
+
+- **Score**: `close[t-21] / close[t-252] - 1` (knobs `mom_lookback_bars=252`,
+  `mom_skip_bars=21`), masked to the SAME eligibility screen the residual
+  sleeve trades under. Insufficient history or ineligibility → NaN → no
+  position, never "trade anyway".
+- **Row**: `n_dec = floor(n_finite × mom_decile)` with `mom_decile=0.10`;
+  winners `+0.5/n_dec` each, losers `-0.5/n_dec` each — raw gross exactly
+  1.0. Stable sort, so ties are deterministic. `n_dec < 1` emits a zero row.
+- **Cadence seam**: the momentum component refreshes at window bars where
+  `(t - window_start) % mom_decision_every == 0` (`mom_decision_every=21`);
+  the emitted row picks a refresh up at the *next trading decision bar*. In
+  B1 (`decision_every=21`) the two cadences coincide exactly; in B2
+  (`decision_every=5`) a refresh at offset 21 executes at offset 25. This lag
+  is a recorded consequence of the two pre-registered cadences, not a knob.
+- **B2 gross split**: raw target rows are summed pre-cap (residual raw gross
+  ≤ 1.0 by construction, momentum raw gross 1.0), then the combined book is
+  capped to the same `max_gross=1.0` / `max_symbol_abs_weight=0.35` and
+  banded/gated as one. The sleeve split is therefore an emergent fixed rule
+  (≈ equal at typical residual gross), never a searched weight.
+- **Band consistency**: the closed-form band's formation replay includes the
+  sleeve, so `sigma2_target` reflects combined-book target changes; formation
+  bars without `mom_lookback_bars` of history emit zero momentum rows.
+
 ## 3. The counted trial set (exactly these, in this order)
 
 Arm A — cadence / smoothing / sizing on the trial-3 stack:
@@ -125,4 +153,10 @@ embarrassment.
 - Causality: appending future bars never changes past smoothed s-scores; NaN
   days stay NaN through the EWMA.
 - Arm-B mechanics (momentum sleeve, book summation) land default-off with
-  their own parity + property tests before B1 runs.
+  their own parity + property tests before B1 runs: `sleeve_mode="off"`
+  reproduces frozen-v1 bit-for-bit; the raw momentum row has gross exactly
+  1.0 and balanced legs; momentum scores are causal (appending future bars
+  never changes past scores); `two_speed` targets equal the sum of the
+  standalone sleeves' targets when caps/band/gate are inactive; and every
+  Arm-B knob moves the config hash (an unhashed knob would be an uncounted
+  trial, SPEC N5).

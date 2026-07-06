@@ -20,7 +20,11 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-from prism.residual.factors import ResidualStatArbConfig, consensus_trading_days
+from prism.residual.factors import (
+    ResidualStatArbConfig,
+    compute_eligibility,
+    consensus_trading_days,
+)
 from prism.execution.participation import participation_capped_targets
 from prism.execution.target_weights import PortfolioBacktestResult, backtest_target_weights
 from prism.residual.residual import (
@@ -127,6 +131,54 @@ def _fold_cost_share(result: PortfolioBacktestResult, test_index: pd.Index) -> f
     return costs / max(abs(gross_pnl), 1e-9)
 
 
+def _momentum_scores(
+    closes: pd.DataFrame,
+    volumes: pd.DataFrame,
+    signal_config: ResidualStatArbConfig,
+    walk_config: StatArbWalkForwardConfig,
+    membership_mask: pd.DataFrame | None,
+) -> np.ndarray:
+    """Cross-sectional momentum score panel (demotion_design.md §2b).
+
+    ``score[t] = close[t - skip] / close[t - lookback] - 1`` — strictly
+    trailing, so appending future bars never changes a past score — masked to
+    the SAME eligibility screen the residual sleeve trades under. Bars without
+    ``lookback`` bars of history (and non-positive base prices) are NaN, which
+    downstream means "no momentum position", never "trade anyway".
+    """
+    lookback = walk_config.mom_lookback_bars
+    skip = walk_config.mom_skip_bars
+    px = closes.to_numpy(dtype=float)
+    n_days, n_symbols = px.shape
+    scores = np.full((n_days, n_symbols), np.nan)
+    if n_days > lookback:
+        with np.errstate(invalid="ignore", divide="ignore"):
+            base = px[: n_days - lookback]
+            recent = px[lookback - skip : n_days - skip]
+            scores[lookback:] = np.where(base > 0.0, recent / base - 1.0, np.nan)
+    elig = compute_eligibility(closes, volumes, signal_config, membership_mask)
+    scores[~elig.to_numpy(dtype=bool)] = np.nan
+    return scores
+
+
+def _momentum_row(scores_t: np.ndarray, decile: float) -> np.ndarray:
+    """Equal-weight top/bottom-decile long-short row at raw gross 1.0.
+
+    ``n_dec = floor(n_finite * decile)``; each winner gets ``+0.5/n_dec``,
+    each loser ``-0.5/n_dec`` (stable sort, so ties are deterministic). A
+    cross-section too thin for one name per side emits a zero row.
+    """
+    row = np.zeros(scores_t.shape[0])
+    finite = np.flatnonzero(np.isfinite(scores_t))
+    n_dec = int(len(finite) * decile)
+    if n_dec < 1:
+        return row
+    order = np.argsort(scores_t[finite], kind="stable")
+    row[finite[order[:n_dec]]] = -0.5 / n_dec
+    row[finite[order[-n_dec:]]] = 0.5 / n_dec
+    return row
+
+
 def _smoothed_sscores(sscore: pd.DataFrame, config: ResidualStatArbConfig) -> np.ndarray:
     """Causal EWMA of the s-score panel (demotion_design.md §2); 0 = raw scores.
 
@@ -215,6 +267,7 @@ def _windowed_targets(
     tradeable: np.ndarray,
     signal_config: ResidualStatArbConfig,
     walk_config: StatArbWalkForwardConfig,
+    mom_scores: np.ndarray | None = None,
 ) -> pd.DataFrame:
     """Capped close-time targets over one panel window, state machine from flat.
 
@@ -229,33 +282,51 @@ def _windowed_targets(
     bar is a decision bar and this is the frozen-v1 path bit-for-bit. Both
     consumers share the rule, so the closed-form band's ``sigma2_target``
     reflects cadence-consistent target changes.
+
+    ``walk_config.sleeve_mode`` adds the Arm-B momentum sleeve
+    (demotion_design.md §2b): its component refreshes from ``mom_scores`` on
+    its own (slower) ``mom_decision_every`` cadence, the emitted row picks the
+    refresh up at the next trading decision bar, and in ``two_speed`` the
+    sleeves are summed pre-cap so the combined book is capped/banded/gated as
+    one.
     """
+    sleeve = walk_config.sleeve_mode
+    if sleeve != "off" and mom_scores is None:
+        raise ValueError("sleeve_mode != 'off' requires a momentum score panel")
     s_win = sscores[window]
     ok_win = tradeable[window]
     current = np.zeros(len(symbols), dtype=np.int8)
+    mom_current = np.zeros(len(symbols))
     rows = np.zeros((window.stop - window.start, len(symbols)))
     for offset, t in enumerate(range(window.start, window.stop)):
+        if sleeve != "off" and offset % walk_config.mom_decision_every == 0:
+            mom_current = _momentum_row(mom_scores[t], walk_config.mom_decile)
         if offset % signal_config.decision_every != 0:
             rows[offset] = rows[offset - 1]
             continue
-        current = next_states(current, s_win[offset], ok_win[offset], signal_config)
-        q_idx = int(panel.q_index[t])
-        if q_idx < 0 or not current.any():
-            continue
-        size_scale = None
-        if signal_config.sizing_mode == "strength":
-            # Conviction multiplier in [0, _SIZE_CAP]: 0 at the entry band, growing
-            # with |s| past it (Da-Nagel-Xiu shrinkage of weak signals); cap_book
-            # then redistributes the fixed gross budget toward conviction.
-            entry = min(abs(signal_config.s_entry_long), abs(signal_config.s_entry_short))
-            size_scale = strength_multiplier(sscores[t], entry, cap=_SIZE_CAP)
-        rows[offset] = build_residual_book_row(
-            current,
-            panel.beta[t],
-            panel.eigenportfolios[q_idx],
-            signal_config.position_unit,
-            size_scale=size_scale,
-        )
+        row = np.zeros(len(symbols))
+        if sleeve != "momentum_only":
+            current = next_states(current, s_win[offset], ok_win[offset], signal_config)
+            q_idx = int(panel.q_index[t])
+            if q_idx >= 0 and current.any():
+                size_scale = None
+                if signal_config.sizing_mode == "strength":
+                    # Conviction multiplier in [0, _SIZE_CAP]: 0 at the entry band,
+                    # growing with |s| past it (Da-Nagel-Xiu shrinkage of weak
+                    # signals); cap_book then redistributes the fixed gross budget
+                    # toward conviction.
+                    entry = min(abs(signal_config.s_entry_long), abs(signal_config.s_entry_short))
+                    size_scale = strength_multiplier(sscores[t], entry, cap=_SIZE_CAP)
+                row = build_residual_book_row(
+                    current,
+                    panel.beta[t],
+                    panel.eigenportfolios[q_idx],
+                    signal_config.position_unit,
+                    size_scale=size_scale,
+                )
+        if sleeve != "off":
+            row = row + mom_current
+        rows[offset] = row
     targets = pd.DataFrame(rows, index=index[window], columns=symbols)
     return cap_book(targets, walk_config.max_gross, walk_config.max_symbol_abs_weight)
 
@@ -326,6 +397,9 @@ def run_residual_stat_arb_walk_forward(
     # scores (demotion_design.md §2).
     sscores = _smoothed_sscores(panel.sscore, signal_config)
     tradeable = panel.tradeable.to_numpy()
+    mom_scores: np.ndarray | None = None
+    if walk_config.sleeve_mode != "off":
+        mom_scores = _momentum_scores(closes, vols, signal_config, walk_config, membership_mask)
 
     raw_dollar_volume = closes * vols
     gate_active = walk_config.max_participation > 0.0
@@ -343,7 +417,8 @@ def run_residual_stat_arb_walk_forward(
     for slices in iter_walk_forward_slices(len(closes), walk_config):
         test_index = closes.index[slices.test]
         targets = _windowed_targets(
-            slices.test, closes.index, symbols, panel, sscores, tradeable, signal_config, walk_config
+            slices.test, closes.index, symbols, panel, sscores, tradeable, signal_config, walk_config,
+            mom_scores=mom_scores,
         )
         fold_spread_bps: pd.Series | None = None
         if walk_config.spread_mode == "bucket":
@@ -371,7 +446,8 @@ def run_residual_stat_arb_walk_forward(
             # construction; the replay is discarded after the variance estimate
             # (r2_design.md §1). Names with <2 finite diffs or zero variance -> band 0.
             formation_targets = _windowed_targets(
-                slices.formation, closes.index, symbols, panel, sscores, tradeable, signal_config, walk_config
+                slices.formation, closes.index, symbols, panel, sscores, tradeable, signal_config, walk_config,
+                mom_scores=mom_scores,
             )
             sigma2 = formation_targets.diff().iloc[1:].var(ddof=1)
             spread_bps_i: float | np.ndarray = (

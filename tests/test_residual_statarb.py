@@ -816,3 +816,109 @@ def test_demotion_knobs_change_config_hash() -> None:
     ewma = {"signal": dataclasses.asdict(_small_config(sscore_ewma_halflife_bars=5.0))}
     assert _config_hash(base) != _config_hash(cadence)
     assert _config_hash(base) != _config_hash(ewma)
+
+
+# ---------------------------------------------------------------------------
+# Arm-B mechanics (docs/demotion_design.md §2b): momentum sleeve + two-speed
+# ---------------------------------------------------------------------------
+
+# Small enough that scores exist by the first test bar (80) of the test folds,
+# and a decile wide enough that floor(8 names x decile) >= 1 name per leg.
+_MOM_SMALL = dict(mom_lookback_bars=30, mom_skip_bars=5, mom_decision_every=10, mom_decile=0.2)
+
+
+def test_sleeve_knob_validation() -> None:
+    with pytest.raises(ValueError, match="sleeve_mode"):
+        StatArbWalkForwardConfig(formation_bars=80, test_bars=40, sleeve_mode="both")
+    with pytest.raises(ValueError, match="mom_lookback_bars"):
+        StatArbWalkForwardConfig(formation_bars=80, test_bars=40, mom_lookback_bars=21, mom_skip_bars=21)
+    with pytest.raises(ValueError, match="mom_decile"):
+        StatArbWalkForwardConfig(formation_bars=80, test_bars=40, mom_decile=0.6)
+
+
+def test_sleeve_off_is_parity() -> None:
+    closes, volumes = _synthetic_panel()
+    default = _run_wfo(closes, volumes)
+    explicit = _run_wfo_signal(closes, volumes, walk_overrides=dict(sleeve_mode="off"))
+    assert default.summary == explicit.summary
+
+
+def test_momentum_scores_are_causal_and_eligibility_masked() -> None:
+    from research.arbitrage.residual_walk_forward import _momentum_scores
+
+    closes, volumes = _synthetic_panel()
+    walk = StatArbWalkForwardConfig(formation_bars=80, test_bars=40, **_MOM_SMALL)
+    full = _momentum_scores(closes, volumes, _small_config(), walk, None)
+    # Insufficient history -> NaN, never a number.
+    assert not np.isfinite(full[: walk.mom_lookback_bars]).any()
+    # Causal: recomputing on a truncated panel reproduces the prefix.
+    trunc = _momentum_scores(closes.iloc[:150], volumes.iloc[:150], _small_config(), walk, None)
+    assert np.array_equal(full[:150], trunc, equal_nan=True)
+    # Eligibility mask: a name that loses the screen loses its score.
+    poor = volumes.copy()
+    poor.iloc[:, 0] = 0.001
+    masked = _momentum_scores(closes, poor, _small_config(), walk, None)
+    assert not np.isfinite(masked[:, 0]).any()
+
+
+def test_momentum_row_is_gross_one_and_balanced() -> None:
+    from research.arbitrage.residual_walk_forward import _momentum_row
+
+    scores = np.array([0.5, -0.3, 0.1, np.nan, 0.7, -0.6, 0.0, 0.2, -0.1, 0.05, 0.3])
+    row = _momentum_row(scores, decile=0.2)  # 10 finite names -> 2 per leg
+    assert np.abs(row).sum() == pytest.approx(1.0)
+    assert row.sum() == pytest.approx(0.0)
+    assert (row > 0).sum() == 2 and (row < 0).sum() == 2
+    assert row[4] > 0 and row[5] < 0  # extreme winner long, extreme loser short
+    assert row[3] == 0.0  # NaN score never trades
+    # Too thin for one name per side -> zero row, no crash.
+    assert not _momentum_row(np.array([0.1, np.nan]), decile=0.2).any()
+
+
+def test_momentum_only_book_trades_and_freezes_on_cadence() -> None:
+    closes, volumes = _synthetic_panel()
+    result = _run_wfo_signal(
+        closes,
+        volumes,
+        decision_every=10,
+        walk_overrides=dict(sleeve_mode="momentum_only", **_MOM_SMALL),
+    )
+    assert result.summary["avg_turnover"] > 0
+    assert (result.portfolio.costs["gross"] <= 1.0 + 1e-9).all()
+    _assert_frozen_between_decision_bars(result, closes, 10)
+
+
+def test_two_speed_targets_are_the_sum_of_the_sleeves() -> None:
+    closes, volumes = _synthetic_panel()
+    # Caps wide open, no band, no gate: the combined book must be exactly
+    # the sum of the standalone sleeves (demotion_design.md §2b).
+    wide = dict(max_gross=100.0, max_symbol_abs_weight=100.0)
+    residual = _run_wfo_signal(closes, volumes, walk_overrides=dict(**wide))
+    momentum = _run_wfo_signal(
+        closes, volumes, walk_overrides=dict(sleeve_mode="momentum_only", **_MOM_SMALL, **wide)
+    )
+    combined = _run_wfo_signal(
+        closes, volumes, walk_overrides=dict(sleeve_mode="two_speed", **_MOM_SMALL, **wide)
+    )
+    summed = (
+        residual.portfolio.target_weights + momentum.portfolio.target_weights
+    )
+    pd.testing.assert_frame_equal(combined.portfolio.target_weights, summed)
+
+
+def test_sleeve_knobs_change_config_hash() -> None:
+    import dataclasses
+
+    def walk_payload(**overrides: object) -> dict:
+        return {
+            "walk": dataclasses.asdict(
+                StatArbWalkForwardConfig(formation_bars=80, test_bars=40, **overrides)
+            )
+        }
+
+    base = walk_payload()
+    assert _config_hash(base) != _config_hash(walk_payload(sleeve_mode="momentum_only"))
+    assert _config_hash(base) != _config_hash(walk_payload(mom_lookback_bars=126))
+    assert _config_hash(base) != _config_hash(walk_payload(mom_skip_bars=5))
+    assert _config_hash(base) != _config_hash(walk_payload(mom_decision_every=5))
+    assert _config_hash(base) != _config_hash(walk_payload(mom_decile=0.2))
