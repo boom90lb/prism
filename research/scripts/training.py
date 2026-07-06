@@ -593,6 +593,18 @@ def train_symbol_wfo(
         )
         write_fold_status(fold_dir, status="complete")
 
+    # Fold counts are conserved quantities (SPEC N5/N7): the requested and
+    # realized counts are recorded side by side so a purge/embargo skip can
+    # never silently move a per-fold denominator.
+    n_requested = splitter.get_n_splits()
+    n_yielded = splitter.n_yielded_
+    if n_yielded is not None and n_yielded != n_requested:
+        logger.warning(
+            f"[{symbol}] PurgedWalkForward yielded {n_yielded} of "
+            f"{n_requested} requested folds ({splitter.n_skipped_} skipped); "
+            f"aggregates below are over the realized count."
+        )
+
     if per_fold_metrics:
         aggregated = aggregate_fold_metrics(per_fold_metrics)
         log_metrics_safe(aggregated)
@@ -602,6 +614,15 @@ def train_symbol_wfo(
                 for m in per_fold_metrics
             ],
             "aggregated": {k: float(v) for k, v in aggregated.items()},
+            "fold_counts": {
+                "requested": int(n_requested),
+                "yielded": int(n_yielded) if n_yielded is not None else None,
+                "skipped": (
+                    int(splitter.n_skipped_)
+                    if splitter.n_skipped_ is not None else None
+                ),
+                "fit": len(per_fold_metrics),
+            },
         }
         with open(symbol_dir / "fold_metrics.json", "w") as f:
             json.dump(out_payload, f, indent=2)
