@@ -6,7 +6,7 @@ lives in the README; this file is the "what will actually bite you" companion.
 ## Data vendor (Twelvedata)
 
 - **API key** goes in a gitignored `.env` at the repo root:
-  `TWELVEDATA_API_KEY=...`. `src/config.py` loads it via `python-dotenv`.
+  `TWELVEDATA_API_KEY=...`. `src/prism/config.py` loads it via `python-dotenv`.
 - **Interval strings.** The vendor's `time_series` endpoint expects
   `1day`/`1week`/`1month` (not `1d`/`1wk`/`1mo`). The project keeps the short
   form everywhere (config, cache filenames, CLI) and normalizes to the vendor
@@ -67,13 +67,13 @@ to be aware of on a multi-year daily backtest (~1,600 bars/symbol):
 echo "TWELVEDATA_API_KEY=..." > .env
 
 # 2. forecast-only training (no JAX; fast)
-.venv/bin/python3 -m scripts.training \
+.venv/bin/python3 -m research.scripts.training \
   --symbols AAPL,MSFT,GOOG,AMZN \
   --start_date 2020-01-01 --end_date <today> \
   --horizon 5 --n_splits 5 --models xgboost
 
 # 3. backtest the run (basic tier -> --no_dividends)
-PYTHONWARNINGS=ignore .venv/bin/python3 -m scripts.backtest \
+PYTHONWARNINGS=ignore .venv/bin/python3 -m research.scripts.backtest \
   --training_run runs/<run_name> --no_dividends
 ```
 

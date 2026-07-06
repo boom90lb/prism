@@ -2,6 +2,12 @@
 
 **A refactor-oriented structural review**
 
+> **Historical document (v0.2.2, pre-re-founding).** Code anchors below use
+> the pre-v0.3.0 layout (`src/models/`, `scripts/`, `src/arbitrage/`), which
+> has since moved under `src/prism/` + `research/`. `SPEC.md` subsumes this
+> audit's findings and its R0–R4 sequencing; read it first. This file is kept
+> as the evidentiary record of why the spec says what it says.
+
 ---
 
 ## Abstract

@@ -28,6 +28,11 @@ covers operational gotchas.
 
 ## Data flow
 
+Two batch WFO paths exercise the engine end to end, both driven from
+`research/scripts/`. The directional ensemble path below runs the *demoted*
+signal node (`SPEC.md §7.1`); the residual/stat-arb path further down is the
+one that exercises the production spine.
+
 ```
 Twelvedata API ──► DataLoader ──► FeatureEngineer ──► PurgedWalkForward ──► EnsembleModel ──► TradingStrategy ──► target-weight engine ──► claim packet
    (1day bars,      (range-keyed     (technical         (AFML §7.4          (forecast +        (close-time        (next-open fills,
@@ -41,7 +46,9 @@ accounting then happens once across all symbols in `src/prism/execution/target_w
 The legacy `--legacy_orders` path still uses `TradingStrategy.run_segment` and
 `ExecutionModel` directly for per-symbol LONG/SHORT/FLAT order accounting.
 
-The statistical-arbitrage path is intentionally separate:
+The statistical-arbitrage / residual path is intentionally separate — and it
+is the production spine's end-to-end exercise (`src/prism/residual/` plus the
+shared construction/execution modules, `SPEC.md §2`):
 
 ```
 close/open matrix ──► rolling formation/test folds ──► train-only pair scan ──► causal spread targets ──► capped pair portfolio ──► next-open accounting
@@ -71,8 +78,9 @@ close/open matrix ──► rolling formation/test folds ──► train-only pa
 
 ### 4. Models — `src/prism/models/`
 - `registry.py` partitions members into **forecast** (`arima`, `prophet`,
-  `lstm`, `xgboost` — emit ŷ price) and **policy** (`lstm_ppo`, `xlstm_ppo`,
-  `xlstm_grpo` — emit positions). `base.py` is the shared interface;
+  `xgboost` — emit expected h-bar returns) and **policy** (`lstm_ppo`,
+  `xlstm_ppo`, `xlstm_grpo` — emit positions). `base.py` is the shared
+  interface;
   `required_history` tells the backtest how many trailing bars each member needs.
 - `mapping.py` bridges the two: `forecast_to_position` vol-sizes a price
   forecast into a position ∈ [−1, 1]; `ideal_position` is the perfect-foresight

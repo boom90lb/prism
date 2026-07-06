@@ -16,34 +16,45 @@
 > signal-bound, and `SPEC.md §10` carries a numeric kill-criterion for the case
 > where the daily residual signal proves simply too weak.
 
-A backtesting stack that combines classical time-series forecasters
-(ARIMA, Prophet, LSTM, XGBoost) and three reinforcement-learning policies
-(LSTM-PPO, xLSTM-PPO, xLSTM-GRPO) into a single position-space ensemble, then
-evaluates it under a **methodology designed to produce honest out-of-sample
-numbers** — purged walk-forward CV, next-open fills with realistic costs,
-shared-capital target-weight accounting, optional legacy baselines, and
-overfitting-adjusted metrics (DSR, PBO). Per `SPEC.md`, the forecaster/RL
-ensemble is now research-side; the production spine is the cross-sectional
-residual path plus the breadth-, cost-, and capacity-aware harness modules new
-in v0.3.0 (`validation/{metrics,capacity}`, `execution/participation`,
-`portfolio.step_no_trade_band`, `regime/`).
+Prism is a cross-sectional systematic trading engine — **score → residualize
+→ construct → execute**, conditioned by a regime layer — gated by an
+evaluation harness built to produce **honest out-of-sample numbers**: purged
+walk-forward CV, next-open fills with realistic costs, shared-capital
+target-weight accounting, breadth / capacity / cost-toll diagnostics, and
+overfitting-adjusted metrics (DSR, PBO). The production spine is the
+survivorship-counted S&P residual path (`src/prism/residual/`) plus the
+construction, execution, and regime machinery shipped in v0.3.0
+(`validation/{metrics,capacity}`, `execution/participation`,
+`portfolio.step_no_trade_band`, `regime/`). The classical forecaster ensemble
+(ARIMA, Prophet, XGBoost — the forecast `lstm` was removed) survives as *one*
+plug-in signal node under the same harness; the three reinforcement-learning
+policies (LSTM-PPO, xLSTM-PPO, xLSTM-GRPO) are quarantined research members
+under `research/`.
 
 It also includes a separate statistical-arbitrage path for market-neutral pair
 research: train-only cointegration discovery, residual stationarity and
 multiple-testing filters, causal spread targets, capped portfolio weights, and
 next-open costed accounting. See [`docs/stat_arb.md`](docs/stat_arb.md).
 
-The emphasis is on *trustworthy evaluation*, not on a deployable alpha. The
-default universe and hyperparameters are illustrative; the value is in the
-harness around them.
+The mandate (`SPEC.md §1`) is a production-grade, zero-data-budget systematic
+trading bot. Deployment is the goal and it is gated hard: capital is risked
+only on edges that clear the claim-tier evidence bar (`SPEC.md §10`), and no
+configuration has cleared `net_edge` yet. The harness is the bar; the S&P
+residual configuration is the current candidate under it, held to exactly the
+tier its evidence supports.
 
 See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the end-to-end data flow (what
-calls what) and [`docs/operations.md`](docs/operations.md) for operational
-gotchas (vendor tier, interval mapping, member contribution, per-bar cost).
+calls what), [`docs/operations.md`](docs/operations.md) for operational
+gotchas (vendor tier, interval mapping, member contribution, per-bar cost),
+[`docs/handoff.md`](docs/handoff.md) for the long-horizon doctrine
+behind the roadmap, and [`formal/`](formal/README.md) for the Lean 4
+machine-checked kernel invariants.
 
-> **Note on the RL members.** The three RL agents were stub implementations in
-> the original codebase (hardcoded losses, random-action `predict`). They now
-> have real gradient updates and end-to-end fit/predict. If you extend them,
+> **Note on the RL members (research-side only).** The three RL policies are
+> quarantined under `research/` and are not production signals (`SPEC.md §8`).
+> They were stub implementations in the original codebase (hardcoded losses,
+> random-action `predict`); they now have real gradient updates and
+> end-to-end fit/predict. If you extend them,
 > check that the policy actually takes gradient steps and that a windowed
 > member produces non-flat positions before trusting any RL-attributed Sharpe
 > — under a small training budget an undertrained policy legitimately produces
@@ -368,7 +379,11 @@ research/              (quarantined per SPEC §9 — not in the wheel; may impor
     sweep.py             ensemble-layer grid → DSR
     rl_seed_eval.py      multi-seed RL overfitting study
     stat_arb_wfo.py      rolling formation/test pairs stat-arb WFO
-tests/                 ~450 offline tests (validation, leakage, execution, conformal, logging)
+formal/                Lean 4 machine-checked kernel invariants (N4 ledger
+                       conservation, no-trade-band hysteresis + batch-replay
+                       divergence, purge/embargo geometry, participation gate)
+tests/                 463 offline tests, 411 without the [research] extra
+                       (validation, leakage, execution, conformal, logging)
 ```
 
 ## Configuration
@@ -388,8 +403,10 @@ tests/                 ~450 offline tests (validation, leakage, execution, confo
 
 ## Dependencies
 
-Python 3.12+ · scikit-learn, Flax/JAX, PyTorch · Gymnasium · statsmodels,
-Prophet, XGBoost · transformers (FinBERT) · MLflow · Twelvedata, Polygon.io.
+Core (the production import path, SPEC N8): Python 3.12+ · numpy, pandas,
+scikit-learn · statsmodels, Prophet, XGBoost · pyarrow · Twelvedata,
+Polygon.io APIs. `[research]` extra: Flax/JAX, PyTorch, transformers
+(FinBERT), Gymnasium, MLflow, matplotlib.
 
 ## License
 

@@ -151,7 +151,8 @@ confirmation that the current gate is not leaving feasible Sharpe on the table.
 
 ## First megacap WFO run
 
-Run command:
+Run command (recorded verbatim pre-quarantine; the module now lives at
+`research.scripts.stat_arb_wfo`):
 
 ```bash
 python -m scripts.stat_arb_wfo --symbols AAPL,MSFT,GOOG,AMZN,META,NVDA \
