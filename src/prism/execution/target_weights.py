@@ -158,7 +158,7 @@ def _cost_values(
             * cost_multiplier
         )
     else:
-        # Per-bucket spread (R2_DESIGN §3, I-9): commission stays scalar, the
+        # Per-bucket spread (r2_design.md §3, I-9): commission stays scalar, the
         # spread is priced per name. None must reproduce the flat computation
         # bit-for-bit (frozen-v1 parity).
         commission_spread = float(
@@ -256,7 +256,7 @@ def backtest_target_weights(
     order is created for the next open, while already-filled weights continue.
 
     ``spread_bps_per_name`` (optional, indexed by symbol) prices the spread
-    per name instead of the flat ``execution.spread_bps`` (R2_DESIGN §3);
+    per name instead of the flat ``execution.spread_bps`` (r2_design.md §3);
     missing/NaN entries fall back to the flat spread, ``None`` is bit-identical
     to the flat computation.
     """

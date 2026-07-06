@@ -54,10 +54,10 @@ from prism.validation.metrics import periodic_sharpe
 _SIZE_CAP = 2.0
 
 # Risk-aversion constant of the closed-form (Martin 2012 cube-root) band:
-# pre-registered at 1.0, never fitted or swept (docs/dev/R2_DESIGN.md §1).
+# pre-registered at 1.0, never fitted or swept (docs/r2_design.md §1).
 GAMMA_RISK = 1.0
 
-# Pre-registered conservative-upper spread schedule (docs/dev/R2_DESIGN.md §3,
+# Pre-registered conservative-upper spread schedule (docs/r2_design.md §3,
 # I-9): (median formation-window dollar-volume floor, one-way spread bps),
 # descending floors. Not fitted; replaced only by fill calibration when fills
 # exist. Unknown liquidity (NaN median) lands in the widest bucket — fail-safe,
@@ -149,7 +149,7 @@ def _online_banded_targets(
     the held state starts at zero.
 
     When ``walk_config.max_participation > 0`` the hard participation gate
-    (R2_DESIGN §2) runs after band + caps against the held weights and that
+    (r2_design.md §2) runs after band + caps against the held weights and that
     day's trailing dollar volume, and the *gated* row becomes both the emitted
     target and tomorrow's held state — the backtest charges gated trades, and
     unfilled residual demand must re-clear the band tomorrow.
@@ -168,7 +168,7 @@ def _online_banded_targets(
         ).iloc[0]
         if gate:
             # adv_floor=0.0 deliberately: flooring ADV up would loosen the cap
-            # for exactly the illiquid names the gate protects (R2_DESIGN §2).
+            # for exactly the illiquid names the gate protects (r2_design.md §2).
             capped = participation_capped_targets(
                 held,
                 capped,
@@ -196,7 +196,7 @@ def _windowed_targets(
 
     One construction for both consumers: the test-window build, and the
     closed-form band's formation-window replay — which estimates target-change
-    variance on formation bars only and feeds NOTHING forward (R2_DESIGN §1).
+    variance on formation bars only and feeds NOTHING forward (r2_design.md §1).
     """
     states = run_state_machine(sscores[window], tradeable[window], signal_config)
     rows = np.zeros((window.stop - window.start, len(symbols)))
@@ -328,7 +328,7 @@ def run_residual_stat_arb_walk_forward(
         elif walk_config.band_mode == "closed_form":
             # sigma2_target from a formation-only replay of the exact test-window
             # construction; the replay is discarded after the variance estimate
-            # (R2_DESIGN §1). Names with <2 finite diffs or zero variance -> band 0.
+            # (r2_design.md §1). Names with <2 finite diffs or zero variance -> band 0.
             formation_targets = _windowed_targets(
                 slices.formation, closes.index, symbols, panel, sscores, tradeable, signal_config, walk_config
             )

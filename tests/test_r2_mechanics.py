@@ -3,7 +3,7 @@
 Everything lands default-off; the frozen-v1 parity claims are pinned here
 (explicit-off == default) and by tests/test_residual_statarb.py passing
 unchanged. Pre-registered constants (gamma_risk, bucket schedule) come from
-docs/dev/R2_DESIGN.md and are asserted, not re-derived.
+docs/r2_design.md and are asserted, not re-derived.
 """
 
 from __future__ import annotations
@@ -84,7 +84,7 @@ def test_closed_form_band_gamma_risk_scaling() -> None:
 
 
 def test_gamma_risk_constant_is_preregistered() -> None:
-    assert GAMMA_RISK == 1.0  # docs/dev/R2_DESIGN.md §1: never fitted, never swept
+    assert GAMMA_RISK == 1.0  # docs/r2_design.md §1: never fitted, never swept
 
 
 # ---------------------------------------------------------------------------
@@ -156,7 +156,7 @@ def test_bucket_spread_schedule_mapping() -> None:
     mdv = pd.Series({"MEGA": 6e8, "LARGE": 2e8, "MID": 5e7, "SMALL": 1e7, "UNKNOWN": np.nan})
     out = bucket_spread_bps(mdv)
     assert out.tolist() == [1.0, 2.0, 5.0, 10.0, 10.0]  # NaN -> widest bucket, fail-safe
-    # Schedule constant is the pre-registered one (R2_DESIGN §3).
+    # Schedule constant is the pre-registered one (r2_design.md §3).
     assert SPREAD_BUCKET_SCHEDULE_V1 == ((500e6, 1.0), (100e6, 2.0), (25e6, 5.0), (0.0, 10.0))
 
 

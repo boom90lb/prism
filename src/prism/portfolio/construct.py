@@ -154,7 +154,7 @@ def closed_form_band(
     the proportional-cost tracking asymptotic: cost enters cube-root
     (shallower than the sqrt heuristic above) and the driver is the variance
     of day-over-day *target-weight changes*, not OU speed. ``gamma_risk`` is
-    pre-registered at 1.0 and never fitted (docs/dev/R2_DESIGN.md §1).
+    pre-registered at 1.0 and never fitted (docs/r2_design.md §1).
     Non-finite or non-positive inputs disable the band for that name (0.0) —
     the same finite ``>= 0`` output convention as ``cost_aware_band``.
     """
