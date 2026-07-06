@@ -10,6 +10,7 @@ import pandas as pd
 import requests
 
 from prism.config import DATA_DIR, TWELVEDATA_API_KEY, TrainingConfig
+from prism.io.rate_limit import DataBudgetExhausted, TokenBucket
 
 logger = logging.getLogger(__name__)
 
@@ -154,6 +155,7 @@ class DataLoader:
         cache_dir: Optional[Path] = None,
         request_timeout: float = DEFAULT_REQUEST_TIMEOUT_SECONDS,
         dividend_negative_cache_ttl_days: float = DIVIDEND_NEGATIVE_CACHE_TTL_DAYS,
+        rate_limiter: Optional[TokenBucket] = None,
     ):
         """Initialize the data loader.
 
@@ -163,6 +165,12 @@ class DataLoader:
             request_timeout: HTTP request timeout in seconds.
             dividend_negative_cache_ttl_days: How long a cached empty
                 ("no dividends") answer is honored before refetching.
+            rate_limiter: Token bucket metering every network request against
+                the vendor budget (SPEC §7.0). Defaults to a fresh bucket at
+                the Twelve Data free-tier limits; a process running several
+                loaders against one API key should pass a shared bucket.
+                Cache hits never consume a token. Exhausting the daily budget
+                raises ``DataBudgetExhausted`` (N7) instead of degrading.
         """
         self.api_key = api_key or TWELVEDATA_API_KEY
         if not self.api_key:
@@ -172,6 +180,7 @@ class DataLoader:
         self.cache_dir.mkdir(exist_ok=True, parents=True)
         self.request_timeout = float(request_timeout)
         self.dividend_negative_cache_ttl_days = float(dividend_negative_cache_ttl_days)
+        self.rate_limiter = rate_limiter or TokenBucket()
 
     def _find_covering_cache(
         self, symbol: str, interval: str, req_start: Optional[str], req_end: str
@@ -280,7 +289,8 @@ class DataLoader:
             if end_date:
                 params["end_date"] = end_date
 
-            # Make API request
+            # Make API request (metered; DataBudgetExhausted propagates)
+            self.rate_limiter.acquire()
             response = requests.get(  # type: ignore
                 "https://api.twelvedata.com/time_series",
                 params=params,
@@ -332,6 +342,8 @@ class DataLoader:
 
             return df
 
+        except DataBudgetExhausted:
+            raise  # a spent daily budget must stop the run, not empty-frame it (N7)
         except Exception as e:
             logger.error(f"Error fetching data for {symbol}: {e}")
             return pd.DataFrame()
@@ -406,6 +418,7 @@ class DataLoader:
         if end_date:
             params["end_date"] = end_date
         try:
+            self.rate_limiter.acquire()
             response = requests.get(
                 "https://api.twelvedata.com/dividends",
                 params=params,
@@ -413,6 +426,8 @@ class DataLoader:
             )
             response.raise_for_status()
             return _parse_dividends_payload(response.json())
+        except DataBudgetExhausted:
+            raise  # a spent daily budget must stop the run, not no-op it (N7)
         except Exception as e:
             logger.error(f"Error fetching dividends for {symbol}: {e}")
             return None
