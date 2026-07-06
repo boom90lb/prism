@@ -2,6 +2,7 @@
 """Data-loader tests: tz-awareness, range-encoded cache coverage, dividends."""
 
 import os
+import time
 
 import pandas as pd
 import pytest
@@ -197,11 +198,16 @@ def test_parse_dividends_payload_normal():
     assert str(s.index.tz) == BAR_TZ
 
 
-def test_parse_dividends_payload_empty_and_error():
-    assert _parse_dividends_payload({"dividends": []}).empty
-    assert _parse_dividends_payload({"status": "error", "message": "x"}).empty
-    assert _parse_dividends_payload({"meta": {}}).empty  # no 'dividends' key
-    assert _parse_dividends_payload("garbage").empty
+def test_parse_dividends_payload_distinguishes_empty_from_failure():
+    # A successful "no dividends" answer is an empty Series (cacheable fact)…
+    s = _parse_dividends_payload({"dividends": []})
+    assert s is not None and s.empty
+    # …while vendor errors / unexpected schemas are None (never cacheable).
+    assert _parse_dividends_payload({"status": "error", "message": "x"}) is None
+    assert _parse_dividends_payload({"meta": {}}) is None  # no 'dividends' key
+    assert _parse_dividends_payload("garbage") is None
+    # Records present but unparseable is a schema failure, not "no dividends".
+    assert _parse_dividends_payload({"dividends": [{"ex_date": "bogus", "amount": "x"}]}) is None
 
 
 def test_parse_dividends_payload_sums_same_ex_date():
@@ -255,6 +261,65 @@ def test_fetch_dividends_no_key_returns_empty(tmp_path):
     loader = DataLoader(api_key=None, cache_dir=tmp_path)
     loader.api_key = None  # force no-key path even if env has one
     assert loader.fetch_dividends("AAPL", "2021-01-01", "2021-12-31").empty
+    # A no-key miss is a failure, not a "no dividends" fact — never cached.
+    assert not list(tmp_path.glob("*_dividends_*"))
+
+
+def test_failed_dividend_fetch_is_not_cached_as_no_dividends(tmp_path, monkeypatch):
+    """The poisoning regression (SPEC §7.0): a transient fetch failure must
+    not become a durable "no dividends" cache entry."""
+    state = {"fail": True, "n": 0}
+
+    def fake_get(url, params=None, timeout=None):
+        state["n"] += 1
+        if state["fail"]:
+            raise ConnectionError("simulated outage")
+        return _FakeResp({"dividends": [{"ex_date": "2021-02-05", "amount": 0.2}]})
+
+    monkeypatch.setattr("prism.data_loader.requests.get", fake_get)
+    loader = DataLoader(api_key="test", cache_dir=tmp_path)
+
+    assert loader.fetch_dividends("AAPL", "2021-01-01", "2021-12-31").empty
+    assert not list(tmp_path.glob("*_dividends_*"))  # failure left no record
+
+    state["fail"] = False
+    recovered = loader.fetch_dividends("AAPL", "2021-01-01", "2021-12-31")
+    assert state["n"] == 2  # refetched — the failure did not poison the cache
+    assert len(recovered) == 1
+
+    # Vendor-side error payloads are failures too, not empty answers.
+    def error_get(url, params=None, timeout=None):
+        return _FakeResp({"status": "error", "code": 429, "message": "rate limit"})
+
+    monkeypatch.setattr("prism.data_loader.requests.get", error_get)
+    fresh = DataLoader(api_key="test", cache_dir=tmp_path / "b")
+    assert fresh.fetch_dividends("MSFT", "2021-01-01", "2021-12-31").empty
+    assert not list((tmp_path / "b").glob("*_dividends_*"))
+
+
+def test_empty_dividend_answer_cached_with_ttl(tmp_path, monkeypatch):
+    calls = {"n": 0}
+
+    def fake_get(url, params=None, timeout=None):
+        calls["n"] += 1
+        return _FakeResp({"dividends": []})
+
+    monkeypatch.setattr("prism.data_loader.requests.get", fake_get)
+    loader = DataLoader(api_key="test", cache_dir=tmp_path)
+
+    assert loader.fetch_dividends("BRK.A", "2021-01-01", "2021-12-31").empty
+    cache_files = list(tmp_path.glob("*_dividends_*"))
+    assert len(cache_files) == 1  # a real "no dividends" answer IS cached
+
+    # Within TTL the negative answer is served from cache.
+    assert loader.fetch_dividends("BRK.A", "2021-01-01", "2021-12-31").empty
+    assert calls["n"] == 1
+
+    # Aged past the TTL it is refetched.
+    stale = time.time() - (loader.dividend_negative_cache_ttl_days + 1) * 86_400
+    os.utime(cache_files[0], (stale, stale))
+    assert loader.fetch_dividends("BRK.A", "2021-01-01", "2021-12-31").empty
+    assert calls["n"] == 2
 
 
 # --------------------------------------------------------------------------- #

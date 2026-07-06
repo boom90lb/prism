@@ -1,6 +1,7 @@
 """Data loading module for the time series ensemble model."""
 
 import logging
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional
@@ -17,6 +18,11 @@ logger = logging.getLogger(__name__)
 BAR_TZ = "America/New_York"
 BAR_CLOSE_HOUR = 16
 DEFAULT_REQUEST_TIMEOUT_SECONDS = 30.0
+# How long a cached *empty* ("no dividends in range") answer is honored before
+# refetching (SPEC §7.0 negative-cache TTL): a range ending near the present
+# can gain a newly declared ex-date. Non-empty answers are range-keyed and
+# need no TTL.
+DIVIDEND_NEGATIVE_CACHE_TTL_DAYS = 7.0
 
 
 def _ensure_bar_tz(df: pd.DataFrame) -> pd.DataFrame:
@@ -88,30 +94,39 @@ def _range_covers(
     return True
 
 
-def _parse_dividends_payload(data) -> pd.Series:
+def _parse_dividends_payload(data) -> Optional[pd.Series]:
     """Twelvedata ``/dividends`` JSON -> tz-aware ET Series (ex_date -> amount).
 
-    Returns an empty Series for any error / no-dividend / unexpected-schema
-    response so the caller can treat "no dividend data" as a backtest no-op.
+    Distinguishes the two negative outcomes (SPEC §7.0): a *successful* answer
+    with no dividends returns an empty Series (a cacheable fact), while a
+    vendor error / unexpected schema / unparseable payload returns ``None``
+    (a fetch failure that must never be cached as "no dividends").
     Amounts are split-adjusted to match ``adjust=splits`` prices. Same-ex-date
     rows (e.g. regular + special dividend) are summed.
     """
     empty = pd.Series(dtype="float64", name="amount")
     if not isinstance(data, dict) or data.get("status") == "error":
-        return empty
-    records = data.get("dividends") or []
+        logger.error(f"/dividends returned an error payload: {data!r:.200}")
+        return None
+    if "dividends" not in data:
+        logger.error(f"Unexpected /dividends schema: {sorted(data)}")
+        return None
+    records = data["dividends"] or []
     if not records:
         return empty
     df = pd.DataFrame(records)
     if "ex_date" not in df.columns or "amount" not in df.columns:
         logger.error(f"Unexpected /dividends schema: {list(df.columns)}")
-        return empty
+        return None
     amount = pd.to_numeric(df["amount"], errors="coerce")
     idx = pd.to_datetime(df["ex_date"], errors="coerce")
     s = pd.Series(amount.to_numpy(), index=idx, name="amount").dropna()
     s = s[s.index.notna()]
     if s.empty:
-        return empty
+        # Records were present but none parsed — a schema problem, not a
+        # genuine "no dividends" answer.
+        logger.error(f"/dividends records did not parse: {records[:2]!r}")
+        return None
     s = s.groupby(level=0).sum().sort_index()
     s.index = pd.DatetimeIndex(s.index).tz_localize(BAR_TZ)
     return s
@@ -138,6 +153,7 @@ class DataLoader:
         api_key: Optional[str] = None,
         cache_dir: Optional[Path] = None,
         request_timeout: float = DEFAULT_REQUEST_TIMEOUT_SECONDS,
+        dividend_negative_cache_ttl_days: float = DIVIDEND_NEGATIVE_CACHE_TTL_DAYS,
     ):
         """Initialize the data loader.
 
@@ -145,6 +161,8 @@ class DataLoader:
             api_key: Twelvedata API key (default: use from config)
             cache_dir: Directory for caching data (default: use from config)
             request_timeout: HTTP request timeout in seconds.
+            dividend_negative_cache_ttl_days: How long a cached empty
+                ("no dividends") answer is honored before refetching.
         """
         self.api_key = api_key or TWELVEDATA_API_KEY
         if not self.api_key:
@@ -153,6 +171,7 @@ class DataLoader:
         self.cache_dir = cache_dir or DATA_DIR
         self.cache_dir.mkdir(exist_ok=True, parents=True)
         self.request_timeout = float(request_timeout)
+        self.dividend_negative_cache_ttl_days = float(dividend_negative_cache_ttl_days)
 
     def _find_covering_cache(
         self, symbol: str, interval: str, req_start: Optional[str], req_end: str
@@ -327,11 +346,15 @@ class DataLoader:
 
         Returns a tz-aware (ET) Series indexed by ex-date, split-adjusted to
         match the ``adjust=splits`` prices from ``fetch_historical_data`` so
-        the cash credited per (split-adjusted) share is consistent (SPEC
-        §5). Empty Series when the symbol pays no dividends in range or the
-        API is unavailable — the backtest treats that as a no-op. Cached with
-        the same range-encoded scheme as prices (``{symbol}_dividends_*``); an
-        empty result is a valid cached answer (not refetched).
+        the cash credited per (split-adjusted) share is consistent (SPEC §5).
+
+        Negative caching distinguishes "no dividends" from "fetch failed"
+        (SPEC §7.0): a *successful* empty answer is cached but honored only
+        for ``dividend_negative_cache_ttl_days`` (a recent range can gain a
+        newly declared ex-date); a *failed* fetch is never cached — it
+        degrades to an empty Series for this call with an error logged, so a
+        transient outage cannot poison every later run. The full fail-loud
+        escalation of the data path belongs to the io/ ADAPT (SPEC §7.0).
         """
         if not end_date:
             end_date = datetime.now().strftime("%Y-%m-%d")
@@ -341,11 +364,20 @@ class DataLoader:
             try:
                 cached = pd.read_parquet(cache_hit)
                 series = self._dividends_frame_to_series(cached)
-                return self._filter_div_series(series, start_date, end_date)
+                if not series.empty or self._negative_cache_fresh(cache_hit):
+                    return self._filter_div_series(series, start_date, end_date)
+                logger.info(f"Stale negative dividend cache {cache_hit.name}; refetching")
             except Exception as e:
                 logger.error(f"Error reading dividend cache {cache_hit}: {e}")
 
         series = self._request_dividends(symbol, start_date, end_date)
+        if series is None:
+            # Fetch failed: no durable record, empty for this call only.
+            logger.error(
+                f"Dividend fetch failed for {symbol} [{start_date}..{end_date}]; "
+                "returning empty WITHOUT caching (backtest treats as no-op)"
+            )
+            return pd.Series(dtype="float64", name="amount")
 
         start_token = start_date if start_date else CACHE_START_SENTINEL
         cache_file = self.cache_dir / f"{symbol}_dividends_{start_token}_{end_date}.parquet"
@@ -356,14 +388,18 @@ class DataLoader:
 
         return self._filter_div_series(series, start_date, end_date)
 
+    def _negative_cache_fresh(self, cache_file: Path) -> bool:
+        """True while an empty ("no dividends") cached answer is within TTL."""
+        age_seconds = time.time() - cache_file.stat().st_mtime
+        return age_seconds <= self.dividend_negative_cache_ttl_days * 86_400.0
+
     def _request_dividends(
         self, symbol: str, start_date: Optional[str], end_date: Optional[str]
-    ) -> pd.Series:
-        """Hit ``/dividends`` and parse; empty Series on any failure."""
-        empty = pd.Series(dtype="float64", name="amount")
+    ) -> Optional[pd.Series]:
+        """Hit ``/dividends`` and parse; ``None`` on any failure (not cacheable)."""
         if not self.api_key:
             logger.warning(f"No API key; cannot fetch dividends for {symbol}")
-            return empty
+            return None
         params = {"symbol": symbol, "apikey": self.api_key, "format": "json"}
         if start_date:
             params["start_date"] = start_date
@@ -379,7 +415,7 @@ class DataLoader:
             return _parse_dividends_payload(response.json())
         except Exception as e:
             logger.error(f"Error fetching dividends for {symbol}: {e}")
-            return empty
+            return None
 
     @staticmethod
     def _dividends_frame_to_series(df: pd.DataFrame) -> pd.Series:
