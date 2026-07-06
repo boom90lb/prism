@@ -8,12 +8,14 @@ import pytest
 
 from prism.residual.factors import (
     ResidualStatArbConfig,
+    _fix_eigenvector_signs,
     batched_factor_ols,
     compute_eligibility,
     compute_returns,
     consensus_trading_days,
     estimate_eigenportfolios,
     etf_factor_portfolios,
+    factor_returns_from_window,
     volume_time_weights,
 )
 
@@ -296,6 +298,86 @@ def test_eigenportfolios_reject_nan_window() -> None:
     returns[5, 1] = np.nan
     with pytest.raises(ValueError):
         estimate_eigenportfolios(returns, n_factors=2)
+
+
+def test_sign_fix_decisive_sums_anchor_on_weight_sum() -> None:
+    vectors = np.array([
+        [0.6, 0.3, 0.1],     # decisive positive: unchanged
+        [-0.6, -0.3, -0.1],  # decisive negative: flipped
+    ])
+    fixed = _fix_eigenvector_signs(vectors.copy())
+    assert np.array_equal(fixed[0], vectors[0])
+    assert np.array_equal(fixed[1], -vectors[1])
+
+
+def test_sign_fix_indecisive_sum_anchors_on_max_loading() -> None:
+    """A weight sum at float-noise scale must not decide the sign — the
+    pre-fix rule flipped on ``sum < 0`` exactly, so a long-short eigenvector
+    crossing zero net weight flipped its sign between re-estimation dates.
+    """
+    # Sum is -1e-9 (noise-scale vs gross 1.4) but the largest loading is
+    # positive: the old rule flipped this vector, the anchored rule keeps it.
+    v = np.array([[0.700000001, -0.7, -0.000000002]])
+    fixed = _fix_eigenvector_signs(v.copy())
+    assert fixed[0, 0] > 0
+    # Mirror case: largest loading negative -> flipped.
+    w = np.array([[-0.700000001, 0.7, 0.000000002]])
+    fixed_w = _fix_eigenvector_signs(w.copy())
+    assert fixed_w[0, 0] > 0
+
+
+def test_factor_returns_finite_window_matches_matmul_exactly() -> None:
+    rng = np.random.default_rng(5)
+    R = rng.normal(0.0, 0.01, size=(30, 6))
+    Q = rng.normal(0.0, 1.0, size=(2, 6))
+    assert np.array_equal(factor_returns_from_window(R, Q), R @ Q.T)
+
+
+def test_factor_returns_renormalize_missing_names() -> None:
+    """A missing name's weight is levered onto the present names, never
+    imputed as a zero return (which damps factor variance and biases betas).
+    """
+    R = np.array([
+        [0.01, 0.02, -0.01],
+        [0.01, np.nan, 0.02],
+    ])
+    Q = np.array([[1.0, 1.0, 2.0]])  # gross = 4
+    F = factor_returns_from_window(R, Q)
+    # Bar 0 fully present: plain dot product.
+    assert F[0, 0] == pytest.approx(0.01 + 0.02 - 0.02)
+    # Bar 1: present gross = 1 + 2 = 3, so the sub-portfolio return
+    # (0.01 + 0.04) is levered by 4/3 -- not the imputed-zero 0.05.
+    assert F[1, 0] == pytest.approx((0.01 + 0.04) * 4.0 / 3.0)
+
+
+def test_factor_returns_all_missing_bar_is_zero() -> None:
+    R = np.array([[np.nan, np.nan]])
+    Q = np.array([[0.5, -0.5]])
+    F = factor_returns_from_window(R, Q)
+    assert F.shape == (1, 1)
+    assert F[0, 0] == 0.0
+
+
+def test_factor_returns_do_not_damp_variance() -> None:
+    """The retired NaN->0 imputation shrank factor variance whenever names
+    went missing; renormalization keeps the estimate unbiased in scale.
+    """
+    rng = np.random.default_rng(9)
+    factor = rng.normal(0.0, 0.01, size=200)
+    R = np.repeat(factor[:, None], 4, axis=1)  # 4 names, beta 1 each
+    Q = np.full((1, 4), 0.25)                  # equal-weight factor portfolio
+    R_holed = R.copy()
+    R_holed[50:150, 0] = np.nan                # one name dark for half the window
+    var_clean = float(np.var(factor_returns_from_window(R, Q)[:, 0]))
+    var_imputed = float(np.var((np.nan_to_num(R_holed) @ Q.T)[:, 0]))
+    var_renorm = float(np.var(factor_returns_from_window(R_holed, Q)[:, 0]))
+    assert var_imputed < var_clean * 0.95   # the defect this fixes
+    assert var_renorm == pytest.approx(var_clean, rel=1e-9)
+
+
+def test_config_rejects_bad_max_stale_rebalances() -> None:
+    with pytest.raises(ValueError, match="max_stale_rebalances"):
+        _small_config(max_stale_rebalances=0)
 
 
 def test_batched_factor_ols_exact_recovery() -> None:

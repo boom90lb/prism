@@ -30,6 +30,7 @@ from prism.residual.factors import (
     compute_returns,
     estimate_eigenportfolios,
     etf_factor_portfolios,
+    factor_returns_from_window,
     volume_time_weights,
 )
 # cap_book/apply_no_trade_band/cost_aware_band are re-exported here as the
@@ -188,6 +189,9 @@ class ResidualSignalPanel:
     eligible_at_rebalance: tuple[int, ...]
     explained_at_rebalance: tuple[float, ...]
     skipped_rebalances: int = 0
+    n_stale_benched: np.ndarray = field(
+        default_factory=lambda: np.zeros(0, dtype=np.int64)
+    )
     config: ResidualStatArbConfig = field(default_factory=ResidualStatArbConfig)
 
     def diagnostics(self, start: int = 0, stop: int | None = None) -> dict[str, float]:
@@ -198,11 +202,16 @@ class ResidualSignalPanel:
         slow = float(self.n_slow_ou[sl].sum())
         missing = float(self.n_missing[sl].sum())
         candidates = float(self.n_candidates[sl].sum())
+        benched = (
+            float(self.n_stale_benched[sl].sum())
+            if len(self.n_stale_benched) else 0.0
+        )
         return {
             "signal_evaluations": evaluations,
             "invalid_ou_rate": invalid / evaluations if evaluations else float("nan"),
             "slow_ou_rate": slow / evaluations if evaluations else float("nan"),
             "missing_data_rate": missing / candidates if candidates else float("nan"),
+            "stale_benched_days": benched,
         }
 
 
@@ -224,8 +233,14 @@ def compute_residual_signal_panel(
     and has a fully-finite trailing ``regr_window`` of returns gets an OLS
     beta/alpha against the current factors and an OU fit on its residuals.
     Stocks whose factor-window returns go missing mid-week (halt/delisting)
-    contribute zero to factor returns for those bars — a documented v1
-    approximation.
+    are handled by gross renormalization of the factor returns
+    (``factor_returns_from_window``) — never imputed as zero returns, which
+    would damp factor variance and bias every downstream beta.
+
+    When the eligible cross-section is too thin to re-estimate factors the
+    rebalance is skipped and the prior eigenportfolios stay in force;
+    ``config.max_stale_rebalances`` bounds how long before signal emission is
+    benched (explicit de-gross) rather than trading on stale factors.
     """
     config = config or ResidualStatArbConfig()
     if not closes.columns.equals(volumes.columns) or not closes.index.equals(volumes.index):
@@ -277,6 +292,8 @@ def compute_residual_signal_panel(
     eligible_counts: list[int] = []
     explained_shares: list[float] = []
     skipped = 0
+    consecutive_skips = 0
+    n_stale_benched = np.zeros(n_days, dtype=np.int64)
     cross_section = np.zeros(n_symbols, dtype=bool)
     current_q = -1
 
@@ -311,12 +328,24 @@ def compute_residual_signal_panel(
                 rebalance_positions.append(t)
                 eligible_counts.append(int(elig_t.sum()))
                 explained_shares.append(float(explained.sum()))
+                consecutive_skips = 0
             else:
                 skipped += 1
+                consecutive_skips += 1
 
         if current_q < 0 or t < config.warmup_bars:
             continue
         q_index[t] = current_q
+
+        # Staleness bound: past the configured skip budget the factors in
+        # force are too old to trade against — bench signal emission (an
+        # explicit de-gross, N7) until a rebalance succeeds again.
+        if (
+            config.max_stale_rebalances is not None
+            and consecutive_skips > config.max_stale_rebalances
+        ):
+            n_stale_benched[t] = 1
+            continue
 
         candidates = cross_section & elig[t]
         n_candidates[t] = int(candidates.sum())
@@ -332,7 +361,7 @@ def compute_residual_signal_panel(
             continue
 
         q_full = eigenportfolios[current_q]
-        factor_window = np.nan_to_num(window_R, nan=0.0) @ q_full.T
+        factor_window = factor_returns_from_window(window_R, q_full)
         dependent_window = Rw[t - config.regr_window + 1 : t + 1]
         alpha, beta_t, residuals = batched_factor_ols(dependent_window[:, active_t], factor_window)
         fit = fit_ou_batch(residuals)
@@ -367,5 +396,6 @@ def compute_residual_signal_panel(
         eligible_at_rebalance=tuple(eligible_counts),
         explained_at_rebalance=tuple(explained_shares),
         skipped_rebalances=skipped,
+        n_stale_benched=n_stale_benched,
         config=config,
     )

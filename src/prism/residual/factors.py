@@ -27,6 +27,9 @@ import numpy as np
 import pandas as pd
 
 _EPS = 1e-12
+# Relative tolerance below which an eigenvector's weight sum is treated as
+# indecisive for sign-fixing (float/sampling noise, not net direction).
+_SIGN_TOL = 1e-6
 
 
 @dataclass(frozen=True)
@@ -39,6 +42,13 @@ class ResidualStatArbConfig:
     s<0.75), and a 30-bar residual half-life cap. Changing any of these after
     seeing a run's results is a new trial and must be logged to the trial
     ledger, or the cross-run deflated Sharpe is meaningless.
+
+    ``max_stale_rebalances`` bounds eigenportfolio staleness: when the eligible
+    cross-section is too thin to re-estimate factors, the rebalance is skipped
+    and the prior eigenportfolios stay in force. ``None`` (the frozen-v1
+    default) allows this indefinitely; an integer ``k`` benches signal
+    emission (explicit de-gross, SPEC N7) after more than ``k`` consecutive
+    skipped rebalances, until a rebalance succeeds again.
     """
 
     corr_window: int = 252
@@ -60,6 +70,7 @@ class ResidualStatArbConfig:
     factor_mode: str = "pca"
     etf_symbols: tuple[str, ...] = ()
     sizing_mode: str = "unit"
+    max_stale_rebalances: int | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "etf_symbols", tuple(str(s).upper() for s in self.etf_symbols))
@@ -114,6 +125,10 @@ class ResidualStatArbConfig:
             raise ValueError("etf_symbols must be empty unless factor_mode='etf'")
         if self.sizing_mode not in ("unit", "strength"):
             raise ValueError(f"sizing_mode must be 'unit' or 'strength', got {self.sizing_mode!r}")
+        if self.max_stale_rebalances is not None and self.max_stale_rebalances < 1:
+            raise ValueError(
+                f"max_stale_rebalances must be None (unbounded) or >= 1, got {self.max_stale_rebalances}"
+            )
 
     @property
     def warmup_bars(self) -> int:
@@ -258,13 +273,36 @@ def etf_factor_portfolios(symbols: tuple[str, ...], etf_symbols: tuple[str, ...]
     return Q
 
 
+def _fix_eigenvector_signs(top_vectors: np.ndarray) -> np.ndarray:
+    """Deterministic per-row sign convention for eigenvectors, in place.
+
+    Primary anchor is a positive weight sum. A weight sum within ``_SIGN_TOL``
+    of zero (relative to the vector's L1 norm) is indecisive — an exact
+    less-than-zero test there lets float/sampling noise flip the portfolio's
+    sign between re-estimation dates — so the sign falls back to the
+    largest-|loading| element. No stateless rule is perfectly continuous, but
+    the anchor must never rest on a noise-scale quantity.
+    """
+    for j in range(top_vectors.shape[0]):
+        v = top_vectors[j]
+        weight_sum = float(v.sum())
+        gross = float(np.abs(v).sum())
+        if abs(weight_sum) > _SIGN_TOL * gross:
+            flip = weight_sum < 0
+        else:
+            flip = v[int(np.argmax(np.abs(v)))] < 0
+        if flip:
+            top_vectors[j] = -v
+    return top_vectors
+
+
 def estimate_eigenportfolios(returns_window: np.ndarray, n_factors: int) -> tuple[np.ndarray, np.ndarray]:
     """Top-``n_factors`` eigenportfolios of a (window x n_assets) return matrix.
 
     Returns ``(Q, explained)`` where ``Q[j, i] = v[j, i] / sigma_i`` (the A-L
     eigenportfolio dollar weights, so factor returns are ``F = R @ Q.T``) and
     ``explained[j]`` is eigenportfolio ``j``'s share of total correlation
-    variance. Eigenvectors are sign-fixed to a positive weight sum so the
+    variance. Eigenvectors are sign-fixed by ``_fix_eigenvector_signs`` so the
     portfolios are stable across re-estimation dates.
 
     The window must be fully finite (eligibility guarantees this upstream).
@@ -294,18 +332,47 @@ def estimate_eigenportfolios(returns_window: np.ndarray, n_factors: int) -> tupl
     top_values = eigenvalues[order]
     top_vectors = eigenvectors[:, order].T  # (n_factors, n_assets)
 
-    for j in range(top_vectors.shape[0]):
-        v = top_vectors[j]
-        weight_sum = float(v.sum())
-        flip = weight_sum < 0 or (weight_sum == 0 and v[int(np.argmax(np.abs(v)))] < 0)
-        if flip:
-            top_vectors[j] = -v
+    top_vectors = _fix_eigenvector_signs(top_vectors)
 
     Q = top_vectors / sigma_used
     Q[:, degenerate] = 0.0
     total = float(eigenvalues.sum())
     explained = top_values / total if total > _EPS else np.zeros_like(top_values)
     return Q, explained
+
+
+def factor_returns_from_window(returns_window: np.ndarray, Q: np.ndarray) -> np.ndarray:
+    """Factor returns over a window whose names may go missing mid-window.
+
+    ``returns_window`` is (window x n_symbols) and may contain NaN — a name
+    can halt or delist after the factor portfolios were struck at the last
+    rebalance. Imputing a missing name as a zero return (the retired v1
+    approximation) damps factor variance and biases every downstream beta.
+    Instead, each (bar, factor) return is computed over the names actually
+    present and rescaled by full-gross / present-gross — the return of the
+    tradable sub-portfolio levered back to the factor's struck gross. A bar
+    on which a factor has no present weight at all contributes 0.0 (no
+    information, explicitly).
+
+    On a fully-finite window this is exactly ``returns_window @ Q.T``
+    (bit-for-bit: the early return shares the code path with frozen v1).
+    """
+    R = np.asarray(returns_window, dtype=float)
+    q = np.asarray(Q, dtype=float)
+    if R.ndim != 2 or q.ndim != 2 or R.shape[1] != q.shape[1]:
+        raise ValueError(f"shape mismatch: returns {R.shape} vs Q {q.shape}")
+    finite = np.isfinite(R)
+    if finite.all():
+        return R @ q.T
+    abs_q = np.abs(q)
+    gross = abs_q.sum(axis=1)  # (n_factors,)
+    present_gross = finite.astype(float) @ abs_q.T  # (window, n_factors)
+    raw = np.where(finite, R, 0.0) @ q.T
+    with np.errstate(invalid="ignore", divide="ignore"):
+        scale = np.where(
+            present_gross > _EPS, gross[None, :] / present_gross, 0.0
+        )
+    return raw * scale
 
 
 def batched_factor_ols(
