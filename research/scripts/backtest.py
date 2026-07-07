@@ -29,7 +29,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -1070,6 +1069,11 @@ def _plot_equity(
     transaction_log: List[Dict[str, Any]],
     out_path: Path,
 ) -> None:
+    # Deferred so importing this module (the slim test subset does, for the
+    # WFO fold-replay helpers) never requires matplotlib — it left the slim
+    # install closure when prophet moved to the [research] extra.
+    import matplotlib.pyplot as plt
+
     if equity.empty:
         return
     fig, (ax1, ax2) = plt.subplots(
