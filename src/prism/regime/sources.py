@@ -2,10 +2,10 @@
 
 This module is documentation-as-code: the canonical registry of the zero-budget
 sources that feed ``regime.curve`` / ``regime.vol`` / ``regime.liquidity``. The
-actual live fetch adapter (a thin `requests` shell against these URLs) is a
-follow-on (SPEC.md §11) — it needs network access that the test sandbox does not
-grant, so it is intentionally not implemented here. The pure feature math in the
-sibling modules is tested on synthetic series instead.
+live fetch adapter over the FRED and DefiLlama rows is ``regime.fetch`` (thin
+``requests`` shells with an injectable session, parse paths tested offline);
+the Treasury FiscalData and CBOE rows remain registry-only. The pure feature
+math in the sibling modules is tested on synthetic series.
 
 Every entry is a free tier with no paid dependency. Rate limits and lags are the
 binding constraints, not access.

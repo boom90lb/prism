@@ -11,21 +11,37 @@ lecture's laws 1/2/4, plus the R4 inflation-expectations follow-on:
 * ``inflation`` — real yield + breakeven-vs-target divergence (§7.5 R4), the
   financial-repression observables the nominal curve cannot see.
 
-``sources`` is the documented free-data-source registry these consume. Pure,
-causal, dependency-light (numpy/pandas only) — production-import-path safe (N8).
+``sources`` is the documented free-data-source registry these consume;
+``fetch`` is the thin live adapter over it (FRED + DefiLlama, injectable
+transport). The feature math stays pure, causal, dependency-light
+(numpy/pandas only) — production-import-path safe (N8).
 """
 
 from __future__ import annotations
 
 from prism.regime.curve import curve_state, curve_state_panel
+from prism.regime.fetch import (
+    DefiLlamaClient,
+    FredClient,
+    RegimeFetchError,
+    fetch_curve_state,
+    fetch_inflation_state,
+    fetch_net_liquidity,
+)
 from prism.regime.inflation import breakeven_divergence, inflation_state
 from prism.regime.liquidity import net_liquidity, net_liquidity_change
 from prism.regime.vol import realized_volatility, variance_risk_premium, vix_term_slope
 
 __all__ = [
+    "DefiLlamaClient",
+    "FredClient",
+    "RegimeFetchError",
     "breakeven_divergence",
     "curve_state",
     "curve_state_panel",
+    "fetch_curve_state",
+    "fetch_inflation_state",
+    "fetch_net_liquidity",
     "inflation_state",
     "net_liquidity",
     "net_liquidity_change",
