@@ -45,14 +45,7 @@ import mlflow
 import numpy as np
 import pandas as pd
 
-from prism.config import (
-    DEFAULT_MODEL_WEIGHTS,
-    DEFAULT_TRAINING_CONFIG,
-    PROJECT_DIR,
-    ModelConfig,
-    TrainingConfig,
-)
-from prism.features import FeatureEngineer, forward_return_column
+from prism.config import PROJECT_DIR
 from prism.io.loader import DataLoader
 from prism.validation.metrics import (
     deflated_sharpe_ratio_with_n,
@@ -67,6 +60,13 @@ from prism.validation.trials import (
     validate_claim_packet_dir,
 )
 from prism.validation.walk_forward import PurgedWalkForward
+from research.config import (
+    DEFAULT_MODEL_WEIGHTS,
+    DEFAULT_TRAINING_CONFIG,
+    ModelConfig,
+    TrainingConfig,
+)
+from research.features import FeatureEngineer, forward_return_column
 from research.scripts._cli_common import add_execution_args, fetch_training_frames
 from research.scripts.backtest import load_fold_ensemble, run_symbol_wfo
 from research.scripts.training import (

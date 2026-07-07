@@ -9,9 +9,9 @@ import numpy as np
 import pandas as pd
 from prophet import Prophet
 
-from prism.config import MODELS_DIR
-from prism.features import is_label_column
-from prism.models.base import BaseModel
+from research.config import MODELS_DIR
+from research.features import is_label_column
+from research.models.base import BaseModel
 
 logger = logging.getLogger(__name__)
 

@@ -1,4 +1,8 @@
-"""Feature engineering for the time series ensemble model."""
+"""Feature engineering for the legacy per-symbol forecaster stack (SPEC §9).
+
+Consumed by the research WFO CLIs and ``research.models``; the production
+signal path (``prism.signal``) builds its own scale-invariant features.
+"""
 
 import logging
 import pickle

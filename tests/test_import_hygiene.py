@@ -8,13 +8,11 @@ importing prism never touches them. Excluding the cwd also makes any accidental
 core -> research module-level import fail loudly instead of resolving against
 the repo checkout.
 
-`prophet` is deliberately absent from the forbidden set: it is a core forecast
-member (SPEC section 7.1); N8's prophet/matplotlib clause binds the future
-live/ import path, enforced when live/ lands. `matplotlib` is likewise absent
-— the prophet library hard-depends on it and pulls it into the closure
-(verified: prism.models.prophet is the first importer), so it is grandfathered
-with prophet; no prism module may import it at module scope directly
-(trading.plot_results defers it).
+`prophet` and `matplotlib` joined the forbidden set with the R1 vocabulary
+convergence: the legacy forecaster stack (research.models.prophet was the
+only prophet importer; its matplotlib arrived transitively) is quarantined
+under research/, so N8's prophet/matplotlib clause now binds the whole
+production closure, live/ included.
 """
 
 from __future__ import annotations
@@ -36,6 +34,8 @@ FORBIDDEN_ROOTS = {
     "transformers",
     "gymnasium",
     "mlflow",
+    "prophet",
+    "matplotlib",
     "research",
 }
 

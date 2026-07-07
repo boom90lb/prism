@@ -40,14 +40,9 @@ from prism.execution.target_weights import (
     backtest_target_weights,
     scale_to_max_gross,
 )
-from prism.features import FeatureEngineer, forward_return_column
 from prism.io.loader import DataLoader
 from prism.logging_utils import configure_logging, get_symbol_logger
-from prism.models.base import BaseModel
-from prism.models.ensemble import EnsembleModel
 from prism.portfolio.construct import construct_directional_targets
-from prism.sentiment_analysis import SentimentAnalyzer
-from prism.trading import TradingStrategy
 from prism.validation.metrics import (
     deflated_sharpe_ratio_with_n,
     periodic_sharpe,
@@ -60,6 +55,9 @@ from prism.validation.trials import (
     validate_claim_packet_dir,
 )
 from research.baselines import TSMOM, BuyAndHold, MACrossover
+from research.features import FeatureEngineer, forward_return_column
+from research.models.base import BaseModel
+from research.models.ensemble import EnsembleModel
 from research.scripts._cli_common import (
     add_execution_args,
     build_execution_and_trading_configs,
@@ -72,6 +70,7 @@ from research.scripts.training import (
     parse_model_names,
     reject_sentiment_flag,
 )
+from research.sentiment_analysis import SentimentAnalyzer
 
 # mlflow_utils is import-safe on a slim core install (mlflow degrades to None
 # inside it and every wrapper raises an informative ImportError on first use),
@@ -85,6 +84,7 @@ from research.tracking.mlflow_utils import (
     mlflow,
     require_mlflow,
 )
+from research.trading import TradingStrategy
 
 # Logging configured in main() via configure_logging() (honors --verbose and
 # the per-run log file). Module-level logger is the fallback name.

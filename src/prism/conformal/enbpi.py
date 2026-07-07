@@ -1,16 +1,17 @@
 """EnbPI-style block-cross-conformal calibrator over OOF positions.
 
 The classical EnbPI of Xu & Xie (2021) bags B models on bootstrap samples
-and aggregates leave-one-out residuals. For the trading ensemble that
-recipe is impractical (refitting RL members B times is prohibitively
-expensive) and the random bootstrap also breaks the time-series block
-structure that PurgedWalkForward already enforces.
+and aggregates leave-one-out residuals. For this project's model stacks
+that recipe is impractical (refitting every member B times is
+prohibitively expensive) and the random bootstrap also breaks the
+time-series block structure that PurgedWalkForward already enforces.
 
 This module instead implements the natural block-cross-conformal variant
-(Foygel-Barber et al. 2021 family) by treating the ensemble's existing
-PurgedWalkForward meta-folds as the leave-block-out mechanism. The OOF
-position vector produced by ``EnsembleModel._compute_oof_positions`` plus
-weighting yields one out-of-sample prediction per training row, computed
+(Foygel-Barber et al. 2021 family) by treating the caller's existing
+PurgedWalkForward meta-folds as the leave-block-out mechanism. An OOF
+prediction vector — the score path in ``prism.signal.ensemble_node``, or
+``EnsembleModel._compute_oof_positions`` on the legacy research path —
+yields one out-of-sample prediction per training row, computed
 from a model that did not see that row. The residuals against the ideal
 target are therefore exchangeable conditional on the block structure, and
 their empirical quantile gives marginal coverage 1-alpha in the

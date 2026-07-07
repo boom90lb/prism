@@ -21,9 +21,8 @@ from prism.execution.costs import (
     daily_borrow_dollars,
     slippage_bps,
 )
-from prism.models.base import BaseModel
-from prism.trading import TradingStrategy
-
+from research.models.base import BaseModel
+from research.trading import TradingStrategy
 
 # ---------- pure cost functions ----------
 

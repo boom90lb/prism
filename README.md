@@ -161,8 +161,8 @@ position size in `trading.calculate_signal`.
 Done before relying on any WFO number (a WFO over leaky features is a
 well-organized lie). Closed leaks: point-in-time UTC sentiment bucketing
 (`searchsorted` against bar-close times, no across-bar ffill), train-only
-feature clipping bounds, per-fold scaler refits. See `src/prism/sentiment_analysis.py`
-and `src/prism/features.py` plus `tests/test_sentiment_leakage.py` /
+feature clipping bounds, per-fold scaler refits. See `research/sentiment_analysis.py`
+and `research/features.py` plus `tests/test_sentiment_leakage.py` /
 `tests/test_feature_engineer_leakage.py`.
 
 ---
@@ -361,27 +361,35 @@ mind.
 
 ```
 src/prism/             (the distribution — production import path)
-  config.py            single source of truth for weights / hyperparams / dirs
+  config.py            production config: directories, spine API key,
+                       ExecutionConfig / TradingConfig cost dataclasses
   io/                  loader (Twelvedata bars + dividends, range-keyed cache +
                        incremental store), PIT universe, token-bucket rate limit
-  features.py          technical indicators, train-only clip bounds
-  sentiment_analysis.py keyword + FinBERT analyzers, PIT bucketing
-  trading.py           target generation, signals, legacy position accounting
-  logging_utils.py     configure_logging + per-symbol adapter (Phase 5.1)
-  models/              arima, prophet, xgboost, ensemble,
-                       registry (forecast vs policy), mapping (vol-sizing)
-  execution/           target-weight accounting, ExecutionModel + cost functions,
-                       participation gate
-  portfolio/           book construction: caps, no-trade bands (batch + online step)
-  regime/              curve / vol / net-liquidity regime state ($0 sources)
+  signal/              the Signal contract + nodes: EnsembleSignalNode
+                       (JAX-free XGBoost/ARIMA blend), ResidualSignalNode
   residual/            factor model + causal OU s-scores + hedged book builder
+  portfolio/           book construction: caps, no-trade bands (batch + online step)
+  execution/           target-weight accounting, ExecutionModel + cost functions,
+                       participation gate, per-bucket spread estimator
+  regime/              curve / vol / inflation / net-liquidity regime state
+                       ($0 sources) + FRED/DefiLlama fetch adapters
+  live/                durable order state, write-ahead daily loop,
+                       Alpaca paper/live broker adapter
   validation/          PurgedWalkForward, metrics (PSR/PBO/DSR/Calmar + FLAM breadth),
                        capacity / cost-toll, research claim packets
   conformal/           EnbPI + ACI
-  scripts/             build_sp500_universe (periodic PIT universe build)
+  logging_utils.py     configure_logging + per-symbol adapter
+  scripts/             build_sp500_universe (periodic PIT universe build),
+                       paper_loop (nightly Alpaca paper cycle)
 research/              (quarantined per SPEC §9 — not in the wheel; may import
                         prism, never the reverse)
-  models/              RL policy members: lstm_ppo, xlstm_ppo, xlstm_grpo (JAX)
+  config.py            ensemble-side config: member/ensemble/training dataclasses
+  trading.py           the legacy v0.2 per-symbol engine (TradingStrategy)
+  features.py          legacy technical indicators, train-only clip bounds
+  sentiment_analysis.py keyword + FinBERT analyzers, PIT bucketing
+  models/              legacy forecast members (arima, prophet, xgboost) +
+                       EnsembleModel, registry, vol-sizing mapping;
+                       RL policy members: lstm_ppo, xlstm_ppo, xlstm_grpo (JAX)
   baselines/           buy-and-hold, MA-crossover, TSMOM
   arbitrage/           cointegration pair scan + stat-arb WFO fold ledgers
   tracking/            MLflow wrappers
@@ -394,22 +402,28 @@ research/              (quarantined per SPEC §9 — not in the wheel; may impor
 formal/                Lean 4 machine-checked kernel invariants (N4 ledger
                        conservation, no-trade-band hysteresis + batch-replay
                        divergence, purge/embargo geometry, participation gate)
-tests/                 463 offline tests, 411 without the [research] extra
-                       (validation, leakage, execution, conformal, logging)
+tests/                 636+ offline tests (validation, leakage, execution,
+                       conformal, live loop, logging); the slim subset runs
+                       without the [research] extra in CI
 ```
 
 ## Configuration
 
-`src/prism/config.py` is the single source of truth.
+Configuration is split at the production/research boundary (SPEC §9):
 
-- `DEFAULT_MODEL_WEIGHTS` registers the default (forecast) ensemble members;
-  scripts read weights from here rather than hardcoding per-model overrides.
-  The quarantined RL members are opt-in via research CLIs and fall back to
-  weight 1.0.
-- `TrainingConfig`/`ExecutionConfig`/`TradingConfig` validate their fields in
-  `__post_init__` (e.g. `n_splits >= 2`, `0 <= embargo_pct < 1`,
-  `0 < position_size <= 1`, `borrow_rate_bps_annual >= 0`). Invalid CLI
-  arguments fail fast at config construction.
+- `src/prism/config.py` — production: project directories, the Twelve Data
+  key, and the `ExecutionConfig`/`TradingConfig` cost dataclasses consumed by
+  the execution/accounting path.
+- `research/config.py` — the legacy ensemble side: `ModelConfig`/
+  `EnsembleConfig`/`TrainingConfig`, `DEFAULT_MODEL_WEIGHTS` (the default
+  forecast members; the quarantined RL members are opt-in via research CLIs
+  and fall back to weight 1.0), the MLflow tracking URI, and the Polygon
+  news key.
+
+Both halves validate fields in `__post_init__` (e.g. `n_splits >= 2`,
+`0 <= embargo_pct < 1`, `0 < position_size <= 1`,
+`borrow_rate_bps_annual >= 0`); invalid CLI arguments fail fast at config
+construction.
 
 ---
 

@@ -13,10 +13,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from prism.config import EnsembleConfig, ModelConfig
 from prism.conformal import ACIState, EnbPICalibrator
-from prism.models.ensemble import EnsembleModel
-
+from research.config import EnsembleConfig, ModelConfig
+from research.models.ensemble import EnsembleModel
 
 # ----- EnbPI primitive ---------------------------------------------------
 

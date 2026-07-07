@@ -9,8 +9,8 @@ import numpy as np
 import pandas as pd
 import xgboost as xgb
 
-from prism.config import MODELS_DIR
-from prism.models.base import BaseModel
+from research.config import MODELS_DIR
+from research.models.base import BaseModel
 
 logger = logging.getLogger(__name__)
 

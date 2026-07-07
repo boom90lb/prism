@@ -26,7 +26,7 @@ try:
 except ImportError:  # slim core install: research extra absent
     mlflow = None  # type: ignore[assignment]
 
-from prism.config import MLFLOW_TRACKING_URI
+from research.config import MLFLOW_TRACKING_URI
 
 logger = logging.getLogger(__name__)
 

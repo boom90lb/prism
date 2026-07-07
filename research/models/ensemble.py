@@ -20,12 +20,16 @@ from sklearn.metrics import (  # type: ignore
     r2_score,
 )
 
-from prism.config import MODELS_DIR, EnsembleConfig
 from prism.conformal import ACIState, EnbPICalibrator
-from prism.models.base import BaseModel
-from prism.models.mapping import ideal_position, realized_vol, return_forecast_to_position
-from prism.models.registry import ModelKind, is_forecast, is_policy, model_kind
 from prism.validation.walk_forward import PurgedWalkForward
+from research.config import MODELS_DIR, EnsembleConfig
+from research.models.base import BaseModel
+from research.models.mapping import (
+    ideal_position,
+    realized_vol,
+    return_forecast_to_position,
+)
+from research.models.registry import ModelKind, is_forecast, is_policy, model_kind
 
 logger = logging.getLogger(__name__)
 
@@ -129,15 +133,15 @@ class EnsembleModel(BaseModel):
             all-zero positions with no visible defect.
         """
         if model_name == "arima":
-            from prism.models.arima import ARIMAModel
+            from research.models.arima import ARIMAModel
 
             return ARIMAModel(target_column=self.target_column, horizon=self.horizon)
         if model_name == "prophet":
-            from prism.models.prophet import ProphetModel
+            from research.models.prophet import ProphetModel
 
             return ProphetModel(target_column=self.target_column, horizon=self.horizon)
         if model_name == "xgboost":
-            from prism.models.xgboost_model import XGBoostModel
+            from research.models.xgboost_model import XGBoostModel
 
             return XGBoostModel(target_column=self.target_column, horizon=self.horizon)
         if is_policy(model_name):
@@ -159,7 +163,7 @@ class EnsembleModel(BaseModel):
             return policy_cls(target_column=self.target_column, horizon=self.horizon, **policy_kwargs)
         raise ValueError(
             f"Unsupported ensemble member {model_name!r}; register it in "
-            "prism.models.registry first."
+            "research.models.registry first."
         )
 
     def _fit_policy_member(

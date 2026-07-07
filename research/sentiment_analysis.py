@@ -22,8 +22,8 @@ import numpy as np
 import pandas as pd
 import requests
 
-from prism.config import POLYGON_API_KEY
 from prism.io.loader import DEFAULT_REQUEST_TIMEOUT_SECONDS
+from research.config import POLYGON_API_KEY
 
 logger = logging.getLogger(__name__)
 
@@ -420,7 +420,7 @@ class TransformerSentimentAnalyzer:
                 Polygon-specific request logic lives in one place.
             max_length: tokenizer truncation / chunk window length.
         """
-        # Lazy heavy imports: keep `import prism.sentiment_analysis` cheap and avoid
+        # Lazy heavy imports: keep `import research.sentiment_analysis` cheap and avoid
         # forcing transformers/torch resolution for callers using only the keyword path.
         import torch
         from transformers import AutoModelForSequenceClassification, AutoTokenizer

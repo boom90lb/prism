@@ -39,11 +39,8 @@ import mlflow
 import numpy as np
 import pandas as pd
 
-from prism.config import PROJECT_DIR, EnsembleConfig, ModelConfig
-from prism.features import FeatureEngineer, forward_return_column, is_label_column
+from prism.config import PROJECT_DIR
 from prism.io.loader import DataLoader
-from prism.models.ensemble import EnsembleModel
-from prism.models.registry import POLICY_MODELS
 from prism.validation.metrics import (
     deflated_sharpe_ratio,
     expected_max_sharpe,
@@ -56,6 +53,10 @@ from prism.validation.trials import (
     summary_claim_fields,
     validate_claim_packet_dir,
 )
+from research.config import EnsembleConfig, ModelConfig
+from research.features import FeatureEngineer, forward_return_column, is_label_column
+from research.models.ensemble import EnsembleModel
+from research.models.registry import POLICY_MODELS
 from research.scripts._cli_common import add_execution_args, build_usable_symbol_frame
 from research.scripts.backtest import (
     load_training_run,

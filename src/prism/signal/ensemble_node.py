@@ -3,7 +3,7 @@
 The demotion of the v0.2 ensemble-as-system: the salvaged forecast core
 (XGBoost + ARIMA members, purged-OOF member weighting, conformal residual
 band) re-founded as one plug-in implementation of the ``Signal`` contract.
-What changed relative to the legacy ``prism.models.ensemble.EnsembleModel``:
+What changed relative to the legacy ``research.models.ensemble.EnsembleModel``:
 
 * **Score, not position (I-3/I-4).** The node emits unclipped standardized
   scores ``E[r_h] / (sigma_daily * sqrt(h))`` — with the sqrt(h) horizon
@@ -99,7 +99,7 @@ class EnsembleNodeConfig:
                 raise ValueError(
                     "prophet is not available in prism.signal (N8: the prophet "
                     "library hard-depends on matplotlib); it remains a legacy "
-                    "prism.models path member only"
+                    "research.models path member only"
                 )
             if name not in _SUPPORTED_MEMBERS:
                 raise ValueError(

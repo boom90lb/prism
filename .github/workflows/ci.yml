@@ -40,7 +40,7 @@ jobs:
             echo "research heavyweight leaked into the slim install" >&2
             exit 1
           fi
-          /tmp/slim/bin/python -c "import prism, prism.features, prism.trading, prism.models.ensemble, prism.portfolio.construct, prism.sentiment_analysis"
+          /tmp/slim/bin/python -c "import prism, prism.io.loader, prism.signal.ensemble_node, prism.residual.factors, prism.portfolio.construct, prism.live.daily, prism.regime.fetch, prism.validation.metrics"
 
   full:
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'

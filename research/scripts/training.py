@@ -32,19 +32,18 @@ from typing import Any, Dict, List, Optional
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 
-from prism.config import (
+from prism.io.loader import DataLoader, _tz_aware_filter
+from prism.logging_utils import configure_logging, get_symbol_logger
+from prism.validation.walk_forward import PurgedWalkForward
+from research.config import (
     DEFAULT_MODEL_WEIGHTS,
     DEFAULT_TRAINING_CONFIG,
     EnsembleConfig,
     ModelConfig,
     TrainingConfig,
 )
-from prism.features import FeatureEngineer, forward_return_column, is_label_column
-from prism.io.loader import DataLoader, _tz_aware_filter
-from prism.logging_utils import configure_logging, get_symbol_logger
-from prism.models.ensemble import EnsembleModel
-from prism.sentiment_analysis import SentimentAnalyzer
-from prism.validation.walk_forward import PurgedWalkForward
+from research.features import FeatureEngineer, forward_return_column, is_label_column
+from research.models.ensemble import EnsembleModel
 
 # mlflow_utils is import-safe on a slim core install (mlflow degrades to None
 # inside it and every wrapper raises an informative ImportError on first use),

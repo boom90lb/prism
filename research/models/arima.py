@@ -10,8 +10,8 @@ import pandas as pd
 from statsmodels.tsa.arima.model import ARIMA  # type: ignore
 from statsmodels.tsa.statespace.sarimax import SARIMAX  # type: ignore
 
-from prism.config import MODELS_DIR
-from prism.models.base import BaseModel
+from research.config import MODELS_DIR
+from research.models.base import BaseModel
 
 logger = logging.getLogger(__name__)
 

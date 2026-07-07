@@ -20,16 +20,20 @@ covers operational gotchas.
 > `logging_utils.py`. ADAPT `io/loader.py` (the folded data loader), the
 > forecast members. QUARANTINED
 > (done, post-v0.3.0): the RL trio, the batch WFO layer, the net-negative
-> stat-arb CLIs, baselines, and `mlflow` now live in top-level `research/`
+> stat-arb CLIs, baselines, and `mlflow` live in top-level `research/`
 > (outside the wheel; `research` imports `prism`, never the reverse), and the
 > stat-arb signal core promoted to `src/prism/residual/`. New v0.3.0 modules:
 > `validation/{metrics breadth diagnostics, capacity}`, `execution/participation`,
-> `portfolio.step_no_trade_band`, `regime/`. R1 adds `signal/` — the typed
-> Signal contract (`SPEC.md §7.1`) plus the JAX-free forecast ensemble node
+> `portfolio.step_no_trade_band`, `regime/`. R1 added `signal/` — the typed
+> Signal contract (`SPEC.md §7.1`) with the JAX-free forecast ensemble node
 > (`EnsembleSignalNode`: XGBoost + per-bar-causal ARIMA, standardized
-> `E[r_h]/(σ√h)` scores, conformal score band); the legacy `models/` path below
-> still serves the research CLIs until vocabulary convergence completes. The
-> map below describes this wiring as it stands after the quarantine.
+> `E[r_h]/(σ√h)` scores, conformal score band) and the residual-reversion node
+> — and then completed the vocabulary convergence: the whole legacy v0.2
+> stack (`trading.py`, `models/`, `features.py`, `sentiment_analysis.py`, the
+> ensemble-side config) moved from `src/prism/` into `research/`, where its
+> only consumers (the batch WFO CLIs) live. The production import closure is
+> prophet/matplotlib-free (`tests/test_import_hygiene.py`). The map below
+> describes this wiring.
 
 ## Data flow
 
@@ -68,7 +72,7 @@ close/open matrix ──► rolling formation/test folds ──► train-only pa
 - `fetch_dividends` pulls ex-date→amount cash dividends (credited in the
   backtest, not back-adjusted into prices).
 
-### 2. Features — `src/prism/features.py`
+### 2. Features (legacy stack) — `research/features.py`
 - `create_features` (causal technical indicators) → `create_lagged_features` →
   `create_target_variable` (forward return `target_{h}`). Computed once on the
   full series (rolling/ewm/pct_change are causal).
@@ -81,7 +85,7 @@ close/open matrix ──► rolling formation/test folds ──► train-only pa
   **embargo** (skip a buffer after each test). One splitter drives both the
   outer training loop and the meta-learner's OOF.
 
-### 4. Models — `src/prism/models/`
+### 4. Models — `research/models/` (legacy; production signals live in `src/prism/signal/`)
 - `registry.py` partitions members into **forecast** (`arima`, `prophet`,
   `xgboost` — emit expected h-bar returns) and **policy** (`lstm_ppo`,
   `xlstm_ppo`, `xlstm_grpo` — emit positions). `base.py` is the shared
@@ -101,7 +105,7 @@ close/open matrix ──► rolling formation/test folds ──► train-only pa
     path). A loaded ensemble must come back with every member `is_fitted`.
   - `predict_band` / `update_aci` provide EnbPI+ACI conformal bands.
 
-### 5. Execution + accounting — `src/prism/execution/`, `src/prism/trading.py`
+### 5. Execution + accounting — `src/prism/execution/`, `research/trading.py`
 - `target_weights.py` is the default portfolio accounting path. It accepts
   close-time target weights, fills them at the next open, suppresses small
   rebalances by weight band, drops fold-last pending targets, carries existing

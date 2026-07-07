@@ -11,9 +11,9 @@ import pandas as pd
 import pytest
 
 from prism.execution.target_weights import backtest_target_weights
-from prism.features import forward_return_column
-from prism.models.base import BaseModel
 from prism.validation.trials import validate_claim_packet_dir
+from research.features import forward_return_column
+from research.models.base import BaseModel
 
 # The smokes drive research/scripts CLIs (mlflow at module scope) in-process;
 # mlflow is a reliable sentinel for the whole [research] extra here.

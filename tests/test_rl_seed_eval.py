@@ -20,15 +20,14 @@ pytest.importorskip("jax", reason="needs the [research] extra")
 pytest.importorskip("mlflow", reason="needs the [research] extra")
 pytestmark = pytest.mark.research
 
-from prism.config import EnsembleConfig, ExecutionConfig, ModelConfig, TradingConfig  # noqa: E402
+from prism.config import ExecutionConfig, TradingConfig  # noqa: E402
 from prism.execution import ExecutionModel  # noqa: E402
-from prism.models.base import BaseModel  # noqa: E402
-from prism.models.ensemble import EnsembleModel  # noqa: E402
+from research.config import EnsembleConfig, ModelConfig  # noqa: E402
+from research.models.base import BaseModel  # noqa: E402
+from research.models.ensemble import EnsembleModel  # noqa: E402
 from research.models.lstm_ppo import LSTMPPO, TradingEnvironment  # noqa: E402
-from prism.trading import TradingStrategy  # noqa: E402
-
 from research.scripts.rl_seed_eval import summarize_member  # noqa: E402
-
+from research.trading import TradingStrategy  # noqa: E402
 
 # --------------------------------------------------------------------------
 # Reward audit (M10 part 3)

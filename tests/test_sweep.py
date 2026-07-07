@@ -24,6 +24,11 @@ pytestmark = pytest.mark.research
 
 import mlflow  # noqa: E402
 
+from prism.validation.metrics import (  # noqa: E402
+    periodic_sharpe,
+    probabilistic_sharpe_ratio,
+)
+from prism.validation.trials import CLAIM_TIERS, validate_claim_packet_dir  # noqa: E402
 from research.scripts.sweep import (  # noqa: E402
     TrialResult,
     combine_symbol_returns,
@@ -31,8 +36,6 @@ from research.scripts.sweep import (  # noqa: E402
     run_sweep,
     summarize_sweep,
 )
-from prism.validation.metrics import periodic_sharpe, probabilistic_sharpe_ratio  # noqa: E402
-from prism.validation.trials import CLAIM_TIERS, validate_claim_packet_dir  # noqa: E402
 
 
 def test_r0_quarantine_defaults_and_explicit_rejections(monkeypatch) -> None:
@@ -214,8 +217,8 @@ def test_summarize_no_valid_trials() -> None:
 
 def test_run_sweep_end_to_end(monkeypatch, tmp_path) -> None:
     import research.tracking.mlflow_utils as mu
+    from research.features import FeatureEngineer
     from research.scripts.training import build_features
-    from prism.features import FeatureEngineer
 
     monkeypatch.setattr(mu, "MLFLOW_TRACKING_URI", f"file://{tmp_path}/mlruns")
     mlflow.set_tracking_uri(f"file://{tmp_path}/mlruns")

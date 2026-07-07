@@ -16,8 +16,8 @@ import optax  # type: ignore
 import pandas as pd
 from gymnasium import spaces
 
-from prism.config import MODELS_DIR
-from prism.models.base import BaseModel
+from research.config import MODELS_DIR
+from research.models.base import BaseModel
 
 # Callable imported but not used - kept for potential future use
 

@@ -20,10 +20,11 @@ from typing import Optional, Tuple
 import numpy as np
 import pandas as pd
 
-from prism.config import ExecutionConfig, TradingConfig, TrainingConfig
-from prism.features import FeatureEngineer, forward_return_column, is_label_column
+from prism.config import ExecutionConfig, TradingConfig
 from prism.io.loader import DataLoader
-from prism.sentiment_analysis import SentimentAnalyzer
+from research.config import TrainingConfig
+from research.features import FeatureEngineer, forward_return_column, is_label_column
+from research.sentiment_analysis import SentimentAnalyzer
 
 logger = logging.getLogger(__name__)
 
