@@ -430,9 +430,9 @@ construction.
 ## Dependencies
 
 Core (the production import path, SPEC N8): Python 3.12+ · numpy, pandas,
-scikit-learn · statsmodels, Prophet, XGBoost · pyarrow · Twelvedata,
-Polygon.io APIs. `[research]` extra: Flax/JAX, PyTorch, transformers
-(FinBERT), Gymnasium, MLflow, matplotlib.
+scikit-learn · statsmodels, XGBoost · pyarrow · the Twelvedata API.
+`[research]` extra: Prophet, Flax/JAX, PyTorch, transformers (FinBERT),
+Gymnasium, MLflow, matplotlib, and the Polygon.io news API.
 
 ## License
 

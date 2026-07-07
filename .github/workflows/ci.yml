@@ -36,7 +36,7 @@ jobs:
         run: |
           uv venv /tmp/slim
           uv pip install --python /tmp/slim/bin/python dist/*.whl
-          if uv pip list --python /tmp/slim/bin/python | grep -Ei "^(jax|flax|torch|mlflow|gymnasium|distrax|optax|transformers) "; then
+          if uv pip list --python /tmp/slim/bin/python | grep -Ei "^(jax|flax|torch|mlflow|gymnasium|distrax|optax|transformers|prophet|matplotlib|cmdstanpy) "; then
             echo "research heavyweight leaked into the slim install" >&2
             exit 1
           fi
