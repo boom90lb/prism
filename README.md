@@ -33,10 +33,11 @@ survivorship-counted S&P residual path (`src/prism/residual/`) plus the
 construction, execution, and regime machinery shipped in v0.3.0
 (`validation/{metrics,capacity}`, `execution/participation`,
 `portfolio.step_no_trade_band`, `regime/`). The classical forecaster ensemble
-(ARIMA, Prophet, XGBoost — the forecast `lstm` was removed) survives as *one*
-plug-in signal node under the same harness; the three reinforcement-learning
-policies (LSTM-PPO, xLSTM-PPO, xLSTM-GRPO) are quarantined research members
-under `research/`.
+survives as *one* plug-in signal node (`prism.signal.EnsembleSignalNode`, an
+XGBoost + ARIMA blend under the same harness); its heavier legacy members —
+Prophet and the three reinforcement-learning policies (LSTM-PPO, xLSTM-PPO,
+xLSTM-GRPO) — are quarantined research members under `research/`, off the
+production import path (N8).
 
 It also includes a separate statistical-arbitrage path for market-neutral pair
 research: train-only cointegration discovery, residual stationarity and

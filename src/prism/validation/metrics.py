@@ -9,7 +9,8 @@ for honest backtest reporting:
 
   * `calmar_ratio(annualized_return, max_drawdown)` — annualized return over
     |max drawdown|. Uses the project convention that `max_drawdown` is stored
-    as a positive number (matches `trading.py`'s `results['drawdown'].max()`).
+    as a positive number (matches `research/trading.py`'s
+    `results['drawdown'].max()`).
 
   * `probability_backtest_overfitting(returns_matrix, n_splits=10)` — PBO
     via Combinatorially Symmetric Cross-Validation (Bailey/Borwein/LdP/Zhu

@@ -43,8 +43,8 @@ def _make_gbm_df(n: int, seed: int = 0, start: str = "2024-01-02") -> pd.DataFra
     rng = np.random.default_rng(seed)
     log_returns = rng.normal(loc=0.001, scale=0.01, size=n)
     close = 100.0 * np.exp(np.cumsum(log_returns))
-    # tz-aware ET index: data_loader always localizes bars, and
-    # clean_data_for_training asserts a tz-aware index.
+    # tz-aware ET index: the loader (prism.io.loader) always localizes bars,
+    # and clean_data_for_training asserts a tz-aware index.
     idx = pd.bdate_range(start=start, periods=n, tz="America/New_York")
     df = pd.DataFrame(
         {

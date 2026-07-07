@@ -169,8 +169,10 @@ under `research/arbitrage/`.
 ## Scripts (`research/scripts/`) — the batch entry points (quarantined)
 
 Run as modules from the repo root, e.g. `python -m research.scripts.training`;
-no console entry points ship. The only production-side script is the periodic
-universe builder, `src/prism/scripts/build_sp500_universe.py`.
+no console entry points ship. The production-side scripts live under
+`src/prism/scripts/`: the periodic universe builder
+(`build_sp500_universe.py`, the one console entry point) and the nightly
+Alpaca paper-loop cycle (`paper_loop.py`).
 
 | Script | Role | Key output |
 |---|---|---|
@@ -184,8 +186,11 @@ universe builder, `src/prism/scripts/build_sp500_universe.py`.
 (`prediction.py` was dropped per SPEC §9 — train/serve feature skew and a dead
 pickle path.)
 
-`config.py` is the single source of truth (weights, hyperparams, dirs, dataclass
-configs). `research/tracking/mlflow_utils.py` wraps MLflow logging.
+Config is split at the §9 boundary: `src/prism/config.py` holds production
+config (directories, the Twelve Data key, `ExecutionConfig`/`TradingConfig`),
+and `research/config.py` holds the ensemble side (`ModelConfig`/
+`EnsembleConfig`/`TrainingConfig`, `DEFAULT_MODEL_WEIGHTS`, the MLflow URI,
+the Polygon key). `research/tracking/mlflow_utils.py` wraps MLflow logging.
 `logging_utils.py` installs console+rotating-file logging.
 
 ## Cross-cutting invariants worth knowing

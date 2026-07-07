@@ -19,10 +19,12 @@ lives in the README; this file is the "what will actually bite you" companion.
     slipped through). Cross-symbol total-return is therefore inconsistent on
     this tier — run backtests with `--no_dividends` for a uniform price-return
     comparison, or supply a higher-tier key.
-  - **Dividend-cache poisoning guard:** a 403/empty response caches an empty
-    dividend Series, which the loader treats as authoritative "no dividends"
-    and never refetches. If you upgrade tiers, delete the stale empty
-    `data/*_dividends_*.parquet` files so they refetch.
+  - **Dividend negative-cache:** a *failed* fetch (403, error payload) is
+    never cached (`prism.io.loader` returns empty without writing), so a tier
+    outage cannot poison later runs. A genuinely-empty "no dividends" answer
+    is cached but honored only for `DIVIDEND_NEGATIVE_CACHE_TTL_DAYS` (7 days)
+    before it refetches, so a tier upgrade heals on its own — no manual
+    deletion of `data/*_dividends_*.parquet` needed.
 
 ## Which ensemble members actually contribute in a backtest
 

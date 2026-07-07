@@ -37,6 +37,6 @@ The package stays core-only: a Mathlib dependency is added only for a named
 theorem that needs it and that a property test cannot cover.
 
 Next targets, in value order (charter: `docs/handoff.md §5`): the
-`live/` crash-safety state machine (once `live/` exists), the R2
+`live/` crash-safety state machine (`src/prism/live/` now ships), the R2
 Gârleanu–Pedersen band's monotonicity properties, trial-ledger append-only
 monotonicity.

@@ -223,8 +223,9 @@ alpha's fate.
 Second market lane (crypto time-series book) only after the equity verdict,
 under its own `net_edge` bar and venue-priced fees. Contributor surface:
 CONTRIBUTING.md, claim-packet reader docs, mypy + multi-Python CI, hypothesis
-property tests for N4/N1 paths, Prophet (and ideally xgboost) out of core
-dependencies — `uv pip install prism` must not build cmdstan. Delete the RL
+property tests for N4/N1 paths. (Prophet left the core dependencies in the
+R1 quarantine — `uv pip install prism` no longer builds cmdstan; xgboost
+stays core, `prism.signal.ensemble_node` uses it.) Delete the RL
 trio outright (git history preserves it; the seed study extracted its value;
 carrying known-broken members in a public repo is a standing credibility
 tax). The regime layer is wired through I-8 IC gates or explicitly demoted to

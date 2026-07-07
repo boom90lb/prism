@@ -110,16 +110,20 @@ cleared an explicit, deflation-adjusted, cost-aware evidence bar.
   normal case and is not evidence of edge.
 - **N7 · Fail loud, not silent-zero.** A data fetch failure, an unfit member, or
   a degenerate estimate raises or de-grosses explicitly. Silent degradation to
-  an empty frame / zero position is a defect (it is the current failure mode in
-  `data_loader`, the forecast members, and sentiment).
+  an empty frame / zero position is a defect (it was the original v0.2 failure
+  mode in the data loader, the forecast members, and sentiment — since closed:
+  the loader is `prism.io.loader`, fail-loud; the forecaster stack is
+  quarantined under `research/`).
 - **N8 · The production import path is JAX/torch-free.** Importing the live loop
   must not transitively import `jax`, `torch`, `prophet`, `mlflow`, or
   `matplotlib`. Research heavyweights live behind the quarantine boundary (§9).
-  *Scope:* enforced on **new** modules (`regime/`, the `validation` additions,
-  `live/`) and on the live import path once `live/` lands (R4). The legacy
-  `ensemble.py → lstm_ppo → jax` and `features.py → flax.nnx` couplings are
-  *grandfathered* until the R1 decoupling. Enforcement mechanism is a CI
-  import-linter check, so N8 is a test, not a slogan.
+  *Scope:* the whole `prism` import closure. The legacy `ensemble.py →
+  lstm_ppo → jax` and `features.py → flax.nnx` couplings were *grandfathered*
+  until the R1 decoupling; R1 landed (the forecaster stack moved to
+  `research/`), so the grandfather clause is closed and `prophet`/`matplotlib`
+  joined the forbidden set. Enforcement mechanism is a CI import-linter check
+  (`tests/test_import_hygiene.py` walks every `prism` module), so N8 is a test,
+  not a slogan.
 
 If a proposed change violates one of N1–N8, the change is wrong, not the
 invariant.
