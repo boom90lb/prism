@@ -11,10 +11,17 @@
 > redirect). **Read `SPEC.md` first.** The sections below describe the honest
 > evaluation harness, which v0.3.0 keeps almost intact and builds on.
 >
-> Status of the alpha itself is unchanged and stated plainly: **no configuration
-> is net-positive after realistic costs** — the system is cost-bound before it is
-> signal-bound, and `SPEC.md §10` carries a numeric kill-criterion for the case
-> where the daily residual signal proves simply too weak.
+> Status of the alpha, stated plainly: **the `SPEC.md §10` kill-criterion fired
+> on 2026-07-06** — across a pre-registered, fully counted 17-trial budget, no
+> residual-reversion configuration achieved a deflated net Sharpe above zero
+> under calibrated per-bucket costs, and the sleeve is archived. The negative
+> result is the harness's first certification:
+> [`docs/certifications/001-residual-reversion-daily-negative.md`](docs/certifications/001-residual-reversion-daily-negative.md).
+> The next candidate (monthly cross-sectional momentum, the demotion budget's
+> side discovery) enters at `mechanics_clean` under its own pre-registered
+> budget ([`docs/momentum_design.md`](docs/momentum_design.md)). No
+> configuration has ever cleared the deflated evidence bar; nothing is
+> deployable today.
 
 Prism is a cross-sectional systematic trading engine — **score → residualize
 → construct → execute**, conditioned by a regime layer — gated by an
@@ -38,9 +45,13 @@ next-open costed accounting. See [`docs/stat_arb.md`](docs/stat_arb.md).
 
 The mandate (`SPEC.md §1`) is a production-grade, zero-data-budget systematic
 trading bot. Deployment is the goal and it is gated hard: capital is risked
-only on edges that clear the claim-tier evidence bar (`SPEC.md §10`), and no
-configuration has cleared `net_edge` yet. The harness is the bar; the S&P
-residual configuration is the current candidate under it, held to exactly the
+only on edges that clear the claim-tier evidence bar (`SPEC.md §10`). The
+harness is the bar — and it has produced its first verdict: the residual
+sleeve was certified uneconomic at retail cost and archived after its
+pre-registered trial budget was exhausted
+([certification 001](docs/certifications/001-residual-reversion-daily-negative.md)).
+The current candidate under the bar is the momentum program
+([`docs/momentum_design.md`](docs/momentum_design.md)), held to exactly the
 tier its evidence supports.
 
 See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the end-to-end data flow (what

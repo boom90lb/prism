@@ -1,5 +1,12 @@
 # §10 STOP adjudication + demotion-budget pre-registration (2026-07-06)
 
+> **Outcome (2026-07-06, recorded after B2's packet — see §7):** the budget
+> ran to completion (ledger 17/17) and the §4 else-branch fired. The sleeve
+> is archived; the negative certification is
+> `docs/certifications/001-residual-reversion-daily-negative.md`. Sections
+> 0–6 below are the pre-registration as committed before the runs and are
+> unmodified.
+
 This document does two things, in order: it records the SPEC §10 kill-criterion
 verdict on the daily residual sleeve, and it pre-registers the *one* demotion
 budget the verdict routes to (handoff §8 decision table). It is committed
@@ -160,3 +167,20 @@ embarrassment.
   standalone sleeves' targets when caps/band/gate are inactive; and every
   Arm-B knob moves the config hash (an unhashed knob would be an uncounted
   trial, SPEC N5).
+
+## 7. Outcome record (added 2026-07-06, after B2's packet; §§0–6 unmodified)
+
+All 7 trials ran (D1–D5 at commit `194d7f9`, B1–B2 at `a2f4478`, clean
+trees), taking the ledger to 17 of 17. Applying §4: rows D2 (+0.091 ann.),
+D5 (+0.335), B1 (+0.465) and B2 (+0.081) reach raw `net_edge`; none clears
+deflation (best DSR 0.191 = B1, which contains no residual signal; best
+residual DSR 0.145 = D5, which also sits under its cash hurdle, periodic
+0.0211 vs 0.0936). **The else-branch fires: sleeve archived, negative packet
+published, no appeals inside this selection set.** The §5 expectation held —
+Arm A alone did not rescue the sleeve, and the surprise was in the opposite
+direction: B2's netting diagnostic came out *anti*-netting (cost ~+28%,
+turnover ~+38% vs the gross-weighted standalone sum), recorded as a
+construction finding in the certification (§8 there). B1 is routed per §4's
+last sentence: a new signal entering at `mechanics_clean`
+(`docs/momentum_design.md`). Full evidence, scope, and caveats:
+`docs/certifications/001-residual-reversion-daily-negative.md`.
