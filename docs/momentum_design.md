@@ -1,10 +1,14 @@
-# Momentum-program pre-registration (DRAFT — ratify before any counted run)
+# Momentum-program pre-registration (RATIFIED)
 
-**Status: draft, 2026-07-06.** Committed so the frame exists *before* any
-momentum trial runs; **no counted trial may execute until the owner ratifies
-(or amends) this document in a dedicated commit.** Amendments after
-ratification follow the same rule as `docs/demotion_design.md`: seams may be
-pinned, trial values may not move.
+**Status: ratified, 2026-07-06** (this commit is the dedicated ratification
+commit; the ratification decision was delegated by the owner to the
+2026-07-06 session in the same turn that supplied the new input). One
+amendment was folded in during the free pre-ratification window: the §0
+breadth accounting and its §4 expectation update, sourced from
+`results/demotion_b1/breadth_diagnostic.json` (committed alongside as
+evidence). No value in the §2 trial set or §3 adjudication rules moved.
+From this point amendments follow the same rule as
+`docs/demotion_design.md`: seams may be pinned, trial values may not move.
 
 ## 0. Provenance and the honest prior
 
@@ -29,6 +33,34 @@ under-represented in a 5.2-year sample whose worst reversal (2020-03) the
 strategy happened to survive. B1 therefore enters at `mechanics_clean`
 (mechanics already parity- and property-tested by the Arm-B suite), imported
 as **trial #1 of this program's ledger** — spent, not free.
+
+**Breadth accounting (folded in pre-ratification, 2026-07-06).** The N6
+fundamental-law diagnostic over the finished B1 run
+(`research/scripts/breadth_diagnostic.py`; reading committed at
+`results/demotion_b1/breadth_diagnostic.json`):
+
+- $N_{\text{eff}} \approx 52.7$ — participation ratio of the book's
+  per-name PnL-contribution covariance (491 ever-held names, ~96 held per
+  day). The raw held-name *return* covariance is far more concentrated
+  (participation ratio ≈ 11.8, top eigenvalue 7.3%): co-movement is real,
+  but the book is not the rank-1 crash-factor bet the prior feared — in
+  sample-covariance terms. A momentum crash is a regime event a sample
+  covariance cannot exhibit, so this number does **not** soften §4's crash
+  paragraph.
+- 21-bar rank IC **0.030 ± 0.024** (n = 62 non-overlapping cross-sections;
+  one-sided lower-95 **−0.009**). 5.2 years of monthly cross-sections cannot
+  pin the IC's sign. This is the single most load-bearing unknown in the
+  program, and no same-sample trial can shrink it — only calendar time can.
+- Realized net Sharpe already captures **61%** of the
+  $IC\sqrt{N_{\text{eff}}}$ ceiling (gross 69%): **breadth binds, not IC
+  capture.** Configuration search has little headroom to manufacture —
+  consistent with §2's fragility-only framing — and the real capacity lever
+  is universe expansion (mid-caps), which is *not* one of the 8 trials;
+  pursuing it would be a new discovery event under §2's own rule.
+- Viability (N6 lens, 21-bar periodic): the ceiling clears the cash hurdle
+  at the point IC (0.219 vs 0.093, margin +0.126) but **fails at the
+  lower-CI IC** (ceiling 0.069, margin −0.024). Viability is *unpinned, not
+  established* — exactly the situation the §1 extension rule exists for.
 
 ## 1. What a same-sample trial can and cannot show
 
@@ -94,3 +126,10 @@ short-leg squeeze can erase multiple years of this premium in weeks, and the
 program promotes, crash exposure is priced into sizing (the capacity/vol
 inputs at deployment), not hand-waved. A wildly positive robustness set
 should raise suspicion (§10 falsification gate), not excitement.
+
+The §0 breadth accounting sharpens this expectation: with realized capture
+already at ~61% of the fundamental-law ceiling and the ceiling's own
+viability unpinned at the lower-CI IC, the plausible upside from
+configuration choices is small, and the program's outcome is dominated by
+whether one more year of data pins the IC above zero. That is an argument
+for patience (M6 and the paper monitor), not for spending M7.
