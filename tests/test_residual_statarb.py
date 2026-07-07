@@ -9,15 +9,19 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from research.scripts.stat_arb_residual_wfo import _append_trial, _config_hash, _load_trial_sharpes
+from prism.config import ExecutionConfig
+from prism.portfolio.construct import (
+    apply_no_trade_band,
+)
+from prism.portfolio.construct import build_residual_book_row as build_book_row
+from prism.portfolio.construct import (
+    cap_book,
+    cost_aware_band,
+)
 from prism.residual.factors import ResidualStatArbConfig, etf_factor_portfolios
 from prism.residual.residual import (
     OUFit,
-    apply_no_trade_band,
-    build_book_row,
-    cap_book,
     compute_residual_signal_panel,
-    cost_aware_band,
     fit_ou_batch,
     next_states,
     run_state_machine,
@@ -28,7 +32,11 @@ from research.arbitrage.residual_walk_forward import (
     run_residual_stat_arb_walk_forward,
 )
 from research.arbitrage.walk_forward import StatArbWalkForwardConfig
-from prism.config import ExecutionConfig
+from research.scripts.stat_arb_residual_wfo import (
+    _append_trial,
+    _config_hash,
+    _load_trial_sharpes,
+)
 
 _FROZEN = ResidualStatArbConfig()
 

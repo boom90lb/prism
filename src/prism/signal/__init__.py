@@ -2,10 +2,10 @@
 
 A node consumes wide panels and emits standardized scores
 (``E[r_h] / (sigma_daily * sqrt(h))``, I-3): NaN = no opinion, failures
-raise (N7), sizing belongs to construction (I-4). The forecast-ensemble
-node here is implementation (b) of the contract; the residual-reversion
-node (implementation (a)) lives with the residual layer and converges to
-this contract with the R2 construction rework.
+raise (N7), sizing belongs to construction (I-4). ``ResidualSignalNode``
+is implementation (a) of the contract (the Avellaneda-Lee residual core
+under the standardized-score mapping); ``EnsembleSignalNode`` is
+implementation (b), the salvaged forecast blend.
 
 Production-import-path safe (N8): no JAX/torch/prophet in the closure.
 """
@@ -19,10 +19,12 @@ from prism.signal.ensemble_node import (
     build_features,
     forward_log_return,
 )
+from prism.signal.residual_node import ResidualSignalNode
 
 __all__ = [
     "EnsembleNodeConfig",
     "EnsembleSignalNode",
+    "ResidualSignalNode",
     "Signal",
     "build_features",
     "forward_log_return",

@@ -33,15 +33,6 @@ from prism.residual.factors import (
     factor_returns_from_window,
     volume_time_weights,
 )
-# cap_book/apply_no_trade_band/cost_aware_band are re-exported here as the
-# legacy stat-arb import surface (tests and research import them from this
-# module); the surface folds into the R1/R2 residual rework, not before.
-from prism.portfolio.construct import (
-    apply_no_trade_band,  # noqa: F401  (re-export)
-    build_residual_book_row as build_book_row,
-    cap_book,
-    cost_aware_band,  # noqa: F401  (re-export)
-)
 
 _EPS = 1e-12
 # Below this equilibrium sigma the s-score denominator is noise, not signal.
@@ -161,9 +152,12 @@ def run_state_machine(sscores: np.ndarray, ok: np.ndarray, config: ResidualStatA
 class ResidualSignalPanel:
     """Causal per-day signal state for the whole panel.
 
-    ``sscore``/``tradeable``/``active``/``half_life_bars`` are (day x symbol)
-    frames (``half_life_bars`` is each active name's OU half-life in bars, NaN
-    where unfit and inf where the OU fit is invalid); ``beta`` is
+    ``sscore``/``tradeable``/``active``/``half_life_bars``/``sigma_eq`` are
+    (day x symbol) frames (``half_life_bars`` is each active name's OU
+    half-life in bars, NaN where unfit and inf where the OU fit is invalid;
+    ``sigma_eq`` is the OU equilibrium sigma of the cumulative residual, NaN
+    where the fit is invalid — it converts an s-score back into residual
+    return units); ``beta`` is
     (n_days, n_factors, n_symbols) with zeros for inactive entries (zeros, not
     NaN, so book netting never propagates NaN); ``q_index[t]`` points into
     ``eigenportfolios`` for the rebalance in force at bar ``t`` (-1 before the
@@ -177,6 +171,7 @@ class ResidualSignalPanel:
     tradeable: pd.DataFrame
     active: pd.DataFrame
     half_life_bars: pd.DataFrame
+    sigma_eq: pd.DataFrame
     beta: np.ndarray
     q_index: np.ndarray
     eigenportfolios: tuple[np.ndarray, ...]
@@ -277,6 +272,7 @@ def compute_residual_signal_panel(
 
     sscore = np.full((n_days, n_symbols), np.nan)
     half_life = np.full((n_days, n_symbols), np.nan)
+    sigma_eq = np.full((n_days, n_symbols), np.nan)
     tradeable = np.zeros((n_days, n_symbols), dtype=bool)
     active = np.zeros((n_days, n_symbols), dtype=bool)
     beta = np.zeros((n_days, config.n_model_factors, n_symbols))
@@ -373,6 +369,7 @@ def compute_residual_signal_panel(
         active_idx = np.flatnonzero(active_t)
         sscore[t, active_idx] = scores
         half_life[t, active_idx] = fit.half_life_bars
+        sigma_eq[t, active_idx] = np.where(fit.valid, fit.sigma_eq, np.nan)
         tradeable[t, active_idx] = fast & np.isfinite(scores)
         active[t, active_idx] = True
         beta[t][:, active_idx] = beta_t
@@ -384,6 +381,7 @@ def compute_residual_signal_panel(
         tradeable=pd.DataFrame(tradeable, index=index, columns=list(symbols)),
         active=pd.DataFrame(active, index=index, columns=list(symbols)),
         half_life_bars=pd.DataFrame(half_life, index=index, columns=list(symbols)),
+        sigma_eq=pd.DataFrame(sigma_eq, index=index, columns=list(symbols)),
         beta=beta,
         q_index=q_index,
         eigenportfolios=tuple(eigenportfolios),

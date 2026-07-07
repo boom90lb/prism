@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from prism.residual.residual import build_book_row
 from prism.portfolio.construct import (
     build_residual_book_row,
     construct_directional_targets,
@@ -14,15 +13,18 @@ from prism.portfolio.construct import (
 )
 
 
-def test_residual_book_wrapper_matches_legacy_export() -> None:
+def test_residual_book_row_nets_stock_and_hedge_legs() -> None:
+    # Pinned output of the canonical builder (the former prism.residual.residual
+    # legacy re-export folded into this module; equivalence was asserted while
+    # both existed).
     states = np.array([1, -1, 0], dtype=np.int8)
     beta_day = np.array([[0.5, 1.0, 0.0]])
     eigenportfolios = np.array([[0.2, -0.1, 0.3]])
 
-    shared = build_residual_book_row(states, beta_day, eigenportfolios, position_unit=0.02)
-    legacy = build_book_row(states, beta_day, eigenportfolios, position_unit=0.02)
-
-    np.testing.assert_allclose(shared, legacy)
+    row = build_residual_book_row(states, beta_day, eigenportfolios, position_unit=0.02)
+    # Stock legs: +0.02, -0.02, 0; hedge legs: -(0.02*0.5 - 0.02*1.0) @ Q.
+    expected = np.array([0.02, -0.02, 0.0]) + 0.01 * np.array([0.2, -0.1, 0.3])
+    np.testing.assert_allclose(row, expected)
 
 
 def test_strength_multiplier_zero_at_entry_and_caps() -> None:
