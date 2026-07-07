@@ -30,22 +30,22 @@ from pathlib import Path
 import pandas as pd
 
 from prism.config import DATA_DIR
-from prism.data_loader import DataLoader
-from prism.logging_utils import configure_logging, get_symbol_logger
-from prism.universe_sp500 import (
+from prism.io.loader import DataLoader
+from prism.io.universe_sp500 import (
     RENAME_TABLE,
     WIKI_URL,
     compute_coverage,
     ever_members,
     extract_tables,
-    members_active_between,
     fetch_sp500_wikipedia,
+    members_active_between,
     normalize_ticker,
     parse_changes_table,
     parse_constituents_table,
     reconstruct_membership,
     write_universe_file,
 )
+from prism.logging_utils import configure_logging, get_symbol_logger
 
 logger = logging.getLogger(__name__)
 

@@ -1,15 +1,21 @@
-"""Data loading module for the time series ensemble model."""
+"""Bar/dividend data access over the $0 source spine (SPEC §7.0).
+
+``DataLoader`` is the Twelve Data HTTP client plus the on-disk caches:
+range-keyed parquet (the legacy default) and the incremental delta-fetch
+store (``prism.io.store``, opt-in via ``fetch_incremental``). Every network
+call runs through the shared token bucket (``prism.io.rate_limit``).
+"""
 
 import logging
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Optional
 
 import pandas as pd
 import requests
 
-from prism.config import DATA_DIR, TWELVEDATA_API_KEY, TrainingConfig
+from prism.config import DATA_DIR, TWELVEDATA_API_KEY
 from prism.io.rate_limit import DataBudgetExhausted, TokenBucket
 from prism.io.store import (
     DEFAULT_OVERLAP_BARS,
@@ -571,30 +577,3 @@ class DataLoader:
         if end_ts is not None:
             series = series[series.index <= end_ts]
         return series
-
-    def fetch_training_data(
-        self, config: TrainingConfig
-    ) -> Dict[str, pd.DataFrame]:
-        """Fetch full per-symbol OHLCV frames for WFO training.
-
-        Train/test splitting is handled by the WFO outer
-        loop via ``PurgedWalkForward``, so this returns one frame per
-        symbol with no preemptive split. Symbols that come back empty are
-        omitted from the result dict.
-        """
-        all_data: Dict[str, pd.DataFrame] = {}
-
-        for symbol in config.symbols:
-            logger.info(f"Fetching data for {symbol}")
-            df = self.fetch_historical_data(
-                symbol=symbol,
-                interval=config.timeframe,
-                start_date=config.start_date,
-                end_date=config.end_date,
-            )
-            if df.empty:
-                logger.warning(f"No data fetched for {symbol}, skipping")
-                continue
-            all_data[symbol] = df
-
-        return all_data

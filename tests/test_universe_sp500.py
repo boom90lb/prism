@@ -10,7 +10,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from prism.universe_sp500 import (
+from prism.io.universe_sp500 import (
     HISTORY_FLOOR,
     CoverageReport,
     build_membership_mask,

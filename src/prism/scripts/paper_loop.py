@@ -33,7 +33,7 @@ import logging
 import sys
 from pathlib import Path
 
-from prism.data_loader import DataLoader
+from prism.io.loader import DataLoader
 from prism.live import (
     AlpacaBroker,
     DailyBookConfig,

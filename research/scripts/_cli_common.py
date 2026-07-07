@@ -20,9 +20,9 @@ from typing import Optional, Tuple
 import numpy as np
 import pandas as pd
 
-from prism.config import ExecutionConfig, TradingConfig
-from prism.data_loader import DataLoader
+from prism.config import ExecutionConfig, TradingConfig, TrainingConfig
 from prism.features import FeatureEngineer, forward_return_column, is_label_column
+from prism.io.loader import DataLoader
 from prism.sentiment_analysis import SentimentAnalyzer
 
 logger = logging.getLogger(__name__)
@@ -92,6 +92,31 @@ def build_features(
 
     df = clean_data_for_training(df)
     return df
+
+
+def fetch_training_frames(data_loader: DataLoader, config: TrainingConfig) -> dict[str, pd.DataFrame]:
+    """Fetch full per-symbol OHLCV frames for WFO training.
+
+    Train/test splitting is handled by the WFO outer loop via
+    ``PurgedWalkForward``, so this returns one frame per symbol with no
+    preemptive split. Symbols that come back empty are omitted. Lived on
+    ``DataLoader`` until the io/ fold; it is research-CLI plumbing, so it
+    lives here now.
+    """
+    all_data: dict[str, pd.DataFrame] = {}
+    for symbol in config.symbols:
+        logger.info(f"Fetching data for {symbol}")
+        df = data_loader.fetch_historical_data(
+            symbol=symbol,
+            interval=config.timeframe,
+            start_date=config.start_date,
+            end_date=config.end_date,
+        )
+        if df.empty:
+            logger.warning(f"No data fetched for {symbol}, skipping")
+            continue
+        all_data[symbol] = df
+    return all_data
 
 
 def add_execution_args(

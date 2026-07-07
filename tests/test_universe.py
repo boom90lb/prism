@@ -2,11 +2,12 @@
 
 import pandas as pd
 
+from prism.io.loader import BAR_TZ
+
 # research.scripts.training is import-safe on a slim install (mlflow degrades
 # to None inside mlflow_utils), so these pure-helper tests are NOT
 # research-gated and run in the per-push slim CI job.
 from research.scripts.training import filter_universe_asof, load_universe
-from prism.data_loader import BAR_TZ
 
 
 def _frame(start: str, n: int = 10) -> pd.DataFrame:

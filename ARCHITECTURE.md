@@ -16,8 +16,9 @@ covers operational gotchas.
 > ```
 >
 > **Production / research boundary (`SPEC.md §9`):** KEEP `validation/`,
-> `execution/`, `portfolio/construct.py`, `conformal/`, `universe_sp500.py`,
-> `logging_utils.py`. ADAPT `data_loader.py`, the forecast members. QUARANTINED
+> `execution/`, `portfolio/construct.py`, `conformal/`, `io/universe_sp500.py`,
+> `logging_utils.py`. ADAPT `io/loader.py` (the folded data loader), the
+> forecast members. QUARANTINED
 > (done, post-v0.3.0): the RL trio, the batch WFO layer, the net-negative
 > stat-arb CLIs, baselines, and `mlflow` now live in top-level `research/`
 > (outside the wheel; `research` imports `prism`, never the reverse), and the
@@ -59,7 +60,7 @@ close/open matrix ──► rolling formation/test folds ──► train-only pa
                     (fixed candidates per fold)       (coint + ADF + FDR)      (z-score state machine)    (gross/symbol limits)     (costs + borrow)
 ```
 
-### 1. Ingestion — `src/prism/data_loader.py`
+### 1. Ingestion — `src/prism/io/` (`loader.py`, `store.py`, `rate_limit.py`)
 - `DataLoader.fetch_historical_data` pulls split-adjusted daily bars, caches to
   `data/{symbol}_{interval}_{start}_{end}.parquet`, returns a tz-aware
   (America/New_York) OHLCV frame. Interval is normalized to the vendor's

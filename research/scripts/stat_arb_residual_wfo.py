@@ -23,7 +23,20 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from prism.config import RESULTS_DIR, ExecutionConfig
+from prism.io.loader import DataLoader
+from prism.logging_utils import configure_logging, get_symbol_logger
 from prism.residual.factors import ResidualStatArbConfig
+from prism.validation.metrics import (
+    after_cost_hurdle_periodic,
+    deflated_sharpe_ratio_with_n,
+)
+from prism.validation.trials import (
+    current_git_commit,
+    emit_research_claim_packet,
+    summary_claim_fields,
+    validate_claim_packet_dir,
+)
 from research.arbitrage.residual_walk_forward import (
     GAMMA_RISK,
     SPREAD_BUCKET_SCHEDULE_V1,
@@ -31,16 +44,6 @@ from research.arbitrage.residual_walk_forward import (
     run_residual_stat_arb_walk_forward,
 )
 from research.arbitrage.walk_forward import StatArbWalkForwardConfig
-from prism.config import ExecutionConfig, RESULTS_DIR
-from prism.data_loader import DataLoader
-from prism.logging_utils import configure_logging, get_symbol_logger
-from prism.validation.metrics import after_cost_hurdle_periodic, deflated_sharpe_ratio_with_n
-from prism.validation.trials import (
-    current_git_commit,
-    emit_research_claim_packet,
-    summary_claim_fields,
-    validate_claim_packet_dir,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -348,7 +351,7 @@ def _membership_provenance(args: argparse.Namespace, closes: pd.DataFrame) -> tu
     }
     mask = None
     if args.membership:
-        from prism.universe_sp500 import build_membership_mask
+        from prism.io.universe_sp500 import build_membership_mask
 
         membership = pd.read_parquet(args.membership)
         mask = build_membership_mask(membership, closes.index, list(closes.columns))
@@ -408,7 +411,9 @@ def main() -> None:
     symbols = _resolve_symbols(args)
     frames = _fetch_frames(symbols, args.start_date, args.end_date)
     if args.universe_asof:
-        from research.scripts.training import filter_universe_asof  # heavy transitive imports; see _resolve_symbols
+        from research.scripts.training import (
+            filter_universe_asof,  # heavy transitive imports; see _resolve_symbols
+        )
 
         frames = filter_universe_asof(frames, args.universe_asof)
     min_stocks = 2 if args.factor_mode == "etf" else args.n_factors + 2

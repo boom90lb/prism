@@ -10,8 +10,8 @@ from datetime import date
 import pandas as pd
 import pytest
 
-from prism.data_loader import DataLoader
 from prism.io import DataBudgetExhausted, TokenBucket
+from prism.io.loader import DataLoader
 
 
 class _Clock:
@@ -127,7 +127,7 @@ def test_loader_meters_network_calls_but_not_cache_hits(tmp_path, monkeypatch) -
             {"dividends": [{"ex_date": "2021-02-05", "amount": 0.2}]}
         )
 
-    monkeypatch.setattr("prism.data_loader.requests.get", fake_get)
+    monkeypatch.setattr("prism.io.loader.requests.get", fake_get)
     bucket = _CountingBucket()
     loader = DataLoader(api_key="test", cache_dir=tmp_path, rate_limiter=bucket)
 
@@ -145,7 +145,7 @@ def test_loader_budget_exhaustion_propagates(tmp_path, monkeypatch) -> None:
     def fake_get(url, params=None, timeout=None):  # pragma: no cover — never reached
         raise AssertionError("network call should not happen after budget exhaustion")
 
-    monkeypatch.setattr("prism.data_loader.requests.get", fake_get)
+    monkeypatch.setattr("prism.io.loader.requests.get", fake_get)
     loader = DataLoader(
         api_key="test", cache_dir=tmp_path, rate_limiter=_CountingBucket(exhausted=True)
     )

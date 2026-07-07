@@ -15,7 +15,7 @@ stored bars on their overlap means the whole series must be refetched, not
 patched (`SPEC §5: split-driven back-rewrites are handled by the incremental
 store, not masked by full refetch`).
 
-The legacy range-keyed cache in ``prism.data_loader`` remains the default
+The legacy range-keyed cache in ``prism.io.loader`` remains the default
 read path until the R4 rework folds the loader into ``prism.io`` — this
 module lands the mechanics ahead of that move, opt-in (nothing in the
 current pipeline changes behavior).
@@ -30,7 +30,7 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
-# Canonical bar timezone. Duplicated from prism.data_loader deliberately:
+# Canonical bar timezone. Duplicated from prism.io.loader deliberately:
 # importing it from there would put the (partially initialized) prism.io
 # package on data_loader's own import path; the constant moves here for good
 # when the loader folds into io/ (R4).

@@ -7,7 +7,7 @@ import time
 import pandas as pd
 import pytest
 
-from prism.data_loader import (
+from prism.io.loader import (
     BAR_TZ,
     DEFAULT_REQUEST_TIMEOUT_SECONDS,
     DataLoader,
@@ -103,7 +103,7 @@ def loader_with_counter(tmp_path, monkeypatch):
         calls["last_timeout"] = timeout
         return _FakeResp(_ts_payload(params["start_date"], params["end_date"]))
 
-    monkeypatch.setattr("prism.data_loader.requests.get", fake_get)
+    monkeypatch.setattr("prism.io.loader.requests.get", fake_get)
     loader = DataLoader(api_key="test", cache_dir=tmp_path)
     return loader, calls, tmp_path
 
@@ -242,7 +242,7 @@ def test_fetch_dividends_caches_filters_and_reuses(tmp_path, monkeypatch):
             }
         )
 
-    monkeypatch.setattr("prism.data_loader.requests.get", fake_get)
+    monkeypatch.setattr("prism.io.loader.requests.get", fake_get)
     loader = DataLoader(api_key="test", cache_dir=tmp_path)
 
     s = loader.fetch_dividends("AAPL", "2021-01-01", "2021-12-31")
@@ -276,7 +276,7 @@ def test_failed_dividend_fetch_is_not_cached_as_no_dividends(tmp_path, monkeypat
             raise ConnectionError("simulated outage")
         return _FakeResp({"dividends": [{"ex_date": "2021-02-05", "amount": 0.2}]})
 
-    monkeypatch.setattr("prism.data_loader.requests.get", fake_get)
+    monkeypatch.setattr("prism.io.loader.requests.get", fake_get)
     loader = DataLoader(api_key="test", cache_dir=tmp_path)
 
     assert loader.fetch_dividends("AAPL", "2021-01-01", "2021-12-31").empty
@@ -291,7 +291,7 @@ def test_failed_dividend_fetch_is_not_cached_as_no_dividends(tmp_path, monkeypat
     def error_get(url, params=None, timeout=None):
         return _FakeResp({"status": "error", "code": 429, "message": "rate limit"})
 
-    monkeypatch.setattr("prism.data_loader.requests.get", error_get)
+    monkeypatch.setattr("prism.io.loader.requests.get", error_get)
     fresh = DataLoader(api_key="test", cache_dir=tmp_path / "b")
     assert fresh.fetch_dividends("MSFT", "2021-01-01", "2021-12-31").empty
     assert not list((tmp_path / "b").glob("*_dividends_*"))
@@ -304,7 +304,7 @@ def test_empty_dividend_answer_cached_with_ttl(tmp_path, monkeypatch):
         calls["n"] += 1
         return _FakeResp({"dividends": []})
 
-    monkeypatch.setattr("prism.data_loader.requests.get", fake_get)
+    monkeypatch.setattr("prism.io.loader.requests.get", fake_get)
     loader = DataLoader(api_key="test", cache_dir=tmp_path)
 
     assert loader.fetch_dividends("BRK.A", "2021-01-01", "2021-12-31").empty

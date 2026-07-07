@@ -1,13 +1,20 @@
-"""IO / data-access layer (SPEC.md §7.0) — being assembled under the R4 ADAPT.
+"""IO / data-access layer (SPEC.md §7.0): loader, universe, rate limit, store.
 
-Currently holds the rate limiter for the keyed $0 data spine; the incremental
-store lands here next, and ``prism.data_loader`` folds in as it is reworked
-(rename-with-rework — the module moves when its behavior does, not before).
+The single data-access home: ``loader`` (the Twelve Data client with the
+range-keyed cache and the opt-in incremental delta fetch), ``universe_sp500``
+(point-in-time S&P 500 membership with counted survivorship coverage),
+``rate_limit`` (the token bucket for the keyed $0 spine), and ``store`` (the
+incremental parquet bar store).
 Production-import-path safe (N8): stdlib + prism-internal only.
 """
 
 from __future__ import annotations
 
+from prism.io.loader import (
+    BAR_TZ,
+    DEFAULT_REQUEST_TIMEOUT_SECONDS,
+    DataLoader,
+)
 from prism.io.rate_limit import (
     TWELVEDATA_PER_DAY,
     TWELVEDATA_PER_MINUTE,
@@ -21,8 +28,11 @@ from prism.io.store import (
 )
 
 __all__ = [
+    "BAR_TZ",
     "DEFAULT_OVERLAP_BARS",
+    "DEFAULT_REQUEST_TIMEOUT_SECONDS",
     "DataBudgetExhausted",
+    "DataLoader",
     "IncrementalBarStore",
     "SplitRewriteDetected",
     "TWELVEDATA_PER_DAY",

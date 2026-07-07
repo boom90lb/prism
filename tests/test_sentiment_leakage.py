@@ -15,9 +15,8 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 
-from prism.data_loader import BAR_TZ, DEFAULT_REQUEST_TIMEOUT_SECONDS, _ensure_bar_tz
+from prism.io.loader import BAR_TZ, DEFAULT_REQUEST_TIMEOUT_SECONDS, _ensure_bar_tz
 from prism.sentiment_analysis import SentimentAnalyzer
-
 
 # --- Fixtures ----------------------------------------------------------------
 

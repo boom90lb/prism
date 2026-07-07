@@ -23,7 +23,7 @@ import pandas as pd
 import requests
 
 from prism.config import POLYGON_API_KEY
-from prism.data_loader import DEFAULT_REQUEST_TIMEOUT_SECONDS
+from prism.io.loader import DEFAULT_REQUEST_TIMEOUT_SECONDS
 
 logger = logging.getLogger(__name__)
 

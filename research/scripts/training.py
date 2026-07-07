@@ -32,13 +32,31 @@ from typing import Any, Dict, List, Optional
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 
+from prism.config import (
+    DEFAULT_MODEL_WEIGHTS,
+    DEFAULT_TRAINING_CONFIG,
+    EnsembleConfig,
+    ModelConfig,
+    TrainingConfig,
+)
+from prism.features import FeatureEngineer, forward_return_column, is_label_column
+from prism.io.loader import DataLoader, _tz_aware_filter
+from prism.logging_utils import configure_logging, get_symbol_logger
+from prism.models.ensemble import EnsembleModel
+from prism.sentiment_analysis import SentimentAnalyzer
+from prism.validation.walk_forward import PurgedWalkForward
+
 # mlflow_utils is import-safe on a slim core install (mlflow degrades to None
 # inside it and every wrapper raises an informative ImportError on first use),
 # so this module's pure helpers (build_fold_metadata, ...) stay importable
 # without the research extra. build_features/clean_data_for_training live in
 # _cli_common (shared plumbing must not import from an entry-point script)
 # and are re-imported here for the existing consumers of this module's names.
-from research.scripts._cli_common import build_features, clean_data_for_training
+from research.scripts._cli_common import (
+    build_features,
+    clean_data_for_training,
+    fetch_training_frames,
+)
 from research.tracking.mlflow_utils import (
     init_mlflow,
     log_artifact_dir,
@@ -47,20 +65,6 @@ from research.tracking.mlflow_utils import (
     mlflow,
     require_mlflow,
 )
-
-from prism.config import (
-    DEFAULT_MODEL_WEIGHTS,
-    DEFAULT_TRAINING_CONFIG,
-    EnsembleConfig,
-    ModelConfig,
-    TrainingConfig,
-)
-from prism.data_loader import DataLoader, _tz_aware_filter
-from prism.features import FeatureEngineer, forward_return_column, is_label_column
-from prism.models.ensemble import EnsembleModel
-from prism.sentiment_analysis import SentimentAnalyzer
-from prism.logging_utils import configure_logging, get_symbol_logger
-from prism.validation.walk_forward import PurgedWalkForward
 
 # Suppress specific Pandas warnings (like DataFrame fragmentation)
 try:
@@ -658,7 +662,7 @@ def main():
     experiment_id = init_mlflow(args.experiment)
 
     data_loader = DataLoader()
-    all_data = data_loader.fetch_training_data(training_config)
+    all_data = fetch_training_frames(data_loader, training_config)
     all_data = filter_universe_asof(all_data, args.universe_asof)
     if not all_data:
         logger.error("No data fetched for any symbol; aborting")

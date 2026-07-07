@@ -153,7 +153,7 @@ def main() -> None:
     membership_file = (config.get("universe") or {}).get("membership_file")
     mask = None
     if membership_file:
-        from prism.universe_sp500 import build_membership_mask
+        from prism.io.universe_sp500 import build_membership_mask
 
         mask = build_membership_mask(pd.read_parquet(membership_file), closes.index, list(closes.columns))
     scores = pd.DataFrame(

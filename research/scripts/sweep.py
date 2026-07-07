@@ -45,13 +45,6 @@ import mlflow
 import numpy as np
 import pandas as pd
 
-from research.scripts.backtest import load_fold_ensemble, run_symbol_wfo
-from research.scripts._cli_common import add_execution_args
-from research.scripts.training import (
-    build_features,
-    parse_model_names,
-    train_symbol_wfo,
-)
 from prism.config import (
     DEFAULT_MODEL_WEIGHTS,
     DEFAULT_TRAINING_CONFIG,
@@ -59,15 +52,8 @@ from prism.config import (
     ModelConfig,
     TrainingConfig,
 )
-from prism.features import forward_return_column
-from prism.data_loader import DataLoader
-from prism.features import FeatureEngineer
-from research.tracking.mlflow_utils import (
-    init_mlflow,
-    log_artifact_dir,
-    log_metrics_safe,
-    log_params_safe,
-)
+from prism.features import FeatureEngineer, forward_return_column
+from prism.io.loader import DataLoader
 from prism.validation.metrics import (
     deflated_sharpe_ratio_with_n,
     expected_max_sharpe_with_n,
@@ -81,6 +67,19 @@ from prism.validation.trials import (
     validate_claim_packet_dir,
 )
 from prism.validation.walk_forward import PurgedWalkForward
+from research.scripts._cli_common import add_execution_args, fetch_training_frames
+from research.scripts.backtest import load_fold_ensemble, run_symbol_wfo
+from research.scripts.training import (
+    build_features,
+    parse_model_names,
+    train_symbol_wfo,
+)
+from research.tracking.mlflow_utils import (
+    init_mlflow,
+    log_artifact_dir,
+    log_metrics_safe,
+    log_params_safe,
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -485,7 +484,7 @@ def prepare_sweep_data(args) -> Dict[str, pd.DataFrame]:
         expanding=not args.rolling,
     )
     data_loader = DataLoader()
-    all_data = data_loader.fetch_training_data(training_config)
+    all_data = fetch_training_frames(data_loader, training_config)
     feature_engineer = FeatureEngineer()
     sentiment_analyzer = None
 

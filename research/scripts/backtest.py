@@ -33,46 +33,20 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-# mlflow_utils is import-safe on a slim core install (mlflow degrades to None
-# inside it and every wrapper raises an informative ImportError on first use),
-# so this module's pure helpers (_fold_model_data, run_symbol_wfo plumbing)
-# stay importable without the research extra.
-from research.tracking.mlflow_utils import (
-    init_mlflow,
-    log_artifact_dir,
-    log_metrics_safe,
-    log_params_safe,
-    mlflow,
-    require_mlflow,
-)
-
-from research.scripts.training import (
-    FOLD_METADATA_SCHEMA_VERSION,
-    index_sha256,
-    index_utc_ns,
-    parse_model_names,
-    reject_sentiment_flag,
-)
-from research.scripts._cli_common import (
-    add_execution_args,
-    build_execution_and_trading_configs,
-    build_usable_symbol_frame,
-)
-from research.baselines import BuyAndHold, MACrossover, TSMOM
 from prism.config import RESULTS_DIR
-from prism.data_loader import DataLoader
 from prism.execution import ExecutionModel
 from prism.execution.target_weights import (
     PortfolioBacktestResult,
     backtest_target_weights,
     scale_to_max_gross,
 )
-from prism.portfolio.construct import construct_directional_targets
 from prism.features import FeatureEngineer, forward_return_column
+from prism.io.loader import DataLoader
+from prism.logging_utils import configure_logging, get_symbol_logger
 from prism.models.base import BaseModel
 from prism.models.ensemble import EnsembleModel
+from prism.portfolio.construct import construct_directional_targets
 from prism.sentiment_analysis import SentimentAnalyzer
-from prism.logging_utils import configure_logging, get_symbol_logger
 from prism.trading import TradingStrategy
 from prism.validation.metrics import (
     deflated_sharpe_ratio_with_n,
@@ -84,6 +58,32 @@ from prism.validation.trials import (
     emit_research_claim_packet,
     summary_claim_fields,
     validate_claim_packet_dir,
+)
+from research.baselines import TSMOM, BuyAndHold, MACrossover
+from research.scripts._cli_common import (
+    add_execution_args,
+    build_execution_and_trading_configs,
+    build_usable_symbol_frame,
+)
+from research.scripts.training import (
+    FOLD_METADATA_SCHEMA_VERSION,
+    index_sha256,
+    index_utc_ns,
+    parse_model_names,
+    reject_sentiment_flag,
+)
+
+# mlflow_utils is import-safe on a slim core install (mlflow degrades to None
+# inside it and every wrapper raises an informative ImportError on first use),
+# so this module's pure helpers (_fold_model_data, run_symbol_wfo plumbing)
+# stay importable without the research extra.
+from research.tracking.mlflow_utils import (
+    init_mlflow,
+    log_artifact_dir,
+    log_metrics_safe,
+    log_params_safe,
+    mlflow,
+    require_mlflow,
 )
 
 # Logging configured in main() via configure_logging() (honors --verbose and

@@ -362,7 +362,8 @@ mind.
 ```
 src/prism/             (the distribution — production import path)
   config.py            single source of truth for weights / hyperparams / dirs
-  data_loader.py       Twelvedata bars + dividends, range-keyed cache
+  io/                  loader (Twelvedata bars + dividends, range-keyed cache +
+                       incremental store), PIT universe, token-bucket rate limit
   features.py          technical indicators, train-only clip bounds
   sentiment_analysis.py keyword + FinBERT analyzers, PIT bucketing
   trading.py           target generation, signals, legacy position accounting

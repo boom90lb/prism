@@ -12,8 +12,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from prism.data_loader import BAR_TZ, DataLoader
 from prism.io import IncrementalBarStore, SplitRewriteDetected
+from prism.io.loader import BAR_TZ, DataLoader
 
 
 def _bars(start: str, periods: int, base: float = 100.0) -> pd.DataFrame:
