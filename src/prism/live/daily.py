@@ -27,6 +27,12 @@ Cadence and ordering (one call per session, after the close):
    cap (§7.4).
 4. **Decide/submit.** ``decide_and_submit`` persists the decision before
    the first submit and submits idempotently (N2 crash window).
+5. **Monitor.** After the mark-to-market NAV is appended to the equity
+   ledger, the anytime-valid confidence sequence reads the accruing stream
+   (:mod:`prism.live.monitor`) as *additive telemetry* beside the ratified
+   rolling-PSR promotion read (docs/momentum_design.md). Time-uniform
+   coverage makes a per-cycle read safe; it moves no ratified statistic and
+   starts no counted trial (SPEC §10).
 
 Fit cadence is deliberately *not* owned here: the caller passes a fitted
 Signal, and which model serves "today" is the operator's explicit staleness
@@ -50,6 +56,7 @@ from prism.live.loop import (
     decide_and_submit,
     settle,
 )
+from prism.live.monitor import paper_monitor_read
 from prism.portfolio.construct import construct_directional_targets, step_no_trade_band
 from prism.signal.base import Signal
 
@@ -82,13 +89,19 @@ class DailyBookConfig:
 
 @dataclass(frozen=True)
 class DailyCycleResult:
-    """What one cycle did, for the operator's log and the session record."""
+    """What one cycle did, for the operator's log and the session record.
+
+    ``monitor_read`` is the anytime-valid confidence-sequence verdict over the
+    equity ledger after this cycle's NAV mark (additive telemetry, SPEC §10) —
+    ``None`` when no equity ledger is configured.
+    """
 
     decision_bar: str
     settled_fills: list[Fill]
     submitted_orders: list[Order]
     equity: float
     target_weights: pd.Series
+    monitor_read: dict | None = None
 
 
 def fetch_universe_panels(
@@ -166,9 +179,7 @@ def run_daily_cycle(
             )
         else:
             settled = settle(ctx, state.pending_decision_bar)
-            logger.info(
-                "settled %d fills from decision bar %s", len(settled), state.pending_decision_bar
-            )
+            logger.info("settled %d fills from decision bar %s", len(settled), state.pending_decision_bar)
 
     # 2. Mark broker truth at today's closes.
     prices = close.iloc[-1]
@@ -194,12 +205,8 @@ def run_daily_cycle(
     targets = step_no_trade_band(prev_weights, raw, config.no_trade_band)
     if config.max_participation is not None:
         if volume is None:
-            raise ValueError(
-                "max_participation is set but there is no volume panel to compute ADV (N7)"
-            )
-        dollar_volume = (
-            (close * volume).rolling(config.adv_window_bars, min_periods=1).mean().iloc[-1]
-        )
+            raise ValueError("max_participation is set but there is no volume panel to compute ADV (N7)")
+        dollar_volume = (close * volume).rolling(config.adv_window_bars, min_periods=1).mean().iloc[-1]
         targets = participation_capped_targets(
             prev_weights,
             targets,
@@ -228,12 +235,29 @@ def run_daily_cycle(
     # monitor's return-series source). Idempotent per bar, so same-bar restarts
     # never double-count. Written last so a crash mid-cycle logs no equity for
     # an incomplete bar.
+    monitor_read: dict | None = None
     if ctx.equity_ledger is not None:
         _append_equity_ledger(ctx.equity_ledger, decision_bar, equity, cash)
+        # Arm the anytime-valid monitor as additive telemetry beside the ratified
+        # rolling-PSR promotion read (docs/momentum_design.md): time-uniform
+        # coverage makes a per-cycle read safe to log, it moves no ratified
+        # statistic and starts no counted trial. Becoming a binding promotion/kill
+        # read is deferred to a future program's pre-registration.
+        monitor_read = paper_monitor_read(ctx.equity_ledger)
+        logger.info(
+            "monitor %s: verdict=%s n=%s mean=%s ci=[%s, %s]",
+            decision_bar,
+            monitor_read.get("verdict"),
+            monitor_read.get("n"),
+            monitor_read.get("mean"),
+            monitor_read.get("ci_lower"),
+            monitor_read.get("ci_upper"),
+        )
     return DailyCycleResult(
         decision_bar=decision_bar,
         settled_fills=settled,
         submitted_orders=orders,
         equity=equity,
         target_weights=targets,
+        monitor_read=monitor_read,
     )

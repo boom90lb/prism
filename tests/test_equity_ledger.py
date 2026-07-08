@@ -82,8 +82,26 @@ def test_daily_cycle_without_equity_ledger_is_noop(tmp_path):
         fills_ledger=tmp_path / "fills.jsonl",
     )  # equity_ledger defaults None
     close, volume = _panels()
-    run_daily_cycle(ctx, ConstSignal({"AAA": 1.0}), close, volume, _CONFIG)
+    result = run_daily_cycle(ctx, ConstSignal({"AAA": 1.0}), close, volume, _CONFIG)
     assert not (tmp_path / "equity.jsonl").exists()
+    assert result.monitor_read is None  # no ledger -> no in-loop monitor read
+
+
+def test_daily_cycle_arms_anytime_monitor(tmp_path):
+    ctx = _ctx(tmp_path)
+    signal = ConstSignal({"AAA": 1.0, "BBB": -1.0})
+    close, volume = _panels(n=30)
+    result = run_daily_cycle(ctx, signal, close, volume, _CONFIG)
+    # One NAV point after the first cycle -> no return yet -> inconclusive, but the
+    # read is armed in-loop (additive telemetry), not left to the CLI.
+    assert result.monitor_read is not None
+    assert result.monitor_read["verdict"] == "inconclusive"
+
+    close2, volume2 = _panels(n=31)  # a newer bar -> a second NAV point -> one return
+    result2 = run_daily_cycle(ctx, signal, close2, volume2, _CONFIG)
+    assert result2.monitor_read is not None
+    assert "verdict" in result2.monitor_read
+    assert result2.monitor_read["n"] == 1
 
 
 # ---------------------------------------------------------------------------
