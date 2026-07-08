@@ -39,6 +39,11 @@ class FakeBroker(Broker):
         self.submit_calls = 0
         self.fail_after_n_submits: int | None = None
         self.open_prices: dict[str, float] = {}
+        # Venue outcomes the tests exercise for the tolerant settle: ids that
+        # never fill (e.g. an OPG auction that did not print), and ids that
+        # fill only partially (id -> executed qty, less than the order qty).
+        self.no_fill: set[str] = set()
+        self.partial_fills: dict[str, float] = {}
 
     def positions(self) -> dict[str, float]:
         return dict(self._positions)
@@ -60,15 +65,20 @@ class FakeBroker(Broker):
     def fills_for(self, client_order_ids: set[str]) -> list[Fill]:
         fills = []
         for oid in sorted(client_order_ids & set(self.orders)):
+            if oid in self.no_fill:
+                continue  # e.g. an OPG order whose auction did not print
             order = self.orders[oid]
+            qty = self.partial_fills.get(oid, order.qty)
+            if qty == 0.0:
+                continue
             price = self.open_prices.get(order.symbol, order.reference_price)
-            self._positions[order.symbol] = self._positions.get(order.symbol, 0.0) + order.qty
-            self._cash -= order.qty * price
+            self._positions[order.symbol] = self._positions.get(order.symbol, 0.0) + qty
+            self._cash -= qty * price
             fills.append(
                 Fill(
                     client_order_id=oid,
                     symbol=order.symbol,
-                    qty=order.qty,
+                    qty=qty,
                     price=price,
                     filled_bar="fill-bar",
                 )
@@ -246,11 +256,52 @@ def test_settle_ledgers_fills_and_reanchors_state(ctx) -> None:
     assert orders[0].qty == pytest.approx(expected_delta)
 
 
-def test_settle_with_missing_fill_raises(ctx) -> None:
+def test_settle_tolerates_unfilled_orders_and_reanchors(ctx, caplog) -> None:
+    # Two orders decided; the venue fills AAA and never fills BBB (its OPG
+    # auction did not print). Settle must ledger AAA, log BBB loudly, and let
+    # the loop advance — not raise and wedge on the unfilled leg.
+    decide_and_submit(ctx, "d1", _targets(AAA=0.4, BBB=0.3), _PRICES)
+    ctx.broker.no_fill.add("d1:BBB")
+    with caplog.at_level("WARNING"):
+        fills = settle(ctx, "d2")
+
+    assert {f.client_order_id for f in fills} == {"d1:AAA"}
+    assert "did not fill" in caplog.text and "d1:BBB" in caplog.text
+
+    ledger = read_fills_ledger(ctx.fills_ledger)
+    assert list(ledger["client_order_id"]) == ["d1:AAA"]
+
+    state = ctx.store.load()
+    assert state.pending_orders == [] and state.pending_decision_bar is None
+    assert state.last_settled_bar == "d2"
+    assert "BBB" not in state.positions  # never filled -> not held (broker truth)
+    # The loop keeps going: the next bar decides against the reconciled book.
+    decide_and_submit(ctx, "d3", _targets(AAA=0.4), pd.Series({"AAA": 100.0}))
+
+
+def test_settle_ledgers_partial_fill(ctx) -> None:
+    decide_and_submit(ctx, "d1", _targets(AAA=0.5), _PRICES)  # 50 shares intended
+    ctx.broker.partial_fills["d1:AAA"] = 20.0  # only 20 execute; remainder expires
+    fills = settle(ctx, "d2")
+
+    assert len(fills) == 1 and fills[0].qty == 20.0
+    row = read_fills_ledger(ctx.fills_ledger).iloc[0]
+    assert row["qty"] == 20.0 and row["reference_price"] == 100.0
+
+    state = ctx.store.load()
+    assert state.positions["AAA"] == pytest.approx(20.0)  # broker truth = the partial
+
+
+def test_settle_with_zero_fills_logs_error_but_advances(ctx, caplog) -> None:
     decide_and_submit(ctx, "d1", _targets(AAA=0.5), _PRICES)
-    del ctx.broker.orders["d1:AAA"]  # the venue lost/rejected it
-    with pytest.raises(RuntimeError, match="no fill at settle"):
-        settle(ctx, "d2")
+    ctx.broker.no_fill.add("d1:AAA")  # nothing filled at all
+    with caplog.at_level("ERROR"):
+        fills = settle(ctx, "d2")
+    assert fills == []
+    assert any(r.levelname == "ERROR" for r in caplog.records)
+    assert read_fills_ledger(ctx.fills_ledger).empty  # nothing to ledger
+    state = ctx.store.load()
+    assert state.pending_orders == [] and state.last_settled_bar == "d2"
 
 
 def test_settle_without_pending_is_noop(ctx) -> None:

@@ -173,8 +173,13 @@ def run_daily_cycle(
     state = ctx.store.load()
     if state is not None and state.pending_orders:
         if state.pending_decision_bar == decision_bar:
-            logger.info(
-                "pending decision for %s already persisted — resuming submission, not settling",
+            # WARNING, not INFO: a decision bar that has not advanced since the
+            # last cycle means the loop is stuck resuming the same bar (a dark
+            # or lagging data feed is the usual cause) and is not accruing
+            # fills/equity — that should be visible without reading every line.
+            logger.warning(
+                "pending decision for %s already persisted — resuming submission, not "
+                "settling (decision bar has not advanced since last cycle)",
                 decision_bar,
             )
         else:

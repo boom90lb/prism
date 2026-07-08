@@ -169,9 +169,22 @@ def decide_and_submit(
 def settle(ctx: LiveLoopContext, settle_bar: str) -> list[Fill]:
     """Pull fills for the pending decision, ledger them, re-anchor state.
 
-    Every pending order must have a completed fill; a missing fill means
-    the book's holdings are not what the decision assumed, and that is an
-    operator problem, not something to average over (N7).
+    Ledgers every executed quantity (whole fills *and* partials under an
+    expired/canceled parent) beside its decision-close reference price, then
+    re-anchors positions and cash to **broker truth** and clears pending.
+
+    An order that did not fill is *not* an emergency to halt on: a
+    market-on-open order whose auction did not print, or whose remainder
+    expired, is a routine venue outcome for the R2 paper instrument, and the
+    book is still known exactly because we adopt broker truth. So settle does
+    not raise on unfilled orders — it fails **loud, not silent** (N7): the
+    unfilled ids are logged (WARNING, or ERROR when *nothing* filled, which
+    can flag a systemic problem — auth, market closed, venue down), while the
+    loop stays alive to decide the next bar. The book cannot silently drift
+    because ``positions``/``cash`` come from the broker, not from assuming the
+    decision executed. (The prior all-or-nothing raise made a single expired
+    OPG leg wedge the whole loop until a manual state edit — the exact stall
+    this instrument is meant to survive.)
     """
     state = ctx.store.load()
     if state is None or not state.pending_orders:
@@ -180,29 +193,41 @@ def settle(ctx: LiveLoopContext, settle_bar: str) -> list[Fill]:
     pending_ids = {o.client_order_id for o in state.pending_orders}
     fills = ctx.broker.fills_for(pending_ids)
     filled_ids = {f.client_order_id for f in fills}
-    missing = pending_ids - filled_ids
-    if missing:
-        raise RuntimeError(
-            f"{len(missing)} pending orders have no fill at settle "
-            f"({sorted(missing)[:5]}…); reconcile manually before continuing (N7)"
+    unfilled = pending_ids - filled_ids
+    if unfilled:
+        detail = sorted(unfilled)
+        shown = detail[:8]
+        tail = "…" if len(detail) > len(shown) else ""
+        level = logging.ERROR if not fills else logging.WARNING
+        logger.log(
+            level,
+            "settle %s: %d/%d pending orders did not fill (%s%s); ledgering the %d that did "
+            "and re-anchoring the book to broker truth (N7: loud, not silent-zero)",
+            state.pending_decision_bar,
+            len(unfilled),
+            len(pending_ids),
+            shown,
+            tail,
+            len(fills),
         )
 
     reference = {o.client_order_id: o.reference_price for o in state.pending_orders}
-    _append_fills_ledger(
-        ctx.fills_ledger,
-        [
-            {
-                "client_order_id": f.client_order_id,
-                "symbol": f.symbol,
-                "qty": f.qty,
-                "fill_price": f.price,
-                "reference_price": reference[f.client_order_id],
-                "decision_bar": state.pending_decision_bar,
-                "filled_bar": f.filled_bar,
-            }
-            for f in fills
-        ],
-    )
+    if fills:
+        _append_fills_ledger(
+            ctx.fills_ledger,
+            [
+                {
+                    "client_order_id": f.client_order_id,
+                    "symbol": f.symbol,
+                    "qty": f.qty,
+                    "fill_price": f.price,
+                    "reference_price": reference[f.client_order_id],
+                    "decision_bar": state.pending_decision_bar,
+                    "filled_bar": f.filled_bar,
+                }
+                for f in fills
+            ],
+        )
 
     state.positions = {s: q for s, q in ctx.broker.positions().items() if q != 0.0}
     state.cash = ctx.broker.cash()

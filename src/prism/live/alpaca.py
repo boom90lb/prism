@@ -209,10 +209,19 @@ class AlpacaBroker(Broker):
             payload = self._json_or_raise(
                 response, f"GET /v2/orders:by_client_order_id ({client_order_id})"
             )
-            if payload.get("status") != "filled":
-                continue  # partial/open/canceled: not a completed fill
-            qty = float(payload["filled_qty"])
-            signed_qty = qty if payload["side"] == "buy" else -qty
+            # A fill is any executed quantity — whether the order is terminally
+            # `filled` or a *partial* under an `expired`/`canceled` parent. OPG
+            # (opening-auction) orders routinely fill less than the whole size,
+            # and the unfilled remainder then expires; what the I-9 ledger needs
+            # is the shares that actually traded and their price, not the
+            # order's terminal label. ``filled_qty == 0`` (still open, or a clean
+            # zero-fill expiry) is absent, not an error — the loop's settle
+            # tolerates it and reconciles the book to broker truth.
+            filled_qty = float(payload.get("filled_qty") or 0.0)
+            avg_price = payload.get("filled_avg_price")
+            if filled_qty <= 0.0 or avg_price is None:
+                continue
+            signed_qty = filled_qty if payload["side"] == "buy" else -filled_qty
             filled_bar = str(
                 pd.Timestamp(payload["filled_at"]).tz_convert(_FILL_BAR_TZ).date()
             )
@@ -221,7 +230,7 @@ class AlpacaBroker(Broker):
                     client_order_id=client_order_id,
                     symbol=str(payload["symbol"]),
                     qty=signed_qty,
-                    price=float(payload["filled_avg_price"]),
+                    price=float(avg_price),
                     filled_bar=filled_bar,
                 )
             )

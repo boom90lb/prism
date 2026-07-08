@@ -182,7 +182,7 @@ def test_submitted_order_ids_paginates(broker, session, monkeypatch) -> None:
     assert broker.submitted_order_ids() == {"d1:AAA", "d1:BBB", "d1:CCC"}
 
 
-def test_fills_for_maps_filled_orders_only(broker, session) -> None:
+def test_fills_for_maps_executed_quantity_including_partials(broker, session) -> None:
     payloads = {
         "d1:AAA": FakeResponse(
             payload={
@@ -205,6 +205,23 @@ def test_fills_for_maps_filled_orders_only(broker, session) -> None:
                 "filled_at": "2026-07-07T13:31:05Z",
             }
         ),
+        # OPG remainder expired after a *partial* fill: the executed shares are a
+        # real fill for the I-9 ledger even though the order's terminal label is
+        # `expired`. This is exactly the ORCL case from the 2026-07-06 book.
+        "d1:PART": FakeResponse(
+            payload={
+                "status": "expired",
+                "side": "sell",
+                "symbol": "D",
+                "filled_qty": "1",
+                "filled_avg_price": "138.93",
+                "filled_at": "2026-07-08T13:30:26Z",
+            }
+        ),
+        # OPG order that expired with nothing executed: absent, not a fill.
+        "d1:ZERO": FakeResponse(
+            payload={"status": "expired", "side": "buy", "symbol": "E", "filled_qty": "0"}
+        ),
         "d1:OPEN": FakeResponse(payload={"status": "new", "side": "buy", "symbol": "C"}),
         "d1:GONE": FakeResponse(status_code=404, payload={"message": "order not found"}),
     }
@@ -213,12 +230,16 @@ def test_fills_for_maps_filled_orders_only(broker, session) -> None:
         "/v2/orders:by_client_order_id",
         lambda json=None, params=None: payloads[params["client_order_id"]],
     )
-    fills = broker.fills_for({"d1:AAA", "d1:BBB", "d1:OPEN", "d1:GONE"})
+    fills = broker.fills_for({"d1:AAA", "d1:BBB", "d1:PART", "d1:ZERO", "d1:OPEN", "d1:GONE"})
     by_id = {f.client_order_id: f for f in fills}
-    assert set(by_id) == {"d1:AAA", "d1:BBB"}  # open and unknown ids are absent, not errors
+    # filled and partially-filled ids yield fills; open / zero-fill / unknown are
+    # absent, not errors.
+    assert set(by_id) == {"d1:AAA", "d1:BBB", "d1:PART"}
     assert by_id["d1:AAA"].qty == 50.0 and by_id["d1:AAA"].price == 101.25
     assert by_id["d1:BBB"].qty == -40.0  # sell side -> negative signed qty
+    assert by_id["d1:PART"].qty == -1.0 and by_id["d1:PART"].price == 138.93
     assert by_id["d1:AAA"].filled_bar == "2026-07-07"
+    assert by_id["d1:PART"].filled_bar == "2026-07-08"
 
 
 # ---------------------------------------------------------------------------

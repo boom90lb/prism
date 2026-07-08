@@ -32,9 +32,13 @@ import argparse
 import logging
 import sys
 from pathlib import Path
+from typing import Any
+
+import pandas as pd
 
 from prism.io.loader import DataLoader
 from prism.live import (
+    AlpacaBarSource,
     AlpacaBroker,
     DailyBookConfig,
     LiveLoopContext,
@@ -85,6 +89,14 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--min-notional", type=float, default=1.0)
     parser.add_argument("--horizon", type=int, default=5, help="Signal forward horizon in bars.")
     parser.add_argument(
+        "--bar-source",
+        choices=("alpaca", "twelvedata"),
+        default="alpaca",
+        help="Daily-bar source. 'alpaca' (default) reads the broker's own IEX feed so "
+        "the decision and the fill share one venue and one clock — no cross-vendor EOD "
+        "lag (the 2026-07-07 stall). 'twelvedata' uses the research spine's incremental store.",
+    )
+    parser.add_argument(
         "--tif",
         choices=("opg", "day"),
         default="opg",
@@ -99,9 +111,35 @@ def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
     symbols = [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
 
-    loader = DataLoader()
+    # Bars from Alpaca (the broker's own feed) by default so decision and fill
+    # share one venue and clock; the Twelve Data spine stays available as a
+    # fallback. Both satisfy the duck-typed fetch_incremental read path.
+    loader: Any = AlpacaBarSource.from_env() if args.bar_source == "alpaca" else DataLoader()
     close, volume = fetch_universe_panels(loader, symbols, start_date=args.start_date)
-    logger.info("panels: %d bars x %d symbols through %s", len(close), close.shape[1], close.index[-1])
+    logger.info(
+        "panels: %d bars x %d symbols through %s (source=%s)",
+        len(close),
+        close.shape[1],
+        close.index[-1],
+        args.bar_source,
+    )
+
+    # The instrument decides on the freshest bar the vendor has published. If
+    # that bar is many calendar days old the feed is lagging (or the loop has
+    # been dark), the decision is being made on stale prices, and any resulting
+    # fill carries extra arrival lag versus its close-t reference — flag it
+    # loudly (N7) rather than trade on it silently. 4 days clears a normal
+    # Fri->Tue holiday weekend; more than that is anomalous.
+    last_bar = close.index[-1]
+    stale_days = (pd.Timestamp.now(tz=last_bar.tz) - last_bar).days
+    if stale_days > 4:
+        logger.warning(
+            "latest available bar %s is %d calendar days old — the vendor feed is lagging "
+            "or the loop has been dark; deciding on a stale panel, and fills will carry "
+            "extra arrival lag beyond the close-t reference (verify before trusting them)",
+            last_bar.date(),
+            stale_days,
+        )
 
     signal = EnsembleSignalNode(EnsembleNodeConfig(horizon_bars=args.horizon))
     signal.fit(close, volume)
