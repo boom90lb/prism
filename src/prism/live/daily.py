@@ -43,7 +43,13 @@ import pandas as pd
 
 from prism.execution.participation import participation_capped_targets
 from prism.live.broker import Fill, Order
-from prism.live.loop import LiveLoopContext, _require_price, decide_and_submit, settle
+from prism.live.loop import (
+    LiveLoopContext,
+    _append_equity_ledger,
+    _require_price,
+    decide_and_submit,
+    settle,
+)
 from prism.portfolio.construct import construct_directional_targets, step_no_trade_band
 from prism.signal.base import Signal
 
@@ -218,6 +224,12 @@ def run_daily_cycle(
         equity,
         float(targets.abs().sum()),
     )
+    # Record the post-settle mark-to-market NAV for this bar (the anytime-valid
+    # monitor's return-series source). Idempotent per bar, so same-bar restarts
+    # never double-count. Written last so a crash mid-cycle logs no equity for
+    # an incomplete bar.
+    if ctx.equity_ledger is not None:
+        _append_equity_ledger(ctx.equity_ledger, decision_bar, equity, cash)
     return DailyCycleResult(
         decision_bar=decision_bar,
         settled_fills=settled,

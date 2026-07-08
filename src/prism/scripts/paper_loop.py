@@ -114,6 +114,7 @@ def main(argv: list[str] | None = None) -> int:
         store=StateStore(args.run_dir / "state.json"),
         broker=AlpacaBroker.from_env(time_in_force=args.tif),
         fills_ledger=args.run_dir / "fills.jsonl",
+        equity_ledger=args.run_dir / "equity.jsonl",
     )
     config = DailyBookConfig(
         position_size=args.position_size,

@@ -51,6 +51,7 @@ class LiveLoopContext:
     store: StateStore
     broker: Broker
     fills_ledger: Path
+    equity_ledger: Path | None = None
 
 
 def targets_to_orders(
@@ -221,6 +222,18 @@ def read_fills_ledger(path: Path) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def read_equity_ledger(path: Path) -> pd.DataFrame:
+    """The append-only equity ledger as a frame — one mark-to-market NAV row per
+    decision bar (``decision_bar``, ``equity``, ``cash``). This is the
+    return-series source for the anytime-valid monitor
+    (:mod:`prism.validation.anytime` via :mod:`prism.live.monitor`)."""
+    path = Path(path)
+    if not path.exists():
+        return pd.DataFrame()
+    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
+    return pd.DataFrame(rows)
+
+
 def _reconcile(state: LoopState, broker: Broker) -> None:
     """Adopt broker truth, loudly when it disagrees with the persisted book."""
     broker_positions = {s: q for s, q in broker.positions().items() if q != 0.0}
@@ -253,3 +266,27 @@ def _append_fills_ledger(path: Path, rows: list[dict]) -> None:
     with open(path, "a", encoding="utf-8") as handle:
         for row in rows:
             handle.write(json.dumps(row, sort_keys=True) + "\n")
+
+
+def _append_equity_ledger(path: Path, decision_bar: str, equity: float, cash: float) -> None:
+    """Append one mark-to-market NAV snapshot for ``decision_bar``.
+
+    Idempotent and monotone: a same-bar rerun (the write-ahead protocol's
+    restart) or an out-of-order bar is skipped, so the ledger holds exactly one
+    row per bar and re-running the loop never double-counts a daily return.
+    ``decision_bar`` strings are ISO dates, so lexical ``<=`` is chronological.
+    """
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+        lines = [ln for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()]
+        if lines and decision_bar <= json.loads(lines[-1])["decision_bar"]:
+            return
+    with open(path, "a", encoding="utf-8") as handle:
+        handle.write(
+            json.dumps(
+                {"decision_bar": decision_bar, "equity": float(equity), "cash": float(cash)},
+                sort_keys=True,
+            )
+            + "\n"
+        )

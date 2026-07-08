@@ -44,6 +44,7 @@ from prism.live.daily import (
 from prism.live.loop import (
     LiveLoopContext,
     decide_and_submit,
+    read_equity_ledger,
     read_fills_ledger,
     settle,
     targets_to_orders,
@@ -66,6 +67,7 @@ __all__ = [
     "StateStore",
     "decide_and_submit",
     "fetch_universe_panels",
+    "read_equity_ledger",
     "read_fills_ledger",
     "run_daily_cycle",
     "settle",
