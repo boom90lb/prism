@@ -1,14 +1,14 @@
-# EDGE bracketing-diagnostic pre-registration (DRAFT)
+# EDGE bracketing-diagnostic pre-registration
 
-**Status: drafted 2026-07-08, awaiting owner ratification.** The estimator code
-lands in the same change (`src/prism/execution/edge.py`: `edge_spread`,
-`edge_spread_by_symbol`, `edge_bracketing_diagnostic`); this document fixes its
+**Status: RATIFIED 2026-07-09 (owner-directed, drafted 2026-07-08).** The estimator
+code landed with the draft (`src/prism/execution/edge.py`: `edge_spread`,
+`edge_spread_by_symbol`, `edge_bracketing_diagnostic`); this document fixed its
 evidentiary status *before* any output is read against a certified number, per the
 repo precondition that a diagnostic's governance is settled ahead of its first
 reading, not after. Ratification follows the momentum precedent
-(`docs/momentum_design.md`): the agent drafts, the owner ratifies. Nothing in §2
-(governance) or §3 (adjudication) is live until that ratification; no value in this
-document moves once it is.
+(`docs/momentum_design.md`): the agent drafts, the owner ratifies. §2 (governance)
+and §3 (adjudication) are live as of this ratification; no value in this document
+moves from here on.
 
 ## 0. Provenance and rationale
 
