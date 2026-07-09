@@ -37,9 +37,8 @@ So the natural trigger — **"clean the covariance when a second sleeve exists"*
 **unmet**. Building the cleaner now would wire it into either (a) an archived
 consumer (falsification if we resurrected it silently — cert 001 §9 forbids
 re-targeting that selection set) or (b) a single-sleeve diagnostic where the cheaper
-MP clip already captures most of the benefit. This document exists so the design is
-settled and the trigger is explicit, not so the code lands. See §5 for the precise
-gate.
+MP clip already captures most of the benefit. This document settles the design and makes the trigger explicit; the code lands
+only at the §5 gate.
 
 ## 1. The current production gap (verified against HEAD)
 

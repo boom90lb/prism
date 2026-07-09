@@ -5,10 +5,14 @@ fetch (``io``/loader), a fitted :class:`~prism.signal.base.Signal`, online
 construction (down-only caps → the stateful no-trade band against *held*
 weights → the participation gate), and the write-ahead decision protocol
 (``prism.live.loop``), with last session's fills settled into the I-9 ledger
-first. The residualize stage (§7.2) is not wired yet — the residual node is
-sequenced behind the §10 demotion runs — so the driver takes any Signal and
-constructs an unhedged directional book; the paper instrument's purpose is
-cost measurement (SPEC §13 R2), which needs turnover, not edge.
+first. The driver constructs one of two books per ``DailyBookConfig.book``: an
+unhedged directional book (linear score → weight) or the market-neutral decile
+long/short book the ratified B1 momentum candidate trades. The §7.2 factor-
+residualize stage is unwired for either — the directional book is a
+cost-measurement instrument (SPEC §13 R2, which needs turnover, not edge), and
+B1 is eligibility-screened momentum that is market-neutral by balanced decile
+legs, not by factor neutralization (adding a residualize stage would change its
+ratified config — a discovery event, docs/momentum_design.md §2).
 
 Cadence and ordering (one call per session, after the close):
 
@@ -20,11 +24,14 @@ Cadence and ordering (one call per session, after the close):
 2. **Mark.** Broker-truth positions and cash are marked at today's closes
    into held weights and equity — the same marks ``decide_and_submit``
    sizes with.
-3. **Score → construct.** The signal scores the panel's last row; scores
-   map linearly to capped weights (I-4, one sizing function), the online
-   band holds names whose target moved less than the band from what is
-   held, and the participation gate shrinks trades that exceed the %ADV
-   cap (§7.4).
+3. **Cadence → score → construct.** On a refresh session (the decision
+   cadence has elapsed — daily by default, ≈monthly for B1) the signal
+   scores the panel's last row and construction maps scores to capped
+   weights (linear for the directional book, top/bottom-decile long/short
+   for the neutral book; I-4, one sizing point). The online band holds names
+   whose target moved less than the band from what is held, and the
+   participation gate shrinks trades over the %ADV cap (§7.4). Off a refresh
+   session the book holds its filled weights while NAV still marks daily.
 4. **Decide/submit.** ``decide_and_submit`` persists the decision before
    the first submit and submits idempotently (N2 crash window).
 5. **Monitor.** After the mark-to-market NAV is appended to the equity
@@ -57,7 +64,12 @@ from prism.live.loop import (
     settle,
 )
 from prism.live.monitor import paper_monitor_read
-from prism.portfolio.construct import construct_directional_targets, step_no_trade_band
+from prism.live.state import LoopState
+from prism.portfolio.construct import (
+    construct_decile_neutral,
+    construct_directional_targets,
+    step_no_trade_band,
+)
 from prism.signal.base import Signal
 
 logger = logging.getLogger(__name__)
@@ -67,17 +79,22 @@ logger = logging.getLogger(__name__)
 class DailyBookConfig:
     """Construction policy for the daily book — sizing folds in once (I-4).
 
-    ``position_size`` maps a full-conviction score (|score| ≥ 1) to a
-    per-name weight; caps are down-only (a low-gross book stays low-gross).
-    ``no_trade_band`` is the *online* half-width applied against held
-    weights (the batch band inside ``construct_directional_targets`` stays
-    off — replaying hysteresis from flat every day is the defect the online
-    step exists to fix). ``max_participation`` of None disables the %ADV
-    gate (at paper scale it never binds; enable it before any AUM claim).
-    ``whole_shares`` matches Alpaca OPG (next-open) order requirements.
+    ``book`` selects the construction: ``"directional"`` maps each score
+    linearly to a weight (``position_size`` is the |score|≥1 → weight slope),
+    ``"decile_neutral"`` builds the ratified B1 momentum book — equal-weight
+    top/bottom ``decile`` long/short, market-neutral by balanced legs, using
+    only the cross-sectional *rank* of the scores (``position_size`` is ignored).
+    ``decision_every`` is the refresh cadence in trading sessions (1 = daily;
+    21 ≈ monthly for B1): off a refresh session the book holds its filled
+    weights and only NAV marks. Caps are down-only (a low-gross book stays
+    low-gross). ``no_trade_band`` is the *online* half-width applied against held
+    weights (the batch band stays off — replaying hysteresis from flat every day
+    is the defect the online step fixes). ``max_participation`` of None disables
+    the %ADV gate (at paper scale it never binds; enable it before any AUM
+    claim). ``whole_shares`` matches Alpaca OPG (next-open) order requirements.
     """
 
-    position_size: float
+    position_size: float = 0.0
     max_gross: float = 1.0
     max_symbol_abs_weight: float = 0.10
     no_trade_band: float = 0.0
@@ -85,6 +102,21 @@ class DailyBookConfig:
     adv_window_bars: int = 20
     min_order_notional: float = 1.0
     whole_shares: bool = True
+    book: str = "directional"
+    decile: float = 0.10
+    decision_every: int = 1
+
+    def __post_init__(self) -> None:
+        if self.book not in ("directional", "decile_neutral"):
+            raise ValueError(
+                f"unknown book {self.book!r}: expected 'directional' or 'decile_neutral'"
+            )
+        if self.book == "directional" and not self.position_size > 0:
+            raise ValueError("the directional book requires position_size > 0")
+        if self.book == "decile_neutral" and not 0.0 < self.decile <= 0.5:
+            raise ValueError(f"the decile book requires decile in (0, 0.5], got {self.decile}")
+        if self.decision_every < 1:
+            raise ValueError(f"decision_every must be >= 1, got {self.decision_every}")
 
 
 @dataclass(frozen=True)
@@ -112,31 +144,71 @@ def fetch_universe_panels(
     start_date: str | None = None,
     end_date: str | None = None,
     store: Any | None = None,
+    max_missing: float = 0.0,
 ) -> tuple[pd.DataFrame, pd.DataFrame | None]:
     """Wide (close, volume) panels via the incremental store's delta fetch.
 
-    ``loader`` is duck-typed to ``DataLoader.fetch_incremental`` (SPEC §7.0
-    read path: seed once, then one tail request per symbol per day against
-    the vendor budget). A symbol that yields no bars raises (N7): the book
-    cannot silently shrink because a fetch failed. Returns ``volume=None``
-    when no symbol carries a volume column.
+    ``loader`` is duck-typed to ``DataLoader.fetch_incremental``; a loader that
+    also exposes ``fetch_batch`` (Alpaca) pulls the whole universe in a few
+    multi-symbol requests instead of one per name (SPEC §7.0 read path). Returns
+    ``volume=None`` when no symbol carries a volume column.
+
+    ``max_missing`` is the fraction of symbols allowed to return no bars before
+    the fetch fails loud (N7). The default 0.0 keeps a hand-picked universe
+    strict — any missing name is an error. A large point-in-time universe sets it
+    above zero to tolerate a few stale/renamed tickers the venue no longer serves
+    under that symbol: those are dropped with a loud warning naming them (so the
+    universe file can be curated), but a miss rate above the bound still raises,
+    because that signals a systemic feed/auth failure, not a few dead tickers.
     """
     if not symbols:
         raise ValueError("empty symbol list — nothing to fetch")
+    symbols = list(symbols)
+    if hasattr(loader, "fetch_batch"):
+        # A batch-capable source (Alpaca) pulls the whole universe in a few
+        # paginated multi-symbol requests; one request per name over hundreds of
+        # names exhausts the vendor's ~200 req/min budget (a 429).
+        frames = loader.fetch_batch(symbols, interval=interval, start_date=start_date, end_date=end_date)
+        bars_by_symbol = {s: frames.get(s, pd.DataFrame()) for s in symbols}
+    else:
+        bars_by_symbol = {
+            s: loader.fetch_incremental(
+                s, interval=interval, start_date=start_date, end_date=end_date, store=store
+            )
+            for s in symbols
+        }
     closes: dict[str, pd.Series] = {}
     volumes: dict[str, pd.Series] = {}
+    missing: list[str] = []
     for symbol in symbols:
-        bars = loader.fetch_incremental(
-            symbol, interval=interval, start_date=start_date, end_date=end_date, store=store
-        )
+        bars = bars_by_symbol[symbol]
         if bars.empty or "close" not in bars.columns:
-            raise RuntimeError(
-                f"no bars for {symbol!r} ({interval}) from the incremental fetch; "
-                "fix the source or drop the symbol explicitly (N7)"
-            )
+            missing.append(symbol)
+            continue
         closes[symbol] = pd.to_numeric(bars["close"], errors="coerce")
         if "volume" in bars.columns:
             volumes[symbol] = pd.to_numeric(bars["volume"], errors="coerce")
+    if missing:
+        shown = missing[:20]
+        tail = "…" if len(missing) > len(shown) else ""
+        if len(missing) > max_missing * len(symbols):
+            raise RuntimeError(
+                f"no bars for {len(missing)}/{len(symbols)} symbols "
+                f"({len(missing) / len(symbols):.1%} > max_missing {max_missing:.1%}): "
+                f"{shown}{tail}; fix the source, prune the universe, or raise max_missing (N7)"
+            )
+        logger.warning(
+            "no bars for %d/%d symbols (%.1f%% <= max_missing %.1f%%); dropping them and trading "
+            "the rest — prune these from the universe if they are stale/renamed: %s%s",
+            len(missing),
+            len(symbols),
+            100 * len(missing) / len(symbols),
+            100 * max_missing,
+            shown,
+            tail,
+        )
+    if not closes:
+        raise RuntimeError(f"no bars for any of the {len(symbols)} requested symbols (N7)")
     close = pd.DataFrame(closes).sort_index()
     volume = pd.DataFrame(volumes).reindex(columns=close.columns).sort_index() if volumes else None
     return close, volume
@@ -198,27 +270,49 @@ def run_daily_cycle(
         dtype=float,
     )
 
-    # 3. Score and construct against held weights.
-    scores = signal.score(close, volume)
-    raw = construct_directional_targets(
-        pd.DataFrame([scores], index=close.index[-1:]),
-        position_size=config.position_size,
-        max_gross=config.max_gross,
-        max_symbol_abs_weight=config.max_symbol_abs_weight,
-        no_trade_band=0.0,  # the online step below owns hysteresis (never the flat replay)
-    ).iloc[0]
-    targets = step_no_trade_band(prev_weights, raw, config.no_trade_band)
-    if config.max_participation is not None:
-        if volume is None:
-            raise ValueError("max_participation is set but there is no volume panel to compute ADV (N7)")
-        dollar_volume = (close * volume).rolling(config.adv_window_bars, min_periods=1).mean().iloc[-1]
-        targets = participation_capped_targets(
-            prev_weights,
-            targets,
-            dollar_volume,
-            aum=equity,
-            max_participation=config.max_participation,
-        )
+    # 3. Cadence gate, then score → construct against held weights. Off a refresh
+    # session (the decision cadence has not elapsed) the book holds its filled
+    # weights — no re-score, no trades — so a monthly book rebalances monthly
+    # while NAV still marks daily.
+    refresh = _is_refresh_session(state, decision_bar, close.index, config.decision_every)
+    if refresh:
+        score_row = pd.DataFrame([signal.score(close, volume)], index=close.index[-1:])
+        if config.book == "decile_neutral":
+            # The decile construct emits an explicit weight (0.0 outside the
+            # decile) for every scored name, so a held name that falls out of the
+            # decile — including a book inherited at cutover, as long as it is in
+            # the fetched universe — is rebalanced to flat by the online band
+            # below. A held name absent from the universe cannot be priced and is
+            # refused loudly at the mark step above (N7): trade only what you can
+            # value, so a cutover universe must contain the names it inherits.
+            raw = construct_decile_neutral(
+                score_row,
+                decile=config.decile,
+                max_gross=config.max_gross,
+                max_symbol_abs_weight=config.max_symbol_abs_weight,
+            ).iloc[0]
+        else:
+            raw = construct_directional_targets(
+                score_row,
+                position_size=config.position_size,
+                max_gross=config.max_gross,
+                max_symbol_abs_weight=config.max_symbol_abs_weight,
+                no_trade_band=0.0,  # the online step below owns hysteresis (never the flat replay)
+            ).iloc[0]
+        targets = step_no_trade_band(prev_weights, raw, config.no_trade_band)
+        if config.max_participation is not None:
+            if volume is None:
+                raise ValueError("max_participation is set but there is no volume panel to compute ADV (N7)")
+            dollar_volume = (close * volume).rolling(config.adv_window_bars, min_periods=1).mean().iloc[-1]
+            targets = participation_capped_targets(
+                prev_weights,
+                targets,
+                dollar_volume,
+                aum=equity,
+                max_participation=config.max_participation,
+            )
+    else:
+        targets = prev_weights  # hold the filled book: no decision this session
 
     # 4. Write-ahead decide and idempotent submit.
     orders = decide_and_submit(
@@ -228,6 +322,7 @@ def run_daily_cycle(
         prices,
         min_order_notional=config.min_order_notional,
         whole_shares=config.whole_shares,
+        refresh_bar=decision_bar if refresh else None,
     )
     logger.info(
         "decision %s: %d orders submitted, equity %.2f, gross %.4f",
@@ -266,3 +361,27 @@ def run_daily_cycle(
         target_weights=targets,
         monitor_read=monitor_read,
     )
+
+
+def _is_refresh_session(
+    state: LoopState | None,
+    decision_bar: str,
+    index: pd.DatetimeIndex,
+    decision_every: int,
+) -> bool:
+    """Whether this session refreshes the book (SPEC §7.7 decision cadence).
+
+    ``decision_every`` trading sessions must elapse between refreshes (1 = every
+    session, the frozen daily default). The first cycle, or a state with no
+    cadence anchor, always refreshes. The elapsed count is read off the panel's
+    own index — the trading calendar the loop already holds — so it matches the
+    backtest's bar-count cadence, not wall-clock months.
+    """
+    if decision_every <= 1:
+        return True
+    last_refresh = state.last_refresh_bar if state is not None else None
+    if last_refresh is None:
+        return True
+    dates = [str(d.date()) for d in index]
+    elapsed = sum(1 for dt in dates if last_refresh < dt <= decision_bar)
+    return elapsed >= decision_every

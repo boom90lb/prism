@@ -6,7 +6,7 @@ until the gate opens.** This document registers the design and the trial-account
 and not runnable. The gate, the trial budget it draws against, and the frozen trial
 table below all become live only when the momentum promotion read
 (`docs/momentum_design.md §3`) returns a verdict. Until then this is a design
-record, held so the construction is not improvised at the moment the gate opens.
+record that pins the construction now so it is not improvised when the gate opens.
 
 ## 0. Scope and the gate
 
@@ -158,7 +158,7 @@ when the gate opens:
   toll negative relative to the standalone gross-weighted sum has not earned its
   trial.
 
-Registering this intent is not spending it. The budget is drawn only after
+The budget is drawn only after
 ratification, and ratification is downstream of the momentum verdict.
 
 ## 5. Exit criteria and adjudication
@@ -186,5 +186,5 @@ Pinned now so they are not improvised at the gate:
   multi-signal construction is recorded as uneconomic at this scale and the program
   does not buy more trials — the `SPEC §10` budget does not refill.
 
-Status, restated for the reader who skips to the end: **drafted, GATED on the
-momentum verdict — no counted trial until the gate opens.**
+**Status: drafted, GATED on the momentum verdict — no counted trial until the
+gate opens.**

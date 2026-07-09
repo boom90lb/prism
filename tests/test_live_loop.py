@@ -21,6 +21,7 @@ from prism.live import (
     LiveLoopContext,
     LoopState,
     Order,
+    OrderRejected,
     StateStore,
     decide_and_submit,
     read_fills_ledger,
@@ -44,6 +45,9 @@ class FakeBroker(Broker):
         # fill only partially (id -> executed qty, less than the order qty).
         self.no_fill: set[str] = set()
         self.partial_fills: dict[str, float] = {}
+        # Ids the venue rejects at submit with a non-Duplicate error (e.g. a
+        # zero-crossing order): the loop must skip and continue, not crash.
+        self.reject_ids: set[str] = set()
 
     def positions(self) -> dict[str, float]:
         return dict(self._positions)
@@ -52,6 +56,8 @@ class FakeBroker(Broker):
         return self._cash
 
     def submit(self, order: Order) -> None:
+        if order.client_order_id in self.reject_ids:
+            raise OrderRejected(f"venue rejected {order.client_order_id}")
         if self.fail_after_n_submits is not None and self.submit_calls >= self.fail_after_n_submits:
             raise ConnectionError("simulated venue outage")
         if order.client_order_id in self.orders:
@@ -220,6 +226,53 @@ def test_redeciding_a_settled_bar_raises(ctx) -> None:
     settle(ctx, "d2")
     with pytest.raises(RuntimeError, match="not after last settled"):
         decide_and_submit(ctx, "d1", _targets(AAA=0.5), _PRICES)
+
+
+# ---------------------------------------------------------------------------
+# order sizing: a single order may not cross zero; a rejection must not wedge
+# ---------------------------------------------------------------------------
+
+
+def test_targets_to_orders_clamps_a_zero_crossing_order_to_flat() -> None:
+    # Held short 1; the target flips to long. A single order may only cover to
+    # flat — Alpaca rejects a side-flipping order ("insufficient qty available",
+    # the 2026-07-08 ORCL crash). The opposite side opens next bar from flat.
+    orders = targets_to_orders(
+        _targets(AAA=0.5),  # long target
+        positions={"AAA": -1.0},  # currently short 1
+        prices=_PRICES,
+        equity=10_000.0,
+        decision_bar="d1",
+        whole_shares=True,
+    )
+    assert len(orders) == 1
+    assert orders[0].qty == 1.0  # buy 1 to flat, NOT buy 51 (a short->long flip)
+
+
+def test_targets_to_orders_does_not_clamp_when_not_crossing_zero() -> None:
+    # Held short 1, target deeper short: the order increases the short normally.
+    orders = targets_to_orders(
+        _targets(AAA=-0.5),
+        positions={"AAA": -1.0},
+        prices=_PRICES,
+        equity=10_000.0,
+        decision_bar="d1",
+        whole_shares=True,
+    )
+    assert len(orders) == 1
+    assert orders[0].qty == -49.0  # target -50, held -1 -> sell 49 more
+
+
+def test_decide_and_submit_skips_a_rejected_order_without_crashing(ctx, caplog) -> None:
+    ctx.broker.reject_ids.add("d1:BBB")  # the venue rejects one order (non-Duplicate)
+    with caplog.at_level("ERROR"):
+        orders = decide_and_submit(ctx, "d1", _targets(AAA=0.4, BBB=0.3), _PRICES)
+    # the good order reached the venue, the rejected one is logged not raised
+    assert "d1:AAA" in ctx.broker.submitted_order_ids()
+    assert "d1:BBB" not in ctx.broker.submitted_order_ids()
+    assert "rejected by the venue" in caplog.text and "d1:BBB" in caplog.text
+    # both remain in the persisted decision — settle tolerates the missing fill
+    assert {o.client_order_id for o in orders} == {"d1:AAA", "d1:BBB"}
 
 
 # ---------------------------------------------------------------------------

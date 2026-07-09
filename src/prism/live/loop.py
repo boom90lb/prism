@@ -34,7 +34,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from prism.live.broker import Broker, DuplicateOrder, Fill, Order
+from prism.live.broker import Broker, DuplicateOrder, Fill, Order, OrderRejected
 from prism.live.state import LoopState, StateStore
 
 logger = logging.getLogger(__name__)
@@ -67,18 +67,29 @@ def targets_to_orders(
 
     A NaN target is "no target" — the position is left alone (the signal
     layer's no-opinion never forces a liquidation; construction emits an
-    explicit 0.0 when it wants flat). A symbol with a target but no finite
-    positive price cannot be sized and raises (N7). Orders below
+    explicit 0.0 when it wants flat). A symbol with a *non-flat* target but no
+    finite positive price cannot be sized and raises (N7); a flat (0.0) target on
+    an unheld name needs no price and is skipped. Orders below
     ``min_order_notional`` dollars are dropped as dust. ``whole_shares``
     rounds each share *delta* to the nearest integer (required by
     market-on-open venue order types, e.g. Alpaca OPG); a delta that rounds
-    to zero is dropped like dust.
+    to zero is dropped like dust. An order that would flip a held position
+    through zero (short→long or long→short) is clamped to flat this bar — a
+    venue rejects a side-crossing single order ("insufficient qty available"),
+    so the opposite side opens next bar from a flat book.
     """
     if equity <= 0:
         raise ValueError(f"equity must be > 0 to size a book, got {equity}")
     orders: list[Order] = []
     for symbol, weight in target_weights.items():
         if isinstance(weight, float) and math.isnan(weight):
+            continue
+        held = positions.get(symbol, 0.0)
+        if float(weight) == 0.0 and held == 0.0:
+            # Flat target with nothing held: no trade to size, so no decision
+            # price is needed. A large universe carries names the construct left
+            # at 0.0 (ineligible, or a gapped latest bar) whose price is NaN — a
+            # no-op here, not an N7 error.
             continue
         price = prices.get(symbol)
         if price is None or not math.isfinite(float(price)) or float(price) <= 0:
@@ -88,7 +99,13 @@ def targets_to_orders(
             )
         price = float(price)
         target_shares = float(weight) * equity / price
-        delta = target_shares - positions.get(symbol, 0.0)
+        if held != 0.0 and target_shares != 0.0 and (held > 0.0) != (target_shares > 0.0):
+            # A single venue order may not cross zero — Alpaca rejects flipping a
+            # position's side in one order ("insufficient qty available"). Trade
+            # only to flat this bar; the opposite side opens next bar from flat.
+            delta = -held
+        else:
+            delta = target_shares - held
         if whole_shares:
             delta = float(round(delta))
         if abs(delta) * price < max(min_order_notional, 1e-9):
@@ -112,13 +129,16 @@ def decide_and_submit(
     prices: pd.Series,
     min_order_notional: float = 0.0,
     whole_shares: bool = False,
+    refresh_bar: str | None = None,
 ) -> list[Order]:
     """One decision step: reconcile → decide once → write ahead → submit.
 
     Re-running for the same ``decision_bar`` after a crash resumes the
     persisted decision idempotently. Calling for a new bar while a prior
     bar's orders are still pending raises — settle first, the book's true
-    holdings are unknown until then.
+    holdings are unknown until then. ``refresh_bar``, when provided, advances
+    the persisted decision-cadence anchor (``last_refresh_bar``) inside the same
+    write-ahead save; the caller passes it only on a refresh session.
     """
     state = ctx.store.load() or LoopState()
 
@@ -153,6 +173,8 @@ def decide_and_submit(
             whole_shares=whole_shares,
         )
         state.pending_decision_bar = decision_bar
+        if refresh_bar is not None:
+            state.last_refresh_bar = refresh_bar  # advance the cadence anchor atomically
         ctx.store.save(state)  # the write-ahead: persisted before any submit
 
     known = ctx.broker.submitted_order_ids()
@@ -163,6 +185,19 @@ def decide_and_submit(
             ctx.broker.submit(order)
         except DuplicateOrder:
             logger.info("order %s already at venue; treating as submitted", order.client_order_id)
+        except OrderRejected as exc:
+            # The venue rejected this one order (a side-crossing residual, a
+            # non-shortable name, buying power). It must not crash the cycle and
+            # wedge the loop: log loudly and submit the rest. The order stays in
+            # the persisted pending set, so a same-bar resume retries it and
+            # settle tolerates a missing fill by re-anchoring to broker truth. A
+            # transport failure / 5xx is NOT caught here — it propagates so the
+            # write-ahead crash-resume applies (N7 loud, not silent-drop).
+            logger.error(
+                "order %s rejected by the venue: %s; skipping it, submitting the rest",
+                order.client_order_id,
+                exc,
+            )
     return list(state.pending_orders)
 
 

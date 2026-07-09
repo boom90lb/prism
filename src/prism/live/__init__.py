@@ -35,7 +35,7 @@ from prism.live.alpaca import (
     AlpacaBroker,
 )
 from prism.live.alpaca_data import DATA_BASE_URL, DEFAULT_FEED, AlpacaBarSource
-from prism.live.broker import Broker, DuplicateOrder, Fill, Order
+from prism.live.broker import Broker, DuplicateOrder, Fill, Order, OrderRejected
 from prism.live.daily import (
     DailyBookConfig,
     DailyCycleResult,
@@ -66,6 +66,7 @@ __all__ = [
     "DuplicateOrder",
     "Fill",
     "LiveLoopContext",
+    "OrderRejected",
     "LoopState",
     "Order",
     "StateStore",

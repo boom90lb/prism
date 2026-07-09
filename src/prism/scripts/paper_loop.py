@@ -12,12 +12,17 @@ no logic worth testing; anything that grows logic must move down into
 Run once per session, after the close (OPG next-open orders must reach
 Alpaca before ~09:28 ET the next morning):
 
+    # ensemble cost instrument (default)
     python -m prism.scripts.paper_loop --symbols AAPL,MSFT,GOOG \\
         --run-dir runs/paper_loop --position-size 0.05
 
+    # the ratified B1 momentum book (12-1 decile L/S, monthly) on a PIT universe
+    python -m prism.scripts.paper_loop --book momentum \\
+        --universe-file data/universe/sp500_current.txt --run-dir runs/paper_loop
+
 Credentials: ``APCA_API_KEY_ID`` / ``APCA_API_SECRET_KEY`` (paper endpoint
-by default; ``APCA_API_BASE_URL`` overrides). Bars come from the Twelve
-Data key the loader already uses.
+by default; ``APCA_API_BASE_URL`` overrides). Bars come from Alpaca's own IEX
+feed by default (``--bar-source``); the Twelve Data spine stays a fallback.
 
 Fit policy (explicit, §7.7 model staleness): the signal is refit every run
 on the full trailing panel up to the decision bar. Causal for live use —
@@ -46,7 +51,9 @@ from prism.live import (
     fetch_universe_panels,
     run_daily_cycle,
 )
+from prism.residual.factors import ResidualStatArbConfig
 from prism.signal.ensemble_node import EnsembleNodeConfig, EnsembleSignalNode
+from prism.signal.momentum_node import MomentumSignalNode
 
 logger = logging.getLogger(__name__)
 
@@ -57,8 +64,43 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--symbols",
-        required=True,
-        help="Comma-separated universe (e.g. AAPL,MSFT,GOOG).",
+        default=None,
+        help="Comma-separated universe (e.g. AAPL,MSFT,GOOG). Ignored when --universe-file is given.",
+    )
+    parser.add_argument(
+        "--universe-file",
+        type=Path,
+        default=None,
+        help="File with one symbol per line (blank lines and #comments skipped); overrides "
+        "--symbols. Use it for the ~500-name momentum book — a 15-name --symbols list gives a "
+        "degenerate one-per-leg decile.",
+    )
+    parser.add_argument(
+        "--book",
+        choices=("ensemble", "momentum"),
+        default="ensemble",
+        help="Which book to trade. 'ensemble' (default) is the XGBoost+ARIMA directional cost "
+        "instrument; 'momentum' is the ratified B1 candidate (12-1 cross-sectional momentum, "
+        "decile long/short, neutral by balanced legs, monthly cadence — docs/momentum_design.md). "
+        "The live-monitor read is a B1 concordance read only under 'momentum'.",
+    )
+    parser.add_argument("--mom-lookback", type=int, default=252, help="Momentum lookback bars (B1: 252).")
+    parser.add_argument("--mom-skip", type=int, default=21, help="Momentum skip bars (B1: 21).")
+    parser.add_argument("--decile", type=float, default=0.10, help="Decile fraction per leg (B1: 0.10).")
+    parser.add_argument(
+        "--decision-every",
+        type=int,
+        default=None,
+        help="Refresh cadence in trading sessions; default 1 (daily) for ensemble, 21 "
+        "(≈monthly) for momentum — B1's cadence.",
+    )
+    parser.add_argument(
+        "--max-missing",
+        type=float,
+        default=None,
+        help="Fraction of the universe allowed to return no bars before failing loud; "
+        "default 0.0 (ensemble, strict) or 0.10 (momentum, tolerates a few stale/renamed "
+        "tickers the venue no longer serves — they are dropped with a warning naming them).",
     )
     parser.add_argument(
         "--run-dir",
@@ -106,16 +148,39 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def _load_universe_file(path: Path) -> list[str]:
+    """One symbol per line; blank lines and ``#`` comments skipped, upper-cased."""
+    symbols = [
+        line.strip().upper()
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.strip().startswith("#")
+    ]
+    if not symbols:
+        raise ValueError(f"universe file {path} has no symbols")
+    return symbols
+
+
 def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     args = _parse_args(argv)
-    symbols = [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
+    if args.universe_file is not None:
+        symbols = _load_universe_file(args.universe_file)
+    elif args.symbols:
+        symbols = [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
+    else:
+        raise SystemExit("provide --symbols or --universe-file")
 
     # Bars from Alpaca (the broker's own feed) by default so decision and fill
     # share one venue and clock; the Twelve Data spine stays available as a
     # fallback. Both satisfy the duck-typed fetch_incremental read path.
     loader: Any = AlpacaBarSource.from_env() if args.bar_source == "alpaca" else DataLoader()
-    close, volume = fetch_universe_panels(loader, symbols, start_date=args.start_date)
+    start_date = args.start_date
+    if start_date is None and args.book == "momentum":
+        # ~3y is ample for the 252-bar lookback + eligibility window and keeps the
+        # universe-scale batch fetch to a handful of pages.
+        start_date = (pd.Timestamp.now() - pd.DateOffset(years=3)).strftime("%Y-%m-%d")
+    max_missing = args.max_missing if args.max_missing is not None else (0.10 if args.book == "momentum" else 0.0)
+    close, volume = fetch_universe_panels(loader, symbols, start_date=start_date, max_missing=max_missing)
     logger.info(
         "panels: %d bars x %d symbols through %s (source=%s)",
         len(close),
@@ -141,11 +206,53 @@ def main(argv: list[str] | None = None) -> int:
             stale_days,
         )
 
-    signal = EnsembleSignalNode(EnsembleNodeConfig(horizon_bars=args.horizon))
-    signal.fit(close, volume)
-    logger.info(
-        "signal fit: %d symbols, weights %s", len(signal.fitted_symbols_), signal.weight_basis_
+    decision_every = args.decision_every if args.decision_every is not None else (
+        21 if args.book == "momentum" else 1
     )
+    if args.book == "momentum":
+        signal = MomentumSignalNode(
+            ResidualStatArbConfig(),
+            lookback_bars=args.mom_lookback,
+            skip_bars=args.mom_skip,
+            horizon_bars=decision_every,
+        )
+        signal.fit(close, volume)
+        config = DailyBookConfig(
+            book="decile_neutral",
+            decile=args.decile,
+            decision_every=decision_every,
+            max_gross=args.max_gross,
+            max_symbol_abs_weight=args.max_symbol_weight,
+            no_trade_band=args.band,
+            max_participation=args.max_participation,
+            min_order_notional=args.min_notional,
+            whole_shares=(args.tif == "opg"),
+        )
+        logger.info(
+            "book=momentum: 12-1 decile L/S, lookback=%d skip=%d decile=%.2f cadence=%d, %d symbols",
+            args.mom_lookback,
+            args.mom_skip,
+            args.decile,
+            decision_every,
+            len(symbols),
+        )
+    else:
+        signal = EnsembleSignalNode(EnsembleNodeConfig(horizon_bars=args.horizon))
+        signal.fit(close, volume)
+        config = DailyBookConfig(
+            position_size=args.position_size,
+            max_gross=args.max_gross,
+            max_symbol_abs_weight=args.max_symbol_weight,
+            no_trade_band=args.band,
+            max_participation=args.max_participation,
+            min_order_notional=args.min_notional,
+            whole_shares=(args.tif == "opg"),
+        )
+        logger.info(
+            "book=ensemble: %d symbols, weights %s",
+            len(signal.fitted_symbols_),
+            signal.weight_basis_,
+        )
 
     args.run_dir.mkdir(parents=True, exist_ok=True)
     ctx = LiveLoopContext(
@@ -153,15 +260,6 @@ def main(argv: list[str] | None = None) -> int:
         broker=AlpacaBroker.from_env(time_in_force=args.tif),
         fills_ledger=args.run_dir / "fills.jsonl",
         equity_ledger=args.run_dir / "equity.jsonl",
-    )
-    config = DailyBookConfig(
-        position_size=args.position_size,
-        max_gross=args.max_gross,
-        max_symbol_abs_weight=args.max_symbol_weight,
-        no_trade_band=args.band,
-        max_participation=args.max_participation,
-        min_order_notional=args.min_notional,
-        whole_shares=(args.tif == "opg"),
     )
     result = run_daily_cycle(ctx, signal, close, volume, config)
 

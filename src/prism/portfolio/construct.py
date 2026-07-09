@@ -223,3 +223,65 @@ def construct_directional_targets(
         targets = apply_no_trade_band(targets, no_trade_band)
         targets = cap_book(targets, max_gross=max_gross, max_symbol_abs_weight=max_symbol_abs_weight)
     return targets.where(decision_mask)
+
+
+def _decile_row(scores_t: np.ndarray, decile: float) -> np.ndarray:
+    """One equal-weight top/bottom-decile long-short row at raw gross 1.0.
+
+    ``n_dec = floor(n_finite * decile)`` names per side; each winner gets
+    ``+0.5 / n_dec`` and each loser ``-0.5 / n_dec`` (stable sort, so ties are
+    deterministic). A cross-section too thin for one name per side emits a zero
+    row. Parity with the research reference ``_momentum_row``
+    (``research/arbitrage/residual_walk_forward.py``).
+    """
+    row = np.zeros(scores_t.shape[0])
+    finite = np.flatnonzero(np.isfinite(scores_t))
+    n_dec = int(len(finite) * decile)
+    if n_dec < 1:
+        return row
+    order = np.argsort(scores_t[finite], kind="stable")
+    row[finite[order[:n_dec]]] = -0.5 / n_dec
+    row[finite[order[-n_dec:]]] = 0.5 / n_dec
+    return row
+
+
+def construct_decile_neutral(
+    scores: pd.DataFrame,
+    *,
+    decile: float,
+    max_gross: float = 1.0,
+    max_symbol_abs_weight: float = 1.0,
+) -> pd.DataFrame:
+    """Equal-weight top/bottom-decile long-short targets (docs/demotion_design.md §2b).
+
+    The ratified momentum book's construction: per row, the top and bottom
+    ``decile`` of finite scores go equal-weight long and short at raw gross 1.0
+    (``_decile_row``), then down-only gross/per-symbol caps apply (they never
+    scale a sub-gross book up). Two things distinguish this from
+    ``construct_directional_targets``:
+
+    * **Rank-space.** Only the cross-sectional order of ``scores`` matters; a
+      score's magnitude never scales a weight. The book is market-neutral by
+      balanced legs (``sum`` of weights = 0), not by factor residualization —
+      B1 is eligibility-screened momentum, not a §7.2-residualized book.
+    * **Explicit flat, not "no opinion".** A name outside the decile (including
+      an ineligible NaN-score name) gets weight ``0.0``, not NaN: the book fully
+      exits a name that leaves the decile, rather than leaving a stale position.
+
+    ``scores`` is a wide (dates × symbols) frame; returns target weights on the
+    same index/columns.
+    """
+    if not 0.0 < decile <= 0.5:
+        raise ValueError(f"decile must be in (0, 0.5], got {decile}")
+    mat = (
+        scores.apply(pd.to_numeric, errors="coerce")
+        .replace([np.inf, -np.inf], np.nan)
+        .to_numpy(dtype=float)
+    )
+    rows = (
+        np.vstack([_decile_row(mat[t], decile) for t in range(mat.shape[0])])
+        if mat.shape[0]
+        else mat
+    )
+    targets = pd.DataFrame(rows, index=scores.index, columns=scores.columns)
+    return cap_book(targets, max_gross=max_gross, max_symbol_abs_weight=max_symbol_abs_weight)

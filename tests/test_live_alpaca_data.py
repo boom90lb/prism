@@ -152,3 +152,66 @@ def test_from_env_requires_credentials(monkeypatch) -> None:
     monkeypatch.delenv("APCA_API_SECRET_KEY", raising=False)
     with pytest.raises(RuntimeError, match="APCA_API_KEY_ID"):
         AlpacaBarSource.from_env()
+
+
+def test_fetch_batch_splits_by_symbol(source, session) -> None:
+    session.route(
+        "GET",
+        "/v2/stocks/bars",
+        FakeResponse(
+            payload={
+                "bars": {
+                    "AAPL": [_bar("2026-07-06T04:00:00Z", 1, 1, 1, 100.0, 10)],
+                    "MSFT": [_bar("2026-07-06T04:00:00Z", 2, 2, 2, 200.0, 20)],
+                },
+                "next_page_token": None,
+            }
+        ),
+    )
+    frames = source.fetch_batch(["AAPL", "MSFT", "ZZZ"])
+    assert frames["AAPL"]["close"].iloc[-1] == 100.0
+    assert frames["MSFT"]["close"].iloc[-1] == 200.0
+    assert frames["ZZZ"].empty  # requested but no bars -> empty frame, not missing
+    params = session.calls[-1]["params"]
+    assert params["symbols"] == "AAPL,MSFT,ZZZ" and params["timeframe"] == "1Day"
+
+
+def test_fetch_batch_paginates_across_symbols(source, session) -> None:
+    pages = {
+        None: FakeResponse(
+            payload={"bars": {"AAPL": [_bar("2026-07-06T04:00:00Z", 1, 1, 1, 100.0, 10)]}, "next_page_token": "P2"}
+        ),
+        "P2": FakeResponse(
+            payload={"bars": {"AAPL": [_bar("2026-07-07T04:00:00Z", 1, 1, 1, 101.0, 11)]}, "next_page_token": None}
+        ),
+    }
+    session.route("GET", "/v2/stocks/bars", lambda json=None, params=None: pages[params.get("page_token")])
+    frames = source.fetch_batch(["AAPL"])
+    assert list(frames["AAPL"]["close"]) == [100.0, 101.0]
+
+
+def test_request_retries_on_429_then_succeeds(session) -> None:
+    waits: list[float] = []
+    src = AlpacaBarSource(KEY, SECRET, session=session, backoff_base=0.1, sleep=waits.append)
+    state = {"n": 0}
+
+    def handler(json=None, params=None):
+        state["n"] += 1
+        if state["n"] == 1:
+            return FakeResponse(status_code=429, payload={"message": "too many requests."})
+        return FakeResponse(
+            payload={"bars": [_bar("2026-07-06T04:00:00Z", 1, 1, 1, 100.0, 10)], "next_page_token": None}
+        )
+
+    session.route("GET", "/v2/stocks/AAPL/bars", handler)
+    df = src.fetch_incremental("AAPL")
+    assert len(df) == 1 and state["n"] == 2  # one retry, then success
+    assert len(waits) == 1  # backed off exactly once
+
+
+def test_request_raises_after_max_retries(session) -> None:
+    src = AlpacaBarSource(KEY, SECRET, session=session, max_retries=2, backoff_base=0.0, sleep=lambda w: None)
+    session.route("GET", "/v2/stocks/AAPL/bars", FakeResponse(status_code=429, payload={"message": "rate"}))
+    with pytest.raises(AlpacaAPIError) as excinfo:
+        src.fetch_incremental("AAPL")
+    assert excinfo.value.status_code == 429  # surfaces the rate limit after exhausting retries

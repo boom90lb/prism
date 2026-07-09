@@ -35,7 +35,7 @@ from typing import Any
 import pandas as pd
 import requests
 
-from prism.live.broker import Broker, DuplicateOrder, Fill, Order
+from prism.live.broker import Broker, DuplicateOrder, Fill, Order, OrderRejected
 
 logger = logging.getLogger(__name__)
 
@@ -169,6 +169,16 @@ class AlpacaBroker(Broker):
             # "client_order_id must be unique" — the order already exists,
             # which the write-ahead protocol treats as success.
             raise DuplicateOrder(order.client_order_id)
+        if 400 <= response.status_code < 500:
+            # A client-side rejection of this one order (e.g. 403 "insufficient
+            # qty available" on a side-crossing order, a non-shortable name):
+            # the venue is healthy, so the loop skips this order and submits the
+            # rest. A 5xx / transport failure falls through to AlpacaAPIError and
+            # propagates so the write-ahead crash-resume applies.
+            raise OrderRejected(
+                f"order {order.client_order_id} rejected: HTTP {response.status_code}: "
+                f"{self._error_message(response)}"
+            )
         self._json_or_raise(response, f"POST /v2/orders ({order.client_order_id})")
 
     def submitted_order_ids(self) -> set[str]:

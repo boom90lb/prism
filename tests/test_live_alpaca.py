@@ -19,6 +19,7 @@ from prism.live import (
     DuplicateOrder,
     LiveLoopContext,
     Order,
+    OrderRejected,
     StateStore,
     decide_and_submit,
     read_fills_ledger,
@@ -138,6 +139,20 @@ def test_venue_error_raises_without_leaking_credentials(broker, session) -> None
     with pytest.raises(AlpacaAPIError) as excinfo:
         broker.submit(_order(1.0))
     assert excinfo.value.status_code == 500
+    assert SECRET not in str(excinfo.value) and KEY not in str(excinfo.value)
+
+
+def test_client_side_rejection_maps_to_OrderRejected(broker, session) -> None:
+    # 403 "insufficient qty available" — the 2026-07-08 ORCL side-crossing order.
+    # A client-side rejection of one order maps to OrderRejected (the loop skips
+    # it), unlike a 5xx/transport error which stays a fatal AlpacaAPIError.
+    session.route(
+        "POST",
+        "/v2/orders",
+        FakeResponse(status_code=403, payload={"message": "insufficient qty available for order"}),
+    )
+    with pytest.raises(OrderRejected) as excinfo:
+        broker.submit(_order(1.0))
     assert SECRET not in str(excinfo.value) and KEY not in str(excinfo.value)
 
 

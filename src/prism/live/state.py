@@ -20,7 +20,7 @@ from pathlib import Path
 
 from prism.live.broker import Order
 
-STATE_SCHEMA_VERSION = 1
+STATE_SCHEMA_VERSION = 2
 
 
 @dataclass
@@ -39,6 +39,7 @@ class LoopState:
     pending_orders: list[Order] = field(default_factory=list)
     pending_decision_bar: str | None = None
     last_settled_bar: str | None = None
+    last_refresh_bar: str | None = None  # decision-cadence anchor (docs/momentum_design.md §2b)
     schema_version: int = STATE_SCHEMA_VERSION
 
     def to_json(self) -> str:
@@ -47,15 +48,31 @@ class LoopState:
 
     @classmethod
     def from_json(cls, raw: str) -> "LoopState":
-        payload = json.loads(raw)
-        version = payload.get("schema_version")
-        if version != STATE_SCHEMA_VERSION:
-            raise ValueError(
-                f"live state schema_version {version!r} != supported "
-                f"{STATE_SCHEMA_VERSION}; migrate explicitly, do not start flat (N7)"
-            )
+        payload = _migrate_state_payload(json.loads(raw))
         payload["pending_orders"] = [Order(**o) for o in payload.get("pending_orders", [])]
         return cls(**payload)
+
+
+def _migrate_state_payload(payload: dict) -> dict:
+    """Upgrade a persisted state payload to ``STATE_SCHEMA_VERSION``, or raise (N7).
+
+    v1 -> v2 added ``last_refresh_bar`` (the decision-cadence anchor,
+    docs/momentum_design.md §2b): a v1 book predates the cadence gate, so it
+    loads unanchored (the next cycle refreshes) without disturbing positions,
+    cash, or pending orders. Any other version is a hard stop — migrate
+    explicitly, never silently start flat over a real book.
+    """
+    version = payload.get("schema_version")
+    if version == 1:
+        payload["last_refresh_bar"] = None
+        payload["schema_version"] = 2
+        version = 2
+    if version != STATE_SCHEMA_VERSION:
+        raise ValueError(
+            f"live state schema_version {version!r} != supported "
+            f"{STATE_SCHEMA_VERSION}; migrate explicitly, do not start flat (N7)"
+        )
+    return payload
 
 
 class StateStore:

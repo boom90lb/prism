@@ -68,6 +68,19 @@ class DuplicateOrder(Exception):
     """
 
 
+class OrderRejected(Exception):
+    """The venue definitively rejected this one order (a client-side 4xx:
+    insufficient qty / a side-crossing order, non-shortable name, buying power).
+
+    The venue is healthy — only this order is bad — so the loop skips it, logs
+    loudly, and submits the rest; the order stays pending and settle tolerates
+    its missing fill by re-anchoring to broker truth. This is distinct from a
+    transport/connection failure (or a 5xx), which leaves the order's fate
+    unknown and must propagate so the write-ahead protocol's crash-resume
+    applies rather than silently dropping a possibly-live order.
+    """
+
+
 class Broker(ABC):
     """Minimal venue contract the live loop is written against."""
 
@@ -83,8 +96,11 @@ class Broker(ABC):
     def submit(self, order: Order) -> None:
         """Accept one order; raise :class:`DuplicateOrder` on a repeated id.
 
-        Any other exception means the order may NOT have been accepted —
-        the loop leaves it pending and retries on the next pass.
+        Raise :class:`OrderRejected` when the venue rejects *this* order (a
+        client-side 4xx) — the loop skips it and submits the rest. Any other
+        exception (transport failure, 5xx) means the order may NOT have been
+        accepted: it propagates, and the write-ahead protocol resumes the
+        persisted decision idempotently on the next pass.
         """
 
     @abstractmethod
