@@ -21,6 +21,10 @@ and nothing important may live only in memory:
 * ``daily``  — the one-cycle driver wiring delta-fetched panels → Signal
   → online construction (caps, stateful band, participation gate) → the
   decision protocol (``prism.scripts.paper_loop`` is its CLI shell).
+* ``replay`` — the diagnostic replay instrument: the same daily cycle over
+  local historical bars with a simulated next-open venue, faster than
+  realtime (``prism.scripts.replay_loop`` is its CLI shell). Modeled fills:
+  never cost calibration, never the live-monitor concordance stream.
 
 Production-import-path safe (N8): numpy/pandas/requests only, no research
 heavyweights, no prophet/matplotlib.
@@ -50,6 +54,12 @@ from prism.live.loop import (
     settle,
     targets_to_orders,
 )
+from prism.live.replay import (
+    ReplayBroker,
+    align_replay_panels,
+    load_local_bar_panels,
+    replay_daily_cycles,
+)
 from prism.live.state import LoopState, StateStore
 
 __all__ = [
@@ -69,11 +79,15 @@ __all__ = [
     "OrderRejected",
     "LoopState",
     "Order",
+    "ReplayBroker",
     "StateStore",
+    "align_replay_panels",
     "decide_and_submit",
     "fetch_universe_panels",
+    "load_local_bar_panels",
     "read_equity_ledger",
     "read_fills_ledger",
+    "replay_daily_cycles",
     "run_daily_cycle",
     "settle",
     "targets_to_orders",
