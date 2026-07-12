@@ -58,12 +58,14 @@ from prism.execution.participation import participation_capped_targets
 from prism.live.broker import Fill, Order
 from prism.live.loop import (
     LiveLoopContext,
+    _append_concordance_ledger,
     _append_equity_ledger,
     _require_price,
     decide_and_submit,
+    read_targets_ledger,
     settle,
 )
-from prism.live.monitor import paper_monitor_read
+from prism.live.monitor import book_concordance, paper_monitor_read
 from prism.live.state import LoopState
 from prism.portfolio.construct import (
     construct_decile_neutral,
@@ -134,6 +136,7 @@ class DailyCycleResult:
     equity: float
     target_weights: pd.Series
     monitor_read: dict | None = None
+    concordance: dict | None = None
 
 
 def fetch_universe_panels(
@@ -270,6 +273,35 @@ def run_daily_cycle(
         dtype=float,
     )
 
+    # 2b. Book-concordance telemetry: how faithfully does the held book track
+    # the book the last refresh decided? Computed against the latest persisted
+    # refresh targets STRICTLY before today (the book the instrument should
+    # currently embody), so a refresh day reads its predecessor, never its own
+    # about-to-be-decided targets. Pure telemetry: a 0.19-gross partial-fill
+    # book and a faithful book are indistinguishable in the equity monitor;
+    # they are not indistinguishable here.
+    concordance: dict | None = None
+    if ctx.targets_ledger is not None and ctx.concordance_ledger is not None:
+        prior = [
+            row for row in read_targets_ledger(ctx.targets_ledger) if row["refresh_bar"] < decision_bar
+        ]
+        if prior:
+            baseline = prior[-1]
+            concordance = book_concordance(
+                prev_weights, pd.Series(baseline["targets"], dtype=float)
+            )
+            concordance["refresh_bar"] = baseline["refresh_bar"]
+            _append_concordance_ledger(ctx.concordance_ledger, decision_bar, concordance)
+            logger.info(
+                "concordance %s vs refresh %s: active_share=%.4f gross %.4f/%.4f corr=%s",
+                decision_bar,
+                baseline["refresh_bar"],
+                concordance["active_share"],
+                concordance["gross_held"],
+                concordance["gross_target"],
+                None if concordance["weight_corr"] is None else round(concordance["weight_corr"], 4),
+            )
+
     # 3. Cadence gate, then score → construct against held weights. Off a refresh
     # session (the decision cadence has not elapsed) the book holds its filled
     # weights — no re-score, no trades — so a monthly book rebalances monthly
@@ -360,6 +392,7 @@ def run_daily_cycle(
         equity=equity,
         target_weights=targets,
         monitor_read=monitor_read,
+        concordance=concordance,
     )
 
 

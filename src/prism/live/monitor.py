@@ -16,7 +16,10 @@ promotion/kill read only if a future program's pre-registration adopts it.
 
 from __future__ import annotations
 
+import math
 from pathlib import Path
+
+import pandas as pd
 
 from prism.live.loop import read_equity_ledger
 from prism.validation.anytime import anytime_monitor_read
@@ -64,3 +67,42 @@ def paper_monitor_read(
     read["n_equity_points"] = n_points
     read["latest_equity"] = float(equity.iloc[-1])
     return read
+
+
+def book_concordance(held_weights: pd.Series, target_weights: pd.Series) -> dict:
+    """How faithfully the held book tracks the last refresh's target book.
+
+    The promotion read (docs/momentum_design.md §3) is defined on the paper
+    equity stream, but the stream is only evidence about the *strategy* to the
+    extent the instrument actually holds the strategy's book — a 0.19-gross
+    partial-fill book and a full B1 book produce indistinguishable monitor
+    output. This read makes the gap first-order visible at any sample size:
+
+    * ``active_share``  — ``0.5 * Σ|w_held − w_target|`` over the union of
+      names (absent = explicit 0.0); 0 is a perfect replication, 1 is a
+      disjoint book.
+    * ``weight_corr``   — Pearson correlation of the two weight vectors over
+      the union (``None`` when either side is degenerate).
+    * ``gross_held`` / ``gross_target`` / ``gross_ratio`` — how much of the
+      decided gross is actually deployed.
+
+    Pure telemetry: it gates nothing and moves no ratified statistic.
+    """
+    union = held_weights.index.union(target_weights.index)
+    held = held_weights.reindex(union).fillna(0.0).astype(float)
+    target = target_weights.reindex(union).fillna(0.0).astype(float)
+    gross_held = float(held.abs().sum())
+    gross_target = float(target.abs().sum())
+    corr: float | None = None
+    if len(union) >= 2 and float(held.std()) > 0.0 and float(target.std()) > 0.0:
+        raw_corr = float(held.corr(target))
+        corr = raw_corr if math.isfinite(raw_corr) else None
+    return {
+        "active_share": float(0.5 * (held - target).abs().sum()),
+        "weight_corr": corr,
+        "gross_held": gross_held,
+        "gross_target": gross_target,
+        "gross_ratio": gross_held / gross_target if gross_target > 0.0 else None,
+        "n_held": int((held != 0.0).sum()),
+        "n_target": int((target != 0.0).sum()),
+    }

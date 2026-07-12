@@ -260,6 +260,14 @@ def main(argv: list[str] | None = None) -> int:
         broker=AlpacaBroker.from_env(time_in_force=args.tif),
         fills_ledger=args.run_dir / "fills.jsonl",
         equity_ledger=args.run_dir / "equity.jsonl",
+        targets_ledger=args.run_dir / "targets.jsonl",
+        unfilled_ledger=args.run_dir / "unfilled.jsonl",
+        concordance_ledger=args.run_dir / "concordance.jsonl",
+        # Namespaced client ids: two books sharing one venue account with the
+        # bare {bar}:{symbol} scheme silently substitute each other's same-bar
+        # orders (duplicate-id == success). Persisted pending orders keep the
+        # ids they were decided with, so flipping the prefix is resume-safe.
+        order_id_prefix="mom:" if args.book == "momentum" else "",
     )
     result = run_daily_cycle(ctx, signal, close, volume, config)
 

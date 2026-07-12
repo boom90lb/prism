@@ -15,9 +15,9 @@ nor submit them twice. The protocol:
    restart resumes submission from the persisted record and never
    re-decides (re-deciding after a partial submit double-trades).
 4. **Submit idempotently.** Every order carries a deterministic
-   ``client_order_id`` (``"{decision_bar}:{symbol}"``); ids the broker
-   already knows are skipped, and a venue duplicate rejection counts as
-   success.
+   ``client_order_id`` (``"{prefix}{decision_bar}:{symbol}"`` — the prefix
+   namespaces books sharing one venue account); ids the broker already
+   knows are skipped, and a venue duplicate rejection counts as success.
 5. **Settle.** Next session, fills are pulled, appended to the I-9 fills
    ledger (fill price beside the decision-close reference price — the
    arrival-slippage record the paper instrument exists to collect), and
@@ -46,12 +46,29 @@ _RECONCILE_SHARE_TOLERANCE = 1e-6
 
 @dataclass
 class LiveLoopContext:
-    """The durable pieces a loop step operates on."""
+    """The durable pieces a loop step operates on.
+
+    The optional ledgers are additive telemetry (SPEC §10: no ratified
+    statistic moves): ``targets_ledger`` records the constructed book at each
+    refresh (what the instrument *should* hold — the concordance baseline and
+    the sweep's audit record), ``unfilled_ledger`` records every unexecuted
+    residual at settle (the orders the venue did not print — previously only a
+    truncated log line), and ``concordance_ledger`` records how faithfully the
+    held book tracks the last refresh targets. ``order_id_prefix`` namespaces
+    client order ids per book/run-dir (``"mom:"`` for the momentum instrument):
+    two books sharing one venue account with the bare ``{bar}:{symbol}`` scheme
+    silently substitute each other's same-bar orders, because a venue duplicate
+    id is treated as submission success.
+    """
 
     store: StateStore
     broker: Broker
     fills_ledger: Path
     equity_ledger: Path | None = None
+    targets_ledger: Path | None = None
+    unfilled_ledger: Path | None = None
+    concordance_ledger: Path | None = None
+    order_id_prefix: str = ""
 
 
 def targets_to_orders(
@@ -62,6 +79,7 @@ def targets_to_orders(
     decision_bar: str,
     min_order_notional: float = 0.0,
     whole_shares: bool = False,
+    order_id_prefix: str = "",
 ) -> list[Order]:
     """Diff constructed target weights against held shares into orders.
 
@@ -73,14 +91,21 @@ def targets_to_orders(
     ``min_order_notional`` dollars are dropped as dust. ``whole_shares``
     rounds each share *delta* to the nearest integer (required by
     market-on-open venue order types, e.g. Alpaca OPG); a delta that rounds
-    to zero is dropped like dust. An order that would flip a held position
-    through zero (short→long or long→short) is clamped to flat this bar — a
-    venue rejects a side-crossing single order ("insufficient qty available"),
-    so the opposite side opens next bar from a flat book.
+    to zero is dropped like dust — and because a censored order is a silent
+    book/target divergence (a $2,000+ name can never enter a $1,000-per-name
+    book), every drop whose *intended* notional was economically real is
+    logged loudly with its size (N7: loud, not silent). An order that would
+    flip a held position through zero (short→long or long→short) is clamped
+    to flat this bar — a venue rejects a side-crossing single order
+    ("insufficient qty available"), so the opposite side opens next bar from
+    a flat book. ``order_id_prefix`` namespaces the deterministic client id
+    (``"{prefix}{decision_bar}:{symbol}"``) so two books on one venue account
+    can never collide on the same bar and symbol.
     """
     if equity <= 0:
         raise ValueError(f"equity must be > 0 to size a book, got {equity}")
     orders: list[Order] = []
+    dust_dropped: list[tuple[str, float]] = []  # (symbol, intended $ notional)
     for symbol, weight in target_weights.items():
         if isinstance(weight, float) and math.isnan(weight):
             continue
@@ -106,18 +131,34 @@ def targets_to_orders(
             delta = -held
         else:
             delta = target_shares - held
+        intended_notional = abs(delta) * price
         if whole_shares:
             delta = float(round(delta))
         if abs(delta) * price < max(min_order_notional, 1e-9):
+            if intended_notional >= max(min_order_notional, 1.0):
+                # The pre-round intent was a real order; rounding/dust censored
+                # it. Silent censoring is a reproducible book/target divergence.
+                dust_dropped.append((str(symbol), intended_notional))
             continue
         orders.append(
             Order(
-                client_order_id=f"{decision_bar}:{symbol}",
+                client_order_id=f"{order_id_prefix}{decision_bar}:{symbol}",
                 symbol=str(symbol),
                 qty=delta,
                 decision_bar=decision_bar,
                 reference_price=price,
             )
+        )
+    if dust_dropped:
+        shown = sorted(dust_dropped, key=lambda item: -item[1])[:20]
+        tail = "…" if len(dust_dropped) > len(shown) else ""
+        logger.warning(
+            "%s: %d intended orders dropped by whole-share/notional rounding "
+            "(book/target divergence, N7-loud): %s%s",
+            decision_bar,
+            len(dust_dropped),
+            [(sym, round(notional, 2)) for sym, notional in shown],
+            tail,
         )
     return orders
 
@@ -171,18 +212,33 @@ def decide_and_submit(
             decision_bar,
             min_order_notional=min_order_notional,
             whole_shares=whole_shares,
+            order_id_prefix=ctx.order_id_prefix,
         )
         state.pending_decision_bar = decision_bar
         if refresh_bar is not None:
             state.last_refresh_bar = refresh_bar  # advance the cadence anchor atomically
         ctx.store.save(state)  # the write-ahead: persisted before any submit
+        if refresh_bar is not None and ctx.targets_ledger is not None:
+            # Persist the constructed book at each refresh — the concordance
+            # baseline (what the instrument SHOULD hold until the next refresh)
+            # and the audit record behind the completion sweep. Written inside
+            # the write-ahead step, idempotent per refresh bar.
+            _append_targets_ledger(
+                ctx.targets_ledger, refresh_bar, decision_bar, target_weights, prices, equity
+            )
 
-    known = ctx.broker.submitted_order_ids()
-    for order in state.pending_orders:
+    _submit_pending(ctx.broker, state.pending_orders)
+    return list(state.pending_orders)
+
+
+def _submit_pending(broker: Broker, orders: list[Order]) -> None:
+    """Idempotent submission of a persisted order set (decide and sweep share it)."""
+    known = broker.submitted_order_ids()
+    for order in orders:
         if order.client_order_id in known:
             continue
         try:
-            ctx.broker.submit(order)
+            broker.submit(order)
         except DuplicateOrder:
             logger.info("order %s already at venue; treating as submitted", order.client_order_id)
         except OrderRejected as exc:
@@ -198,7 +254,6 @@ def decide_and_submit(
                 order.client_order_id,
                 exc,
             )
-    return list(state.pending_orders)
 
 
 def settle(ctx: LiveLoopContext, settle_bar: str) -> list[Fill]:
@@ -246,6 +301,32 @@ def settle(ctx: LiveLoopContext, settle_bar: str) -> list[Fill]:
             len(fills),
         )
 
+    # Record every unexecuted residual durably (unfilled and partially filled
+    # orders alike). The truncated WARNING above is for the operator's eye; the
+    # ledger is for calibration/repair — the 79-name unfilled set of 2026-07-08
+    # was unrecoverable locally because only the first 8 ids were ever logged.
+    if ctx.unfilled_ledger is not None:
+        executed = {f.client_order_id: f.qty for f in fills}
+        residual_rows = []
+        for order in state.pending_orders:
+            residual = order.qty - executed.get(order.client_order_id, 0.0)
+            if residual == 0.0:
+                continue
+            residual_rows.append(
+                {
+                    "client_order_id": order.client_order_id,
+                    "symbol": order.symbol,
+                    "order_qty": order.qty,
+                    "executed_qty": executed.get(order.client_order_id, 0.0),
+                    "residual_qty": residual,
+                    "reference_price": order.reference_price,
+                    "decision_bar": state.pending_decision_bar,
+                    "settle_bar": settle_bar,
+                }
+            )
+        if residual_rows:
+            _append_jsonl(ctx.unfilled_ledger, residual_rows)
+
     reference = {o.client_order_id: o.reference_price for o in state.pending_orders}
     if fills:
         _append_fills_ledger(
@@ -273,6 +354,115 @@ def settle(ctx: LiveLoopContext, settle_bar: str) -> list[Fill]:
     return fills
 
 
+def sweep_pending(ctx: LiveLoopContext, *, sweep_suffix: str = "S1") -> list[Order]:
+    """Morning completion sweep: re-submit unexecuted residuals as new orders.
+
+    The Alpaca *paper* venue's opening-auction simulation prints only ~20-25%
+    of OPG orders (observed across both instrument books), so a monthly
+    refresh left standing would hold a fraction of the decided book for a
+    whole cadence period — the paper stream then measures a different
+    portfolio than the one the decision constructed. The sweep runs after the
+    open, while the decision is still pending (settle happens at the next
+    evening cycle): for every pending order that is *terminal* at the venue
+    (filled, partially filled, expired, rejected, or never submitted) it
+    computes the unexecuted residual and submits it as a fresh order under a
+    deterministic suffixed id (``"{original_id}:{sweep_suffix}"``), appended
+    to the persisted pending set *before* submission (the same write-ahead
+    discipline as the decision itself). The evening settle then treats sweep
+    fills exactly like auction fills — same decision-close ``reference_price``,
+    so the fills ledger records the *total* arrival cost of executing the
+    decision at this venue; the id suffix keeps the two fill populations
+    segmentable for I-9 calibration.
+
+    Safety properties:
+
+    * An order still *live* at the venue is never swept (double-execution);
+      the broker must expose ``open_order_ids`` (duck-typed) or the sweep
+      refuses to run.
+    * Idempotent: rerunning regenerates the same suffixed ids — existing ones
+      are resumed/skipped through the venue's duplicate-id rejection, never
+      duplicated in the persisted pending set.
+    * One completion generation per decision: a sweep order's own unfilled
+      residual is logged at settle (unfilled ledger) but not re-swept.
+    * A residual whose sign disagrees with its parent order (venue over-fill,
+      which should not happen) is skipped loudly, never amplified.
+
+    The venue order type is whatever the context's broker was constructed
+    with — the sweep CLI wires ``time_in_force="day"`` (a plain market order
+    after the open) precisely because the auction the OPG order was for has
+    already happened.
+    """
+    state = ctx.store.load()
+    if state is None or not state.pending_orders:
+        return []
+    open_ids_fn = getattr(ctx.broker, "open_order_ids", None)
+    if open_ids_fn is None:
+        raise TypeError(
+            "broker does not expose open_order_ids(client_order_ids); refusing to sweep "
+            "blind — an order still queued for its auction would double-execute (N7)"
+        )
+    pending_ids = {o.client_order_id for o in state.pending_orders}
+    open_ids = set(open_ids_fn(pending_ids))
+    executed: dict[str, float] = {}
+    for fill in ctx.broker.fills_for(pending_ids):
+        executed[fill.client_order_id] = executed.get(fill.client_order_id, 0.0) + fill.qty
+
+    existing_ids = set(pending_ids)
+    parents = [o for o in state.pending_orders if not o.client_order_id.endswith(f":{sweep_suffix}")]
+    new_orders: list[Order] = []
+    skipped_open = 0
+    for order in parents:
+        child_id = f"{order.client_order_id}:{sweep_suffix}"
+        if order.client_order_id in open_ids or child_id in open_ids:
+            skipped_open += 1
+            continue
+        done = executed.get(order.client_order_id, 0.0) + executed.get(child_id, 0.0)
+        residual = order.qty - done
+        if residual == 0.0 or child_id in existing_ids:
+            continue
+        if residual * order.qty < 0:
+            logger.warning(
+                "sweep: residual %s for %s exceeds the order (%s executed vs %s ordered); "
+                "skipping, never amplifying a venue over-fill",
+                residual,
+                order.client_order_id,
+                done,
+                order.qty,
+            )
+            continue
+        new_orders.append(
+            Order(
+                client_order_id=child_id,
+                symbol=order.symbol,
+                qty=residual,
+                decision_bar=order.decision_bar,
+                reference_price=order.reference_price,
+            )
+        )
+    if skipped_open:
+        logger.warning(
+            "sweep %s: %d orders still live at the venue — not swept this pass "
+            "(auction pending or open order); rerun after they turn terminal",
+            state.pending_decision_bar,
+            skipped_open,
+        )
+    if new_orders:
+        state.pending_orders = list(state.pending_orders) + new_orders
+        ctx.store.save(state)  # write-ahead: the sweep decision persists before any submit
+        logger.info(
+            "sweep %s: re-submitting %d unexecuted residuals as %s orders",
+            state.pending_decision_bar,
+            len(new_orders),
+            sweep_suffix,
+        )
+    # Resume/submit every sweep order not yet at the venue (crash-safe rerun).
+    sweep_orders = [
+        o for o in state.pending_orders if o.client_order_id.endswith(f":{sweep_suffix}")
+    ]
+    _submit_pending(ctx.broker, sweep_orders)
+    return new_orders
+
+
 def read_fills_ledger(path: Path) -> pd.DataFrame:
     """The append-only fills ledger as a frame (the I-9 calibration input)."""
     path = Path(path)
@@ -287,6 +477,23 @@ def read_equity_ledger(path: Path) -> pd.DataFrame:
     decision bar (``decision_bar``, ``equity``, ``cash``). This is the
     return-series source for the anytime-valid monitor
     (:mod:`prism.validation.anytime` via :mod:`prism.live.monitor`)."""
+    path = Path(path)
+    if not path.exists():
+        return pd.DataFrame()
+    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
+    return pd.DataFrame(rows)
+
+
+def read_targets_ledger(path: Path) -> list[dict]:
+    """The refresh-target ledger rows, oldest first (concordance baseline)."""
+    path = Path(path)
+    if not path.exists():
+        return []
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
+
+
+def read_concordance_ledger(path: Path) -> pd.DataFrame:
+    """The book-concordance telemetry ledger as a frame."""
     path = Path(path)
     if not path.exists():
         return pd.DataFrame()
@@ -320,12 +527,65 @@ def _require_price(prices: pd.Series, symbol: str) -> float:
     return float(price)
 
 
-def _append_fills_ledger(path: Path, rows: list[dict]) -> None:
+def _append_jsonl(path: Path, rows: list[dict]) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "a", encoding="utf-8") as handle:
         for row in rows:
             handle.write(json.dumps(row, sort_keys=True) + "\n")
+
+
+def _append_fills_ledger(path: Path, rows: list[dict]) -> None:
+    _append_jsonl(path, rows)
+
+
+def _append_targets_ledger(
+    path: Path,
+    refresh_bar: str,
+    decision_bar: str,
+    target_weights: pd.Series,
+    prices: pd.Series,
+    equity: float,
+) -> None:
+    """Persist the constructed refresh book (nonzero weights + their decision
+    closes). Idempotent per ``refresh_bar`` so a same-bar restart never
+    duplicates the row; absent names read as an explicit 0.0 downstream."""
+    path = Path(path)
+    if path.exists():
+        lines = [ln for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()]
+        if lines and refresh_bar <= json.loads(lines[-1])["refresh_bar"]:
+            return
+    book = {
+        str(symbol): float(weight)
+        for symbol, weight in target_weights.items()
+        if isinstance(weight, (int, float))
+        and math.isfinite(float(weight))
+        and float(weight) != 0.0
+    }
+    reference_prices = {symbol: float(prices[symbol]) for symbol in book}
+    _append_jsonl(
+        path,
+        [
+            {
+                "refresh_bar": refresh_bar,
+                "decision_bar": decision_bar,
+                "equity": float(equity),
+                "targets": book,
+                "reference_prices": reference_prices,
+            }
+        ],
+    )
+
+
+def _append_concordance_ledger(path: Path, decision_bar: str, row: dict) -> None:
+    """Append one concordance read per decision bar (idempotent, monotone —
+    the same discipline as the equity ledger)."""
+    path = Path(path)
+    if path.exists():
+        lines = [ln for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()]
+        if lines and decision_bar <= json.loads(lines[-1])["decision_bar"]:
+            return
+    _append_jsonl(path, [{"decision_bar": decision_bar, **row}])
 
 
 def _append_equity_ledger(path: Path, decision_bar: str, equity: float, cash: float) -> None:

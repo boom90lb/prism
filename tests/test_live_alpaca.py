@@ -197,6 +197,22 @@ def test_submitted_order_ids_paginates(broker, session, monkeypatch) -> None:
     assert broker.submitted_order_ids() == {"d1:AAA", "d1:BBB", "d1:CCC"}
 
 
+def test_open_order_ids_filters_to_requested_and_uses_open_status(broker, session) -> None:
+    # The sweep's double-execution guard: only orders still LIVE at the venue
+    # come back, and only from the requested id set.
+    def handler(json=None, params=None):
+        assert params["status"] == "open" and params["direction"] == "asc"
+        return FakeResponse(
+            payload=[
+                {"client_order_id": "d1:AAA", "submitted_at": "2026-07-06T20:01:00Z"},
+                {"client_order_id": "other-book-id", "submitted_at": "2026-07-06T20:02:00Z"},
+            ]
+        )
+
+    session.route("GET", "/v2/orders", handler)
+    assert broker.open_order_ids({"d1:AAA", "d1:BBB"}) == {"d1:AAA"}
+
+
 def test_fills_for_maps_executed_quantity_including_partials(broker, session) -> None:
     payloads = {
         "d1:AAA": FakeResponse(

@@ -25,7 +25,9 @@ from prism.live import (
     StateStore,
     decide_and_submit,
     read_fills_ledger,
+    read_targets_ledger,
     settle,
+    sweep_pending,
     targets_to_orders,
 )
 
@@ -48,6 +50,12 @@ class FakeBroker(Broker):
         # Ids the venue rejects at submit with a non-Duplicate error (e.g. a
         # zero-crossing order): the loop must skip and continue, not crash.
         self.reject_ids: set[str] = set()
+        # Ids still LIVE at the venue (auction not yet run / order working):
+        # the sweep must never touch these. Executed fills are cached so a
+        # repeated fills_for query (sweep + settle both ask) is idempotent,
+        # matching the real venue where querying an order does not re-execute it.
+        self.open_ids: set[str] = set()
+        self._fills: dict[str, Fill] = {}
 
     def positions(self) -> dict[str, float]:
         return dict(self._positions)
@@ -68,27 +76,30 @@ class FakeBroker(Broker):
     def submitted_order_ids(self) -> set[str]:
         return set(self.orders)
 
+    def open_order_ids(self, client_order_ids: set[str]) -> set[str]:
+        return set(client_order_ids) & self.open_ids
+
     def fills_for(self, client_order_ids: set[str]) -> list[Fill]:
         fills = []
         for oid in sorted(client_order_ids & set(self.orders)):
             if oid in self.no_fill:
                 continue  # e.g. an OPG order whose auction did not print
-            order = self.orders[oid]
-            qty = self.partial_fills.get(oid, order.qty)
-            if qty == 0.0:
-                continue
-            price = self.open_prices.get(order.symbol, order.reference_price)
-            self._positions[order.symbol] = self._positions.get(order.symbol, 0.0) + qty
-            self._cash -= qty * price
-            fills.append(
-                Fill(
+            if oid not in self._fills:
+                order = self.orders[oid]
+                qty = self.partial_fills.get(oid, order.qty)
+                if qty == 0.0:
+                    continue
+                price = self.open_prices.get(order.symbol, order.reference_price)
+                self._positions[order.symbol] = self._positions.get(order.symbol, 0.0) + qty
+                self._cash -= qty * price
+                self._fills[oid] = Fill(
                     client_order_id=oid,
                     symbol=order.symbol,
                     qty=qty,
                     price=price,
                     filled_bar="fill-bar",
                 )
-            )
+            fills.append(self._fills[oid])
         return fills
 
 
@@ -386,6 +397,197 @@ def test_reconcile_adopts_broker_truth_with_warning(ctx, caplog) -> None:
     state = ctx.store.load()
     # The decision was sized off broker truth (10 shares), not the stale 999.
     assert [o.qty for o in state.pending_orders] == [pytest.approx(-10.0)]
+
+
+# ---------------------------------------------------------------------------
+# order-id namespacing: two books on one venue account must never collide
+# ---------------------------------------------------------------------------
+
+
+def test_order_id_prefix_namespaces_client_ids(ctx) -> None:
+    ctx.order_id_prefix = "mom:"
+    decide_and_submit(ctx, "d1", _targets(AAA=0.5), _PRICES)
+    assert ctx.broker.submitted_order_ids() == {"mom:d1:AAA"}
+    state = ctx.store.load()
+    assert state.pending_orders[0].client_order_id == "mom:d1:AAA"
+
+
+# ---------------------------------------------------------------------------
+# dust censoring is loud: a real intended order dropped by rounding is named
+# ---------------------------------------------------------------------------
+
+
+def test_round_to_zero_drop_is_logged_with_symbol_and_size(caplog) -> None:
+    # $10k book, EXP priced $6,000: a 1% target is a $100 intent that rounds to
+    # 0 whole shares — the NVR/AZO censoring class. It must be named, loudly.
+    with caplog.at_level("WARNING"):
+        orders = targets_to_orders(
+            _targets(EXP=0.01, AAA=0.5),
+            positions={},
+            prices=pd.Series({"EXP": 6000.0, "AAA": 100.0}),
+            equity=10_000.0,
+            decision_bar="d",
+            whole_shares=True,
+        )
+    assert {o.symbol for o in orders} == {"AAA"}
+    assert "dropped by whole-share" in caplog.text and "EXP" in caplog.text
+
+
+def test_sub_dollar_dust_stays_silent(caplog) -> None:
+    # A sub-notional intent ($1 under a $5 floor) is genuine dust, not a
+    # censored order — no warning noise.
+    with caplog.at_level("WARNING"):
+        targets_to_orders(
+            _targets(BBB=0.0001),
+            positions={},
+            prices=_PRICES,
+            equity=10_000.0,
+            decision_bar="d",
+            min_order_notional=5.0,
+        )
+    assert "dropped by whole-share" not in caplog.text
+
+
+# ---------------------------------------------------------------------------
+# targets ledger: the refresh book persists inside the write-ahead step
+# ---------------------------------------------------------------------------
+
+
+def test_targets_ledger_persists_refresh_book_idempotently(ctx, tmp_path) -> None:
+    ctx.targets_ledger = tmp_path / "targets.jsonl"
+    decide_and_submit(ctx, "d1", _targets(AAA=0.5, BBB=0.0), _PRICES, refresh_bar="d1")
+    rows = read_targets_ledger(ctx.targets_ledger)
+    assert len(rows) == 1
+    assert rows[0]["refresh_bar"] == "d1" and rows[0]["decision_bar"] == "d1"
+    assert rows[0]["targets"] == {"AAA": 0.5}  # explicit zeros are not persisted
+    assert rows[0]["reference_prices"] == {"AAA": 100.0}
+    assert rows[0]["equity"] == pytest.approx(10_000.0)
+    # A same-bar resume never duplicates the row (and never re-decides).
+    decide_and_submit(ctx, "d1", _targets(AAA=0.9), _PRICES, refresh_bar="d1")
+    assert len(read_targets_ledger(ctx.targets_ledger)) == 1
+    # An off-refresh decision writes no row.
+    settle(ctx, "d1s")
+    decide_and_submit(ctx, "d2", _targets(AAA=0.5), pd.Series({"AAA": 100.0}))
+    assert len(read_targets_ledger(ctx.targets_ledger)) == 1
+
+
+# ---------------------------------------------------------------------------
+# unfilled ledger: every unexecuted residual is durable, not a truncated log
+# ---------------------------------------------------------------------------
+
+
+def test_settle_writes_unfilled_and_partial_residuals(ctx, tmp_path) -> None:
+    ctx.unfilled_ledger = tmp_path / "unfilled.jsonl"
+    decide_and_submit(ctx, "d1", _targets(AAA=0.4, BBB=0.3), _PRICES)
+    ctx.broker.partial_fills["d1:AAA"] = 10.0  # 40 intended, 10 execute
+    ctx.broker.no_fill.add("d1:BBB")  # 60 intended, auction never prints
+    settle(ctx, "d2")
+    rows = [json.loads(ln) for ln in ctx.unfilled_ledger.read_text().splitlines() if ln]
+    by_symbol = {r["symbol"]: r for r in rows}
+    assert by_symbol["AAA"]["order_qty"] == pytest.approx(40.0)
+    assert by_symbol["AAA"]["executed_qty"] == pytest.approx(10.0)
+    assert by_symbol["AAA"]["residual_qty"] == pytest.approx(30.0)
+    assert by_symbol["BBB"]["executed_qty"] == 0.0
+    assert by_symbol["BBB"]["residual_qty"] == pytest.approx(60.0)
+    assert all(r["decision_bar"] == "d1" and r["settle_bar"] == "d2" for r in rows)
+
+
+def test_settle_writes_no_unfilled_rows_when_everything_fills(ctx, tmp_path) -> None:
+    ctx.unfilled_ledger = tmp_path / "unfilled.jsonl"
+    decide_and_submit(ctx, "d1", _targets(AAA=0.4), _PRICES)
+    settle(ctx, "d2")
+    assert not ctx.unfilled_ledger.exists()
+
+
+# ---------------------------------------------------------------------------
+# sweep: unexecuted residuals complete the decision as suffixed DAY orders
+# ---------------------------------------------------------------------------
+
+
+def test_sweep_resubmits_residuals_write_ahead_first(ctx) -> None:
+    decide_and_submit(ctx, "d1", _targets(AAA=0.4, BBB=0.3), _PRICES)
+    ctx.broker.partial_fills["d1:AAA"] = 10.0  # residual 30
+    ctx.broker.no_fill.add("d1:BBB")  # residual 60
+    swept = sweep_pending(ctx)
+    by_symbol = {o.symbol: o for o in swept}
+    assert {o.client_order_id for o in swept} == {"d1:AAA:S1", "d1:BBB:S1"}
+    assert by_symbol["AAA"].qty == pytest.approx(30.0)
+    assert by_symbol["BBB"].qty == pytest.approx(60.0)
+    # The sweep order carries the ORIGINAL decision-close reference: the fills
+    # ledger then records the total arrival cost of executing the decision.
+    assert by_symbol["AAA"].reference_price == 100.0
+    assert by_symbol["AAA"].decision_bar == "d1"
+    # Write-ahead: the sweep orders are persisted in the pending set…
+    state = ctx.store.load()
+    pending_ids = {o.client_order_id for o in state.pending_orders}
+    assert {"d1:AAA:S1", "d1:BBB:S1"} <= pending_ids
+    # …and reached the venue.
+    assert {"d1:AAA:S1", "d1:BBB:S1"} <= ctx.broker.submitted_order_ids()
+
+
+def test_sweep_skips_fully_filled_orders(ctx) -> None:
+    decide_and_submit(ctx, "d1", _targets(AAA=0.4), _PRICES)
+    assert sweep_pending(ctx) == []  # full fill: nothing to complete
+    assert "d1:AAA:S1" not in ctx.broker.submitted_order_ids()
+
+
+def test_sweep_never_touches_a_live_order(ctx, caplog) -> None:
+    decide_and_submit(ctx, "d1", _targets(AAA=0.4), _PRICES)
+    ctx.broker.no_fill.add("d1:AAA")
+    ctx.broker.open_ids.add("d1:AAA")  # auction has not run yet
+    with caplog.at_level("WARNING"):
+        assert sweep_pending(ctx) == []
+    assert "still live" in caplog.text
+    assert "d1:AAA:S1" not in ctx.broker.submitted_order_ids()
+
+
+def test_sweep_rerun_is_idempotent(ctx) -> None:
+    decide_and_submit(ctx, "d1", _targets(AAA=0.4), _PRICES)
+    ctx.broker.no_fill.add("d1:AAA")
+    first = sweep_pending(ctx)
+    assert [o.client_order_id for o in first] == ["d1:AAA:S1"]
+    # Rerun: the child now exists (and by now has filled) — nothing new is
+    # created and the pending set holds exactly one child.
+    assert sweep_pending(ctx) == []
+    state = ctx.store.load()
+    ids = [o.client_order_id for o in state.pending_orders]
+    assert ids.count("d1:AAA:S1") == 1
+
+
+def test_sweep_requires_the_open_order_guard(ctx) -> None:
+    class BlindBroker(FakeBroker):
+        open_order_ids = None  # a broker that cannot distinguish live orders
+
+    blind = BlindBroker()
+    ctx.broker = blind
+    decide_and_submit(ctx, "d1", _targets(AAA=0.4), _PRICES)
+    ctx.broker.no_fill.add("d1:AAA")
+    with pytest.raises(TypeError, match="open_order_ids"):
+        sweep_pending(ctx)
+
+
+def test_sweep_never_amplifies_a_venue_overfill(ctx, caplog) -> None:
+    decide_and_submit(ctx, "d1", _targets(AAA=0.4), _PRICES)  # 40 intended
+    ctx.broker.partial_fills["d1:AAA"] = 50.0  # venue anomaly: 50 executed
+    with caplog.at_level("WARNING"):
+        assert sweep_pending(ctx) == []
+    assert "never amplifying" in caplog.text
+
+
+def test_settle_after_sweep_ledgers_both_fill_populations(ctx) -> None:
+    decide_and_submit(ctx, "d1", _targets(AAA=0.4), _PRICES)
+    ctx.broker.partial_fills["d1:AAA"] = 10.0
+    sweep_pending(ctx)  # completes the 30-share residual as d1:AAA:S1
+    fills = settle(ctx, "d2")
+    assert {f.client_order_id for f in fills} == {"d1:AAA", "d1:AAA:S1"}
+    ledger = read_fills_ledger(ctx.fills_ledger)
+    assert set(ledger["client_order_id"]) == {"d1:AAA", "d1:AAA:S1"}
+    # Both populations share the decision-close reference (total arrival cost),
+    # segmentable by the :S1 id suffix.
+    assert set(ledger["reference_price"]) == {100.0}
+    state = ctx.store.load()
+    assert state.positions["AAA"] == pytest.approx(40.0)  # decision completed
+    assert state.pending_orders == []
 
 
 # ---------------------------------------------------------------------------

@@ -206,6 +206,36 @@ class AlpacaBroker(Broker):
             # skipped at the page boundary in practice.
             after = str(page[-1]["submitted_at"])
 
+    def open_order_ids(self, client_order_ids: set[str]) -> set[str]:
+        """Subset of the given client ids still *live* at the venue.
+
+        The completion sweep's safety guard (``prism.live.loop.sweep_pending``):
+        an order that is still queued for its auction must never be swept — the
+        residual would double-execute when the auction prints. Alpaca's
+        ``status=open`` filter covers every non-terminal state (new, accepted,
+        pending_new, partially_filled with the remainder working).
+        """
+        ids: set[str] = set()
+        after: str | None = None
+        while True:
+            params: dict[str, Any] = {
+                "status": "open",
+                "limit": _ORDERS_PAGE_LIMIT,
+                "direction": "asc",
+            }
+            if after is not None:
+                params["after"] = after
+            page = self._json_or_raise(
+                self._request("GET", "/v2/orders", params=params), "GET /v2/orders (open)"
+            )
+            for row in page:
+                client_order_id = row.get("client_order_id")
+                if client_order_id and str(client_order_id) in client_order_ids:
+                    ids.add(str(client_order_id))
+            if len(page) < _ORDERS_PAGE_LIMIT:
+                return ids
+            after = str(page[-1]["submitted_at"])
+
     def fills_for(self, client_order_ids: set[str]) -> list[Fill]:
         fills: list[Fill] = []
         for client_order_id in sorted(client_order_ids):

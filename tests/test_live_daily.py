@@ -17,7 +17,9 @@ from prism.live import (
     DailyBookConfig,
     LiveLoopContext,
     StateStore,
+    book_concordance,
     fetch_universe_panels,
+    read_concordance_ledger,
     read_fills_ledger,
     run_daily_cycle,
     targets_to_orders,
@@ -388,3 +390,87 @@ def test_state_v1_migrates_to_v2(tmp_path) -> None:
     assert state.last_refresh_bar is None  # a v1 book loads unanchored
     assert state.positions == {"AAA": 3.0}  # positions preserved, not reset
     assert state.last_settled_bar == "2026-07-06"
+
+
+# ---------------------------------------------------------------------------
+# Book-concordance telemetry: the held book vs the last refresh targets
+# ---------------------------------------------------------------------------
+
+
+def test_concordance_telemetry_tracks_prior_refresh(ctx, tmp_path) -> None:
+    ctx.targets_ledger = tmp_path / "targets.jsonl"
+    ctx.concordance_ledger = tmp_path / "concordance.jsonl"
+    signal = ConstSignal({"AAA": 1.0, "BBB": -1.0})
+    close, vol = _panels(30)
+    r1 = run_daily_cycle(ctx, signal, close, vol, _CONFIG)
+    assert r1.concordance is None  # first refresh: no prior baseline to track
+
+    close2, vol2 = _panels(31)
+    r2 = run_daily_cycle(ctx, signal, close2, vol2, _CONFIG)
+    assert r2.concordance is not None
+    assert r2.concordance["refresh_bar"] == r1.decision_bar
+    # Fills executed exactly at reference on flat prices: the held book IS the
+    # decided book, and the telemetry must say so.
+    assert r2.concordance["active_share"] == pytest.approx(0.0, abs=1e-9)
+    assert r2.concordance["gross_ratio"] == pytest.approx(1.0)
+    rows = read_concordance_ledger(ctx.concordance_ledger)
+    assert list(rows["decision_bar"]) == [r2.decision_bar]
+
+    # A same-bar rerun resumes the persisted decision and never duplicates the
+    # concordance row.
+    run_daily_cycle(ctx, signal, close2, vol2, _CONFIG)
+    assert len(read_concordance_ledger(ctx.concordance_ledger)) == 1
+
+
+def test_concordance_sees_a_partial_fill_book(ctx, tmp_path) -> None:
+    # One of two decided orders never fills: the held book is HALF the decided
+    # book and the telemetry must surface it (the 2026-07-08 22/101 case in
+    # miniature) — this is invisible to the equity monitor.
+    ctx.targets_ledger = tmp_path / "targets.jsonl"
+    ctx.concordance_ledger = tmp_path / "concordance.jsonl"
+    signal = ConstSignal({"AAA": 1.0, "BBB": -1.0})
+    close, vol = _panels(30)
+    r1 = run_daily_cycle(ctx, signal, close, vol, _CONFIG)
+    bar1 = r1.decision_bar
+    ctx.broker.no_fill.add(f"{bar1}:BBB")  # the short leg never prints
+
+    close2, vol2 = _panels(31)
+    r2 = run_daily_cycle(ctx, signal, close2, vol2, _CONFIG)
+    assert r2.concordance is not None
+    # Decided gross 0.2 (±0.1); only the long leg filled -> gross_held 0.1.
+    assert r2.concordance["gross_held"] == pytest.approx(0.1, rel=1e-6)
+    assert r2.concordance["gross_target"] == pytest.approx(0.2, rel=1e-6)
+    assert r2.concordance["active_share"] == pytest.approx(0.05, rel=1e-6)
+
+
+# ---------------------------------------------------------------------------
+# book_concordance (pure)
+# ---------------------------------------------------------------------------
+
+
+def test_book_concordance_identical_books() -> None:
+    w = pd.Series({"AAA": 0.1, "BBB": -0.1})
+    read = book_concordance(w, w.copy())
+    assert read["active_share"] == pytest.approx(0.0)
+    assert read["weight_corr"] == pytest.approx(1.0)
+    assert read["gross_ratio"] == pytest.approx(1.0)
+    assert read["n_held"] == read["n_target"] == 2
+
+
+def test_book_concordance_disjoint_books() -> None:
+    held = pd.Series({"AAA": 0.1})
+    target = pd.Series({"BBB": 0.1})
+    read = book_concordance(held, target)
+    assert read["active_share"] == pytest.approx(0.1)  # 0.5 * (0.1 + 0.1)
+    assert read["weight_corr"] == pytest.approx(-1.0)
+    assert read["gross_ratio"] == pytest.approx(1.0)
+
+
+def test_book_concordance_degenerate_sides() -> None:
+    held = pd.Series(dtype=float)
+    target = pd.Series({"AAA": 0.1})
+    read = book_concordance(held, target)
+    assert read["weight_corr"] is None  # a flat side has no correlation
+    assert read["gross_held"] == 0.0
+    assert read["gross_ratio"] == 0.0
+    assert read["active_share"] == pytest.approx(0.05)
