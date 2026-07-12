@@ -127,6 +127,82 @@ program promotes, crash exposure is priced into sizing (the capacity/vol
 inputs at deployment), not hand-waved. A wildly positive robustness set
 should raise suspicion (§10 falsification gate), not excitement.
 
+## 5. Instrument amendment — paper-loop execution seams (2026-07-11)
+
+**Amendment under the §-banner rule: seams pinned, no §2 trial value and no
+§3 adjudication rule moves.** Owner-directed 2026-07-11 (execution delegated
+to the session in the same turn, the ratification-delegation precedent of
+this document's own banner). Motivating reading, recorded so the seam pins
+are auditable: the first live refresh (decision 2026-07-08) filled 22/101
+OPG orders at the 07-09 open — Alpaca *paper*'s opening-auction simulation
+prints ~20-25% of OPG orders across books, sides, and price tiers — leaving
+the instrument holding a 0.19-gross, ~2%-net-short partial book for a whole
+monthly cadence period, contaminated by six positions originating from the
+retired ensemble run-dir's in-flight orders on the shared account, and
+silently unable to hold any name priced above ~2× the per-name notional
+(whole-share zero-rounds: the NVR/AZO class at $100k NAV). §1's paper
+confirmation reads the paper stream as evidence about *B1*; these are
+instrument defects, not strategy properties, and the seams below repair the
+instrument.
+
+1. **Completion sweep.** OPG remains the primary order type (the N2
+   next-open convention; the KEEP-OPG decision stands). The morning after a
+   decision, while it is still pending, every *terminal-but-unexecuted*
+   residual is re-submitted once as a DAY market order under the suffixed
+   client id `{original_id}:S1` (`prism.live.loop.sweep_pending`;
+   `prism.scripts.paper_sweep`). Sweep orders carry the **original
+   decision-close reference price**, so the fills ledger records the total
+   arrival cost of executing the decision at this venue; the id suffix keeps
+   the auction and sweep fill populations segmentable. One completion
+   generation per decision; an order still live at the venue is never swept.
+2. **Fills-inclusion rules for I-9 calibration, pre-stated before any bucket
+   approaches the `min_fills=30` promotion guard.** The momentum calibration
+   pool contains: opening-auction fills and `:S1` sweep fills of the momentum
+   book, reported jointly and separably by id suffix. It excludes: fills of
+   the retired ensemble book (`runs/paper_loop/fills.jsonl` — different book,
+   and its 3 fills carry 2-session arrival latency, a different estimand than
+   the N2 next-open convention `prism.execution.spread` documents), and
+   book-establishment/cutover fills (reference prices stale by construction;
+   tagged by their run context, see seam 3). Deciding inclusion *after*
+   seeing which rule promotes a bucket would be ex-post selection; this
+   paragraph forecloses it.
+3. **Size and segment reset.** The paper account is reset to **$1,000,000**
+   and the momentum loop restarts in a fresh run-dir with a fresh equity
+   ledger. "Trivial size" (§1) is unchanged in meaning — $1M is still
+   capacity-irrelevant — and the dollar NAV was never a registered value; the
+   reset exists because at $100k the whole-share quantum censors high-priced
+   names from the book entirely and puts up to 2× weight error on names near
+   the threshold. The monitor stream restarts at n=0 on the new segment:
+   equity ledgers from different segments are **never concatenated** (the
+   monitor forms raw NAV pct-changes with no external-flow adjustment, so a
+   cross-segment join would inject a fictitious return). The first decision
+   in the fresh run-dir re-anchors the monthly cadence grid; the grid phase
+   is an instrument property (the prior anchor was itself the arbitrary
+   2026-07-08 cutover date), not a §2 value. Establishment fills of that
+   first refresh enter `fills.jsonl` (the write-ahead machinery does not
+   fork) but are excluded from calibration pools per seam 2, identified by
+   the first refresh bar of the segment.
+4. **Order-id namespacing.** Client order ids carry a per-book prefix
+   (`mom:{bar}:{symbol}` for this instrument). Two books sharing one venue
+   account with the bare `{bar}:{symbol}` scheme silently substitute each
+   other's same-bar orders, because the venue's duplicate-id rejection is
+   (correctly) treated as submission success by the write-ahead protocol.
+5. **Fidelity telemetry (additive, gates nothing).** Each refresh persists
+   its decided target book (`targets.jsonl`, written inside the write-ahead
+   step); each settle persists every unexecuted residual (`unfilled.jsonl`);
+   each cycle records active share / weight correlation / gross ratio of the
+   held book against the last refresh targets (`concordance.jsonl`,
+   `prism.live.monitor.book_concordance`). The §3 promotion conjunct still
+   reads the rolling PSR on the paper stream — unchanged — but the
+   concordance ledger records *how much of B1* that stream was measuring,
+   bar by bar, so the read at M6 is interpretable at any n.
+
+What this amendment deliberately does not do: it does not touch the B1
+configuration, the §2 trial set, the §3 adjudication rules, the M6
+extension window, or the closed residual ledger; it does not admit replay
+or EDGE output into calibration or the concordance stream
+(`src/prism/live/replay.py` boundaries; `docs/edge_preregistration.md` §2).
+
 The §0 breadth accounting sharpens this expectation: with realized capture
 already at ~61% of the fundamental-law ceiling and the ceiling's own
 viability unpinned at the lower-CI IC, the plausible upside from
