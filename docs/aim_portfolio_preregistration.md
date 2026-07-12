@@ -175,7 +175,14 @@ Pinned now so they are not improvised at the gate:
   realized turnover is no greater than the sum-then-cap turnover on the same
   targets, and strictly less when the components are negatively turnover-correlated.
   Single-signal reduction to `step_no_trade_band`/`closed_form_band` is pinned by
-  parity test.
+  parity test. The synthetic panel must include the *confirmed* anti-netting
+  regime (`docs/b2_anti_netting_diagnostic.md`, 2026-07-11): cap-binding pressure
+  — raw combined gross above `max_gross` while the slow component is static — and
+  the test asserts **zero slow-component turnover on fast-only days**, since the
+  measured B2 excess was entirely the proportional re-cap wiggling the dormant
+  sleeve on days only the fast sleeve moved (and netting actually *worked* on
+  refresh days). An exit test that only bounds aggregate turnover can pass while
+  the confirmed failure mode survives.
 - **Promotion (readable only post-gate, on the counted trials).** A blended book
   reaches `net_edge` under bucket spreads with deflated (selection-set DSR) net
   Sharpe > 0, its cost toll strictly below the sum-then-cap baseline of §4, and a
