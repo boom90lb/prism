@@ -11,39 +11,62 @@
 > redirect). **Read `SPEC.md` first.** The sections below describe the honest
 > evaluation harness, which v0.3.0 keeps almost intact and builds on.
 >
-> Status of the alpha itself is unchanged and stated plainly: **no configuration
-> is net-positive after realistic costs** — the system is cost-bound before it is
-> signal-bound, and `SPEC.md §10` carries a numeric kill-criterion for the case
-> where the daily residual signal proves simply too weak.
+> Status of the alpha, stated plainly: **the `SPEC.md §10` kill-criterion fired
+> on 2026-07-06** — across a pre-registered, fully counted 17-trial budget, no
+> residual-reversion configuration achieved a deflated net Sharpe above zero
+> under calibrated per-bucket costs, and the sleeve is archived. The negative
+> result is the harness's first certification:
+> [`docs/certifications/001-residual-reversion-daily-negative.md`](docs/certifications/001-residual-reversion-daily-negative.md).
+> The next candidate (monthly cross-sectional momentum, the demotion budget's
+> side discovery) enters at `mechanics_clean` under its own pre-registered
+> budget ([`docs/momentum_design.md`](docs/momentum_design.md)). No
+> configuration has ever cleared the deflated evidence bar; nothing is
+> deployable today.
 
-A backtesting stack that combines classical time-series forecasters
-(ARIMA, Prophet, LSTM, XGBoost) and three reinforcement-learning policies
-(LSTM-PPO, xLSTM-PPO, xLSTM-GRPO) into a single position-space ensemble, then
-evaluates it under a **methodology designed to produce honest out-of-sample
-numbers** — purged walk-forward CV, next-open fills with realistic costs,
-shared-capital target-weight accounting, optional legacy baselines, and
-overfitting-adjusted metrics (DSR, PBO). Per `SPEC.md`, the forecaster/RL
-ensemble is now research-side; the production spine is the cross-sectional
-residual path plus the breadth-, cost-, and capacity-aware harness modules new
-in v0.3.0 (`validation/{metrics,capacity}`, `execution/participation`,
-`portfolio.step_no_trade_band`, `regime/`).
+Prism is a cross-sectional systematic trading engine — **score → residualize
+→ construct → execute**, conditioned by a regime layer — gated by an
+evaluation harness built to produce **honest out-of-sample numbers**: purged
+walk-forward CV, next-open fills with realistic costs, shared-capital
+target-weight accounting, breadth / capacity / cost-toll diagnostics, and
+overfitting-adjusted metrics (DSR, PBO). The production spine is the
+survivorship-counted S&P residual path (`src/prism/residual/`) plus the
+construction, execution, and regime machinery shipped in v0.3.0
+(`validation/{metrics,capacity}`, `execution/participation`,
+`portfolio.step_no_trade_band`, `regime/`). The classical forecaster ensemble
+survives as *one* plug-in signal node (`prism.signal.EnsembleSignalNode`, an
+XGBoost + ARIMA blend under the same harness); its heavier legacy members —
+Prophet and the three reinforcement-learning policies (LSTM-PPO, xLSTM-PPO,
+xLSTM-GRPO) — are quarantined research members under `research/`, off the
+production import path (N8).
 
 It also includes a separate statistical-arbitrage path for market-neutral pair
 research: train-only cointegration discovery, residual stationarity and
 multiple-testing filters, causal spread targets, capped portfolio weights, and
 next-open costed accounting. See [`docs/stat_arb.md`](docs/stat_arb.md).
 
-The emphasis is on *trustworthy evaluation*, not on a deployable alpha. The
-default universe and hyperparameters are illustrative; the value is in the
-harness around them.
+The mandate (`SPEC.md §1`) is a production-grade, zero-data-budget systematic
+trading bot. Deployment is the goal and it is gated hard: capital is risked
+only on edges that clear the claim-tier evidence bar (`SPEC.md §10`). The
+harness is the bar — and it has produced its first verdict: the residual
+sleeve was certified uneconomic at retail cost and archived after its
+pre-registered trial budget was exhausted
+([certification 001](docs/certifications/001-residual-reversion-daily-negative.md)).
+The current candidate under the bar is the momentum program
+([`docs/momentum_design.md`](docs/momentum_design.md)), held to exactly the
+tier its evidence supports.
 
 See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the end-to-end data flow (what
-calls what) and [`docs/operations.md`](docs/operations.md) for operational
-gotchas (vendor tier, interval mapping, member contribution, per-bar cost).
+calls what), [`docs/operations.md`](docs/operations.md) for operational
+gotchas (vendor tier, interval mapping, member contribution, per-bar cost),
+[`docs/handoff.md`](docs/handoff.md) for the long-horizon doctrine
+behind the roadmap, and [`formal/`](formal/README.md) for the Lean 4
+machine-checked kernel invariants.
 
-> **Note on the RL members.** The three RL agents were stub implementations in
-> the original codebase (hardcoded losses, random-action `predict`). They now
-> have real gradient updates and end-to-end fit/predict. If you extend them,
+> **Note on the RL members (research-side only).** The three RL policies are
+> quarantined under `research/` and are not production signals (`SPEC.md §8`).
+> They were stub implementations in the original codebase (hardcoded losses,
+> random-action `predict`); they now have real gradient updates and
+> end-to-end fit/predict. If you extend them,
 > check that the policy actually takes gradient steps and that a windowed
 > member produces non-flat positions before trusting any RL-attributed Sharpe
 > — under a small training budget an undertrained policy legitimately produces
@@ -139,8 +162,8 @@ position size in `trading.calculate_signal`.
 Done before relying on any WFO number (a WFO over leaky features is a
 well-organized lie). Closed leaks: point-in-time UTC sentiment bucketing
 (`searchsorted` against bar-close times, no across-bar ffill), train-only
-feature clipping bounds, per-fold scaler refits. See `src/prism/sentiment_analysis.py`
-and `src/prism/features.py` plus `tests/test_sentiment_leakage.py` /
+feature clipping bounds, per-fold scaler refits. See `research/sentiment_analysis.py`
+and `research/features.py` plus `tests/test_sentiment_leakage.py` /
 `tests/test_feature_engineer_leakage.py`.
 
 ---
@@ -339,26 +362,35 @@ mind.
 
 ```
 src/prism/             (the distribution — production import path)
-  config.py            single source of truth for weights / hyperparams / dirs
-  data_loader.py       Twelvedata bars + dividends, range-keyed cache
-  features.py          technical indicators, train-only clip bounds
-  sentiment_analysis.py keyword + FinBERT analyzers, PIT bucketing
-  trading.py           target generation, signals, legacy position accounting
-  logging_utils.py     configure_logging + per-symbol adapter (Phase 5.1)
-  models/              arima, prophet, xgboost, ensemble,
-                       registry (forecast vs policy), mapping (vol-sizing)
-  execution/           target-weight accounting, ExecutionModel + cost functions,
-                       participation gate
-  portfolio/           book construction: caps, no-trade bands (batch + online step)
-  regime/              curve / vol / net-liquidity regime state ($0 sources)
+  config.py            production config: directories, spine API key,
+                       ExecutionConfig / TradingConfig cost dataclasses
+  io/                  loader (Twelvedata bars + dividends, range-keyed cache +
+                       incremental store), PIT universe, token-bucket rate limit
+  signal/              the Signal contract + nodes: EnsembleSignalNode
+                       (JAX-free XGBoost/ARIMA blend), ResidualSignalNode
   residual/            factor model + causal OU s-scores + hedged book builder
+  portfolio/           book construction: caps, no-trade bands (batch + online step)
+  execution/           target-weight accounting, ExecutionModel + cost functions,
+                       participation gate, per-bucket spread estimator
+  regime/              curve / vol / inflation / net-liquidity regime state
+                       ($0 sources) + FRED/DefiLlama fetch adapters
+  live/                durable order state, write-ahead daily loop,
+                       Alpaca paper/live broker adapter
   validation/          PurgedWalkForward, metrics (PSR/PBO/DSR/Calmar + FLAM breadth),
                        capacity / cost-toll, research claim packets
   conformal/           EnbPI + ACI
-  scripts/             build_sp500_universe (periodic PIT universe build)
+  logging_utils.py     configure_logging + per-symbol adapter
+  scripts/             build_sp500_universe (periodic PIT universe build),
+                       paper_loop (nightly Alpaca paper cycle)
 research/              (quarantined per SPEC §9 — not in the wheel; may import
                         prism, never the reverse)
-  models/              RL policy members: lstm_ppo, xlstm_ppo, xlstm_grpo (JAX)
+  config.py            ensemble-side config: member/ensemble/training dataclasses
+  trading.py           the legacy v0.2 per-symbol engine (TradingStrategy)
+  features.py          legacy technical indicators, train-only clip bounds
+  sentiment_analysis.py keyword + FinBERT analyzers, PIT bucketing
+  models/              legacy forecast members (arima, prophet, xgboost) +
+                       EnsembleModel, registry, vol-sizing mapping;
+                       RL policy members: lstm_ppo, xlstm_ppo, xlstm_grpo (JAX)
   baselines/           buy-and-hold, MA-crossover, TSMOM
   arbitrage/           cointegration pair scan + stat-arb WFO fold ledgers
   tracking/            MLflow wrappers
@@ -368,28 +400,40 @@ research/              (quarantined per SPEC §9 — not in the wheel; may impor
     sweep.py             ensemble-layer grid → DSR
     rl_seed_eval.py      multi-seed RL overfitting study
     stat_arb_wfo.py      rolling formation/test pairs stat-arb WFO
-tests/                 ~450 offline tests (validation, leakage, execution, conformal, logging)
+formal/                Lean 4 machine-checked kernel invariants (N4 ledger
+                       conservation, no-trade-band hysteresis + batch-replay
+                       divergence, purge/embargo geometry, participation gate)
+tests/                 636+ offline tests (validation, leakage, execution,
+                       conformal, live loop, logging); the slim subset runs
+                       without the [research] extra in CI
 ```
 
 ## Configuration
 
-`src/prism/config.py` is the single source of truth.
+Configuration is split at the production/research boundary (SPEC §9):
 
-- `DEFAULT_MODEL_WEIGHTS` registers the default (forecast) ensemble members;
-  scripts read weights from here rather than hardcoding per-model overrides.
-  The quarantined RL members are opt-in via research CLIs and fall back to
-  weight 1.0.
-- `TrainingConfig`/`ExecutionConfig`/`TradingConfig` validate their fields in
-  `__post_init__` (e.g. `n_splits >= 2`, `0 <= embargo_pct < 1`,
-  `0 < position_size <= 1`, `borrow_rate_bps_annual >= 0`). Invalid CLI
-  arguments fail fast at config construction.
+- `src/prism/config.py` — production: project directories, the Twelve Data
+  key, and the `ExecutionConfig`/`TradingConfig` cost dataclasses consumed by
+  the execution/accounting path.
+- `research/config.py` — the legacy ensemble side: `ModelConfig`/
+  `EnsembleConfig`/`TrainingConfig`, `DEFAULT_MODEL_WEIGHTS` (the default
+  forecast members; the quarantined RL members are opt-in via research CLIs
+  and fall back to weight 1.0), the MLflow tracking URI, and the Polygon
+  news key.
+
+Both halves validate fields in `__post_init__` (e.g. `n_splits >= 2`,
+`0 <= embargo_pct < 1`, `0 < position_size <= 1`,
+`borrow_rate_bps_annual >= 0`); invalid CLI arguments fail fast at config
+construction.
 
 ---
 
 ## Dependencies
 
-Python 3.12+ · scikit-learn, Flax/JAX, PyTorch · Gymnasium · statsmodels,
-Prophet, XGBoost · transformers (FinBERT) · MLflow · Twelvedata, Polygon.io.
+Core (the production import path, SPEC N8): Python 3.12+ · numpy, pandas,
+scikit-learn · statsmodels, XGBoost · pyarrow · the Twelvedata API.
+`[research]` extra: Prophet, Flax/JAX, PyTorch, transformers (FinBERT),
+Gymnasium, MLflow, matplotlib, and the Polygon.io news API.
 
 ## License
 

@@ -28,8 +28,7 @@ pytestmark = pytest.mark.research
 
 import torch  # noqa: E402
 
-from prism.sentiment_analysis import TransformerSentimentAnalyzer  # noqa: E402
-
+from research.sentiment_analysis import TransformerSentimentAnalyzer  # noqa: E402
 
 # --- Fakes -------------------------------------------------------------------
 
@@ -153,7 +152,7 @@ def test_module_import_does_not_load_transformers():
     # pythonpath setting does not propagate to subprocesses).
     src_dir = os.path.join(os.path.dirname(__file__), "..", "src")
     env = {**os.environ, "PYTHONPATH": os.pathsep.join(filter(None, [src_dir, os.environ.get("PYTHONPATH")]))}
-    code = "import sys; import prism.sentiment_analysis; print('transformers' in sys.modules)"
+    code = "import sys; import research.sentiment_analysis; print('transformers' in sys.modules)"
     out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=env)
     assert out.stdout.strip() == "False", out.stderr
 

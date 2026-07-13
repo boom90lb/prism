@@ -65,7 +65,8 @@ eigenportfolios (frozen v1 default) and **sector-ETF regression**
 Parameter sweeps, graphical matching, sparse baskets, and Kalman hedges remain
 deferred.
 
-Pipeline (`src/arbitrage/factors.py`, `residual.py`, `residual_walk_forward.py`):
+Pipeline (`src/prism/residual/factors.py`, `residual.py` — the production
+signal core — driven by `research/arbitrage/residual_walk_forward.py`):
 
 0. **Consensus calendar** (`consensus_trading_days`): the wide panel is built
    on the *union* of every symbol's dates, which inherits phantom non-trading

@@ -6,7 +6,7 @@ lives in the README; this file is the "what will actually bite you" companion.
 ## Data vendor (Twelvedata)
 
 - **API key** goes in a gitignored `.env` at the repo root:
-  `TWELVEDATA_API_KEY=...`. `src/config.py` loads it via `python-dotenv`.
+  `TWELVEDATA_API_KEY=...`. `src/prism/config.py` loads it via `python-dotenv`.
 - **Interval strings.** The vendor's `time_series` endpoint expects
   `1day`/`1week`/`1month` (not `1d`/`1wk`/`1mo`). The project keeps the short
   form everywhere (config, cache filenames, CLI) and normalizes to the vendor
@@ -19,10 +19,12 @@ lives in the README; this file is the "what will actually bite you" companion.
     slipped through). Cross-symbol total-return is therefore inconsistent on
     this tier — run backtests with `--no_dividends` for a uniform price-return
     comparison, or supply a higher-tier key.
-  - **Dividend-cache poisoning guard:** a 403/empty response caches an empty
-    dividend Series, which the loader treats as authoritative "no dividends"
-    and never refetches. If you upgrade tiers, delete the stale empty
-    `data/*_dividends_*.parquet` files so they refetch.
+  - **Dividend negative-cache:** a *failed* fetch (403, error payload) is
+    never cached (`prism.io.loader` returns empty without writing), so a tier
+    outage cannot poison later runs. A genuinely-empty "no dividends" answer
+    is cached but honored only for `DIVIDEND_NEGATIVE_CACHE_TTL_DAYS` (7 days)
+    before it refetches, so a tier upgrade heals on its own — no manual
+    deletion of `data/*_dividends_*.parquet` needed.
 
 ## Which ensemble members actually contribute in a backtest
 
@@ -67,13 +69,13 @@ to be aware of on a multi-year daily backtest (~1,600 bars/symbol):
 echo "TWELVEDATA_API_KEY=..." > .env
 
 # 2. forecast-only training (no JAX; fast)
-.venv/bin/python3 -m scripts.training \
+.venv/bin/python3 -m research.scripts.training \
   --symbols AAPL,MSFT,GOOG,AMZN \
   --start_date 2020-01-01 --end_date <today> \
   --horizon 5 --n_splits 5 --models xgboost
 
 # 3. backtest the run (basic tier -> --no_dividends)
-PYTHONWARNINGS=ignore .venv/bin/python3 -m scripts.backtest \
+PYTHONWARNINGS=ignore .venv/bin/python3 -m research.scripts.backtest \
   --training_run runs/<run_name> --no_dividends
 ```
 

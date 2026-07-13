@@ -32,10 +32,30 @@ from typing import Any, Dict, List, Optional
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
 
+from prism.io.loader import DataLoader, _tz_aware_filter
+from prism.logging_utils import configure_logging, get_symbol_logger
+from prism.validation.walk_forward import PurgedWalkForward
+from research.config import (
+    DEFAULT_MODEL_WEIGHTS,
+    DEFAULT_TRAINING_CONFIG,
+    EnsembleConfig,
+    ModelConfig,
+    TrainingConfig,
+)
+from research.features import FeatureEngineer, forward_return_column, is_label_column
+from research.models.ensemble import EnsembleModel
+
 # mlflow_utils is import-safe on a slim core install (mlflow degrades to None
 # inside it and every wrapper raises an informative ImportError on first use),
-# so this module's pure helpers (build_features, clean_data_for_training,
-# build_fold_metadata, ...) stay importable without the research extra.
+# so this module's pure helpers (build_fold_metadata, ...) stay importable
+# without the research extra. build_features/clean_data_for_training live in
+# _cli_common (shared plumbing must not import from an entry-point script)
+# and are re-imported here for the existing consumers of this module's names.
+from research.scripts._cli_common import (
+    build_features,
+    clean_data_for_training,
+    fetch_training_frames,
+)
 from research.tracking.mlflow_utils import (
     init_mlflow,
     log_artifact_dir,
@@ -44,20 +64,6 @@ from research.tracking.mlflow_utils import (
     mlflow,
     require_mlflow,
 )
-
-from prism.config import (
-    DEFAULT_MODEL_WEIGHTS,
-    DEFAULT_TRAINING_CONFIG,
-    EnsembleConfig,
-    ModelConfig,
-    TrainingConfig,
-)
-from prism.data_loader import DataLoader, _tz_aware_filter
-from prism.features import FeatureEngineer, forward_return_column, is_label_column
-from prism.models.ensemble import EnsembleModel
-from prism.sentiment_analysis import SentimentAnalyzer
-from prism.logging_utils import configure_logging, get_symbol_logger
-from prism.validation.walk_forward import PurgedWalkForward
 
 # Suppress specific Pandas warnings (like DataFrame fragmentation)
 try:
@@ -298,72 +304,6 @@ def check_gpu_availability() -> bool:
     return False
 
 
-def clean_data_for_training(df: pd.DataFrame) -> pd.DataFrame:
-    """Conservative cleanup applied causally on the full enhanced frame.
-
-    * Inf -> NaN (row-wise, causal).
-    * Drop columns with >30% NaN (column-set decision; barely informative).
-    * Forward-fill remaining feature NaNs (past -> future, causal).
-    * Final feature fill-with-0 to handle warmup-period leading NaNs.
-
-    Label columns keep their NaNs: the final ``horizon`` rows have no observed
-    forward outcome and must be excluded by the downstream ``dropna(target)``.
-
-    Outlier clipping is intentionally NOT done here — that lives in
-    ``FeatureEngineer.transform_features`` which uses train-only bounds
-    (audit b). Doing 5×IQR clipping on the full frame here
-    would re-introduce a row-level future-leak via the IQR computation.
-    """
-    # The whole pipeline (point-in-time sentiment join, date
-    # filtering) assumes an ET-localized index. Fail loud if feature building
-    # dropped the tz rather than letting naive timestamps leak downstream.
-    if isinstance(df.index, pd.DatetimeIndex):
-        assert df.index.tz is not None, "training frame index lost its timezone"
-    result = df.replace([np.inf, -np.inf], np.nan)
-    label_cols = [col for col in result.columns if is_label_column(col)]
-    labels = result[label_cols].copy()
-    feature_cols = [col for col in result.columns if col not in label_cols]
-
-    nan_pct = result[feature_cols].isna().mean()
-    high_nan_cols = nan_pct[nan_pct > 0.3].index.tolist()
-    if high_nan_cols:
-        logger.warning(f"Dropping {len(high_nan_cols)} cols with >30% NaN")
-        result = result.drop(columns=high_nan_cols)
-    result = result.ffill().fillna(0)
-    for col in label_cols:
-        result[col] = labels[col]
-    return result
-
-
-def build_features(
-    raw_df: pd.DataFrame,
-    symbol: str,
-    feature_engineer: FeatureEngineer,
-    sentiment_analyzer: Optional[SentimentAnalyzer],
-    horizon: int,
-) -> pd.DataFrame:
-    """Causally build the full enhanced frame for one symbol.
-
-    Technical indicators (rolling/ewm/pct_change) are causal so they may
-    be computed once on the full series. Sentiment join is point-in-time
-    (the B9 fix). FE scaling + outlier clipping happens per fold inside
-    ``train_symbol_wfo`` so this frame is intentionally UNSCALED.
-    """
-    df = feature_engineer.create_features(raw_df)
-    df = feature_engineer.create_lagged_features(df, [1, 2, 5, 10])
-    df = feature_engineer.create_target_variable(df, "close", horizon)
-
-    if sentiment_analyzer is not None:
-        sentiment = sentiment_analyzer.create_sentiment_features(
-            symbol, pd.DatetimeIndex(df.index)  # type: ignore
-        )
-        if not sentiment.empty:
-            df = df.join(sentiment)
-
-    df = clean_data_for_training(df)
-    return df
-
-
 def build_policy_fit_kwargs(
     model_names: List[str],
     X_train: pd.DataFrame,
@@ -593,6 +533,18 @@ def train_symbol_wfo(
         )
         write_fold_status(fold_dir, status="complete")
 
+    # Fold counts are conserved quantities (SPEC N5/N7): the requested and
+    # realized counts are recorded side by side so a purge/embargo skip can
+    # never silently move a per-fold denominator.
+    n_requested = splitter.get_n_splits()
+    n_yielded = splitter.n_yielded_
+    if n_yielded is not None and n_yielded != n_requested:
+        logger.warning(
+            f"[{symbol}] PurgedWalkForward yielded {n_yielded} of "
+            f"{n_requested} requested folds ({splitter.n_skipped_} skipped); "
+            f"aggregates below are over the realized count."
+        )
+
     if per_fold_metrics:
         aggregated = aggregate_fold_metrics(per_fold_metrics)
         log_metrics_safe(aggregated)
@@ -602,6 +554,15 @@ def train_symbol_wfo(
                 for m in per_fold_metrics
             ],
             "aggregated": {k: float(v) for k, v in aggregated.items()},
+            "fold_counts": {
+                "requested": int(n_requested),
+                "yielded": int(n_yielded) if n_yielded is not None else None,
+                "skipped": (
+                    int(splitter.n_skipped_)
+                    if splitter.n_skipped_ is not None else None
+                ),
+                "fit": len(per_fold_metrics),
+            },
         }
         with open(symbol_dir / "fold_metrics.json", "w") as f:
             json.dump(out_payload, f, indent=2)
@@ -700,7 +661,7 @@ def main():
     experiment_id = init_mlflow(args.experiment)
 
     data_loader = DataLoader()
-    all_data = data_loader.fetch_training_data(training_config)
+    all_data = fetch_training_frames(data_loader, training_config)
     all_data = filter_universe_asof(all_data, args.universe_asof)
     if not all_data:
         logger.error("No data fetched for any symbol; aborting")

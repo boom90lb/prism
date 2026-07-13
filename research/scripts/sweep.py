@@ -45,32 +45,11 @@ import mlflow
 import numpy as np
 import pandas as pd
 
-from research.scripts.backtest import load_fold_ensemble, run_symbol_wfo
-from research.scripts._cli_common import add_execution_args
-from research.scripts.training import (
-    build_features,
-    parse_model_names,
-    train_symbol_wfo,
-)
-from prism.config import (
-    DEFAULT_MODEL_WEIGHTS,
-    DEFAULT_TRAINING_CONFIG,
-    PROJECT_DIR,
-    ModelConfig,
-    TrainingConfig,
-)
-from prism.features import forward_return_column
-from prism.data_loader import DataLoader
-from prism.features import FeatureEngineer
-from research.tracking.mlflow_utils import (
-    init_mlflow,
-    log_artifact_dir,
-    log_metrics_safe,
-    log_params_safe,
-)
+from prism.config import PROJECT_DIR
+from prism.io.loader import DataLoader
 from prism.validation.metrics import (
-    deflated_sharpe_ratio,
-    expected_max_sharpe,
+    deflated_sharpe_ratio_with_n,
+    expected_max_sharpe_with_n,
     periodic_sharpe,
     probabilistic_sharpe_ratio,
 )
@@ -81,6 +60,26 @@ from prism.validation.trials import (
     validate_claim_packet_dir,
 )
 from prism.validation.walk_forward import PurgedWalkForward
+from research.config import (
+    DEFAULT_MODEL_WEIGHTS,
+    DEFAULT_TRAINING_CONFIG,
+    ModelConfig,
+    TrainingConfig,
+)
+from research.features import FeatureEngineer, forward_return_column
+from research.scripts._cli_common import add_execution_args, fetch_training_frames
+from research.scripts.backtest import load_fold_ensemble, run_symbol_wfo
+from research.scripts.training import (
+    build_features,
+    parse_model_names,
+    train_symbol_wfo,
+)
+from research.tracking.mlflow_utils import (
+    init_mlflow,
+    log_artifact_dir,
+    log_metrics_safe,
+    log_params_safe,
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -149,8 +148,12 @@ def summarize_sweep(trials: List[TrialResult]) -> Dict[str, Any]:
     """Select the best trial and deflate its Sharpe over the full trial set.
 
     Selection is argmax of the periodic Sharpe; ``sr_obs`` is that same
-    selected trial's daily Sharpe (so DSR corrects the selection bias). DSR
-    is NaN when <2 trials produced a finite Sharpe (nothing to deflate).
+    selected trial's daily Sharpe (so DSR corrects the selection bias). The
+    deflation N is the number of trials *searched* — a grid point that
+    produced a NaN Sharpe (traded nothing, blew up) was still searched and
+    must deflate the survivor (SPEC N5); only the cross-trial dispersion is
+    estimated from the finite Sharpes. DSR is NaN when <2 trials produced a
+    finite Sharpe (no dispersion estimate).
     """
     valid = [t for t in trials if np.isfinite(t.sharpe)]
     trial_table = [
@@ -172,9 +175,11 @@ def summarize_sweep(trials: List[TrialResult]) -> Dict[str, Any]:
 
     best = max(valid, key=lambda t: t.sharpe)
     trial_sharpes = np.array([t.sharpe for t in valid], dtype=float)
-    sr_null = expected_max_sharpe(trial_sharpes)
+    sr_null = expected_max_sharpe_with_n(trial_sharpes, len(trials))
     psr = probabilistic_sharpe_ratio(best.combined_returns, sr_benchmark=0.0)
-    dsr = deflated_sharpe_ratio(best.combined_returns, trial_sharpes)
+    dsr = deflated_sharpe_ratio_with_n(
+        best.combined_returns, trial_sharpes, len(trials)
+    )
 
     def _f(x: float) -> Optional[float]:
         return float(x) if np.isfinite(x) else None
@@ -479,7 +484,7 @@ def prepare_sweep_data(args) -> Dict[str, pd.DataFrame]:
         expanding=not args.rolling,
     )
     data_loader = DataLoader()
-    all_data = data_loader.fetch_training_data(training_config)
+    all_data = fetch_training_frames(data_loader, training_config)
     feature_engineer = FeatureEngineer()
     sentiment_analyzer = None
 

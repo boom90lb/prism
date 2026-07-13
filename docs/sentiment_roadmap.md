@@ -7,8 +7,10 @@ that follows.
 
 ## Current state (Phase 3.1)
 
-Two analyzers in [`src/sentiment_analysis.py`](../src/sentiment_analysis.py)
-share one point-in-time (PIT) feature contract:
+Two analyzers in
+[`research/sentiment_analysis.py`](../research/sentiment_analysis.py) (moved
+under the R1 quarantine — sentiment is an optional research signal, not a
+production dependency) share one point-in-time (PIT) feature contract:
 
 | Analyzer | Scoring | Status |
 | --- | --- | --- |
@@ -25,8 +27,9 @@ exactly one place and cannot drift between the two scorers.
 ### Design choices
 
 - **Continuous, signed score** `P(pos) − P(neg)`, not a discrete label. Downstream
-  feature construction and `trading.py` signal blending want signal *strength*,
-  not just direction. Neutral probability mass is implicit in the gap from ±1.
+  feature construction and `research/trading.py` signal blending want signal
+  *strength*, not just direction. Neutral probability mass is implicit in the
+  gap from ±1.
 - **Label order read from `model.config.id2label`, never hardcoded.** ProsusAI's
   FinBERT class order has bitten many integrators; the wrong index silently flips
   the sign of the entire signal. `_resolve_label_index` resolves the positive and
@@ -39,8 +42,8 @@ exactly one place and cannot drift between the two scorers.
   512-token windows and average the chunk scores, retaining the article tail that
   plain truncation would discard.
 - **Lazy `transformers`/`torch` import** inside `__init__` keeps
-  `import src.sentiment_analysis` cheap for callers using only the keyword path
-  or the PIT helpers.
+  `import research.sentiment_analysis` cheap for callers using only the keyword
+  path or the PIT helpers.
 
 ### Documented limitations of FinBERT (carry forward to distillation)
 

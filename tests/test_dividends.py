@@ -12,8 +12,8 @@ import pandas as pd
 import pytest
 
 from prism.config import ExecutionConfig, TradingConfig
-from prism.models.base import BaseModel
-from prism.trading import Position, TradingStrategy
+from research.models.base import BaseModel
+from research.trading import Position, TradingStrategy
 
 
 def _zero_cfg() -> ExecutionConfig:

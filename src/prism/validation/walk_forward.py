@@ -20,6 +20,7 @@ DatetimeIndex (the embargo is in bar count, not wall-clock).
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 from typing import Iterator, Sized, Tuple
 
@@ -48,12 +49,25 @@ class PurgedWalkForward:
         If True, each fold's train set starts at index 0 (expanding window).
         If False, train is a rolling window of length ``test_size * 2``
         ending immediately before the purge zone.
+    strict : bool, default False
+        If True, a fold whose training set is emptied by purge/embargo
+        raises ``ValueError`` instead of being skipped. Use on any path
+        where the fold count is a claim denominator.
+
+    Notes
+    -----
+    Fold counts are conserved quantities: a skipped fold silently changes
+    every per-fold denominator downstream. Skips therefore always emit a
+    ``RuntimeWarning``, and after the iterator returned by :meth:`split` is
+    fully consumed, ``n_yielded_`` and ``n_skipped_`` hold the realized
+    counts for downstream assertions.
     """
 
     n_splits: int
     purge_horizon: int
     embargo_pct: float = 0.01
     expanding: bool = True
+    strict: bool = False
 
     def __post_init__(self) -> None:
         if self.n_splits < 1:
@@ -66,6 +80,20 @@ class PurgedWalkForward:
             raise ValueError(
                 f"embargo_pct must be in [0, 1), got {self.embargo_pct}"
             )
+        self.n_yielded_: int | None = None
+        self.n_skipped_: int | None = None
+
+    def _skip_fold(self, k: int, reason: str) -> None:
+        """Record a skipped fold: raise in strict mode, warn otherwise."""
+        msg = (
+            f"PurgedWalkForward: fold {k} of {self.n_splits} skipped "
+            f"({reason}). The realized fold count no longer matches the "
+            f"requested count; every per-fold denominator downstream moves."
+        )
+        if self.strict:
+            raise ValueError(msg)
+        warnings.warn(msg, RuntimeWarning, stacklevel=3)
+        self.n_skipped_ = (self.n_skipped_ or 0) + 1
 
     def get_n_splits(self, X: Sized | None = None) -> int:
         return self.n_splits
@@ -83,6 +111,8 @@ class PurgedWalkForward:
         embargo = int(self.embargo_pct * n)
         test_size = n // (self.n_splits + 1)
 
+        self.n_yielded_ = 0
+        self.n_skipped_ = 0
         prior_embargo_zones: list[tuple[int, int]] = []
 
         for k in range(self.n_splits):
@@ -93,6 +123,10 @@ class PurgedWalkForward:
                 test_end = n
             train_end = test_start - self.purge_horizon
             if train_end <= 0:
+                self._skip_fold(
+                    k, f"purge_horizon={self.purge_horizon} consumes the "
+                    f"entire training pool before test_start={test_start}"
+                )
                 prior_embargo_zones.append(
                     (test_end, min(test_end + embargo, n))
                 )
@@ -112,11 +146,15 @@ class PurgedWalkForward:
             test_idx = np.arange(test_start, test_end)
 
             if len(train_idx) == 0:
+                self._skip_fold(
+                    k, "training set emptied by prior embargo zones"
+                )
                 prior_embargo_zones.append(
                     (test_end, min(test_end + embargo, n))
                 )
                 continue
 
+            self.n_yielded_ += 1
             yield train_idx, test_idx
             prior_embargo_zones.append(
                 (test_end, min(test_end + embargo, n))

@@ -1,9 +1,13 @@
-"""Configuration settings for the Prism engine."""
+"""Production configuration: directories, spine API keys, cost dataclasses.
+
+The ensemble-side half of the pre-R1 config (member/ensemble/training
+dataclasses, research artifact dirs, the MLflow URI, the Polygon news key)
+lives in ``research/config.py`` with its only consumers (SPEC §9).
+"""
 
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional
 
 import dotenv
 
@@ -13,92 +17,14 @@ dotenv.load_dotenv()
 # so the repo root is three levels up.
 PROJECT_DIR = Path(__file__).parents[2]
 DATA_DIR = PROJECT_DIR / "data"
-MODELS_DIR = PROJECT_DIR / "models"
 RESULTS_DIR = PROJECT_DIR / "results"
-MLRUNS_DIR = PROJECT_DIR / "mlruns"
 LOGS_DIR = PROJECT_DIR / "logs"
 
-for directory in [DATA_DIR, MODELS_DIR, RESULTS_DIR]:
+for directory in [DATA_DIR, RESULTS_DIR]:
     directory.mkdir(exist_ok=True, parents=True)
 
-# API keys
+# API key for the Twelve Data spine (prism.io.loader).
 TWELVEDATA_API_KEY = os.getenv("TWELVEDATA_API_KEY")
-POLYGON_API_KEY = os.getenv("POLYGON_API_KEY")
-
-# MLflow tracking URI — defaults to a local file store under the project root.
-MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", f"file://{MLRUNS_DIR}")
-
-
-@dataclass
-class ModelConfig:
-    """Configuration for an individual model in the ensemble."""
-
-    name: str
-    enabled: bool = True
-    weight: float = 1.0
-
-
-@dataclass
-class EnsembleConfig:
-    """Configuration for the ensemble model."""
-
-    models: List[ModelConfig]
-    weighting_strategy: str = "static"  # "static" or "dynamic"
-    # Vol-targeting knobs for the forecast→position mapping. Exposed here
-    # so a hyperparameter sweep can vary them as first-class, persisted
-    # config rather than poking post-construction attrs.
-    target_vol: float = 1.0
-    position_cap: float = 1.0
-
-    def __post_init__(self):
-        assert self.target_vol > 0, f"target_vol must be > 0; got {self.target_vol}"
-        assert self.position_cap > 0, (
-            f"position_cap must be > 0; got {self.position_cap}"
-        )
-
-
-@dataclass
-class TrainingConfig:
-    """Configuration for model training.
-
-    ``train_test_split`` and ``cv_folds`` are retired — train/test
-    folding is driven entirely by the WFO knobs (``n_splits``,
-    ``purge_horizon``, ``embargo_pct``, ``expanding``) consumed by
-    ``PurgedWalkForward`` in research/scripts/training.py and research/scripts/backtest.py.
-    """
-
-    symbols: List[str]
-    timeframe: str = "1d"
-    start_date: str = "2020-01-01"
-    end_date: Optional[str] = None
-    prediction_horizon: int = 5
-    use_sentiment: bool = False
-    # Outer-WFO knobs. purge_horizon=None -> use prediction_horizon.
-    n_splits: int = 5
-    purge_horizon: Optional[int] = None
-    embargo_pct: float = 0.01
-    expanding: bool = True
-
-    def __post_init__(self):
-        assert self.prediction_horizon > 0, (
-            f"prediction_horizon must be > 0; got {self.prediction_horizon}"
-        )
-        assert self.n_splits >= 2, f"n_splits must be >= 2; got {self.n_splits}"
-        assert 0.0 <= self.embargo_pct < 1.0, (
-            f"embargo_pct must be in [0, 1); got {self.embargo_pct}"
-        )
-        if self.purge_horizon is not None:
-            assert self.purge_horizon >= 0, (
-                f"purge_horizon must be >= 0; got {self.purge_horizon}"
-            )
-
-    @property
-    def effective_purge_horizon(self) -> int:
-        """Purge horizon for the WFO splitter, defaulting to prediction_horizon
-        when the explicit override is None — the forward-return label window
-        is exactly ``prediction_horizon`` bars wide so that's the right
-        default for AFML §7.4-style purging."""
-        return self.purge_horizon if self.purge_horizon is not None else self.prediction_horizon
 
 
 @dataclass
@@ -211,38 +137,3 @@ class TradingConfig:
         )
 
 
-# Single source of truth for ensemble member weights. Scripts must read from
-# here rather than hardcoding per-model overrides. The RL policy members
-# (lstm_ppo, xlstm_ppo, xlstm_grpo) are quarantined in research/ (SPEC §9)
-# and are no longer default members; research entry points that opt into
-# them fall back to weight 1.0 via `.get(name, 1.0)`.
-DEFAULT_MODEL_WEIGHTS = {
-    "arima": 1.0,
-    "prophet": 1.0,
-    "xgboost": 1.0,
-}
-
-DEFAULT_MODELS = [
-    ModelConfig(name=name, enabled=True, weight=weight)
-    for name, weight in DEFAULT_MODEL_WEIGHTS.items()
-]
-
-DEFAULT_ENSEMBLE_CONFIG = EnsembleConfig(
-    models=DEFAULT_MODELS,
-    weighting_strategy="dynamic",
-)
-
-DEFAULT_TRADING_CONFIG = TradingConfig(
-    initial_capital=10000.0,
-    position_size=0.1,
-    risk_free_rate=0.02,
-)
-
-DEFAULT_TRAINING_CONFIG = TrainingConfig(
-    symbols=["AAPL", "MSFT", "GOOG", "AMZN"],
-    timeframe="1d",
-    start_date="2020-01-01",
-    end_date=None,
-    prediction_horizon=5,
-    use_sentiment=False,
-)

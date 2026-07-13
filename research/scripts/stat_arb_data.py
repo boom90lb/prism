@@ -6,7 +6,7 @@ from typing import Dict, List
 
 import pandas as pd
 
-from prism.data_loader import DataLoader
+from prism.io.loader import DataLoader
 from prism.logging_utils import get_symbol_logger
 
 

@@ -26,9 +26,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from prism.config import EnsembleConfig, ModelConfig
-from prism.features import FeatureEngineer, forward_return_column, is_label_column
-from prism.models.ensemble import EnsembleModel
+from research.config import EnsembleConfig, ModelConfig
+from research.features import FeatureEngineer, forward_return_column, is_label_column
+from research.models.ensemble import EnsembleModel
 
 
 def _make_gbm_df(n: int, seed: int = 7, start: str = "2021-01-04") -> pd.DataFrame:
@@ -145,7 +145,7 @@ def test_loaded_ensemble_predicts_non_degenerate(tmp_path: Path):
 # --------------------------------------------------------------------------
 def test_prophet_fits_on_tz_aware_index():
     prophet = pytest.importorskip("prophet")  # noqa: F841
-    from prism.models.prophet import ProphetModel
+    from research.models.prophet import ProphetModel
 
     usable, target_col, fe = _build_enhanced(n=200, horizon=5)
     assert usable.index.tz is not None, "fixture must be tz-aware (production invariant)"
@@ -374,7 +374,7 @@ def test_calculate_signal_uses_features_for_agreement_boost(caplog):
     import logging
 
     from prism.config import TradingConfig
-    from prism.trading import TradingStrategy
+    from research.trading import TradingStrategy
 
     horizon = 5
     usable, target_col, fe = _build_enhanced(n=320, horizon=horizon)
@@ -408,7 +408,7 @@ def test_calculate_signal_uses_features_for_agreement_boost(caplog):
     )
 
     preds = np.asarray(ensemble.predict(feat), dtype=float)
-    with caplog.at_level(logging.ERROR, logger="prism.trading"):
+    with caplog.at_level(logging.ERROR, logger="research.trading"):
         strat.calculate_signal(
             preds[-1:], float(feat["close"].iloc[-1]), "SYM",
             feat.index[-1], None, features=feat,

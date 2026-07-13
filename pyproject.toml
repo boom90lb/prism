@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "prism"
-version = "0.3.1"
+version = "0.3.2"
 description = "Prism — a cross-sectional systematic trading engine (score → residualize → construct → execute), evaluated under a purged-WFO, cost-realistic, deflation-adjusted honesty harness"
 readme = "README.md"
 license = "MIT"
@@ -17,16 +17,16 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
-# Core = the production import path (SPEC N8): no JAX/torch/mlflow. The
-# research heavyweights live in the `research` extra below. `prophet` stays
-# core as a forecast member (SPEC §7.1); it transitively provides matplotlib,
-# which no prism module imports at module scope (tests/test_import_hygiene.py).
+# Core = the production import path (SPEC N8): no JAX/torch/mlflow, and —
+# since the R1 vocabulary convergence quarantined the legacy forecaster
+# stack — no prophet/matplotlib either (tests/test_import_hygiene.py pins
+# the closure). xgboost/statsmodels stay core: prism.signal.ensemble_node
+# uses them.
 dependencies = [
     "numpy>=1.24.0",
     "pandas>=2.0.0",
     "scikit-learn>=1.2.0",
     "statsmodels>=0.14.0",
-    "prophet>=1.1.0",
     "xgboost>=1.7.0",
     "pyarrow>=10.0.0",
     "tqdm>=4.64.0",
@@ -35,10 +35,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Everything the quarantined research/ tree (RL members, mlflow tracking,
-# batch WFO CLIs) needs on top of the core. `transformers` rides here because
-# it drags torch; the FinBERT sentiment scorer imports it lazily.
+# Everything the quarantined research/ tree (the legacy forecaster stack,
+# RL members, mlflow tracking, batch WFO CLIs) needs on top of the core.
+# `transformers` rides here because it drags torch; the FinBERT sentiment
+# scorer imports it lazily. `prophet` moved here with research/models/ (it
+# was the only prophet importer, and it drags matplotlib transitively).
 research = [
+    "prophet>=1.1.0",
     "jax[cuda12]>=0.5.3",
     "flax>=0.10.5",
     "distrax>=0.1.5",

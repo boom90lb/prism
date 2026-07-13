@@ -3,7 +3,9 @@
 Flag defaults ARE the v1 frozen config. Every completed run appends one entry
 (config hash, OOS Sharpe) to a persistent JSONL trial ledger, and
 ``residual_set_dsr`` is the deflated Sharpe of *this* run's OOS returns against
-the ledger's full search history — so the first run reports NaN (one trial has
+the ledger's full search history — every searched trial counts toward the
+deflation N, degenerate NaN-Sharpe outcomes included (SPEC N5); dispersion is
+estimated from the finite Sharpes. The first run reports NaN (one trial has
 nothing to deflate against) and re-running with tweaked knobs automatically
 deflates against every previous attempt. Deleting the ledger and re-running is
 self-deception, not a fresh start.
@@ -21,19 +23,27 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from prism.residual.factors import ResidualStatArbConfig
-from research.arbitrage.residual_walk_forward import residual_fold_to_dict, run_residual_stat_arb_walk_forward
-from research.arbitrage.walk_forward import StatArbWalkForwardConfig
-from prism.config import ExecutionConfig, RESULTS_DIR
-from prism.data_loader import DataLoader
+from prism.config import RESULTS_DIR, ExecutionConfig
+from prism.io.loader import DataLoader
 from prism.logging_utils import configure_logging, get_symbol_logger
-from prism.validation.metrics import deflated_sharpe_ratio, deflated_sharpe_ratio_with_n
+from prism.residual.factors import ResidualStatArbConfig
+from prism.validation.metrics import (
+    after_cost_hurdle_periodic,
+    deflated_sharpe_ratio_with_n,
+)
 from prism.validation.trials import (
     current_git_commit,
     emit_research_claim_packet,
     summary_claim_fields,
     validate_claim_packet_dir,
 )
+from research.arbitrage.residual_walk_forward import (
+    GAMMA_RISK,
+    SPREAD_BUCKET_SCHEDULE_V1,
+    residual_fold_to_dict,
+    run_residual_stat_arb_walk_forward,
+)
+from research.arbitrage.walk_forward import StatArbWalkForwardConfig
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +99,22 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--position_unit", type=float, default=0.02)
     p.add_argument("--sizing_mode", type=str, default="unit", choices=["unit", "strength"])
     p.add_argument(
+        "--decision_every",
+        type=int,
+        default=1,
+        help="State-machine decisions and trading every k-th bar of each window "
+        "(demotion_design.md §2). 1 = frozen-v1 daily; any other value is a "
+        "counted demotion-budget trial.",
+    )
+    p.add_argument(
+        "--sscore_ewma_halflife",
+        type=float,
+        default=0.0,
+        help="Causal EWMA halflife (bars) on s-scores before the state machine "
+        "(demotion_design.md §2). 0 = off (frozen v1); any other value is a "
+        "counted demotion-budget trial.",
+    )
+    p.add_argument(
         "--volume_time",
         action="store_true",
         help="A-L §6 trading-time ablation: weight residual returns by typical/actual volume. "
@@ -122,9 +148,34 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--no_trade_band", type=float, default=0.0,
                    help="Proportional no-trade band on book weights (Davis-Norman/Garleanu-Pedersen): hold a "
                         "name until its target moves > band, cutting turnover. 0 = off (frozen-v1). A new ledger trial.")
-    p.add_argument("--band_mode", type=str, default="fixed", choices=["fixed", "cost_aware"],
+    p.add_argument("--band_mode", type=str, default="fixed", choices=["fixed", "cost_aware", "closed_form"],
                    help="'fixed' uses the scalar --no_trade_band (frozen-v1); 'cost_aware' sizes a per-name band "
-                        "from each name's OU half-life and round-trip cost (gamma=1.0, not fitted). A new ledger trial.")
+                        "from each name's OU half-life and round-trip cost (gamma=1.0, not fitted); 'closed_form' "
+                        "is the Martin (2012) cube-root band from formation-window target-change variance and "
+                        "round-trip cost (gamma_risk=1.0, pre-registered, r2_design.md §1). A new ledger trial.")
+    p.add_argument("--spread_mode", type=str, default="flat", choices=["flat", "bucket"],
+                   help="'flat' charges ExecutionConfig.spread_bps on every name (frozen-v1); 'bucket' prices each "
+                        "name's spread from its formation-window median dollar volume through "
+                        "SPREAD_BUCKET_SCHEDULE_V1 (conservative upper proxy, no fill data yet — r2_design.md §3). "
+                        "A new ledger trial.")
+    p.add_argument("--max_participation", type=float, default=0.0,
+                   help="Hard per-name participation gate: cap each name-day trade to this fraction of trailing "
+                        "median ADV inside the online band loop, before cost accounting (r2_design.md §2). "
+                        "0 = off (frozen-v1); pre-registered enable value 0.05. A new ledger trial.")
+    p.add_argument("--sleeve_mode", type=str, default="off", choices=["off", "momentum_only", "two_speed"],
+                   help="Arm-B momentum sleeve (demotion_design.md §§2b-3): 'momentum_only' runs the 12-1 "
+                        "cross-sectional momentum book alone (B1); 'two_speed' sums the residual and momentum "
+                        "target rows pre-cap and runs one combined book (B2). 'off' = frozen-v1. "
+                        "A new ledger trial.")
+    p.add_argument("--mom_lookback", type=int, default=252,
+                   help="Momentum formation lookback in bars (demotion_design.md §2b; pre-registered 252).")
+    p.add_argument("--mom_skip", type=int, default=21,
+                   help="Most-recent bars skipped by the momentum score (pre-registered 21: the 12-1 convention).")
+    p.add_argument("--mom_decision_every", type=int, default=21,
+                   help="Momentum component refresh cadence in bars (pre-registered 21 = monthly); the emitted "
+                        "row picks a refresh up at the next trading decision bar.")
+    p.add_argument("--mom_decile", type=float, default=0.10,
+                   help="Fraction of the eligible cross-section per momentum leg (pre-registered 0.10).")
     # Execution costs.
     p.add_argument("--commission_bps", type=float, default=1.0)
     p.add_argument("--spread_bps", type=float, default=1.0)
@@ -145,6 +196,15 @@ def parse_args() -> argparse.Namespace:
                    help="Pre-registered floor on researcher degrees of freedom: count the design grid you "
                         "searched (configs tried AND discarded), not just runs logged. >0 deflates "
                         "residual_set_dsr against max(N, ledger rows). 0 = ledger-only (optimistic).")
+    p.add_argument("--hurdle_annual_pct", type=float, default=0.0,
+                   help="After-cost hurdle in percent per annum (SPEC §10): anchor at minimum to the "
+                        "prevailing T-bill yield (FRED DTB3), the cash book's opportunity cost. The "
+                        "hurdle and its basis are recorded in the summary and claim packet; the "
+                        "default 0.0 is an explicitly recorded nominal zero, never an implicit one.")
+    p.add_argument("--hurdle_basis", type=str, default="nominal_zero",
+                   choices=("nominal_zero", "tbill_nominal", "tbill_real"),
+                   help="Basis of --hurdle_annual_pct, recorded alongside it (SPEC §10: under "
+                        "financial repression a nominal-zero hurdle overstates viability).")
     p.add_argument("--verbose", action="store_true")
     return p.parse_args()
 
@@ -249,8 +309,16 @@ def _config_payload(
     return {
         "strategy": STRATEGY_TAG,
         "signal": asdict(signal_cfg),
+        # band_mode / spread_mode / max_participation ride in via asdict(walk);
+        # the pre-registered constants they imply are pinned here so the hash
+        # changes if the schedule or gamma_risk ever changes (r2_design.md §§1,3).
         "walk": asdict(walk_cfg),
         "execution": asdict(execution),
+        "band_gamma_risk": float(GAMMA_RISK),
+        "spread_schedule": {
+            "name": "SPREAD_BUCKET_SCHEDULE_V1",
+            "buckets": [[float(floor), float(bps)] for floor, bps in SPREAD_BUCKET_SCHEDULE_V1],
+        },
         "initial_capital": float(args.initial_capital),
         "design_trials": int(args.design_trials),
         "start_date": args.start_date,
@@ -283,7 +351,7 @@ def _membership_provenance(args: argparse.Namespace, closes: pd.DataFrame) -> tu
     }
     mask = None
     if args.membership:
-        from prism.universe_sp500 import build_membership_mask
+        from prism.io.universe_sp500 import build_membership_mask
 
         membership = pd.read_parquet(args.membership)
         mask = build_membership_mask(membership, closes.index, list(closes.columns))
@@ -305,15 +373,22 @@ def _append_trial(ledger_path: Path, entry: dict[str, object]) -> None:
         f.write(json.dumps(entry, sort_keys=True, allow_nan=True) + "\n")
 
 
-def _load_trial_sharpes(ledger_path: Path) -> list[float]:
-    """All finite periodic OOS Sharpes recorded in the ledger.
+def _load_trial_sharpes(ledger_path: Path) -> tuple[list[float], int]:
+    """``(finite_sharpes, n_trials_searched)`` from the trial ledger.
+
+    Every parseable ledger entry counts toward ``n_trials_searched`` — a
+    NaN-Sharpe trial (a config that traded nothing, or blew up) was still a
+    searched configuration and must deflate the survivor (SPEC N5); only the
+    cross-trial *dispersion* is estimated from the finite Sharpes. Deflating
+    against the finite count alone sets the false-strategy benchmark too low.
 
     A corrupt line is logged loudly: silently dropping trials understates the
     search history and inflates the deflated Sharpe.
     """
     if not ledger_path.exists():
-        return []
+        return [], 0
     sharpes: list[float] = []
+    n_searched = 0
     for lineno, line in enumerate(ledger_path.read_text().splitlines(), start=1):
         line = line.strip()
         if not line:
@@ -323,10 +398,11 @@ def _load_trial_sharpes(ledger_path: Path) -> list[float]:
         except json.JSONDecodeError:
             logger.warning(f"Trial ledger {ledger_path} line {lineno} is corrupt; DSR will understate trials")
             continue
+        n_searched += 1
         sharpe = entry.get("oos_periodic_sharpe")
         if isinstance(sharpe, (int, float)) and np.isfinite(sharpe):
             sharpes.append(float(sharpe))
-    return sharpes
+    return sharpes, n_searched
 
 
 def main() -> None:
@@ -335,7 +411,9 @@ def main() -> None:
     symbols = _resolve_symbols(args)
     frames = _fetch_frames(symbols, args.start_date, args.end_date)
     if args.universe_asof:
-        from research.scripts.training import filter_universe_asof  # heavy transitive imports; see _resolve_symbols
+        from research.scripts.training import (
+            filter_universe_asof,  # heavy transitive imports; see _resolve_symbols
+        )
 
         frames = filter_universe_asof(frames, args.universe_asof)
     min_stocks = 2 if args.factor_mode == "etf" else args.n_factors + 2
@@ -380,6 +458,8 @@ def main() -> None:
         factor_mode=args.factor_mode,
         etf_symbols=tuple(etf_syms),
         sizing_mode=args.sizing_mode,
+        decision_every=args.decision_every,
+        sscore_ewma_halflife_bars=args.sscore_ewma_halflife,
     )
     walk_cfg = StatArbWalkForwardConfig(
         formation_bars=args.formation_bars,
@@ -390,6 +470,13 @@ def main() -> None:
         max_symbol_abs_weight=args.max_symbol_abs_weight,
         no_trade_band=args.no_trade_band,
         band_mode=args.band_mode,
+        spread_mode=args.spread_mode,
+        max_participation=args.max_participation,
+        sleeve_mode=args.sleeve_mode,
+        mom_lookback_bars=args.mom_lookback,
+        mom_skip_bars=args.mom_skip,
+        mom_decision_every=args.mom_decision_every,
+        mom_decile=args.mom_decile,
     )
     execution = ExecutionConfig(
         spread_bps=args.spread_bps,
@@ -449,23 +536,40 @@ def main() -> None:
             "config": payload,
         },
     )
-    trial_sharpes = _load_trial_sharpes(ledger_path)
-    if args.design_trials > 0:
-        residual_set_dsr = deflated_sharpe_ratio_with_n(
-            result.portfolio.returns, np.asarray(trial_sharpes), args.design_trials
-        )
-    else:
-        residual_set_dsr = deflated_sharpe_ratio(result.portfolio.returns, np.asarray(trial_sharpes))
+    trial_sharpes, n_trials_searched = _load_trial_sharpes(ledger_path)
+    # Deflate against every *searched* trial (degenerate outcomes included),
+    # never only the finite-Sharpe survivors; design_trials can pre-register a
+    # still-larger grid but can never lower the count below the ledger's.
+    n_deflation = max(int(args.design_trials), n_trials_searched)
+    residual_set_dsr = deflated_sharpe_ratio_with_n(
+        result.portfolio.returns, np.asarray(trial_sharpes), n_deflation
+    )
+
+    # The after-cost hurdle is a stated choice with a recorded basis (SPEC
+    # §10), never an implicit nominal zero. It is an evaluation lens, not a
+    # searched knob, so it is deliberately NOT part of the config hash — a
+    # re-judged hurdle is not a new trial.
+    oos_vol = float(result.portfolio.returns.dropna().std(ddof=1))
+    hurdle_block = {
+        "annual_pct": float(args.hurdle_annual_pct),
+        "basis": str(args.hurdle_basis),
+        "periodic_sharpe_hurdle": float(
+            after_cost_hurdle_periodic(args.hurdle_annual_pct / 100.0, oos_vol)
+        ),
+    }
 
     summary: dict[str, object] = {
         "output_dir": str(out_dir),
         "config_hash": config_hash,
         "trial_ledger": str(ledger_path),
-        "ledger_trials": len(trial_sharpes),
+        "ledger_trials": n_trials_searched,
+        "ledger_trials_finite_sharpe": len(trial_sharpes),
+        "deflation_trials": int(n_deflation),
         "design_trials": int(args.design_trials),
         "initial_capital": float(args.initial_capital),
         **result.summary,
         "residual_set_dsr": float(residual_set_dsr),
+        "after_cost_hurdle": hurdle_block,
         "universe": universe_meta,
         "coverage_skipped": coverage_skipped,
     }

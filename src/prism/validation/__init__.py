@@ -1,5 +1,9 @@
 """Validation utilities (purged walk-forward, metrics, conformal)."""
 
+from prism.validation.anytime import (
+    anytime_confidence_sequence,
+    anytime_monitor_read,
+)
 from prism.validation.metrics import (
     calmar_ratio,
     periodic_sharpe,
@@ -32,6 +36,8 @@ from prism.validation.walk_forward import PurgedWalkForward
 
 __all__ = [
     "PurgedWalkForward",
+    "anytime_confidence_sequence",
+    "anytime_monitor_read",
     "CLAIM_GROSS_EDGE",
     "CLAIM_MECHANICS_CLEAN",
     "CLAIM_NET_EDGE",

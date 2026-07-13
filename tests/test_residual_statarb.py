@@ -9,15 +9,19 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from research.scripts.stat_arb_residual_wfo import _append_trial, _config_hash, _load_trial_sharpes
+from prism.config import ExecutionConfig
+from prism.portfolio.construct import (
+    apply_no_trade_band,
+)
+from prism.portfolio.construct import build_residual_book_row as build_book_row
+from prism.portfolio.construct import (
+    cap_book,
+    cost_aware_band,
+)
 from prism.residual.factors import ResidualStatArbConfig, etf_factor_portfolios
 from prism.residual.residual import (
     OUFit,
-    apply_no_trade_band,
-    build_book_row,
-    cap_book,
     compute_residual_signal_panel,
-    cost_aware_band,
     fit_ou_batch,
     next_states,
     run_state_machine,
@@ -28,7 +32,11 @@ from research.arbitrage.residual_walk_forward import (
     run_residual_stat_arb_walk_forward,
 )
 from research.arbitrage.walk_forward import StatArbWalkForwardConfig
-from prism.config import ExecutionConfig
+from research.scripts.stat_arb_residual_wfo import (
+    _append_trial,
+    _config_hash,
+    _load_trial_sharpes,
+)
 
 _FROZEN = ResidualStatArbConfig()
 
@@ -72,6 +80,41 @@ def _synthetic_panel(
 # ---------------------------------------------------------------------------
 # OU fit and s-score
 # ---------------------------------------------------------------------------
+
+
+def test_stale_rebalance_bench_degrosses_explicitly() -> None:
+    """When mid-window ineligibility thins the cross-section below the
+    re-estimation floor, rebalances skip and the old eigenportfolios stay in
+    force. Unbounded (frozen-v1 default) that means trading on arbitrarily
+    stale factors; ``max_stale_rebalances`` benches signal emission instead.
+    """
+    closes, volumes = _synthetic_panel(n_days=240)
+    # 5 of 8 names lose their liquidity eligibility from day 120: the 3
+    # survivors stay tradeable candidates, but 3 < n_factors + 2 = 4 means
+    # every subsequent rebalance is skipped.
+    volumes = volumes.copy()
+    volumes.iloc[120:, :5] = 0.001
+
+    unbounded = compute_residual_signal_panel(closes, volumes, _small_config())
+    bounded = compute_residual_signal_panel(
+        closes, volumes, _small_config(max_stale_rebalances=1)
+    )
+
+    assert unbounded.skipped_rebalances > 2
+    assert unbounded.n_stale_benched.sum() == 0
+    # Frozen-v1 behavior: signals keep flowing on the stale eigenportfolios.
+    assert np.isfinite(unbounded.sscore.iloc[140:].to_numpy()).any()
+
+    # Identical up to the collapse (the guard is inert while rebalances land).
+    pd.testing.assert_frame_equal(
+        bounded.sscore.iloc[:120], unbounded.sscore.iloc[:120]
+    )
+    benched = bounded.n_stale_benched.astype(bool)
+    assert benched.sum() > 0
+    # On benched days nothing is tradeable and no s-score is emitted.
+    assert not bounded.tradeable.to_numpy()[benched].any()
+    assert not np.isfinite(bounded.sscore.to_numpy()[benched]).any()
+    assert bounded.diagnostics()["stale_benched_days"] == float(benched.sum())
 
 
 def test_fit_ou_batch_recovers_ar1_parameters() -> None:
@@ -404,6 +447,33 @@ def test_walk_config_rejects_negative_no_trade_band() -> None:
         StatArbWalkForwardConfig(no_trade_band=-0.1)
 
 
+def test_online_band_hysteresis_tracks_actually_held_weights() -> None:
+    """The WFO band now runs the online form (step_no_trade_band) with the
+    post-cap row fed back as held state — the same semantics a live loop has.
+    The retired batch+recap form compared tomorrow's target against weights
+    the book never held (pre-recap), the divergence machine-checked in
+    formal/PrismFormal/Band.lean.
+    """
+    from research.arbitrage.residual_walk_forward import _online_banded_targets
+
+    cfg = StatArbWalkForwardConfig(max_gross=1.0, max_symbol_abs_weight=1.0)
+    idx = pd.date_range("2024-01-01", periods=3, freq="B")
+    targets = pd.DataFrame(
+        [[0.8, 0.0], [0.8, 0.6], [0.65, 0.42]], index=idx, columns=["A", "B"]
+    )
+    out = _online_banded_targets(targets, 0.1, cfg)
+
+    # Day 0: adopt A, under cap.
+    assert out.iloc[0].tolist() == [0.8, 0.0]
+    # Day 1: adopt B -> gross 1.4 -> proportional recap; the *scaled* row is
+    # what the book holds.
+    assert out.iloc[1].to_numpy() == pytest.approx([0.8 / 1.4, 0.6 / 1.4])
+    # Day 2: both targets sit within the band of the scaled held weights, so
+    # the book does not move. The batch+recap form would have traded here
+    # (|0.65 - 0.8| and |0.42 - 0.6| both exceed the band).
+    assert out.iloc[2].to_numpy() == pytest.approx(out.iloc[1].to_numpy())
+
+
 def test_no_trade_band_cuts_turnover_in_wfo() -> None:
     closes, volumes = _synthetic_panel()
     base = _run_wfo(closes, volumes)
@@ -597,9 +667,12 @@ def test_trial_ledger_roundtrip_and_corruption_handling(tmp_path) -> None:
     with ledger.open("a") as f:
         f.write("{not json}\n")
 
-    sharpes = _load_trial_sharpes(ledger)
+    sharpes, n_searched = _load_trial_sharpes(ledger)
     assert sharpes == [0.05, -0.01]
-    assert _load_trial_sharpes(tmp_path / "missing.jsonl") == []
+    # The NaN-Sharpe trial was searched and must count toward deflation N
+    # (SPEC N5); only the corrupt line is excluded (and warned about).
+    assert n_searched == 3
+    assert _load_trial_sharpes(tmp_path / "missing.jsonl") == ([], 0)
 
 
 def test_config_hash_is_stable_and_sensitive() -> None:
@@ -615,3 +688,245 @@ def test_fold_dict_round_trips_through_json() -> None:
     result = _run_wfo(closes, volumes)
     payload = [residual_fold_to_dict(f) for f in result.folds]
     assert json.loads(json.dumps(payload, allow_nan=True)) is not None
+
+
+# ---------------------------------------------------------------------------
+# Demotion mechanics (docs/demotion_design.md §2): decision cadence + s-EWMA
+# ---------------------------------------------------------------------------
+
+
+def _run_wfo_signal(
+    closes: pd.DataFrame,
+    volumes: pd.DataFrame,
+    *,
+    walk_overrides: dict | None = None,
+    **signal_overrides: object,
+):
+    walk: dict = dict(formation_bars=80, test_bars=40, min_test_bars=20)
+    walk.update(walk_overrides or {})
+    return run_residual_stat_arb_walk_forward(
+        closes,
+        closes.copy(),
+        volumes,
+        signal_config=_small_config(**signal_overrides),
+        walk_config=StatArbWalkForwardConfig(**walk),
+        execution=ExecutionConfig(spread_bps=0, commission_bps=0, slippage_coeff=0, borrow_rate_bps_annual=0),
+    )
+
+
+def test_demotion_knob_validation() -> None:
+    with pytest.raises(ValueError, match="decision_every"):
+        _small_config(decision_every=0)
+    with pytest.raises(ValueError, match="sscore_ewma_halflife_bars"):
+        _small_config(sscore_ewma_halflife_bars=-1.0)
+    with pytest.raises(ValueError, match="sscore_ewma_halflife_bars"):
+        _small_config(sscore_ewma_halflife_bars=float("inf"))
+
+
+def test_demotion_defaults_are_parity() -> None:
+    closes, volumes = _synthetic_panel()
+    default = _run_wfo(closes, volumes)
+    explicit = _run_wfo_signal(closes, volumes, decision_every=1, sscore_ewma_halflife_bars=0.0)
+    assert default.summary == explicit.summary
+
+
+def _assert_frozen_between_decision_bars(result, closes: pd.DataFrame, k: int) -> None:
+    """Emitted targets may move only on decision bars and the fold-end flatten.
+
+    Fold geometry is read off ``result.folds`` (the last fold can be short a
+    bar), and the final 2 rows of each fold are the ``_force_fold_flat`` tail.
+    """
+    tw = result.portfolio.target_weights
+    pos = {d: i for i, d in enumerate(closes.index)}
+    for fold in result.folds:
+        rows = closes.index[pos[fold.test_start] : pos[fold.test_end] + 1]
+        arr = tw.reindex(rows).to_numpy()
+        for offset in range(1, len(arr) - 2):
+            if offset % k != 0:
+                assert np.array_equal(arr[offset], arr[offset - 1]), (
+                    f"target moved on non-decision bar {offset} of fold {fold.fold}"
+                )
+
+
+def test_decision_cadence_freezes_targets_between_decision_bars() -> None:
+    closes, volumes = _synthetic_panel()
+    result = _run_wfo_signal(closes, volumes, decision_every=5)
+    _assert_frozen_between_decision_bars(result, closes, 5)
+
+
+def test_decision_cadence_freezes_through_online_band_and_gate() -> None:
+    closes, volumes = _synthetic_panel()
+    result = _run_wfo_signal(
+        closes,
+        volumes,
+        decision_every=5,
+        walk_overrides=dict(no_trade_band=0.02, max_participation=0.05),
+    )
+    _assert_frozen_between_decision_bars(result, closes, 5)
+
+
+def test_decision_cadence_cuts_turnover() -> None:
+    closes, volumes = _synthetic_panel()
+    daily = _run_wfo_signal(closes, volumes)
+    weekly = _run_wfo_signal(closes, volumes, decision_every=5)
+    assert weekly.summary["avg_turnover"] <= daily.summary["avg_turnover"]
+    assert weekly.summary["avg_turnover"] > 0
+
+
+def test_demotion_stack_smoke_runs_end_to_end() -> None:
+    # The D2/D5 configuration shape: trial-3 walk stack + weekly cadence + EWMA.
+    closes, volumes = _synthetic_panel()
+    result = _run_wfo_signal(
+        closes,
+        volumes,
+        decision_every=5,
+        sscore_ewma_halflife_bars=5.0,
+        walk_overrides=dict(band_mode="closed_form", spread_mode="bucket", max_participation=0.05),
+    )
+    assert (result.portfolio.costs["gross"] <= 1.0 + 1e-9).all()
+    assert "oos_periodic_sharpe" in result.summary
+
+
+def test_sscore_ewma_smoothing_properties() -> None:
+    from research.arbitrage.residual_walk_forward import _smoothed_sscores
+
+    idx = pd.date_range("2024-01-01", periods=5, freq="B")
+    raw = pd.DataFrame(
+        {"A": [1.0, np.nan, 0.0, 0.0, 0.0], "B": [2.0, 2.0, 2.0, 2.0, 2.0]}, index=idx
+    )
+    # halflife 0 = off: bit-identical to the raw panel.
+    off = _smoothed_sscores(raw, _small_config())
+    assert np.array_equal(off, raw.to_numpy(), equal_nan=True)
+
+    sm = _smoothed_sscores(raw, _small_config(sscore_ewma_halflife_bars=1.0))
+    # A NaN day (invalid OU fit) stays NaN — smoothing never resurrects it...
+    assert np.isnan(sm[1, 0])
+    # ...but EWMA state carries across the gap: the day after still remembers
+    # the pre-gap score (raw would be 0.0 exactly).
+    assert sm[2, 0] > 0.0
+    # A constant series is a fixed point of the recursive form.
+    assert sm[:, 1] == pytest.approx(np.full(5, 2.0))
+    # Causal: appending future bars never changes past smoothed values.
+    longer = pd.concat(
+        [raw, pd.DataFrame({"A": [5.0], "B": [5.0]}, index=[idx[-1] + pd.Timedelta(days=1)])]
+    )
+    sm_longer = _smoothed_sscores(longer, _small_config(sscore_ewma_halflife_bars=1.0))
+    assert np.array_equal(sm_longer[:5], sm, equal_nan=True)
+
+
+def test_demotion_knobs_change_config_hash() -> None:
+    # A knob that moved without moving the config hash would be an uncounted
+    # trial — the exact defect class SPEC N5 bans.
+    import dataclasses
+
+    base = {"signal": dataclasses.asdict(_small_config())}
+    cadence = {"signal": dataclasses.asdict(_small_config(decision_every=5))}
+    ewma = {"signal": dataclasses.asdict(_small_config(sscore_ewma_halflife_bars=5.0))}
+    assert _config_hash(base) != _config_hash(cadence)
+    assert _config_hash(base) != _config_hash(ewma)
+
+
+# ---------------------------------------------------------------------------
+# Arm-B mechanics (docs/demotion_design.md §2b): momentum sleeve + two-speed
+# ---------------------------------------------------------------------------
+
+# Small enough that scores exist by the first test bar (80) of the test folds,
+# and a decile wide enough that floor(8 names x decile) >= 1 name per leg.
+_MOM_SMALL = dict(mom_lookback_bars=30, mom_skip_bars=5, mom_decision_every=10, mom_decile=0.2)
+
+
+def test_sleeve_knob_validation() -> None:
+    with pytest.raises(ValueError, match="sleeve_mode"):
+        StatArbWalkForwardConfig(formation_bars=80, test_bars=40, sleeve_mode="both")
+    with pytest.raises(ValueError, match="mom_lookback_bars"):
+        StatArbWalkForwardConfig(formation_bars=80, test_bars=40, mom_lookback_bars=21, mom_skip_bars=21)
+    with pytest.raises(ValueError, match="mom_decile"):
+        StatArbWalkForwardConfig(formation_bars=80, test_bars=40, mom_decile=0.6)
+
+
+def test_sleeve_off_is_parity() -> None:
+    closes, volumes = _synthetic_panel()
+    default = _run_wfo(closes, volumes)
+    explicit = _run_wfo_signal(closes, volumes, walk_overrides=dict(sleeve_mode="off"))
+    assert default.summary == explicit.summary
+
+
+def test_momentum_scores_are_causal_and_eligibility_masked() -> None:
+    from research.arbitrage.residual_walk_forward import _momentum_scores
+
+    closes, volumes = _synthetic_panel()
+    walk = StatArbWalkForwardConfig(formation_bars=80, test_bars=40, **_MOM_SMALL)
+    full = _momentum_scores(closes, volumes, _small_config(), walk, None)
+    # Insufficient history -> NaN, never a number.
+    assert not np.isfinite(full[: walk.mom_lookback_bars]).any()
+    # Causal: recomputing on a truncated panel reproduces the prefix.
+    trunc = _momentum_scores(closes.iloc[:150], volumes.iloc[:150], _small_config(), walk, None)
+    assert np.array_equal(full[:150], trunc, equal_nan=True)
+    # Eligibility mask: a name that loses the screen loses its score.
+    poor = volumes.copy()
+    poor.iloc[:, 0] = 0.001
+    masked = _momentum_scores(closes, poor, _small_config(), walk, None)
+    assert not np.isfinite(masked[:, 0]).any()
+
+
+def test_momentum_row_is_gross_one_and_balanced() -> None:
+    from research.arbitrage.residual_walk_forward import _momentum_row
+
+    scores = np.array([0.5, -0.3, 0.1, np.nan, 0.7, -0.6, 0.0, 0.2, -0.1, 0.05, 0.3])
+    row = _momentum_row(scores, decile=0.2)  # 10 finite names -> 2 per leg
+    assert np.abs(row).sum() == pytest.approx(1.0)
+    assert row.sum() == pytest.approx(0.0)
+    assert (row > 0).sum() == 2 and (row < 0).sum() == 2
+    assert row[4] > 0 and row[5] < 0  # extreme winner long, extreme loser short
+    assert row[3] == 0.0  # NaN score never trades
+    # Too thin for one name per side -> zero row, no crash.
+    assert not _momentum_row(np.array([0.1, np.nan]), decile=0.2).any()
+
+
+def test_momentum_only_book_trades_and_freezes_on_cadence() -> None:
+    closes, volumes = _synthetic_panel()
+    result = _run_wfo_signal(
+        closes,
+        volumes,
+        decision_every=10,
+        walk_overrides=dict(sleeve_mode="momentum_only", **_MOM_SMALL),
+    )
+    assert result.summary["avg_turnover"] > 0
+    assert (result.portfolio.costs["gross"] <= 1.0 + 1e-9).all()
+    _assert_frozen_between_decision_bars(result, closes, 10)
+
+
+def test_two_speed_targets_are_the_sum_of_the_sleeves() -> None:
+    closes, volumes = _synthetic_panel()
+    # Caps wide open, no band, no gate: the combined book must be exactly
+    # the sum of the standalone sleeves (demotion_design.md §2b).
+    wide = dict(max_gross=100.0, max_symbol_abs_weight=100.0)
+    residual = _run_wfo_signal(closes, volumes, walk_overrides=dict(**wide))
+    momentum = _run_wfo_signal(
+        closes, volumes, walk_overrides=dict(sleeve_mode="momentum_only", **_MOM_SMALL, **wide)
+    )
+    combined = _run_wfo_signal(
+        closes, volumes, walk_overrides=dict(sleeve_mode="two_speed", **_MOM_SMALL, **wide)
+    )
+    summed = (
+        residual.portfolio.target_weights + momentum.portfolio.target_weights
+    )
+    pd.testing.assert_frame_equal(combined.portfolio.target_weights, summed)
+
+
+def test_sleeve_knobs_change_config_hash() -> None:
+    import dataclasses
+
+    def walk_payload(**overrides: object) -> dict:
+        return {
+            "walk": dataclasses.asdict(
+                StatArbWalkForwardConfig(formation_bars=80, test_bars=40, **overrides)
+            )
+        }
+
+    base = walk_payload()
+    assert _config_hash(base) != _config_hash(walk_payload(sleeve_mode="momentum_only"))
+    assert _config_hash(base) != _config_hash(walk_payload(mom_lookback_bars=126))
+    assert _config_hash(base) != _config_hash(walk_payload(mom_skip_bars=5))
+    assert _config_hash(base) != _config_hash(walk_payload(mom_decision_every=5))
+    assert _config_hash(base) != _config_hash(walk_payload(mom_decile=0.2))

@@ -20,18 +20,24 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-from prism.residual.factors import ResidualStatArbConfig, consensus_trading_days
+from prism.residual.factors import (
+    ResidualStatArbConfig,
+    compute_eligibility,
+    consensus_trading_days,
+)
+from prism.execution.participation import participation_capped_targets
 from prism.execution.target_weights import PortfolioBacktestResult, backtest_target_weights
 from prism.residual.residual import (
     ResidualSignalPanel,
     compute_residual_signal_panel,
-    run_state_machine,
+    next_states,
 )
 from prism.portfolio.construct import (
-    apply_no_trade_band,
     build_residual_book_row,
     cap_book,
+    closed_form_band,
     cost_aware_band,
+    step_no_trade_band,
     strength_multiplier,
 )
 from research.arbitrage.walk_forward import (
@@ -50,6 +56,35 @@ from prism.validation.metrics import periodic_sharpe
 # Conviction multiplier cap for sizing_mode="strength": a documented
 # modeling constant, NOT fitted on the backtest.
 _SIZE_CAP = 2.0
+
+# Risk-aversion constant of the closed-form (Martin 2012 cube-root) band:
+# pre-registered at 1.0, never fitted or swept (docs/r2_design.md §1).
+GAMMA_RISK = 1.0
+
+# Pre-registered conservative-upper spread schedule (docs/r2_design.md §3,
+# I-9): (median formation-window dollar-volume floor, one-way spread bps),
+# descending floors. Not fitted; replaced only by fill calibration when fills
+# exist. Unknown liquidity (NaN median) lands in the widest bucket — fail-safe,
+# never cheap.
+SPREAD_BUCKET_SCHEDULE_V1: tuple[tuple[float, float], ...] = (
+    (500e6, 1.0),
+    (100e6, 2.0),
+    (25e6, 5.0),
+    (0.0, 10.0),
+)
+
+
+def bucket_spread_bps(median_dollar_volume: pd.Series) -> pd.Series:
+    """Map per-name median dollar volume through ``SPREAD_BUCKET_SCHEDULE_V1``."""
+    mdv = pd.to_numeric(median_dollar_volume, errors="coerce").to_numpy(dtype=float)
+    floors = SPREAD_BUCKET_SCHEDULE_V1[:-1]
+    with np.errstate(invalid="ignore"):
+        out = np.select(
+            [mdv >= floor for floor, _ in floors],
+            [bps for _, bps in floors],
+            default=SPREAD_BUCKET_SCHEDULE_V1[-1][1],
+        )
+    return pd.Series(out, index=median_dollar_volume.index, dtype=float)
 
 
 @dataclass(frozen=True)
@@ -94,6 +129,206 @@ def _fold_cost_share(result: PortfolioBacktestResult, test_index: pd.Index) -> f
     costs = float(result.costs.loc[rows, "total"].sum())
     gross_pnl = float((result.returns.loc[rows] + result.costs.loc[rows, "total"]).sum())
     return costs / max(abs(gross_pnl), 1e-9)
+
+
+def _momentum_scores(
+    closes: pd.DataFrame,
+    volumes: pd.DataFrame,
+    signal_config: ResidualStatArbConfig,
+    walk_config: StatArbWalkForwardConfig,
+    membership_mask: pd.DataFrame | None,
+) -> np.ndarray:
+    """Cross-sectional momentum score panel (demotion_design.md §2b).
+
+    ``score[t] = close[t - skip] / close[t - lookback] - 1`` — strictly
+    trailing, so appending future bars never changes a past score — masked to
+    the SAME eligibility screen the residual sleeve trades under. Bars without
+    ``lookback`` bars of history (and non-positive base prices) are NaN, which
+    downstream means "no momentum position", never "trade anyway".
+    """
+    lookback = walk_config.mom_lookback_bars
+    skip = walk_config.mom_skip_bars
+    px = closes.to_numpy(dtype=float)
+    n_days, n_symbols = px.shape
+    scores = np.full((n_days, n_symbols), np.nan)
+    if n_days > lookback:
+        with np.errstate(invalid="ignore", divide="ignore"):
+            base = px[: n_days - lookback]
+            recent = px[lookback - skip : n_days - skip]
+            scores[lookback:] = np.where(base > 0.0, recent / base - 1.0, np.nan)
+    elig = compute_eligibility(closes, volumes, signal_config, membership_mask)
+    scores[~elig.to_numpy(dtype=bool)] = np.nan
+    return scores
+
+
+def _momentum_row(scores_t: np.ndarray, decile: float) -> np.ndarray:
+    """Equal-weight top/bottom-decile long-short row at raw gross 1.0.
+
+    ``n_dec = floor(n_finite * decile)``; each winner gets ``+0.5/n_dec``,
+    each loser ``-0.5/n_dec`` (stable sort, so ties are deterministic). A
+    cross-section too thin for one name per side emits a zero row.
+    """
+    row = np.zeros(scores_t.shape[0])
+    finite = np.flatnonzero(np.isfinite(scores_t))
+    n_dec = int(len(finite) * decile)
+    if n_dec < 1:
+        return row
+    order = np.argsort(scores_t[finite], kind="stable")
+    row[finite[order[:n_dec]]] = -0.5 / n_dec
+    row[finite[order[-n_dec:]]] = 0.5 / n_dec
+    return row
+
+
+def _smoothed_sscores(sscore: pd.DataFrame, config: ResidualStatArbConfig) -> np.ndarray:
+    """Causal EWMA of the s-score panel (demotion_design.md §2); 0 = raw scores.
+
+    Recursive form (``adjust=False``) so a live incremental EWMA reproduces it
+    exactly; decay is per bar regardless of gaps (``ignore_na=False``), and the
+    smoothed panel is re-masked to the raw panel's NaNs — smoothing carries
+    state across an invalid-OU gap but never resurrects a day that had no
+    valid fit.
+    """
+    if config.sscore_ewma_halflife_bars <= 0.0:
+        return sscore.to_numpy()
+    smoothed = sscore.ewm(
+        halflife=config.sscore_ewma_halflife_bars, adjust=False, ignore_na=False
+    ).mean()
+    return smoothed.where(sscore.notna()).to_numpy()
+
+
+def _online_banded_targets(
+    targets: pd.DataFrame,
+    band: float | pd.Series,
+    walk_config: StatArbWalkForwardConfig,
+    *,
+    dollar_volume: pd.DataFrame | None = None,
+    aum: float = 1.0,
+    decision_every: int = 1,
+) -> pd.DataFrame:
+    """Apply the no-trade band with online (held-state) semantics over a fold.
+
+    Each day's fresh target is banded against the weights the book actually
+    holds, via ``step_no_trade_band`` — the same call a live daily loop makes
+    (SPEC §7.3) — and the post-cap row is fed back as the next day's held
+    state. The retired batch form banded the whole frame first and re-capped
+    after, so its hysteresis state tracked weights the book never held; the
+    related batch-replay-from-zero divergence is machine-checked in
+    ``formal/PrismFormal/Band.lean``. The gross/per-symbol caps are enforced
+    last because they are hard risk limits: a capped scale-down is visible to
+    the band tomorrow as the true held book. Folds genuinely start flat, so
+    the held state starts at zero.
+
+    When ``walk_config.max_participation > 0`` the hard participation gate
+    (r2_design.md §2) runs after band + caps against the held weights and that
+    day's trailing dollar volume, and the *gated* row becomes both the emitted
+    target and tomorrow's held state — the backtest charges gated trades, and
+    unfilled residual demand must re-clear the band tomorrow.
+    """
+    gate = walk_config.max_participation > 0.0
+    if gate and dollar_volume is None:
+        raise ValueError("max_participation > 0 requires a dollar_volume panel")
+    held = pd.Series(0.0, index=targets.columns)
+    out = np.empty((len(targets.index), len(targets.columns)))
+    for i, day in enumerate(targets.index):
+        if i % decision_every != 0:
+            # Non-decision bar (demotion_design.md §2): no band step, no gate,
+            # no trade — the emitted row repeats the held book exactly, which
+            # the weight-space backtest prices as zero trade.
+            out[i] = held.to_numpy(dtype=float)
+            continue
+        stepped = step_no_trade_band(held, targets.loc[day], band)
+        capped = cap_book(
+            stepped.to_frame().T,
+            walk_config.max_gross,
+            walk_config.max_symbol_abs_weight,
+        ).iloc[0]
+        if gate:
+            # adv_floor=0.0 deliberately: flooring ADV up would loosen the cap
+            # for exactly the illiquid names the gate protects (r2_design.md §2).
+            capped = participation_capped_targets(
+                held,
+                capped,
+                dollar_volume.loc[day],
+                aum=aum,
+                max_participation=walk_config.max_participation,
+                adv_floor=0.0,
+            )
+        held = capped.reindex(targets.columns).fillna(0.0)
+        out[i] = held.to_numpy(dtype=float)
+    return pd.DataFrame(out, index=targets.index, columns=targets.columns)
+
+
+def _windowed_targets(
+    window: slice,
+    index: pd.Index,
+    symbols: list[str],
+    panel: ResidualSignalPanel,
+    sscores: np.ndarray,
+    tradeable: np.ndarray,
+    signal_config: ResidualStatArbConfig,
+    walk_config: StatArbWalkForwardConfig,
+    mom_scores: np.ndarray | None = None,
+) -> pd.DataFrame:
+    """Capped close-time targets over one panel window, state machine from flat.
+
+    One construction for both consumers: the test-window build, and the
+    closed-form band's formation-window replay — which estimates target-change
+    variance on formation bars only and feeds NOTHING forward (r2_design.md §1).
+
+    ``signal_config.decision_every`` restricts state-machine decisions to bars
+    where ``(t - window.start) % decision_every == 0`` (the first bar of every
+    window is a decision bar); between decision bars the target row is frozen
+    at the last decision row (demotion_design.md §2). At the default 1 every
+    bar is a decision bar and this is the frozen-v1 path bit-for-bit. Both
+    consumers share the rule, so the closed-form band's ``sigma2_target``
+    reflects cadence-consistent target changes.
+
+    ``walk_config.sleeve_mode`` adds the Arm-B momentum sleeve
+    (demotion_design.md §2b): its component refreshes from ``mom_scores`` on
+    its own (slower) ``mom_decision_every`` cadence, the emitted row picks the
+    refresh up at the next trading decision bar, and in ``two_speed`` the
+    sleeves are summed pre-cap so the combined book is capped/banded/gated as
+    one.
+    """
+    sleeve = walk_config.sleeve_mode
+    if sleeve != "off" and mom_scores is None:
+        raise ValueError("sleeve_mode != 'off' requires a momentum score panel")
+    s_win = sscores[window]
+    ok_win = tradeable[window]
+    current = np.zeros(len(symbols), dtype=np.int8)
+    mom_current = np.zeros(len(symbols))
+    rows = np.zeros((window.stop - window.start, len(symbols)))
+    for offset, t in enumerate(range(window.start, window.stop)):
+        if sleeve != "off" and offset % walk_config.mom_decision_every == 0:
+            mom_current = _momentum_row(mom_scores[t], walk_config.mom_decile)
+        if offset % signal_config.decision_every != 0:
+            rows[offset] = rows[offset - 1]
+            continue
+        row = np.zeros(len(symbols))
+        if sleeve != "momentum_only":
+            current = next_states(current, s_win[offset], ok_win[offset], signal_config)
+            q_idx = int(panel.q_index[t])
+            if q_idx >= 0 and current.any():
+                size_scale = None
+                if signal_config.sizing_mode == "strength":
+                    # Conviction multiplier in [0, _SIZE_CAP]: 0 at the entry band,
+                    # growing with |s| past it (Da-Nagel-Xiu shrinkage of weak
+                    # signals); cap_book then redistributes the fixed gross budget
+                    # toward conviction.
+                    entry = min(abs(signal_config.s_entry_long), abs(signal_config.s_entry_short))
+                    size_scale = strength_multiplier(sscores[t], entry, cap=_SIZE_CAP)
+                row = build_residual_book_row(
+                    current,
+                    panel.beta[t],
+                    panel.eigenportfolios[q_idx],
+                    signal_config.position_unit,
+                    size_scale=size_scale,
+                )
+        if sleeve != "off":
+            row = row + mom_current
+        rows[offset] = row
+    targets = pd.DataFrame(rows, index=index[window], columns=symbols)
+    return cap_book(targets, walk_config.max_gross, walk_config.max_symbol_abs_weight)
 
 
 def run_residual_stat_arb_walk_forward(
@@ -157,34 +392,46 @@ def run_residual_stat_arb_walk_forward(
     full_targets = _empty_targets(closes.index, symbols)
     fold_shells: list[dict[str, object]] = []
     all_test_index = pd.Index([])
-    sscores = panel.sscore.to_numpy()
+    # Smoothed once for the whole panel (causal, so pre-window history is fair
+    # game); the state machine AND strength sizing both consume the smoothed
+    # scores (demotion_design.md §2).
+    sscores = _smoothed_sscores(panel.sscore, signal_config)
     tradeable = panel.tradeable.to_numpy()
+    mom_scores: np.ndarray | None = None
+    if walk_config.sleeve_mode != "off":
+        mom_scores = _momentum_scores(closes, vols, signal_config, walk_config, membership_mask)
+
+    raw_dollar_volume = closes * vols
+    gate_active = walk_config.max_participation > 0.0
+    adv_trailing: pd.DataFrame | None = None
+    if gate_active:
+        # The same trailing statistic the eligibility screen uses
+        # (compute_eligibility): rolling median dollar volume over
+        # dollar_volume_window bars, full-window min_periods — causal as of
+        # each close, never same-day volume alone.
+        adv_trailing = raw_dollar_volume.rolling(
+            signal_config.dollar_volume_window, min_periods=signal_config.dollar_volume_window
+        ).median()
+    backtest_spread_bps: pd.Series | None = None
 
     for slices in iter_walk_forward_slices(len(closes), walk_config):
         test_index = closes.index[slices.test]
-        states = run_state_machine(sscores[slices.test], tradeable[slices.test], signal_config)
-
-        rows = np.zeros((len(test_index), len(symbols)))
-        for offset, t in enumerate(range(slices.test.start, slices.test.stop)):
-            q_idx = int(panel.q_index[t])
-            if q_idx < 0 or not states[offset].any():
-                continue
-            size_scale = None
-            if signal_config.sizing_mode == "strength":
-                # Conviction multiplier in [0, _SIZE_CAP]: 0 at the entry band, growing
-                # with |s| past it (Da-Nagel-Xiu shrinkage of weak signals); cap_book
-                # then redistributes the fixed gross budget toward conviction.
-                entry = min(abs(signal_config.s_entry_long), abs(signal_config.s_entry_short))
-                size_scale = strength_multiplier(sscores[t], entry, cap=_SIZE_CAP)
-            rows[offset] = build_residual_book_row(
-                states[offset],
-                panel.beta[t],
-                panel.eigenportfolios[q_idx],
-                signal_config.position_unit,
-                size_scale=size_scale,
+        targets = _windowed_targets(
+            slices.test, closes.index, symbols, panel, sscores, tradeable, signal_config, walk_config,
+            mom_scores=mom_scores,
+        )
+        fold_spread_bps: pd.Series | None = None
+        if walk_config.spread_mode == "bucket":
+            fold_spread_bps = bucket_spread_bps(
+                raw_dollar_volume.iloc[slices.formation].median(axis=0, skipna=True)
             )
-        targets = pd.DataFrame(rows, index=test_index, columns=symbols)
-        targets = cap_book(targets, walk_config.max_gross, walk_config.max_symbol_abs_weight)
+            if backtest_spread_bps is None:
+                # One backtest prices the whole sample, so it carries the FIRST
+                # formation window's buckets — causal for every test bar (the
+                # same convention as the CLI's --top_liquid screen). Per-fold
+                # buckets still drive each fold's band cost below.
+                backtest_spread_bps = fold_spread_bps
+        band: float | pd.Series | None = None
         if walk_config.band_mode == "cost_aware":
             # Per-name band from each name's most-recent causal OU half-life (formation
             # window only, never the test window) and the linear round-trip cost.
@@ -194,11 +441,38 @@ def run_residual_stat_arb_walk_forward(
                 hl_hist.ffill().iloc[-1].to_numpy() if len(hl_hist) else np.full(len(symbols), np.nan)
             )
             band = pd.Series(cost_aware_band(hl_recent, per_trade_cost), index=symbols)
-            targets = apply_no_trade_band(targets, band)
-            targets = cap_book(targets, walk_config.max_gross, walk_config.max_symbol_abs_weight)
+        elif walk_config.band_mode == "closed_form":
+            # sigma2_target from a formation-only replay of the exact test-window
+            # construction; the replay is discarded after the variance estimate
+            # (r2_design.md §1). Names with <2 finite diffs or zero variance -> band 0.
+            formation_targets = _windowed_targets(
+                slices.formation, closes.index, symbols, panel, sscores, tradeable, signal_config, walk_config,
+                mom_scores=mom_scores,
+            )
+            sigma2 = formation_targets.diff().iloc[1:].var(ddof=1)
+            spread_bps_i: float | np.ndarray = (
+                fold_spread_bps.reindex(symbols).to_numpy(dtype=float)
+                if fold_spread_bps is not None
+                else execution.spread_bps
+            )
+            round_trip = 2.0 * (execution.commission_bps + spread_bps_i) / 10_000.0
+            band = pd.Series(
+                closed_form_band(sigma2.to_numpy(dtype=float), round_trip, gamma_risk=GAMMA_RISK),
+                index=symbols,
+            )
         elif walk_config.no_trade_band > 0:
-            targets = apply_no_trade_band(targets, walk_config.no_trade_band)
-            targets = cap_book(targets, walk_config.max_gross, walk_config.max_symbol_abs_weight)
+            band = walk_config.no_trade_band
+        if band is not None or gate_active:
+            # band 0.0 = pass-through banding so the gate still runs with
+            # held-state feedback when no band is configured.
+            targets = _online_banded_targets(
+                targets,
+                0.0 if band is None else band,
+                walk_config,
+                dollar_volume=None if adv_trailing is None else adv_trailing.loc[test_index],
+                aum=initial_capital,
+                decision_every=signal_config.decision_every,
+            )
         targets = _force_fold_flat(targets)
 
         full_targets.loc[test_index, symbols] = targets
@@ -214,13 +488,14 @@ def run_residual_stat_arb_walk_forward(
     if not fold_shells:
         raise ValueError("No walk-forward folds were produced")
 
-    dollar_volume = (closes * vols).reindex(index=opens.index, columns=opens.columns)
+    dollar_volume = raw_dollar_volume.reindex(index=opens.index, columns=opens.columns)
     full_portfolio = backtest_target_weights(
         opens,
         full_targets,
         execution=execution,
         dollar_volume=dollar_volume,
         initial_capital=initial_capital,
+        spread_bps_per_name=backtest_spread_bps,
     )
     portfolio = _slice_portfolio_result(full_portfolio, all_test_index)
 

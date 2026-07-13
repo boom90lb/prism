@@ -15,10 +15,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from research.baselines import BuyAndHold, MACrossover, TSMOM
 from prism.config import ExecutionConfig, TradingConfig
-from prism.trading import TradingStrategy
-
+from research.baselines import TSMOM, BuyAndHold, MACrossover
+from research.trading import TradingStrategy
 
 # ---------- BuyAndHold ----------
 

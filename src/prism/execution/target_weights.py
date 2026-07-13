@@ -147,14 +147,25 @@ def _cost_values(
     dividend_return: float,
     dollar_volume: np.ndarray | None = None,
     initial_capital: float = 1.0,
+    spread_bps_per_name: np.ndarray | None = None,
 ) -> dict[str, float]:
     trade_abs = np.abs(trade)
-    commission_spread = float(
-        trade_abs.sum()
-        * (execution.commission_bps + execution.spread_bps)
-        / 10_000.0
-        * cost_multiplier
-    )
+    if spread_bps_per_name is None:
+        commission_spread = float(
+            trade_abs.sum()
+            * (execution.commission_bps + execution.spread_bps)
+            / 10_000.0
+            * cost_multiplier
+        )
+    else:
+        # Per-bucket spread (r2_design.md §3, I-9): commission stays scalar, the
+        # spread is priced per name. None must reproduce the flat computation
+        # bit-for-bit (frozen-v1 parity).
+        commission_spread = float(
+            (trade_abs * (execution.commission_bps + spread_bps_per_name)).sum()
+            / 10_000.0
+            * cost_multiplier
+        )
     impact = float(
         np.square(trade_abs).sum()
         * execution.slippage_coeff
@@ -235,6 +246,7 @@ def backtest_target_weights(
     max_gross_exposure: float | None = None,
     dividends: pd.DataFrame | Mapping[str, pd.Series] | None = None,
     dollar_volume: pd.DataFrame | None = None,
+    spread_bps_per_name: pd.Series | None = None,
 ) -> PortfolioBacktestResult:
     """Backtest close-time target weights with next-open fills.
 
@@ -242,6 +254,11 @@ def backtest_target_weights(
     next row's open, then earns that row's open-to-open return. A target row
     whose values are all ``NaN`` is a deliberate no-op/drop marker: no pending
     order is created for the next open, while already-filled weights continue.
+
+    ``spread_bps_per_name`` (optional, indexed by symbol) prices the spread
+    per name instead of the flat ``execution.spread_bps`` (r2_design.md §3);
+    missing/NaN entries fall back to the flat spread, ``None`` is bit-identical
+    to the flat computation.
     """
     if initial_capital <= 0:
         raise ValueError(f"initial_capital must be > 0, got {initial_capital}")
@@ -269,6 +286,15 @@ def backtest_target_weights(
         targets = scaled_values.where(targets.notna())
     divs = _dividend_frame(dividends, index, symbols)
     dvol = None if dollar_volume is None else _aligned_numeric(dollar_volume).reindex(index=index, columns=symbols)
+    spread_arr: np.ndarray | None = None
+    if spread_bps_per_name is not None:
+        # A name absent from the Series (or NaN) falls back to the flat
+        # configured spread, never to a silent zero.
+        spread_arr = (
+            pd.to_numeric(spread_bps_per_name.reindex(symbols), errors="coerce")
+            .fillna(execution.spread_bps)
+            .to_numpy(dtype=float)
+        )
 
     if len(index) < 2:
         empty = pd.Series(dtype=float, name="daily_return")
@@ -326,6 +352,7 @@ def backtest_target_weights(
             dividend_return=dividend_return,
             dollar_volume=None if dvol_arr is None else dvol_arr[pos],
             initial_capital=initial_capital,
+            spread_bps_per_name=spread_arr,
         )
         gross_return = float((current * open_ret).sum()) + dividend_return
         return_rows.append(gross_return - cost["total"])

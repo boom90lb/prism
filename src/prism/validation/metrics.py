@@ -9,7 +9,8 @@ for honest backtest reporting:
 
   * `calmar_ratio(annualized_return, max_drawdown)` — annualized return over
     |max drawdown|. Uses the project convention that `max_drawdown` is stored
-    as a positive number (matches `trading.py`'s `results['drawdown'].max()`).
+    as a positive number (matches `research/trading.py`'s
+    `results['drawdown'].max()`).
 
   * `probability_backtest_overfitting(returns_matrix, n_splits=10)` — PBO
     via Combinatorially Symmetric Cross-Validation (Bailey/Borwein/LdP/Zhu
@@ -454,6 +455,36 @@ def rank_information_coefficient(
     if s_rank.std(ddof=1) < _STD_FLOOR or r_rank.std(ddof=1) < _STD_FLOOR:
         return float("nan")
     return float(np.corrcoef(s_rank, r_rank)[0, 1])
+
+
+def after_cost_hurdle_periodic(
+    annual_hurdle_return: float,
+    periodic_vol: float,
+    periods_per_year: int = 252,
+) -> float:
+    """Convert an annual return hurdle into a periodic *Sharpe* hurdle.
+
+    SPEC.md §10: the after-cost hurdle is a stated, real-terms choice, never
+    an implicit nominal zero — anchored at minimum to the prevailing T-bill
+    yield (the cash book's opportunity cost). Comparing a strategy's periodic
+    Sharpe against this hurdle is equivalent to requiring its mean periodic
+    return to beat the hurdle's periodic return at the strategy's own realized
+    vol:
+
+        hurdle_sharpe = (annual_hurdle_return / periods_per_year) / periodic_vol
+
+    ``annual_hurdle_return`` is a fraction (0.053 for a 5.3% bill yield —
+    nominal or real per the recorded basis); ``periodic_vol`` is the
+    strategy's realized periodic return std. Returns NaN for non-finite
+    inputs or a non-positive vol (no returns stream to hold to the bar).
+    """
+    if periods_per_year < 1:
+        raise ValueError(f"periods_per_year must be >= 1, got {periods_per_year}")
+    hurdle = float(annual_hurdle_return)
+    vol = float(periodic_vol)
+    if not (np.isfinite(hurdle) and np.isfinite(vol)) or vol <= 0.0:
+        return float("nan")
+    return hurdle / periods_per_year / vol
 
 
 def fundamental_law_diagnostic(

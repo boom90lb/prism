@@ -30,16 +30,8 @@ from prism.residual.factors import (
     compute_returns,
     estimate_eigenportfolios,
     etf_factor_portfolios,
+    factor_returns_from_window,
     volume_time_weights,
-)
-# cap_book/apply_no_trade_band/cost_aware_band are re-exported here as the
-# legacy stat-arb import surface (tests and research import them from this
-# module); the surface folds into the R1/R2 residual rework, not before.
-from prism.portfolio.construct import (
-    apply_no_trade_band,  # noqa: F401  (re-export)
-    build_residual_book_row as build_book_row,
-    cap_book,
-    cost_aware_band,  # noqa: F401  (re-export)
 )
 
 _EPS = 1e-12
@@ -160,9 +152,12 @@ def run_state_machine(sscores: np.ndarray, ok: np.ndarray, config: ResidualStatA
 class ResidualSignalPanel:
     """Causal per-day signal state for the whole panel.
 
-    ``sscore``/``tradeable``/``active``/``half_life_bars`` are (day x symbol)
-    frames (``half_life_bars`` is each active name's OU half-life in bars, NaN
-    where unfit and inf where the OU fit is invalid); ``beta`` is
+    ``sscore``/``tradeable``/``active``/``half_life_bars``/``sigma_eq`` are
+    (day x symbol) frames (``half_life_bars`` is each active name's OU
+    half-life in bars, NaN where unfit and inf where the OU fit is invalid;
+    ``sigma_eq`` is the OU equilibrium sigma of the cumulative residual, NaN
+    where the fit is invalid — it converts an s-score back into residual
+    return units); ``beta`` is
     (n_days, n_factors, n_symbols) with zeros for inactive entries (zeros, not
     NaN, so book netting never propagates NaN); ``q_index[t]`` points into
     ``eigenportfolios`` for the rebalance in force at bar ``t`` (-1 before the
@@ -176,6 +171,7 @@ class ResidualSignalPanel:
     tradeable: pd.DataFrame
     active: pd.DataFrame
     half_life_bars: pd.DataFrame
+    sigma_eq: pd.DataFrame
     beta: np.ndarray
     q_index: np.ndarray
     eigenportfolios: tuple[np.ndarray, ...]
@@ -188,6 +184,9 @@ class ResidualSignalPanel:
     eligible_at_rebalance: tuple[int, ...]
     explained_at_rebalance: tuple[float, ...]
     skipped_rebalances: int = 0
+    n_stale_benched: np.ndarray = field(
+        default_factory=lambda: np.zeros(0, dtype=np.int64)
+    )
     config: ResidualStatArbConfig = field(default_factory=ResidualStatArbConfig)
 
     def diagnostics(self, start: int = 0, stop: int | None = None) -> dict[str, float]:
@@ -198,11 +197,16 @@ class ResidualSignalPanel:
         slow = float(self.n_slow_ou[sl].sum())
         missing = float(self.n_missing[sl].sum())
         candidates = float(self.n_candidates[sl].sum())
+        benched = (
+            float(self.n_stale_benched[sl].sum())
+            if len(self.n_stale_benched) else 0.0
+        )
         return {
             "signal_evaluations": evaluations,
             "invalid_ou_rate": invalid / evaluations if evaluations else float("nan"),
             "slow_ou_rate": slow / evaluations if evaluations else float("nan"),
             "missing_data_rate": missing / candidates if candidates else float("nan"),
+            "stale_benched_days": benched,
         }
 
 
@@ -224,8 +228,14 @@ def compute_residual_signal_panel(
     and has a fully-finite trailing ``regr_window`` of returns gets an OLS
     beta/alpha against the current factors and an OU fit on its residuals.
     Stocks whose factor-window returns go missing mid-week (halt/delisting)
-    contribute zero to factor returns for those bars — a documented v1
-    approximation.
+    are handled by gross renormalization of the factor returns
+    (``factor_returns_from_window``) — never imputed as zero returns, which
+    would damp factor variance and bias every downstream beta.
+
+    When the eligible cross-section is too thin to re-estimate factors the
+    rebalance is skipped and the prior eigenportfolios stay in force;
+    ``config.max_stale_rebalances`` bounds how long before signal emission is
+    benched (explicit de-gross) rather than trading on stale factors.
     """
     config = config or ResidualStatArbConfig()
     if not closes.columns.equals(volumes.columns) or not closes.index.equals(volumes.index):
@@ -262,6 +272,7 @@ def compute_residual_signal_panel(
 
     sscore = np.full((n_days, n_symbols), np.nan)
     half_life = np.full((n_days, n_symbols), np.nan)
+    sigma_eq = np.full((n_days, n_symbols), np.nan)
     tradeable = np.zeros((n_days, n_symbols), dtype=bool)
     active = np.zeros((n_days, n_symbols), dtype=bool)
     beta = np.zeros((n_days, config.n_model_factors, n_symbols))
@@ -277,6 +288,8 @@ def compute_residual_signal_panel(
     eligible_counts: list[int] = []
     explained_shares: list[float] = []
     skipped = 0
+    consecutive_skips = 0
+    n_stale_benched = np.zeros(n_days, dtype=np.int64)
     cross_section = np.zeros(n_symbols, dtype=bool)
     current_q = -1
 
@@ -311,12 +324,24 @@ def compute_residual_signal_panel(
                 rebalance_positions.append(t)
                 eligible_counts.append(int(elig_t.sum()))
                 explained_shares.append(float(explained.sum()))
+                consecutive_skips = 0
             else:
                 skipped += 1
+                consecutive_skips += 1
 
         if current_q < 0 or t < config.warmup_bars:
             continue
         q_index[t] = current_q
+
+        # Staleness bound: past the configured skip budget the factors in
+        # force are too old to trade against — bench signal emission (an
+        # explicit de-gross, N7) until a rebalance succeeds again.
+        if (
+            config.max_stale_rebalances is not None
+            and consecutive_skips > config.max_stale_rebalances
+        ):
+            n_stale_benched[t] = 1
+            continue
 
         candidates = cross_section & elig[t]
         n_candidates[t] = int(candidates.sum())
@@ -332,7 +357,7 @@ def compute_residual_signal_panel(
             continue
 
         q_full = eigenportfolios[current_q]
-        factor_window = np.nan_to_num(window_R, nan=0.0) @ q_full.T
+        factor_window = factor_returns_from_window(window_R, q_full)
         dependent_window = Rw[t - config.regr_window + 1 : t + 1]
         alpha, beta_t, residuals = batched_factor_ols(dependent_window[:, active_t], factor_window)
         fit = fit_ou_batch(residuals)
@@ -344,6 +369,7 @@ def compute_residual_signal_panel(
         active_idx = np.flatnonzero(active_t)
         sscore[t, active_idx] = scores
         half_life[t, active_idx] = fit.half_life_bars
+        sigma_eq[t, active_idx] = np.where(fit.valid, fit.sigma_eq, np.nan)
         tradeable[t, active_idx] = fast & np.isfinite(scores)
         active[t, active_idx] = True
         beta[t][:, active_idx] = beta_t
@@ -355,6 +381,7 @@ def compute_residual_signal_panel(
         tradeable=pd.DataFrame(tradeable, index=index, columns=list(symbols)),
         active=pd.DataFrame(active, index=index, columns=list(symbols)),
         half_life_bars=pd.DataFrame(half_life, index=index, columns=list(symbols)),
+        sigma_eq=pd.DataFrame(sigma_eq, index=index, columns=list(symbols)),
         beta=beta,
         q_index=q_index,
         eigenportfolios=tuple(eigenportfolios),
@@ -367,5 +394,6 @@ def compute_residual_signal_panel(
         eligible_at_rebalance=tuple(eligible_counts),
         explained_at_rebalance=tuple(explained_shares),
         skipped_rebalances=skipped,
+        n_stale_benched=n_stale_benched,
         config=config,
     )

@@ -84,8 +84,12 @@ cleared an explicit, deflation-adjusted, cost-aware evidence bar.
   fold-aligned net equity curve. A "gross" number is a diagnostic, never a claim.
 - **N4 · The ledger conserves capital.** Equity moves only by realized PnL minus
   charged costs; no cash is created or destroyed across a rebalance. This is the
-  single defensible residue of the "capital conservation law" and *will be*
-  enforced by a property test (R0 exit criterion), not asserted.
+  single defensible residue of the "capital conservation law". Enforced twice:
+  the accounting *algebra* is machine-checked in Lean 4 over an exact-integer
+  kernel (`formal/PrismFormal/Ledger.lean` — `rebalance_conserves`,
+  `run_conserves`), and the float implementation is property-tested against it
+  (`tests/test_ledger_conservation.py`). Lean proves the algorithm; pytest
+  bridges the float64 code to the algorithm.
 - **N5 · Every claim carries its deflation.** A reported edge embeds the trial
   count it was deflated against (DSR / expected-max-Sharpe), and the deflation is
   recomputable from the trial ledger. The ledger is **one canonical table** (one
@@ -106,16 +110,20 @@ cleared an explicit, deflation-adjusted, cost-aware evidence bar.
   normal case and is not evidence of edge.
 - **N7 · Fail loud, not silent-zero.** A data fetch failure, an unfit member, or
   a degenerate estimate raises or de-grosses explicitly. Silent degradation to
-  an empty frame / zero position is a defect (it is the current failure mode in
-  `data_loader`, the forecast members, and sentiment).
+  an empty frame / zero position is a defect (it was the original v0.2 failure
+  mode in the data loader, the forecast members, and sentiment — since closed:
+  the loader is `prism.io.loader`, fail-loud; the forecaster stack is
+  quarantined under `research/`).
 - **N8 · The production import path is JAX/torch-free.** Importing the live loop
   must not transitively import `jax`, `torch`, `prophet`, `mlflow`, or
   `matplotlib`. Research heavyweights live behind the quarantine boundary (§9).
-  *Scope:* enforced on **new** modules (`regime/`, the `validation` additions,
-  `live/`) and on the live import path once `live/` lands (R4). The legacy
-  `ensemble.py → lstm_ppo → jax` and `features.py → flax.nnx` couplings are
-  *grandfathered* until the R1 decoupling. Enforcement mechanism is a CI
-  import-linter check, so N8 is a test, not a slogan.
+  *Scope:* the whole `prism` import closure. The legacy `ensemble.py →
+  lstm_ppo → jax` and `features.py → flax.nnx` couplings were *grandfathered*
+  until the R1 decoupling; R1 landed (the forecaster stack moved to
+  `research/`), so the grandfather clause is closed and `prophet`/`matplotlib`
+  joined the forbidden set. Enforcement mechanism is a CI import-linter check
+  (`tests/test_import_hygiene.py` walks every `prism` module), so N8 is a test,
+  not a slogan.
 
 If a proposed change violates one of N1–N8, the change is wrong, not the
 invariant.
@@ -546,7 +554,12 @@ gate + calibrated per-bucket spreads:
 
 The construction-trial budget is logged in the ledger and every swept band/factor
 value counts against it, so "cost-bound before signal-bound" cannot become infinite
-runway. The near-term target is *the first `net_edge` claim under a calibrated cost
+runway. **Frequency-demotion and score-smoothing experiments are admissible
+now, before R2** — 2–3-day/weekly rebalance cadence, EWMA-smoothed s-scores,
+continuous sizing in s in place of the ±1.25/−0.5 threshold state machine —
+each a counted trial against the same budget. They are cheap, and the criterion
+must not wait on expensive machinery for information that hours can buy. The
+near-term target is *the first `net_edge` claim under a calibrated cost
 model* — and the honest alternative outcome, that the signal is simply too weak net
 of realistic retail cost, is a first-class, ledgered result, not a failure to hide.
 
@@ -633,26 +646,54 @@ sequence R0→R4 of `docs/audit.md` (which this spec subsumes and does not repla
 
 - **R0 · Foundation (this release).** Spec, market analysis, breadth + capacity +
   ledger + regime modules, claim-tier gates, src-layout migration (`prism` at
-  `src/prism/`). Exit: all new modules tested, 388+ existing tests green.
+  `src/prism/`). Exit: all new modules tested, full suite green (463 tests as
+  of v0.3.1; 411 without the `[research]` extra).
 - **R1 · Representation.** JAX-free signal path; `ensemble_node` as a plug-in;
   ARIMA per-bar refit; score-not-price everywhere; scale-invariance property test.
-- **R2 · Decision layer.** Online cost-aware rebalancer against held weights;
-  meta-learner with a cash vertex + turnover penalty; participation gate wired
-  into construction. Exit: turnover responds monotonically to the band parameter.
+- **R2 · Decision layer + cost calibration.** Online cost-aware rebalancer
+  against held weights; meta-learner with a cash vertex + turnover penalty;
+  participation gate wired into construction; the slow-sleeve netting book
+  (see the gating paragraph below); and the **Alpaca paper loop at trivial
+  size as the I-9 cost-measurement instrument** — pulled forward from R4
+  because it needs no edge, it forces durable order state into existence, and
+  every fill is per-bucket spread calibration data. Without it the §10 verdict
+  is judged under an uncalibrated flat spread, inside the cost model's own
+  error bars in both directions. Exit: turnover responds monotonically to the
+  band parameter, and a per-liquidity-bucket effective-spread table exists
+  from paper fills.
 - **R3 · Statistical honesty.** PBO over the real selection set; the canonical
   per-selection-set trial ledger (N5) → `expected_max_sharpe` with an effective
   independent-trial count; stat-arb multiplicity fixes. Exit: every artifact
   embeds a recomputable deflation count against its own selection set.
-- **R4 · Live + breadth.** `io/` incremental store; `live/` loop + Alpaca adapter;
+- **R4 · Live + breadth.** `io/` incremental store; `live/` loop hardening
+  (the R2 paper instrument grows into the full unattended daily loop);
   crypto lane; MP-cleaned factor count; capacity curves per strategy; the
   inflation-expectations regime block + stablecoin-float liquidity term (§7.5
   follow-ons). Exit: a paper-traded loop runs unattended for a full cycle and
   reconciles.
+- **RF · Formal track (parallel, additive).** `formal/` — a core-only Lean 4
+  package machine-checking the spec's exact-arithmetic kernel: N4 ledger
+  conservation (single- and multi-step), the §7.3 band's hysteresis plus the
+  batch-replay-from-zero divergence witness, I-1 purge/embargo geometry, the
+  §7.4 participation gate's attenuation properties. Lean proves the algebra;
+  pytest bridges the float implementation to it. Next targets in value order:
+  the `live/` crash-safety state machine, the R2 G-P band's monotonicity,
+  trial-ledger append-only monotonicity. Charter: `docs/handoff.md §5`.
 
 The gating discipline is fixed: the system is **cost-bound before signal-bound**,
-so R2/R3 (construction + honesty) precede any signal-side sophistication. No new
-alpha is added until a result clears `net_edge` under the **calibrated per-bucket
-spread** cost model (I-9) — *or* the §10 kill-criterion fires and the daily
-residual sleeve is demoted/abandoned. "Construction first" runs on a
-pre-registered, ledgered trial budget so it terminates in a verdict (edge or
-kill) rather than open-ended iteration.
+so R2/R3 (construction + honesty) precede signal-side sophistication. No new
+**fast** alpha is added until a result clears `net_edge` under the **calibrated
+per-bucket spread** cost model (I-9) — *or* the §10 kill-criterion fires and the
+daily residual sleeve is demoted/abandoned. **Slow signals are construction
+machinery, not new alpha**, for a specific economic reason: turnover is a
+property of the signal *set*, not of construction alone. A slow,
+negatively-turnover-correlated sleeve (first candidate: 1–3-month
+cross-sectional momentum from bars already on disk) cuts cost per unit of
+gross through internal netting — reversion buys what momentum sells into, and
+the trades cross before touching the market. That is the heterogeneous-decay
+case Gârleanu–Pedersen is actually derived for; a single fast signal is the
+framework's degenerate case. Such a sleeve is therefore admissible in R2 and
+counted against the same trial budget. "Construction first" runs on a
+pre-registered, ledgered budget so it terminates in a verdict (edge or kill)
+rather than open-ended iteration. Long-horizon sequencing and rationale:
+`docs/handoff.md`.

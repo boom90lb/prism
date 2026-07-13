@@ -89,6 +89,45 @@ def test_rolling_window_bounded(series_1000: pd.DataFrame) -> None:
         assert len(train_idx) <= test_size * 2
 
 
+def test_fold_counts_recorded_when_all_yield(series_1000: pd.DataFrame) -> None:
+    """After a full drain, the realized counters match the requested count."""
+    wfo = PurgedWalkForward(n_splits=5, purge_horizon=5, embargo_pct=0.0)
+    folds = list(wfo.split(series_1000))
+    assert len(folds) == 5
+    assert wfo.n_yielded_ == 5
+    assert wfo.n_skipped_ == 0
+
+
+def test_skipped_fold_warns_and_counts() -> None:
+    """purge_horizon >= test_size empties fold 0's training pool: the skip
+    must emit a RuntimeWarning and be counted, never pass silently.
+    """
+    df = pd.DataFrame({"x": np.arange(40)})  # test_size = 10
+    wfo = PurgedWalkForward(n_splits=3, purge_horizon=10, embargo_pct=0.0)
+    with pytest.warns(RuntimeWarning, match="fold 0 of 3 skipped"):
+        folds = list(wfo.split(df))
+    assert len(folds) == 2
+    assert wfo.n_yielded_ == 2
+    assert wfo.n_skipped_ == 1
+
+
+def test_strict_raises_on_skipped_fold() -> None:
+    """strict=True turns the fold-count discrepancy into a hard error."""
+    df = pd.DataFrame({"x": np.arange(40)})
+    wfo = PurgedWalkForward(
+        n_splits=3, purge_horizon=10, embargo_pct=0.0, strict=True
+    )
+    with pytest.raises(ValueError, match="fold 0 of 3 skipped"):
+        list(wfo.split(df))
+
+
+def test_strict_noop_when_all_folds_yield(series_1000: pd.DataFrame) -> None:
+    wfo = PurgedWalkForward(
+        n_splits=5, purge_horizon=5, embargo_pct=0.01, strict=True
+    )
+    assert len(list(wfo.split(series_1000))) == 5
+
+
 def test_rejects_bad_args(series_1000: pd.DataFrame) -> None:
     with pytest.raises(ValueError, match="n_splits"):
         PurgedWalkForward(n_splits=0, purge_horizon=5)

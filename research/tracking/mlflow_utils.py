@@ -2,7 +2,7 @@
 
 Per-fold metric + parameter + artifact logging on
 top of MLflow's file-store backend. The tracking URI defaults to
-``file://{PROJECT_DIR}/mlruns`` via ``prism.config.MLFLOW_TRACKING_URI`` and
+``file://{PROJECT_DIR}/mlruns`` via ``research.config.MLFLOW_TRACKING_URI`` and
 can be overridden by setting the ``MLFLOW_TRACKING_URI`` env var (e.g. to
 a remote server). Reading these helpers is the cheap path; importing
 ``mlflow`` directly in scripts is also fine — these only exist to keep the
@@ -26,7 +26,7 @@ try:
 except ImportError:  # slim core install: research extra absent
     mlflow = None  # type: ignore[assignment]
 
-from prism.config import MLFLOW_TRACKING_URI
+from research.config import MLFLOW_TRACKING_URI
 
 logger = logging.getLogger(__name__)
 
