@@ -32,6 +32,9 @@ import logging
 import sys
 from pathlib import Path
 
+import pandas as pd
+
+from prism.io.universe_sp500 import build_membership_mask
 from prism.live.daily import DailyBookConfig
 from prism.live.replay import (
     align_replay_panels,
@@ -83,6 +86,17 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "that already holds loop state — replay streams stay separate from live ledgers.",
     )
     parser.add_argument("--data-dir", type=Path, default=Path("data"), help="Local parquet cache directory.")
+    parser.add_argument(
+        "--membership-file",
+        type=Path,
+        default=None,
+        help="Point-in-time membership intervals parquet ([ticker, start, end], e.g. "
+        "data/universe/sp500_membership_2026-06-16.parquet). Momentum book only: ANDs the "
+        "PIT index gate into eligibility (prism.io.universe_sp500.build_membership_mask), "
+        "matching the research backtest's universe handling. Without it the replay trades "
+        "a membership-blind screen — expect book differences on names whose membership "
+        "changed mid-sample.",
+    )
     parser.add_argument(
         "--max-missing",
         type=float,
@@ -163,6 +177,19 @@ def main(argv: list[str] | None = None) -> int:
         21 if args.book == "momentum" else 1
     )
     if args.book == "momentum":
+        membership_mask = None
+        if args.membership_file is not None:
+            membership = pd.read_parquet(args.membership_file)
+            # Built over the ALIGNED panel; compute_eligibility reindexes it to
+            # each cycle's truncated sub-panel, so one full-panel mask serves
+            # every cycle.
+            membership_mask = build_membership_mask(membership, close.index, close.columns)
+            logger.info(
+                "membership mask: %s — %d member-days over %d names",
+                args.membership_file,
+                int(membership_mask.to_numpy().sum()),
+                membership_mask.shape[1],
+            )
 
         def signal_factory() -> Signal:
             return MomentumSignalNode(
@@ -170,6 +197,7 @@ def main(argv: list[str] | None = None) -> int:
                 lookback_bars=args.mom_lookback,
                 skip_bars=args.mom_skip,
                 horizon_bars=decision_every,
+                membership_mask=membership_mask,
             )
 
         config = DailyBookConfig(

@@ -277,6 +277,11 @@ def replay_daily_cycles(
         broker=broker,
         fills_ledger=run_dir / "fills.jsonl",
         equity_ledger=run_dir / "equity.jsonl",
+        # The per-refresh decided book, same artifact the live loop persists —
+        # the concordance-diagnostic object (replay book vs the research
+        # backtest's target rows). Still a replay artifact: never calibration,
+        # never the live concordance stream.
+        targets_ledger=run_dir / "targets.jsonl",
     )
     logger.info(
         "replay: %d cycles %s -> %s over %d names (modeled next-open fills — diagnostic stream)",

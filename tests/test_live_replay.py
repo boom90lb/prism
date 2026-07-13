@@ -24,6 +24,7 @@ from prism.live import (
     load_local_bar_panels,
     read_equity_ledger,
     read_fills_ledger,
+    read_targets_ledger,
     replay_daily_cycles,
 )
 from prism.signal.base import Signal
@@ -193,6 +194,13 @@ def test_replay_runs_cycles_settles_fills_and_accrues_ledgers(tmp_path) -> None:
     fills = read_fills_ledger(tmp_path / "replay" / "fills.jsonl")
     assert len(fills) == 2
     assert results[-1].monitor_read is not None and results[-1].monitor_read["n"] == 5
+    # The per-refresh decided book persists exactly as in the live loop — the
+    # replay-vs-backtest concordance object. Daily cadence with a steady book:
+    # cycle 0 refreshes and later refreshes re-emit the same held targets.
+    targets = read_targets_ledger(tmp_path / "replay" / "targets.jsonl")
+    assert targets[0]["refresh_bar"] == results[0].decision_bar
+    assert targets[0]["targets"] == {"AAA": 0.1, "BBB": -0.1}
+    assert targets[0]["reference_prices"] == {"AAA": 100.0, "BBB": 50.0}
 
 
 def test_replay_holds_between_refreshes_and_trades_the_flip_on_cadence(tmp_path) -> None:
