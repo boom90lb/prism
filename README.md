@@ -44,8 +44,9 @@ research: train-only cointegration discovery, residual stationarity and
 multiple-testing filters, causal spread targets, capped portfolio weights, and
 next-open costed accounting. See [`docs/stat_arb.md`](docs/stat_arb.md).
 
-The mandate (`SPEC.md §1`) is a production-grade, zero-data-budget systematic
-trading bot. Deployment is the goal and it is gated hard: capital is risked
+The mandate (`SPEC.md §1`) is a production-grade, bounded-data-budget
+systematic trading bot (free data tiers by default; named, ratified purchases
+only — amended 2026-07-14, [`docs/amendments_2026-07.md`](docs/amendments_2026-07.md)). Deployment is the goal and it is gated hard: capital is risked
 only on edges that clear the claim-tier evidence bar (`SPEC.md §10`). The
 harness is the bar — and it has produced its first verdict: the residual
 sleeve was certified uneconomic at retail cost and archived after its
