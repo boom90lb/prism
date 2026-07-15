@@ -29,7 +29,7 @@ scrape) and keeps the same explicit rename-table / skip-set discipline.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Iterable
@@ -45,11 +45,35 @@ WIKI_URL = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
 HISTORY_FLOOR = pd.Timestamp("1990-01-01")
 
 # Manual, *reviewed* ticker remaps from Wikipedia spelling to the price vendor's
-# spelling (Koker's `rename_table`). Seeded empty: entries are added only after
-# the coverage ledger shows a name is missing *and* a human confirms the vendor
-# symbol. Never auto-populate -- a wrong remap silently swaps one company's
-# price history for another's.
-RENAME_TABLE: dict[str, str] = {}
+# spelling (Koker's `rename_table`). Entries are added only after the coverage
+# ledger or an integrity sweep shows a name is wrong/missing *and* a human
+# confirms the vendor symbol. Never auto-populate -- a wrong remap silently
+# swaps one company's price history for another's.
+# Reviewed 2026-07-14 (docs/data_integrity_diagnostic.md §6): pure index
+# renames are invisible to the Wikipedia changes table, the old symbols'
+# vendor resolutions are wrong instruments, and the successor caches carry the
+# full genuine history.
+RENAME_TABLE: dict[str, str] = {
+    "FB": "META",  # Facebook -> Meta Platforms (2022-06); vendor "FB" is a 2025+ stray
+    "PCLN": "BKNG",  # Priceline -> Booking Holdings (2018); vendor "PCLN" is a 2025+ stray
+    "WLTW": "WTW",  # Willis Towers Watson rename (2022-01); vendor "WLTW" is a sparse remnant
+}
+
+# Manual, *reviewed* vendor-collision quarantine: symbols whose vendor
+# resolution is known to return a DIFFERENT instrument (or corrupted data),
+# with no genuine series available and no rename successor. Quarantined names
+# are excluded from the price pull and the resolved/tradeable universe and are
+# counted in the coverage skip-list -- the same measured-survivorship-leak
+# treatment as any other unretrievable delisted name. Membership intervals are
+# NOT touched (history is evidence; the mask needs it). Evidence per name:
+# docs/data_integrity_diagnostic.md §3.
+QUARANTINE_TABLE: dict[str, str] = {
+    "ADS": "vendor resolves to Adidas AG (Xetra), never Alliance Data; membership ended 2020-06-22",
+    "ECHO": "pre-2022 segment is not Echo Global Logistics (no 2021-09 buyout pin); series identity unverified",
+    "INFO": "dual-feed merge while listed; wrong instrument after the 2022-02 SPGI merger",
+    "SBNY": "no genuine bars (failed 2023-03-15); vendor rows from 2024-08 are a different instrument",
+    "SOLS": "corrupted splice (459,999x single-day return); genuine segment unrecoverable",
+}
 
 
 def normalize_ticker(ticker: str) -> str:
@@ -331,6 +355,7 @@ class CoverageReport:
     resolved: list[str]
     skipped: list[str]
     rename_table: dict[str, str]
+    quarantined: dict[str, str] = field(default_factory=dict)
 
     @property
     def coverage_fraction(self) -> float:
@@ -346,6 +371,7 @@ class CoverageReport:
             "resolved": self.resolved,
             "skipped": self.skipped,
             "rename_table": dict(self.rename_table),
+            "quarantined": dict(self.quarantined),
         }
 
 
@@ -355,6 +381,7 @@ def compute_coverage(
     *,
     asof: str,
     rename_table: dict[str, str] | None = None,
+    quarantine_table: dict[str, str] | None = None,
 ) -> CoverageReport:
     """Split the ever-member union into price-resolved vs skipped (delisted gaps).
 
@@ -362,12 +389,22 @@ def compute_coverage(
     for; a ticker resolves if its (renamed) symbol is in that set. The skipped
     list is the *measured* survivorship leak -- names that belong in the
     universe but have no price history. It must be surfaced, never hidden.
+
+    Quarantined names (``QUARANTINE_TABLE``) can never resolve, even when the
+    vendor answers: the answer is a known wrong instrument, which is strictly
+    worse than no answer. They are counted in ``skipped`` and echoed with
+    their reasons in ``quarantined`` so the exclusion is auditable.
     """
     rename_table = rename_table or RENAME_TABLE
+    quarantine_table = QUARANTINE_TABLE if quarantine_table is None else quarantine_table
     avail = {normalize_ticker(s) for s in available}
-    resolved, skipped = [], []
+    resolved, skipped, quarantined = [], [], {}
     for raw in ever:
         t = normalize_ticker(raw)
+        if t in quarantine_table:
+            skipped.append(t)
+            quarantined[t] = quarantine_table[t]
+            continue
         vendor = normalize_ticker(rename_table.get(t, t))
         (resolved if vendor in avail else skipped).append(t)
     return CoverageReport(
@@ -377,6 +414,7 @@ def compute_coverage(
         resolved=sorted(resolved),
         skipped=sorted(skipped),
         rename_table=dict(rename_table),
+        quarantined=quarantined,
     )
 
 
