@@ -109,19 +109,76 @@ caches with refreshed tails, so the collision class re-enters the certified
 path unless remediated first. This sweep is cheap and offline; it should run
 as an M6 pre-flight.
 
-## 6. Remediation proposals (owner decisions; none applied here)
+## 6. Remediation proposals (as posed to the owner 2026-07-13)
 
 1. **Quarantine the wrong-instrument caches** (ADS, FB, PCLN, SBNY, SOLS; the
    INFO and WLTW post-rename tails). Absence is the honest state under the
    zero-delisted-bars doctrine — a wrong series is strictly worse than no
    series. INFO and WLTW carry genuine pre-event segments, so the decision
    per name is truncate vs remove.
-2. **Seed `RENAME_TABLE`** (`src/prism/io/universe_sp500.py:52`, empty by
+2. **Seed `RENAME_TABLE`** (`src/prism/io/universe_sp500.py`, empty by
    design pending reviewed entries) with FB→META, PCLN→BKNG, WLTW→WTW, and
    close rename intervals in the membership reconstruction — FB, PCLN, and
-   WLTW intervals currently run to 2026-06-16 as if the old symbols were
-   still members.
+   WLTW intervals ran to 2026-06-16 as if the old symbols were still members.
 3. **Regenerate `sp500_current.txt`** without retired tickers.
 4. **Adopt this sweep as an M6 pre-flight** and a periodic ops check; any new
    suspect gets the §4 exposure treatment before a counted run consumes the
    cache.
+
+## 7. Remediation executed (2026-07-14, owner decision: "no wrong data — regenerate")
+
+**Mechanism, not one-off cleanup.** `QUARANTINE_TABLE` (symbol → reason) now
+sits beside `RENAME_TABLE` in `prism.io.universe_sp500`: quarantined names
+are never fetched and can never resolve — they join the measured skip-list
+with their reasons echoed in the coverage ledger. `RENAME_TABLE` is seeded
+with the three reviewed remaps (FB→META, PCLN→BKNG, WLTW→WTW), which also
+merges the old symbols' membership intervals into their successors' — the
+never-closing rename intervals dissolve rather than needing a parser fix.
+The universe builder now also *produces* `sp500_pit_resolved_<asof>.txt` and
+`sp500_current.txt`, which previously had no producer script. Both tables
+are content-pinned by tests.
+
+**Regeneration (asof 2026-07-14, pull window unchanged 2020-01-01 →
+2026-06-16).** 634 window members → **570 resolved, 64 skips (5
+quarantined)**; the frozen 2026-06-16 artifacts are untouched and certified
+configs still reference them. `sp500_current.txt`: 502 names, no retired
+tickers. Three late-June index additions entered with verified-clean caches
+(FLEX, MRVL; HONA is a one-bar nascent listing). The fourth, **ECHO, failed
+verification and joined the quarantine**: its continuous 2020–2026 series
+never shows Echo Global Logistics' September-2021 buyout pin at ~$48 or the
+December-2021 going-private stop — whatever the vendor is serving, the
+pre-2022 segment is not the company the PIT universe means, and the current
+listing's identity is unverified (owner can clear it with one broker lookup
+and a refetch scoped to the new listing's life).
+
+**Caches.** All eight contaminated files moved to `data/quarantine/`
+(reversible; delete at will): ADS, ECHO, FB, PCLN, SBNY, SOLS, INFO, WLTW.
+INFO's genuine 2020–2022 segment and WLTW's pre-rename segment are preserved
+there; in the tradeable universe INFO is quarantined at the symbol level and
+WLTW is carried by WTW's full genuine history.
+
+**The reproduction gate (pre-stated: books materially unchanged → proceed;
+else stop).** Control first: re-running B1's exact config on original
+universe files and original caches reproduces the certified run **bit-exact**
+— same `config_hash 000b74941cfd`, identical summary to full float precision,
+`target_weights` max |Δw| = 0.0 (1308×574). Then the remediated run
+(`sp500_pit_resolved_2026-07-14`, quarantined caches absent, scratch trial
+ledger — **not** a counted trial): no removed name was ever held, no added
+name enters (memberships start 2026-06-22+), and the only differences on
+common names are decile-boundary substitutions — mean daily active share
+**0.0038**, max **0.0214**, 307 of 1308 days touched. Headline stats move
+slightly favorably (Sharpe 0.4654 → 0.4790, total +27.6% → +28.6%, periodic
+0.0293 → 0.0302): the contamination had been mild drag. **Gate: PASS.**
+Evidence: `results/b1_remediation_repro_diff.json`; run dirs
+`results/demotion_b1_repro_{control,remediated}` (local).
+
+**Standing consequences.** The certified B1 numbers stand as certified under
+`config_hash 000b74941cfd`; the remediated lineage is `583b9155eab7`, and the
+M6 extension runs on it citing this section as the certified-window bridge.
+Post-remediation sweep over all 570 caches: **zero wrong-instrument
+suspects** (only the two benign share-count flags, NVR and HONA) —
+`results/data_integrity_sweep_2026-07-14.json`. Residual risks, stated: the
+vendor can mint new collisions at any future delisting/rename (the sweep is
+the standing M6 pre-flight for exactly this), and the loader's fetch-error
+logging exposes the vendor API key in URLs (flagged separately for fix +
+key rotation; out of this diagnostic's scope).

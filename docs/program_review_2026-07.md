@@ -153,10 +153,21 @@ short-side dividend pass-through and withholding asymmetries not modeled.
 
 Executed 2026-07-13: the sweep and its book-exposure verdict (§3), the wedge
 measurement and its M6 pin (§4), both instruments committed with tests.
-**Not** executed, by scope: no cache quarantined, no `RENAME_TABLE` entry
-seeded, no universe file regenerated, no amendment drafted, no counted trial
-touched. Standing owner decisions, sharpened but unchanged: the amendment
-stack (per-family trial budgets; the data purchase, now carried by three
-independent bricks; a real-money cost-calibration micro-account), the
-crash-convex ETF-trend second sleeve, an always-on box for the paper stream,
-and a carry-mode fold-flattening quantification before M6.
+
+Executed 2026-07-14, on owner decisions ("no wrong data — regenerate; the
+amendment stack I leave to you"): the full data remediation —
+quarantine/rename tables, regenerated universe artifacts, eight caches
+quarantined including the newly-caught ECHO, and a bit-exact control plus a
+gate-passing remediated reproduction bridging certified hash `000b74941cfd`
+to remediated lineage `583b9155eab7`
+(`docs/data_integrity_diagnostic.md` §7) — and the three constitutional
+amendments, drafted and applied to SPEC §1/§4/§10 with rationale in
+`docs/amendments_2026-07.md` (ratification is the owner's push): per-family
+trial budgets, the bounded data budget, and the real-money cost-calibration
+carve-out.
+
+Still open, unchanged in substance: the data purchase itself and the
+micro-account funding (owner acts the amendments now permit), the
+crash-convex ETF-trend second sleeve (P3), an always-on box for the paper
+stream, and a carry-mode fold-flattening quantification before M6. No
+counted trial was touched by any of this.
