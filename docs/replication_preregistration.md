@@ -1,12 +1,20 @@
-# Replication pre-registration — frozen-B1 reads outside the selection cell (DRAFTED; GATED per-cell on a §3-qualifying panel — the purchase was reversed, see §8)
+# Replication pre-registration — frozen-B1 reads outside the selection cell (RATIFIED; GATED per-cell on a §3-qualifying panel)
 
-**Status: drafted 2026-07-17 under the owner's scope-expansion directive; not
-ratified.** Ratification is the owner's dedicated commit/push (AGENTS.md §2
-— operator-local, not in the public tree; the in-repo statement is
-the amendment convention of `docs/handoff.md` §7). This document spends
-nothing until (i) it is ratified, (ii) a qualifying survivorship-complete
-panel is delivered — the purchase was reversed 2026-07-17 and delivery is
-unscheduled, see §8 — and (iii) the §3 data gates pass. **The design below is frozen before any purchased return
+**Status: RATIFIED 2026-07-18** (this commit is the dedicated ratification
+commit; the ratification decision was delegated by the owner to the session
+in the same turn — "Ratify both pre-registrations, banner flips with the
+sequencing exception granted" — the `docs/momentum_design.md` delegation
+precedent; drafted 2026-07-17 under the owner's scope-expansion directive;
+in-repo ratification convention: `docs/handoff.md` §7). **The §6 sequencing
+exception is GRANTED**: the three counted cells may run at panel
+qualification, concurrent with the momentum program's occupancy of the
+counted-program slot, on exactly §6's rationale — budget three, zero
+degrees of freedom, output barred from every promotion read. This document
+still spends nothing until (i) a qualifying survivorship-complete panel
+exists — the purchase was reversed 2026-07-17 and delivery is unscheduled,
+see §8 — and (ii) the §3 data gates pass. From this commit forward the
+amendment rule of `docs/momentum_design.md` applies: seams may be pinned,
+no §1–§5 value may move. **The design below is frozen before any purchased return
 data is inspected — that ordering is the entire evidential content of this
 instrument.** A design adjusted after seeing the panel is a search, not a
 replication.
@@ -236,7 +244,8 @@ within the rule's purpose, and this document's ratification commit is the
 place the owner grants that sequencing exception explicitly. The
 alternative — queueing the counted cells behind the momentum verdict —
 forfeits the timeliness that motivates the purchase; it remains the owner's
-call, and neither branch moves any other rule.
+call, and neither branch moves any other rule. (Granted at ratification,
+2026-07-18 — see the status banner.)
 
 ## 7. What this document does not do
 
