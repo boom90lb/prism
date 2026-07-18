@@ -147,6 +147,17 @@ def test_covered_subrange_served_from_cache(loader_with_counter):
     assert df.index.min() >= pd.Timestamp("2021-02-01").tz_localize(BAR_TZ)
 
 
+def test_has_cached_mirrors_the_covering_range_lookup(loader_with_counter):
+    loader, calls, _ = loader_with_counter
+    assert not loader.has_cached("AAPL", "1d", "2021-01-01", "2021-03-01")
+    loader.fetch_historical_data("AAPL", "1d", "2021-01-01", "2021-12-31")
+    # Covered sub-range: True; wider range: False. The check itself never
+    # touches the network (pacing exemption contract for _pull_prices).
+    assert loader.has_cached("AAPL", "1d", "2021-02-01", "2021-02-15")
+    assert not loader.has_cached("AAPL", "1d", "2019-01-01", "2021-03-01")
+    assert calls["n"] == 1
+
+
 def test_legacy_unranged_cache_is_ignored(loader_with_counter):
     loader, calls, tmp_path = loader_with_counter
     # Simulate a pre-§4.4 cache file with unknown coverage.

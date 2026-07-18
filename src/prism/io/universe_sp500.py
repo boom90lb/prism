@@ -57,6 +57,12 @@ RENAME_TABLE: dict[str, str] = {
     "FB": "META",  # Facebook -> Meta Platforms (2022-06); vendor "FB" is a 2025+ stray
     "PCLN": "BKNG",  # Priceline -> Booking Holdings (2018); vendor "PCLN" is a 2025+ stray
     "WLTW": "WTW",  # Willis Towers Watson rename (2022-01); vendor "WLTW" is a sparse remnant
+    # EchoStar ticker change (2026-06-24, CUSIP unchanged); the vendor backfills the
+    # full genuine chain under ECHO (verified against Alpaca SIP bars, diagnostic §8).
+    # PIT guard (§9): before 2021-11-23 the ticker ECHO denoted Echo Global Logistics
+    # (buyout completed that date; never an S&P 500 member; no genuine series
+    # retrievable) -- never attribute pre-rename ECHO-ticker references to EchoStar.
+    "SATS": "ECHO",
 }
 
 # Manual, *reviewed* vendor-collision quarantine: symbols whose vendor
@@ -68,12 +74,32 @@ RENAME_TABLE: dict[str, str] = {
 # NOT touched (history is evidence; the mask needs it). Evidence per name:
 # docs/data_integrity_diagnostic.md §3.
 QUARANTINE_TABLE: dict[str, str] = {
+    "ACT": "vendor resolves to Enact Holdings (IPO 2021-09-16), never Watson/Actavis; chain membership ended 2020-05-12 under AGN",
     "ADS": "vendor resolves to Adidas AG (Xetra), never Alliance Data; membership ended 2020-06-22",
-    "ECHO": "pre-2022 segment is not Echo Global Logistics (no 2021-09 buyout pin); series identity unverified",
     "INFO": "dual-feed merge while listed; wrong instrument after the 2022-02 SPGI merger",
     "SBNY": "no genuine bars (failed 2023-03-15); vendor rows from 2024-08 are a different instrument",
     "SOLS": "corrupted splice (459,999x single-day return); genuine segment unrecoverable",
 }
+
+# Manual, *reviewed* corrections to the Wikipedia "Selected changes" table:
+# real-world membership-relevant events the upstream table omits, applied to
+# the parsed changes frame before reconstruction (``apply_changes_patches``)
+# so the interval sweep sees them as ordinary add/remove events. Every entry
+# is primary-sourced in docs/data_integrity_diagnostic.md (§10) -- never
+# patch from memory; a wrong event silently rewrites membership history.
+CHANGES_PATCH_TABLE: tuple[dict[str, str], ...] = (
+    # Actavis plc -> Allergan plc rename, ticker ACT -> AGN at the 2015-06-15
+    # open (MIAX corporate-action alert 2015-06-12; Allergan 8-K). Invisible
+    # to the Wikipedia table, which records the seat's 1999-04-12 addition
+    # under ACT (backfilled chain ticker) and its 2020-05-12 removal under
+    # AGN -- without this event the removal is dropped as inconsistent and
+    # the ACT interval never closes (§10). PIT guards, recorded not
+    # mechanized: 1999-04-12 -> 2013-01-24 the seat traded as WPI (Watson
+    # Pharmaceuticals); vendor ACT from 2021-09-16 is Enact Holdings, never
+    # a member (see QUARANTINE_TABLE). Distinct from the legacy Allergan
+    # Inc. seat (AGN, HISTORY_FLOOR -> 2015-03-23), which closes upstream.
+    {"date": "2015-06-15", "added": "AGN", "removed": "ACT"},
+)
 
 
 def normalize_ticker(ticker: str) -> str:
@@ -217,6 +243,31 @@ def fetch_sp500_wikipedia(url: str = WIKI_URL, timeout: float = 30.0) -> tuple[l
 # --------------------------------------------------------------------------- #
 # Point-in-time membership reconstruction
 # --------------------------------------------------------------------------- #
+
+
+def apply_changes_patches(
+    changes: pd.DataFrame, patches: tuple[dict[str, str], ...] = CHANGES_PATCH_TABLE
+) -> pd.DataFrame:
+    """Append the reviewed ``CHANGES_PATCH_TABLE`` events to a parsed changes frame.
+
+    Returns a new frame; the input is not mutated. Ordering is free because
+    ``reconstruct_membership`` sorts by date (stable, so upstream rows keep
+    precedence within a shared date). An empty patch table is the identity.
+    """
+    if not patches:
+        return changes
+    patch = pd.DataFrame.from_records(
+        [
+            {
+                "date": pd.Timestamp(p["date"]),
+                "added": normalize_ticker(p.get("added", "")),
+                "removed": normalize_ticker(p.get("removed", "")),
+            }
+            for p in patches
+        ],
+        columns=["date", "added", "removed"],
+    )
+    return pd.concat([changes, patch], ignore_index=True)
 
 
 def reconstruct_membership(

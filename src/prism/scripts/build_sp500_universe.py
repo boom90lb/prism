@@ -19,10 +19,13 @@ artifacts under ``data/universe/``:
                                      live loop's fetchable-today proxy; undated
                                      because the live wrappers reference it by name).
 
-Vendor symbol collisions are handled by two reviewed tables in
-``prism.io.universe_sp500``: ``RENAME_TABLE`` (old symbol -> successor) and
+Vendor symbol collisions are handled by three reviewed tables in
+``prism.io.universe_sp500``: ``RENAME_TABLE`` (old symbol -> successor),
 ``QUARANTINE_TABLE`` (symbols whose vendor resolution is a known wrong
-instrument; never fetched, counted as coverage skips).
+instrument; never fetched, counted as coverage skips), and
+``CHANGES_PATCH_TABLE`` (membership-relevant events the Wikipedia changes
+table omits -- e.g. index-invisible ticker renames -- applied before
+reconstruction so intervals open and close under the right symbols).
 
 Network: fetching Wikipedia and pulling Twelvedata prices needs egress; run with
 the sandbox disabled, or pass ``--html-file`` for an offline membership-only
@@ -46,6 +49,7 @@ from prism.io.universe_sp500 import (
     QUARANTINE_TABLE,
     RENAME_TABLE,
     WIKI_URL,
+    apply_changes_patches,
     compute_coverage,
     ever_members,
     extract_tables,
@@ -121,10 +125,14 @@ def _pull_prices(
     """Fetch each symbol (paced under the API rate limit); return those with bars.
 
     Pacing keeps calls under the vendor's per-minute cap so a rate-limited call
-    never poses as a delisted-name gap in the coverage ledger. Delisting gaps are
-    scattered, so a long run of *consecutive* empties signals throttling/quota
-    exhaustion rather than genuine gaps -- that is flagged loudly so the coverage
-    number is not silently undercounted.
+    never poses as a delisted-name gap in the coverage ledger. Cache hits make
+    no API call and are exempt (``DataLoader.has_cached``, the same covering-
+    range lookup the fetch itself performs) -- without the exemption a
+    mostly-cached regeneration pays the full interval per name and runs ~90
+    minutes instead of minutes. Delisting gaps are scattered, so a long run of
+    *consecutive* empties signals throttling/quota exhaustion rather than
+    genuine gaps -- that is flagged loudly so the coverage number is not
+    silently undercounted.
     """
     loader = DataLoader()
     available: list[str] = []
@@ -133,10 +141,11 @@ def _pull_prices(
     consec_empty = 0
     for i, symbol in enumerate(symbols):
         log = get_symbol_logger(logger, symbol)
-        wait = min_interval - (time.monotonic() - last)
-        if wait > 0:
-            time.sleep(wait)
-        last = time.monotonic()
+        if not loader.has_cached(symbol, "1d", start, end):
+            wait = min_interval - (time.monotonic() - last)
+            if wait > 0:
+                time.sleep(wait)
+            last = time.monotonic()
         df = loader.fetch_historical_data(symbol, "1d", start, end)
         if df.empty or not {"open", "close", "volume"} <= set(df.columns):
             consec_empty += 1
@@ -162,6 +171,10 @@ def main() -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     current, changes = _load_tables(args)
+    n_raw = len(changes)
+    changes = apply_changes_patches(changes)
+    if len(changes) != n_raw:
+        logger.info("applied %d reviewed changes-table patch event(s)", len(changes) - n_raw)
     membership = reconstruct_membership(current, changes, end_date=args.asof)
     # Remap to vendor symbols so the universe file, membership mask, and price
     # panel all share one symbology (rename table is empty until coverage gaps

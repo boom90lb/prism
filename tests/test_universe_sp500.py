@@ -11,10 +11,12 @@ import pandas as pd
 import pytest
 
 from prism.io.universe_sp500 import (
+    CHANGES_PATCH_TABLE,
     HISTORY_FLOOR,
     QUARANTINE_TABLE,
     RENAME_TABLE,
     CoverageReport,
+    apply_changes_patches,
     build_membership_mask,
     compute_coverage,
     ever_members,
@@ -165,11 +167,58 @@ def test_coverage_quarantine_never_resolves_even_when_vendor_answers() -> None:
 
 
 def test_seeded_tables_carry_the_reviewed_2026_07_entries() -> None:
-    # Pins the reviewed seed content (docs/data_integrity_diagnostic.md §6) so
-    # accidental edits are loud; any legitimate change re-reviews and updates here.
-    assert RENAME_TABLE == {"FB": "META", "PCLN": "BKNG", "WLTW": "WTW"}
-    assert set(QUARANTINE_TABLE) == {"ADS", "ECHO", "INFO", "SBNY", "SOLS"}
+    # Pins the reviewed seed content (docs/data_integrity_diagnostic.md §6; ECHO
+    # moved quarantine -> rename after the §8 identity verification, §9 executed)
+    # so accidental edits are loud; any legitimate change re-reviews and updates here.
+    assert RENAME_TABLE == {"FB": "META", "PCLN": "BKNG", "WLTW": "WTW", "SATS": "ECHO"}
+    assert set(QUARANTINE_TABLE) == {"ACT", "ADS", "INFO", "SBNY", "SOLS"}
     assert all(reason for reason in QUARANTINE_TABLE.values())
+    # §10: the one reviewed changes-table patch -- the ACT -> AGN rename event.
+    assert [(p["date"], p["added"], p["removed"]) for p in CHANGES_PATCH_TABLE] == [
+        ("2015-06-15", "AGN", "ACT")
+    ]
+
+
+def test_apply_changes_patches_appends_without_mutating_input() -> None:
+    changes = _changes([("1999-04-12", "ACT", "")])
+    out = apply_changes_patches(changes)
+    assert len(out) == len(changes) + len(CHANGES_PATCH_TABLE)
+    assert len(changes) == 1  # input untouched
+    assert apply_changes_patches(changes, patches=()) is changes  # empty table = identity
+    patched_row = out.iloc[-1]
+    assert patched_row["added"] == "AGN" and patched_row["removed"] == "ACT"
+
+
+def test_act_agn_rename_patch_closes_the_chain_seat() -> None:
+    # The §10 defect in miniature. Wikipedia records the Watson/Actavis/Allergan
+    # seat's 1999-04-12 addition under ACT (backfilled chain ticker) and its
+    # 2020-05-12 removal under AGN (post-rename ticker); legacy Allergan Inc.
+    # closes separately on 2015-03-23. Unpatched, the 2020 removal is dropped as
+    # inconsistent and ACT runs open forever.
+    changes = _changes(
+        [
+            ("1999-04-12", "ACT", ""),
+            ("2015-03-23", "AAL", "AGN"),
+            ("2020-05-12", "DXCM", "AGN"),
+        ]
+    )
+    current = ["AAL", "DXCM"]
+
+    unpatched = reconstruct_membership(current, changes, end_date=END)
+    assert _interval(unpatched, "ACT") == [(pd.Timestamp("1999-04-12"), END)]  # the defect
+    assert _interval(unpatched, "AGN") == [(HISTORY_FLOOR, pd.Timestamp("2015-03-23"))]
+
+    patched = reconstruct_membership(current, apply_changes_patches(changes), end_date=END)
+    assert _interval(patched, "ACT") == [
+        (pd.Timestamp("1999-04-12"), pd.Timestamp("2015-06-15"))
+    ]
+    assert _interval(patched, "AGN") == [
+        (HISTORY_FLOOR, pd.Timestamp("2015-03-23")),  # legacy Allergan Inc., untouched
+        (pd.Timestamp("2015-06-15"), pd.Timestamp("2020-05-12")),  # Allergan plc
+    ]
+    # Bystanders unaffected by the patch.
+    assert _interval(patched, "AAL") == _interval(unpatched, "AAL")
+    assert _interval(patched, "DXCM") == _interval(unpatched, "DXCM")
 
 
 CONSTITUENTS_HTML = """
