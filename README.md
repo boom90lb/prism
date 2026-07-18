@@ -437,7 +437,7 @@ research/              (quarantined per SPEC §9 — not in the wheel; may impor
 formal/                Lean 4 machine-checked kernel invariants (N4 ledger
                        conservation, no-trade-band hysteresis + batch-replay
                        divergence, purge/embargo geometry, participation gate)
-tests/                 780 offline tests, 778 passed / 2 skipped at v0.3.3
+tests/                 783 offline tests, 781 passed / 2 skipped at v0.3.3
                        (validation, leakage, execution, conformal, live
                        loop, logging); the slim subset runs without the
                        [research] extra in CI
