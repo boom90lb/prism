@@ -1,8 +1,13 @@
-# Current S&P 500 members as of 2026-07-17 with local price data (fetchable
-# proxy for the live loop; NOT survivorship-free -- backtests use sp500_pit_*).
-# Built from sp500_membership_2026-07-17.parquet (intervals open at as-of)
-# INTERSECT data/*_1d_*.parquet, minus quarantined symbols. 502 names.
+# Survivorship-bias-free S&P 500 universe (union of all ever-members), as of 2026-07-17.
+# Source: wikipedia+twelvedata_resolved 'List of S&P 500 companies' (current + 'Selected changes').
+# One symbol per line; '#' starts a comment; blank lines ignored.
+# Includes names since removed by delisting/acquisition/relegation. Price
+# coverage for those is partial and is recorded in the companion coverage
+# JSON -- missing delisted prices are a *measured* survivorship leak, not a
+# silent drop.
 A
+AAL
+AAP
 AAPL
 ABBV
 ABNB
@@ -19,11 +24,13 @@ AEP
 AES
 AFL
 AIG
+AIV
 AIZ
 AJG
 AKAM
 ALB
 ALGN
+ALK
 ALL
 ALLE
 AMAT
@@ -33,6 +40,7 @@ AME
 AMGN
 AMP
 AMT
+AMTM
 AMZN
 ANET
 AON
@@ -57,12 +65,14 @@ BA
 BAC
 BALL
 BAX
+BBWI
 BBY
 BDX
 BEN
 BF.B
 BG
 BIIB
+BIO
 BKNG
 BKR
 BLDR
@@ -74,9 +84,11 @@ BRK.B
 BRO
 BSX
 BUD
+BWA
 BX
 BXP
 C
+CAG
 CAH
 CARR
 CASY
@@ -88,6 +100,7 @@ CCI
 CCL
 CDNS
 CDW
+CE
 CEG
 CF
 CFG
@@ -113,7 +126,10 @@ COO
 COP
 COR
 COST
+COTY
 CPAY
+CPB
+CPRI
 CPRT
 CPT
 CRH
@@ -129,6 +145,7 @@ CTVA
 CVNA
 CVS
 CVX
+CZR
 D
 DAL
 DASH
@@ -153,6 +170,7 @@ DTE
 DUK
 DVA
 DVN
+DXC
 DXCM
 EA
 EBAY
@@ -165,8 +183,11 @@ EIX
 EL
 ELV
 EME
+EMN
 EMR
+ENPH
 EOG
+EPAM
 EQIX
 EQR
 EQT
@@ -175,6 +196,7 @@ ES
 ESS
 ETN
 ETR
+ETSY
 EVRG
 EW
 EXC
@@ -185,6 +207,7 @@ EXR
 F
 FANG
 FAST
+FBHS
 FCX
 FDS
 FDX
@@ -197,10 +220,14 @@ FISV
 FITB
 FIX
 FLEX
+FLS
+FLT
+FMC
 FOX
 FOXA
 FRT
 FSLR
+FTI
 FTNT
 FTV
 GD
@@ -219,6 +246,7 @@ GOOG
 GOOGL
 GPC
 GPN
+GPS
 GRMN
 GS
 GWW
@@ -230,11 +258,14 @@ HD
 HIG
 HII
 HLT
+HOG
 HON
 HONA
 HOOD
+HP
 HPE
 HPQ
+HRB
 HRL
 HSIC
 HST
@@ -248,11 +279,13 @@ ICE
 IDXX
 IEX
 IFF
+ILMN
 INCY
 INTC
 INTU
 INVH
 IP
+IPGP
 IQV
 IR
 IRM
@@ -276,31 +309,40 @@ KKR
 KLAC
 KMB
 KMI
+KMX
 KO
 KR
+KSS
 KVUE
 L
 LDOS
+LEG
 LEN
 LH
 LHX
 LII
 LIN
 LITE
+LKQ
 LLY
 LMT
+LNC
 LNT
 LOW
 LRCX
 LULU
+LUMN
 LUV
 LVS
+LW
 LYB
 LYV
+M
 MA
 MAA
 MAR
 MAS
+MBC
 MCD
 MCHP
 MCO
@@ -309,11 +351,14 @@ MDT
 MET
 META
 MGM
+MHK
 MKC
+MKTX
 MLM
 MMM
 MNST
 MO
+MOH
 MOS
 MPC
 MPWR
@@ -326,6 +371,7 @@ MSCI
 MSFT
 MSI
 MTB
+MTCH
 MTD
 MU
 NCLH
@@ -337,6 +383,7 @@ NFLX
 NI
 NKE
 NOC
+NOV
 NOW
 NRG
 NSC
@@ -345,11 +392,13 @@ NTRS
 NUE
 NVDA
 NVR
+NWL
 NWS
 NWSA
 NXPI
 O
 ODFL
+OGN
 OKE
 OMC
 ON
@@ -358,10 +407,12 @@ ORLY
 OTIS
 OXY
 PANW
+PAYC
 PAYX
 PCAR
 PCG
 PEG
+PENN
 PEP
 PFE
 PFG
@@ -377,21 +428,26 @@ PNC
 PNR
 PNW
 PODD
+POOL
 PPG
 PPL
+PRGO
 PRU
 PSA
 PSKY
 PSX
 PTC
+PVH
 PWR
 PYPL
 Q
 QCOM
+QRVO
 RCL
 REG
 REGN
 RF
+RHI
 RJF
 RL
 RMD
@@ -405,9 +461,11 @@ RVTY
 SBAC
 SBUX
 SCHW
+SEDG
 SHW
 SJM
 SLB
+SLG
 SMCI
 SNA
 SNDK
@@ -435,6 +493,7 @@ TECH
 TEL
 TER
 TFC
+TFX
 TGT
 TJX
 TKO
@@ -455,22 +514,28 @@ TTWO
 TXN
 TXT
 TYL
+UA
+UAA
 UAL
 UBER
 UDR
 UHS
 ULTA
 UNH
+UNM
 UNP
 UPS
 URI
 USB
 V
 VEEV
+VFC
 VICI
 VLO
 VLTO
 VMC
+VNO
+VNT
 VRSK
 VRSN
 VRT
@@ -487,6 +552,7 @@ WDC
 WEC
 WELL
 WFC
+WHR
 WM
 WMB
 WMT
@@ -494,13 +560,17 @@ WRB
 WSM
 WST
 WTW
+WU
 WY
 WYNN
 XEL
 XOM
+XRAY
+XRX
 XYL
 XYZ
 YUM
 ZBH
 ZBRA
+ZION
 ZTS
