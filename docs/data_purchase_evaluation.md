@@ -105,3 +105,19 @@ The replication pre-registration's data gates (`docs/replication_preregistration
 §3) bind regardless of vendor; a Norgate panel that fails them is
 remediated or returned to this memo's runner-up, and nothing is spent
 from any trial budget either way.
+
+## 6. Outcome (2026-07-17): reversed by the owner
+
+Same-day owner decision, after the evaluation and its verification pass:
+**no purchase.** The program instead accumulates survivorship-bias-free
+data at enterprise quality in-house — prospective capture via
+`prism-observatory` as the backbone, a dead-ticker price layer as future
+design work. The evaluation above stands as the record of what $630 would
+have bought and what the accumulation path must eventually match:
+survivorship-complete daily bars to 1990 and PIT S&P 400 membership from
+1991, gate-ready in days. The reversal's measured cost is time — the
+pre-2020 replication cells lose their only known source and go
+unscheduled (`docs/replication_preregistration.md` §8); the crash-era
+read defers indefinitely — and its measured saving is $630/yr plus
+vendor lock-in. The A2 budget is unspent and the amendment stands; this
+memo's pick remains the reference point if the decision is revisited.
