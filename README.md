@@ -17,9 +17,14 @@
 > under calibrated per-bucket costs, and the sleeve is archived. The negative
 > result is the harness's first certification:
 > [`docs/certifications/001-residual-reversion-daily-negative.md`](docs/certifications/001-residual-reversion-daily-negative.md).
-> The next candidate (monthly cross-sectional momentum, the demotion budget's
-> side discovery) enters at `mechanics_clean` under its own pre-registered
-> budget ([`docs/momentum_design.md`](docs/momentum_design.md)). No
+> The current candidate (monthly cross-sectional momentum, the demotion
+> budget's side discovery) is in flight under its own ratified pre-registered
+> budget ([`docs/momentum_design.md`](docs/momentum_design.md), ratified
+> 2026-07-06): entered at `mechanics_clean`, paper-trading nightly since
+> 2026-07-13, promotion readable only at the M6 extension window (≥ 2027-06
+> data). Two successor pre-registrations are drafted, not ratified
+> ([`docs/replication_preregistration.md`](docs/replication_preregistration.md),
+> [`docs/trend_design.md`](docs/trend_design.md)). No
 > configuration has ever cleared the deflated evidence bar; nothing is
 > deployable today.
 
@@ -29,10 +34,14 @@ evaluation harness built to produce **honest out-of-sample numbers**: purged
 walk-forward CV, next-open fills with realistic costs, shared-capital
 target-weight accounting, breadth / capacity / cost-toll diagnostics, and
 overfitting-adjusted metrics (DSR, PBO). The production spine is the
-survivorship-counted S&P residual path (`src/prism/residual/`) plus the
 construction, execution, and regime machinery shipped in v0.3.0
 (`validation/{metrics,capacity}`, `execution/participation`,
-`portfolio.step_no_trade_band`, `regime/`). The classical forecaster ensemble
+`portfolio.step_no_trade_band`, `regime/`), driven since the v0.3.2 cutover
+by the ratified B1 momentum book on the nightly paper loop
+(`src/prism/signal/momentum_node.py` → `src/prism/live/daily.py`); the
+survivorship-counted S&P residual path (`src/prism/residual/`) remains on
+the production import path as the archived first sleeve's machinery and
+the live book's eligibility screen. The classical forecaster ensemble
 survives as *one* plug-in signal node (`prism.signal.EnsembleSignalNode`, an
 XGBoost + ARIMA blend under the same harness); its heavier legacy members —
 Prophet and the three reinforcement-learning policies (LSTM-PPO, xLSTM-PPO,
@@ -224,12 +233,24 @@ uv sync --extra research   # full research env: core + jax/torch/mlflow + dev to
 The core `prism` package itself installs slim (`uv pip install -e .` — no
 JAX/torch/mlflow, SPEC N8). Every `research/scripts` CLI below needs the
 `[research]` extra, so use the `uv sync --extra research` form to run them.
+Note: the `[research]` extra pins CUDA-12 JAX wheels and installs on
+**Linux (x86_64/aarch64) only**; on macOS/Windows use bare `uv sync`
+(core + dev tools). Run the suite with
+`uv run pytest -q -m "not research"` (the offline core subset CI runs;
+drop the `-m` filter after `--extra research`).
 
-API keys in a `.env` (Twelvedata for bars/dividends; Polygon for sentiment):
+API keys in a `.env` (Twelvedata for bars/dividends — note the free tier's
+`/dividends` endpoint is 403 for most symbols, so dividend credits come
+back empty there (`docs/operations.md`); Polygon for sentiment; Alpaca and
+FRED only for the live loop and regime fetch):
 
 ```
 TWELVEDATA_API_KEY=...
 POLYGON_API_KEY=...
+# live/paper loop + regime fetch only:
+APCA_API_KEY_ID=...
+APCA_API_SECRET_KEY=...
+FRED_API_KEY=...
 ```
 
 ### 1. Train (produces a run directory the backtest replays)
@@ -341,16 +362,22 @@ are documented in [`docs/operations.md`](docs/operations.md).
 **Universe & survivorship.** `--universe <file>` (one symbol per line, `#`
 comments) and `--universe_asof YYYY-MM-DD` (drop names with no data
 at/before the date) give a **best-effort** point-in-time universe on the
-*included* names. It does **not** recover delisted/acquired tickers — true
-survivorship-bias-free construction needs a delisting database (CRSP, Norgate),
-which is **out of scope**. Read results with that residual survivorship bias in
-mind.
+*included* names. It does **not** recover delisted/acquired tickers. A
+survivorship-complete commercial history is purchasable under the amended
+bounded data budget (A2, [`docs/amendments_2026-07.md`](docs/amendments_2026-07.md));
+the standing candidate was evaluated and the purchase reversed 2026-07-17
+in favor of in-house prospective accumulation
+([`docs/data_purchase_evaluation.md`](docs/data_purchase_evaluation.md) §6).
+Until that accumulation matures, read results with the residual
+survivorship bias in mind.
 
 ---
 
 ## Out of scope
 
-- Point-in-time universe via a delisting database (CRSP/Norgate).
+- Retroactive delisting recovery (CRSP-class history) — purchase evaluated
+  and reversed 2026-07-17 in favor of in-house prospective accumulation; see
+  `docs/data_purchase_evaluation.md`.
 - Sentiment distillation. The pipeline ships keyword `SentimentAnalyzer` and an
   interim FinBERT `TransformerSentimentAnalyzer`; the white-box distillation
   plan is documented in `docs/sentiment_roadmap.md` but not implemented.
@@ -382,7 +409,9 @@ src/prism/             (the distribution — production import path)
   conformal/           EnbPI + ACI
   logging_utils.py     configure_logging + per-symbol adapter
   scripts/             build_sp500_universe (periodic PIT universe build),
-                       paper_loop (nightly Alpaca paper cycle)
+                       paper_loop (nightly Alpaca paper cycle) + paper_sweep
+                       (morning completion sweep) + paper_monitor,
+                       replay_loop (diagnostic replay), edge_diagnostic
 research/              (quarantined per SPEC §9 — not in the wheel; may import
                         prism, never the reverse)
   config.py            ensemble-side config: member/ensemble/training dataclasses
@@ -401,12 +430,17 @@ research/              (quarantined per SPEC §9 — not in the wheel; may impor
     sweep.py             ensemble-layer grid → DSR
     rl_seed_eval.py      multi-seed RL overfitting study
     stat_arb_wfo.py      rolling formation/test pairs stat-arb WFO
+    stat_arb_residual_wfo.py  residual + 12−1 momentum-sleeve WFO (the B1
+                         evidence path; see docs/stat_arb.md)
+    + diagnostics: data_integrity_sweep, dividend_wedge, breadth_diagnostic,
+                   carry_flatten_diagnostic, iex_eligibility_check
 formal/                Lean 4 machine-checked kernel invariants (N4 ledger
                        conservation, no-trade-band hysteresis + batch-replay
                        divergence, purge/embargo geometry, participation gate)
-tests/                 636+ offline tests (validation, leakage, execution,
-                       conformal, live loop, logging); the slim subset runs
-                       without the [research] extra in CI
+tests/                 780 offline tests, 778 passed / 2 skipped at v0.3.3
+                       (validation, leakage, execution, conformal, live
+                       loop, logging); the slim subset runs without the
+                       [research] extra in CI
 ```
 
 ## Configuration
@@ -438,4 +472,4 @@ Gymnasium, MLflow, matplotlib, and the Polygon.io news API.
 
 ## License
 
-MIT License, Copyright (c) 2026 Brendon Reperttang
+MIT License, Copyright (c) 2025 Brendon Reperttang
