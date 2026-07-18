@@ -258,3 +258,121 @@ member excluded from the live tradeable universe** since the rename date.
    vendors concur) are that event's run-up. The parent equity remains listed
    and an index member; if un-quarantined, the momentum sleeve can hold it
    subject to the ordinary screens.
+
+## 10. ACT: the seat that never closed — a rename-invisible membership defect (2026-07-17)
+
+**Status: found by the IEX-eligibility pre-flight (commit `7393cee`); posed
+and approved 2026-07-17; execution record §11.** The membership tables carry
+`ACT 1999-04-12 → open` and `sp500_current.txt` lists ACT, but the vendor's
+ACT is Enact Holdings (NASDAQ, IPO 2021-09-16; joined the S&P SmallCap 600
+in April 2025, never the 500) — the cache is clean Enact throughout.
+
+**Identity and mechanism.** The row is the Watson Pharmaceuticals → Actavis
+→ Allergan plc seat, keyed under its 2013–2015 ticker: WPI → ACT effective
+2013-01-24 (Actavis FY2013 10-K); ACT → AGN effective at the 2015-06-15
+open (MIAX corporate-action alert, 2015-06-12); seat ended when DexCom
+replaced Allergan plc prior to the 2020-05-12 open (S&P DJI release
+2020-05-06, cited for AbbVie's acquisition). Wikipedia's changes table
+records the addition under the backfilled chain ticker (`1999-04-12 added
+ACT`, removed cell empty) and the removal under the post-rename ticker
+(`2020-05-12 added DXCM removed AGN`); the 2015-06-15 rename itself is
+invisible. `reconstruct_membership` therefore dropped the 2020 removal as
+inconsistent — AGN was inactive, its legacy Allergan Inc. interval having
+closed 2015-03-23 against `added AAL` — and the ACT interval ran open
+forever. Same family as the §6 FB/PCLN/WLTW never-closing renames, with two
+twists that rule out the `RENAME_TABLE` relabel mechanism: the successor
+ticker previously belonged to a *different company* (legacy Allergan Inc.),
+and the chain *ended* in 2020 — a bare ACT→AGN relabel would merge two
+companies' intervals, leave the seat open, and invite an un-reviewed vendor
+fetch under AGN.
+
+**Exposure (quantified at discovery, commit `7393cee`; no verdict moves).**
+B1 and both §7 reproduction runs held ACT zero days; the residual
+demotion/R2 family held it 6–906 days for +4 to +27 bps total per run. The
+live loop never traded it — the IEX $1M ADV screen excludes ACT, the only
+name it excludes.
+
+**Remediation (approved 2026-07-17).** (1) `CHANGES_PATCH_TABLE`, a third
+reviewed table in `prism.io.universe_sp500`: primary-sourced membership
+events the Wikipedia table omits, appended to the parsed changes frame
+before reconstruction (`apply_changes_patches`); seeded with the single
+rename event `2015-06-15 added AGN removed ACT`. Reconstruction then yields
+`ACT 1999-04-12 → 2015-06-15` and `AGN 2015-06-15 → 2020-05-12` (legacy
+`AGN 1990-01-01 → 2015-03-23` untouched; every other interval unchanged).
+PIT guards recorded, not mechanized (the §9-item-3 pattern): 1999-04-12 →
+2013-01-24 the seat traded as WPI, and vendor ACT from 2021-09-16 is Enact.
+(2) `QUARANTINE_TABLE` gains ACT (the ADS precedent: genuine bars, wrong
+instrument for what the universe means by the symbol) — this alone keeps
+ACT out of `sp500_current.txt` at any regeneration and keeps Enact bars out
+of any future deep-history pull against the 1999–2015 interval. (3) The
+Enact cache moves to `data/quarantine/`. (4) Content pins updated; the
+patch mechanism unit-tested — the defect is reproduced in miniature and
+closed (`tests/test_universe_sp500.py`). (5) Artifacts regenerated under
+the standing reproduction gate (§11). AGN is deliberately *not*
+pre-quarantined — no fetch evidence existed; its probe outcome is recorded
+in §11. Norgate cross-check hook: when the A2 trial lands, diff its PIT
+membership for the chain against the patched intervals — an independent
+check on the 1999-04-12 start date, which is Wikipedia-sourced like every
+event this builder consumes.
+
+## 11. Execution record: §9 + §10 remediation (2026-07-17, owner sign-off)
+
+**Mechanism landed** (suite **782 passed, 1 skipped** after): `RENAME_TABLE`
+gains `SATS → ECHO` with the §9-item-3 PIT guard as its comment;
+`QUARANTINE_TABLE` drops ECHO and gains ACT; `CHANGES_PATCH_TABLE` +
+`apply_changes_patches` wired into the builder; content pins and the
+§10-in-miniature reconstruction tests updated (`tests/test_universe_sp500.py`).
+Ops fix folded in: `_pull_prices` exempts covering-cache hits from the
+rate-limit pacing (`DataLoader.has_cached`, unit-tested) — pacing exists to
+protect API calls and a cache hit makes none; a mostly-cached regeneration
+drops from ~90 minutes (the 8.5 s/name sleep, all 633 names) to ~12.
+
+**Caches.** ECHO restored from `data/quarantine/` (identity verified §8);
+SATS (superseded duplicate — close-identical to the ECHO cache on all 1,621
+sessions) and ACT (clean Enact Holdings, wrong instrument for the seat)
+moved in. Quarantine now holds nine files; the two new arrivals are
+*genuine-but-wrong-for-the-symbol* parkings, not corrupted series.
+
+**Regeneration** (asof 2026-07-17, pull window unchanged 2020-01-01 →
+2026-06-16): 633 window members (SATS+ECHO merged to one name; ACT left the
+window entirely, its interval now ending 2015-06-15), 869 ever-members, 897
+intervals; **569 resolved, 64 skips (4 in-window quarantined)**.
+`sp500_current.txt`: 502 names; the delta against 2026-07-14 is exactly
+{−ACT, +ECHO}. Membership carries `ACT 1999-04-12 → 2015-06-15`,
+`AGN 2015-06-15 → 2020-05-12` beside the untouched legacy Allergan Inc.
+interval, and ECHO's two adjacent intervals `2026-03-23 → 2026-06-24 →
+open` — one instrument chain across the rename. **AGN probe: the vendor
+returned nothing** — no cache created, AGN joins the measured skip-list as
+an ordinary unretrievable delisted name; no quarantine entry needed.
+
+**Post-regeneration sweep** (`results/data_integrity_sweep_2026-07-17.json`):
+570 caches, **zero wrong-instrument suspects**; only the two benign
+share-count flags (NVR, HONA). ECHO's restored cache passes on a full US
+calendar.
+
+**Reproduction gate — PASS** (pre-stated: mean daily active share ≤ 0.01,
+max ≤ 0.05, no removed-name holdings beyond membership deltas). B1's exact
+config on the 2026-07-17 artifacts (scratch trial ledger — not a counted
+trial) against the `583b9155eab7` lineage: ACT is the only removed column
+and was **never held** in the base book; the SATS→ECHO relabel is exact
+identity (zero phantom turnover); 117 of 1,308 days differ, every one a
+single decile-boundary substitution (max |Δw| 0.0104 ≈ one slot), mean
+daily active share **0.00122**, max **0.0208**. Headline drift: Sharpe
+0.4790 → 0.4855, avg turnover 0.05005 → 0.05006. Evidence:
+`results/b1_repro_diff_2026-07-17.json`; run dir
+`results/demotion_b1_repro_2026-07-17` (local). **The remediated lineage is
+now `37ed61308aca`; the M6 extension runs on it citing this section — the
+bridge chain reads 000b74941cfd (certified, §7 control bit-exact) →
+583b9155eab7 (§7) → 37ed61308aca (§11).**
+
+**Live surface.** ACT leaves the live universe file having never been held
+(the IEX $1M screen's only exclusion, §10); no held-name departure is
+involved, so the 64d7ea1 valuation mechanics have nothing to absorb. ECHO
+becomes fetchable at the next nightly run and tradeable at the next
+refresh, subject to the ordinary screens — the §9.6 context (DBS/wireless
+subsidiaries' prepackaged Ch11 of 2026-06-30) stands as owner-acknowledged
+decision context.
+
+**Anomaly, recorded:** the first gate invocation exited 1 with no output;
+the identical rerun (output file-redirected) completed cleanly and is the
+run recorded above. Both invocations pointed at the scratch ledger.
