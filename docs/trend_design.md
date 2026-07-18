@@ -1,10 +1,18 @@
 # Trend-sleeve pre-registration — P3, crash-convex ETF time-series momentum (DRAFTED)
 
-**Status: drafted 2026-07-17 under the owner's scope-expansion directive; not
-ratified.** Ratification is the owner's dedicated commit/push (AGENTS.md §2
-— operator-local, not in the public tree; in-repo convention:
-`docs/handoff.md` §7).
-No counted trial runs until (i) ratification and (ii) the counted-program
+**Status: RATIFIED 2026-07-18** (this commit is the dedicated ratification
+commit; the decision was delegated by the owner to the session in the same
+turn — the `docs/momentum_design.md` delegation precedent; drafted
+2026-07-17 under the owner's scope-expansion directive; in-repo convention:
+`docs/handoff.md` §7). The §1 universe is resolved and recorded below per
+the ADV rule, exactly as this document requires at ratification. **The
+design is frozen from this commit: the out-of-sample clock runs.** The
+replication family's concurrency exception (granted the same day at its own
+ratification) rests on budget-3/zero-dof grounds this program — a full
+counted search — does not share; it claims no exception and queues as
+designed. From this commit the amendment rule applies: seams may be pinned,
+no trial value may move.
+No counted trial runs until the counted-program
 slot opens — amended SPEC §10 pins one counted program at a time, and the
 momentum program holds the slot until its `docs/momentum_design.md` §3
 verdict. **The binding act is ratification, not the first run: ratification
@@ -66,6 +74,32 @@ recorded in this document at ratification (the free pre-ratification
 amendment window, `docs/momentum_design.md` banner precedent), so no ticker
 is ever hand-picked.
 
+**Resolved at ratification (2026-07-18).** Measurement: median of
+close × volume over the 252 bars ending 2026-07-17, consolidated daily bars
+from the spine vendor; the two credit buckets were measured on the Alpaca
+feed instead (the spine vendor returns no bond-ETF bars on the current
+tier) — the ranking is intra-bucket, so the tape choice touches no other
+bucket, and both credit margins (3.3× and 5.7×) dwarf feed-share noise.
+Contenders are recorded so the resolution is auditable; every winner leads
+its runner-up by ≥ 1.5×.
+
+| bucket | winner | median $DV (M) | contenders measured ($M) |
+|---|---|---|---|
+| US broad equity | **SPY** | 46,062 | IVV 4,463 · VOO 4,437 · VTI 1,290 |
+| Developed ex-US equity | **EFA** | 1,517 | IEFA 999 · VEA 837 |
+| EM equity | **EEM** | 1,614 | IEMG 859 · VWO 492 |
+| Long US duration | **TLT** | 2,695 | SPTL 151 · VGLT 106 |
+| Intermediate US duration | **IEF** | 734 | VGIT 157 · SPTI 53 |
+| IG credit | **LQD** | 252\* | VCIT 75\* · IGIB 10\* |
+| HY credit | **HYG** | 224\* | JNK 39\* · SHYG 3\* |
+| Gold | **GLD** | 4,081 | IAU 653 · GLDM 430 |
+| Broad commodity | **PDBC** | 77 | GSG 16 · DBC 14 |
+| US dollar | **UUP** | 38 | USDU 6 |
+
+\* Alpaca-feed volume (intra-bucket basis note above).
+
+**The universe: SPY, EFA, EEM, TLT, IEF, LQD, HYG, GLD, PDBC, UUP.**
+
 Honesty notes, recorded now: (i) the rule evaluated at ratification carries
 mild survivorship with respect to the *backtest* era — a fund that won its
 bucket today may not have existed in 2010; a name enters its cell only from
@@ -103,10 +137,11 @@ retail-implementable premium), not a defect of the data.
 ## 3. Counted trial set (ratify or amend, then frozen)
 
 Namespace `trend_v1`; budget **exactly 6 counted trials**, never refilled;
-degenerate and NaN outcomes count. Prior counted programs recorded at
-ratification per amended SPEC §10 (at drafting: residual reversion, closed
-at 17; momentum, ≤ 8, in flight; `momentum_replication_v1`, ≤ 3, if
-ratified).
+degenerate and NaN outcomes count. Prior counted programs, recorded at
+ratification 2026-07-18 per amended SPEC §10: **three** — residual
+reversion (closed at 17, cert 001); momentum (≤ 8, in flight, holding the
+counted slot); `momentum_replication_v1` (≤ 3, ratified 2026-07-18 with a
+granted concurrency exception).
 
 | id | delta vs T0 | probes |
 |----|-------------|--------|
