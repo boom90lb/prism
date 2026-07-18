@@ -1,8 +1,10 @@
 # Constitutional amendments, 2026-07-14
 
 **Status: drafted under owner delegation 2026-07-14 ("the amendment stack I
-leave to you"); ratification is the owner's push of the dedicated amendment
-commit.** Three amendments. None moves a pre-registered trial value, reopens a
+leave to you"); RATIFIED by the owner's 2026-07-17 push of the dedicated
+amendment commit (`2162806` — since collapsed into the v0.3.3 release
+commit; the before/after diff resolves on branch
+`backup/pre-squash-v0.3.3`, pushed to origin).** Three amendments. None moves a pre-registered trial value, reopens a
 closed selection set, or touches a certified artifact: the residual ledger
 stays closed at 17 rows (cert 001 §9), momentum's budget stays exactly 8
 (`docs/momentum_design.md` §2), and every adjudication rule in ratified

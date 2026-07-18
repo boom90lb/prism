@@ -41,8 +41,10 @@ Two sites, both in the shipped construction path:
 
 ## 3. Empirical confirmation (day-class attribution)
 
-Read-only pandas over the committed artifacts
+Read-only pandas over the local run artifacts
 `results/demotion_{b2,b1,d1}/target_weights.csv` + `demotion_b2/costs.csv`
+(time-series CSVs stay local, regenerable from each run's committed
+`config.json` — cert 001 §10)
 (1308×574 frames, identical indexes; drop-first-establishment-day diff
 convention). Computed independently twice this session (analysis and
 adversarial re-derivation); every figure reproduced exactly.

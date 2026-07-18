@@ -41,7 +41,7 @@ This connects to three existing audit findings:
 
 ## What `fdr_hard` does today (baseline)
 
-`scan_cointegrated_pairs_with_report` in `src/arbitrage/pairs.py`:
+`scan_cointegrated_pairs_with_report` in `research/arbitrage/pairs.py`:
 1. Builds raw candidates per symbol pair (`_candidate_from_pair`).
 2. Applies `benjamini_hochberg_mask` over cointegration p-values; BH failure is
    rejection reason `"fdr"` in `_rejection_reason`.
@@ -121,7 +121,9 @@ is a counted additional trial.
   `candidate.evidence_weight` **before** `combine_pair_positions`.
   The existing clip + `scale_to_max_gross` then perform the portfolio-level
   shrink. No change to `combine_pair_positions` or the accounting.
-- CLI `scripts/stat_arb_wfo.py`: add `--construction_mode`.
+- CLI `research/scripts/stat_arb_wfo.py`: `--construction_mode` flag not
+  landed; the opt-in is `PairSelectionConfig.construction_mode`
+  (`research/arbitrage/pairs.py`).
 
 ## Honesty mechanism (already wired)
 

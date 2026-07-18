@@ -107,6 +107,10 @@ ones cited anywhere in this document.
 | "ADS is a probable ticker-reuse" | Wrong company (Adidas AG, Xetra) for the entire range — vendor collision, not temporal reuse | `docs/data_integrity_diagnostic.md` |
 | "IEX $1M floor ⇒ effective $30–50M, unmeasured" | Confirmed no correction factor exists; measured 2026-07-17: per-name median IEX share ~4.8% ⇒ effective consolidated floor ≈ **$20.6M**, excluding exactly one name (ACT, $0.74M IEX vs $12M consolidated; held book unaffected) — pre-flight instrument `research/scripts/iex_eligibility_check.py` | `src/prism/residual/factors.py:253-258`, `alpaca_data.py:42-44`; `results/iex_eligibility_2026-07-17.json` |
 
+`runs/…` evidence paths above are local operational run-dirs, untracked by
+design (`.gitignore`); they are cited for the operator's audit trail, not
+public verification.
+
 ## 3. Upgrade 1, executed: the collision sweep
 
 Full frame, results, and remediation proposals:
@@ -175,7 +179,10 @@ Executed 2026-07-17: the carry-mode fold-flattening quantification
 with the combined M6 pin: live ≈ certified − 17 bps/yr net
 (+19.4 flatten − 36.1 dividends).
 
-Still open, unchanged in substance: the data purchase itself and the
-micro-account funding (owner acts the amendments now permit), the
-crash-convex ETF-trend second sleeve (P3), and an always-on box for the
-paper stream. No counted trial was touched by any of this.
+Still open: the micro-account funding (an owner act A3 now permits), the
+crash-convex ETF-trend second sleeve (P3, since drafted as
+`docs/trend_design.md`), and an always-on box for the paper stream. The
+data purchase was evaluated and **reversed** 2026-07-17 in favor of
+in-house accumulation (`docs/data_purchase_evaluation.md` §6); the open
+item is the accumulation path. No counted trial was touched by any of
+this.

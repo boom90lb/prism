@@ -215,6 +215,12 @@ Key anchors:
 | `demotion_b1` | `000b74941cfd` | `a2f4478` (clean tree) |
 | `demotion_b2` | `e77aa678b157` | `a2f4478` (clean tree) |
 
+Pre-squash note (added 2026-07-17): the code commits above predate the
+v0.3.2 release squash and resolve on branch `backup/pre-squash-v0.3.2`
+(pushed to origin). `d272c93` is the pre-rewrite hash recorded in the claim
+packets; its rewritten equivalent on that branch is `9a05840` (bit-identical
+tree). The table cells mirror the committed packets and are not altered.
+
 Driver: `python -m research.scripts.stat_arb_residual_wfo` with the config
 recorded in each run's `config.json`. Known wart: the ledger rows and the
 claim packets hash the same config through two different writers and disagree
