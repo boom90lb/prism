@@ -63,7 +63,8 @@ delisting-*reason* question is **settled negatively** (owner inspection of
 the published data-content tables, 2026-07-17): the metadata carries
 `LastQuotedDate`/`SecondLastQuotedDate` and no reason field anywhere, so
 merger-vs-deficiency classification sources from the independent
-EDGAR/Alpha-Vantage canon (`prism-observatory`; replication pre-reg §3
+EDGAR/Alpha-Vantage canon (`prism-observatory`, companion repository,
+publication pending; replication pre-reg §3
 gate 5), and the vendor's "delisted" means untradeable on any venue it
 tracks — OTC-relegated names remain *currently listed*, so index removal
 while trading is a universe exit, not a terminal event (pinned in the
@@ -111,7 +112,8 @@ from any trial budget either way.
 Same-day owner decision, after the evaluation and its verification pass:
 **no purchase.** The program instead accumulates survivorship-bias-free
 data at enterprise quality in-house — prospective capture via
-`prism-observatory` as the backbone, a dead-ticker price layer as future
+`prism-observatory` (companion repository, publication pending) as the
+backbone, a dead-ticker price layer as future
 design work. The evaluation above stands as the record of what $630 would
 have bought and what the accumulation path must eventually match:
 survivorship-complete daily bars to 1990 and PIT S&P 400 membership from

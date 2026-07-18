@@ -1,7 +1,8 @@
-# Replication pre-registration — frozen-B1 reads outside the selection cell (DRAFTED, GATED on the A2 purchase)
+# Replication pre-registration — frozen-B1 reads outside the selection cell (DRAFTED; GATED per-cell on a §3-qualifying panel — the purchase was reversed, see §8)
 
 **Status: drafted 2026-07-17 under the owner's scope-expansion directive; not
-ratified.** Ratification is the owner's dedicated commit/push (AGENTS.md §2;
+ratified.** Ratification is the owner's dedicated commit/push (AGENTS.md §2
+— operator-local, not in the public tree; the in-repo statement is
 the amendment convention of `docs/handoff.md` §7). This document spends
 nothing until (i) it is ratified, (ii) a qualifying survivorship-complete
 panel is delivered — the purchase was reversed 2026-07-17 and delivery is
@@ -143,7 +144,8 @@ remediation, and nothing is spent.
    discipline, per A2(iii).
 5. **Delisting-event reconciliation (G-DR).** Before any cell's spread is
    read, the panel's terminal events must reconcile against an independent
-   canon assembled by `prism-observatory` from sources sharing no vendor
+   canon assembled by `prism-observatory` (companion repository,
+   publication pending) from sources sharing no vendor
    with the panel: (i) EDGAR Forms 25 / 25-NSE / 15-\* (filed and effective
    dates; Form 25 effectiveness is filing + 10 calendar days per Rule
    12d2-2) and (ii) Alpha Vantage `LISTING_STATUS` point-in-time snapshots
@@ -248,7 +250,8 @@ own future amendment; this document governs research reads only.
 
 Owner decision, same day as drafting: the Norgate purchase is reversed in
 favor of slowly accumulating survivorship-bias-free data at enterprise
-quality in-house — prospective capture via `prism-observatory` as the
+quality in-house — prospective capture via `prism-observatory` (companion
+repository, publication pending) as the
 backbone, a dead-ticker price layer as future design work
 (`docs/data_purchase_evaluation.md` §6 records the outcome against the
 evaluation). Consequences, stated now so they cannot be discovered later:
@@ -257,7 +260,9 @@ evaluation). Consequences, stated now so they cannot be discovered later:
   *quality*, not vendor. Nothing in §§1–7 moves. The instrument's trigger
   changes from "purchase delivered" to "a panel covering a cell's
   universe × era exists and passes §3," evaluated **per cell** — C1 may
-  activate years before C2/C3.
+  activate years before C2/C3. §1's "delivery date" reads, for an
+  accumulated panel, as the date the panel is assembled and passes its §3
+  gates; C1's era endpoint is recorded at gate time exactly as written.
 - **Known source map at amendment time:** C1 membership is coverable by
   the observatory's IJH point-in-time holdings (~2010 onward); C1
   delisted-name *prices* are the accumulation target (recent deaths are

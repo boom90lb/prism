@@ -1,7 +1,9 @@
 # Trend-sleeve pre-registration — P3, crash-convex ETF time-series momentum (DRAFTED)
 
 **Status: drafted 2026-07-17 under the owner's scope-expansion directive; not
-ratified.** Ratification is the owner's dedicated commit/push (AGENTS.md §2).
+ratified.** Ratification is the owner's dedicated commit/push (AGENTS.md §2
+— operator-local, not in the public tree; in-repo convention:
+`docs/handoff.md` §7).
 No counted trial runs until (i) ratification and (ii) the counted-program
 slot opens — amended SPEC §10 pins one counted program at a time, and the
 momentum program holds the slot until its `docs/momentum_design.md` §3
