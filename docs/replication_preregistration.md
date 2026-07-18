@@ -3,9 +3,9 @@
 **Status: drafted 2026-07-17 under the owner's scope-expansion directive; not
 ratified.** Ratification is the owner's dedicated commit/push (AGENTS.md §2;
 the amendment convention of `docs/handoff.md` §7). This document spends
-nothing until (i) it is ratified, (ii) the A2 dataset purchase
-(`docs/amendments_2026-07.md` §A2) is executed and delivered, and (iii) the
-§3 data gates pass. **The design below is frozen before any purchased return
+nothing until (i) it is ratified, (ii) a qualifying survivorship-complete
+panel is delivered — the purchase was reversed 2026-07-17 and delivery is
+unscheduled, see §8 — and (iii) the §3 data gates pass. **The design below is frozen before any purchased return
 data is inspected — that ordering is the entire evidential content of this
 instrument.** A design adjusted after seeing the panel is a search, not a
 replication.
@@ -243,3 +243,37 @@ changes. No re-tuning, no new signal, no sub-era or sub-universe reads beyond
 the four cells. The closed residual selection set stays closed. The budget
 does not refill. The purchased panel feeds the *live* spine only under its
 own future amendment; this document governs research reads only.
+
+## 8. Amendment 2026-07-17: the purchase reversed, the design unchanged
+
+Owner decision, same day as drafting: the Norgate purchase is reversed in
+favor of slowly accumulating survivorship-bias-free data at enterprise
+quality in-house — prospective capture via `prism-observatory` as the
+backbone, a dead-ticker price layer as future design work
+(`docs/data_purchase_evaluation.md` §6 records the outcome against the
+evaluation). Consequences, stated now so they cannot be discovered later:
+
+- **Every §3 gate is already source-agnostic** — the gates define panel
+  *quality*, not vendor. Nothing in §§1–7 moves. The instrument's trigger
+  changes from "purchase delivered" to "a panel covering a cell's
+  universe × era exists and passes §3," evaluated **per cell** — C1 may
+  activate years before C2/C3.
+- **Known source map at amendment time:** C1 membership is coverable by
+  the observatory's IJH point-in-time holdings (~2010 onward); C1
+  delisted-name *prices* are the accumulation target (recent deaths are
+  the recoverable class). C2/C3 have **no known free source for pre-2020
+  delisted prices**: those cells stay registered and unscheduled, and the
+  crash-era read (C2) is deferred indefinitely. Recording this is the
+  honest price of the reversal, paid knowingly.
+- **An accumulated multi-source panel faces the same discipline as any
+  vendor panel**: the §3 integrity sweep treats splice seams between
+  sources as first-class wrong-instrument suspects, and adjustment-basis
+  agreement across sources is a gate input, not an assumption.
+- **The frozen design ages well under this.** A configuration pinned in
+  2026-07 and first evaluated on a panel assembled years later is a
+  *stronger* quarantine than the purchased path offered — provided no
+  interim backtest touches any cell. The §4 accounting is unchanged; the
+  budget stays exactly 3.
+- **A2 is untouched.** The amendment permits purchases; it does not
+  mandate them. The budget goes unspent and remains available if the
+  decision is ever revisited.
