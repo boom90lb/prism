@@ -1,7 +1,7 @@
 """Build a survivorship-bias-free S&P 500 universe (Koker method).
 
 Reconstructs point-in-time membership from the Wikipedia "List of S&P 500
-companies" page (current constituents + 'Selected changes'), then writes three
+companies" page (current constituents + 'Selected changes'), then writes five
 artifacts under ``data/universe/``:
 
 * ``sp500_pit_<asof>.txt``        -- the ever-member union, in the ``load_universe``
@@ -10,8 +10,22 @@ artifacts under ``data/universe/``:
                                      ``[ticker, start, end]`` (feeds ``--membership``).
 * ``sp500_coverage_<asof>.json``  -- the coverage ledger: which ever-members have
                                      usable price data vs the skipped (delisted,
-                                     unretrievable) names. The skip-list is the
-                                     *measured* survivorship leak -- never hidden.
+                                     unretrievable, or quarantined) names. The
+                                     skip-list is the *measured* survivorship
+                                     leak -- never hidden.
+* ``sp500_pit_resolved_<asof>.txt`` -- the price-resolved subset of the pit union
+                                     (the backtest universe; feeds ``--universe_file``).
+* ``sp500_current.txt``           -- current members with a local bar cache (the
+                                     live loop's fetchable-today proxy; undated
+                                     because the live wrappers reference it by name).
+
+Vendor symbol collisions are handled by three reviewed tables in
+``prism.io.universe_sp500``: ``RENAME_TABLE`` (old symbol -> successor),
+``QUARANTINE_TABLE`` (symbols whose vendor resolution is a known wrong
+instrument; never fetched, counted as coverage skips), and
+``CHANGES_PATCH_TABLE`` (membership-relevant events the Wikipedia changes
+table omits -- e.g. index-invisible ticker renames -- applied before
+reconstruction so intervals open and close under the right symbols).
 
 Network: fetching Wikipedia and pulling Twelvedata prices needs egress; run with
 the sandbox disabled, or pass ``--html-file`` for an offline membership-only
@@ -32,8 +46,10 @@ import pandas as pd
 from prism.config import DATA_DIR
 from prism.io.loader import DataLoader
 from prism.io.universe_sp500 import (
+    QUARANTINE_TABLE,
     RENAME_TABLE,
     WIKI_URL,
+    apply_changes_patches,
     compute_coverage,
     ever_members,
     extract_tables,
@@ -77,6 +93,25 @@ def _to_vendor(ticker: str) -> str:
     return normalize_ticker(RENAME_TABLE.get(t, t))
 
 
+def _write_current_members(membership: pd.DataFrame, asof: str, path: Path) -> None:
+    """Current members (intervals open at ``asof``) that have a local bar cache.
+
+    The live loop's universe file: a fetchable-today proxy, NOT survivorship-free
+    (backtests use the pit files). Quarantined symbols are excluded even when a
+    stale cache lingers on disk.
+    """
+    current = members_active_between(membership, asof, asof)
+    cached = {p.name.split("_1d_")[0] for p in DATA_DIR.glob("*_1d_*.parquet")}
+    names = [s for s in current if s in cached and s not in QUARANTINE_TABLE]
+    header = (
+        f"# Current S&P 500 members as of {asof} with local price data (fetchable\n"
+        "# proxy for the live loop; NOT survivorship-free -- backtests use sp500_pit_*).\n"
+        f"# Built from sp500_membership_{asof}.parquet (intervals open at as-of)\n"
+        f"# INTERSECT data/*_1d_*.parquet, minus quarantined symbols. {len(names)} names.\n"
+    )
+    path.write_text(header + "\n".join(names) + "\n")
+
+
 def _load_tables(args: argparse.Namespace) -> tuple[list[str], pd.DataFrame]:
     if args.html_file:
         tables = extract_tables(Path(args.html_file).read_text())
@@ -90,10 +125,14 @@ def _pull_prices(
     """Fetch each symbol (paced under the API rate limit); return those with bars.
 
     Pacing keeps calls under the vendor's per-minute cap so a rate-limited call
-    never poses as a delisted-name gap in the coverage ledger. Delisting gaps are
-    scattered, so a long run of *consecutive* empties signals throttling/quota
-    exhaustion rather than genuine gaps -- that is flagged loudly so the coverage
-    number is not silently undercounted.
+    never poses as a delisted-name gap in the coverage ledger. Cache hits make
+    no API call and are exempt (``DataLoader.has_cached``, the same covering-
+    range lookup the fetch itself performs) -- without the exemption a
+    mostly-cached regeneration pays the full interval per name and runs ~90
+    minutes instead of minutes. Delisting gaps are scattered, so a long run of
+    *consecutive* empties signals throttling/quota exhaustion rather than
+    genuine gaps -- that is flagged loudly so the coverage number is not
+    silently undercounted.
     """
     loader = DataLoader()
     available: list[str] = []
@@ -102,10 +141,11 @@ def _pull_prices(
     consec_empty = 0
     for i, symbol in enumerate(symbols):
         log = get_symbol_logger(logger, symbol)
-        wait = min_interval - (time.monotonic() - last)
-        if wait > 0:
-            time.sleep(wait)
-        last = time.monotonic()
+        if not loader.has_cached(symbol, "1d", start, end):
+            wait = min_interval - (time.monotonic() - last)
+            if wait > 0:
+                time.sleep(wait)
+            last = time.monotonic()
         df = loader.fetch_historical_data(symbol, "1d", start, end)
         if df.empty or not {"open", "close", "volume"} <= set(df.columns):
             consec_empty += 1
@@ -131,6 +171,10 @@ def main() -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     current, changes = _load_tables(args)
+    n_raw = len(changes)
+    changes = apply_changes_patches(changes)
+    if len(changes) != n_raw:
+        logger.info("applied %d reviewed changes-table patch event(s)", len(changes) - n_raw)
     membership = reconstruct_membership(current, changes, end_date=args.asof)
     # Remap to vendor symbols so the universe file, membership mask, and price
     # panel all share one symbology (rename table is empty until coverage gaps
@@ -164,17 +208,29 @@ def main() -> None:
 
     if not args.skip_prices:
         pull = window if args.max_names is None else window[: args.max_names]
-        available = _pull_prices(pull, args.start_date, args.end_date, rate_per_min=args.rate_per_min)
+        # Quarantined names are never fetched: the vendor's answer is a known
+        # wrong instrument, and pulling it would re-create the bad cache the
+        # quarantine exists to keep out (docs/data_integrity_diagnostic.md §6).
+        fetchable = [s for s in pull if normalize_ticker(s) not in QUARANTINE_TABLE]
+        available = _pull_prices(fetchable, args.start_date, args.end_date, rate_per_min=args.rate_per_min)
         coverage = compute_coverage(pull, available, asof=args.asof)
         coverage_path = out_dir / f"sp500_coverage_{args.asof}.json"
         coverage_path.write_text(json.dumps(coverage.to_dict(), indent=2))
+        resolved_path = out_dir / f"sp500_pit_resolved_{args.asof}.txt"
+        write_universe_file(coverage.resolved, resolved_path, asof=args.asof, source="wikipedia+twelvedata_resolved")
+        current_path = out_dir / "sp500_current.txt"
+        _write_current_members(membership, args.asof, current_path)
         result["coverage_file"] = str(coverage_path)
         result["coverage_fraction"] = coverage.coverage_fraction
         result["n_resolved"] = coverage.n_resolved
         result["n_skipped"] = len(coverage.skipped)
+        result["n_quarantined"] = len(coverage.quarantined)
+        result["resolved_file"] = str(resolved_path)
+        result["current_file"] = str(current_path)
         logger.info(
-            "Price coverage %.1f%% (%d/%d); %d delisted/unretrievable names recorded as skips",
+            "Price coverage %.1f%% (%d/%d); %d delisted/unretrievable names recorded as skips (%d quarantined)",
             100 * coverage.coverage_fraction, coverage.n_resolved, len(pull), len(coverage.skipped),
+            len(coverage.quarantined),
         )
 
     print(json.dumps(result, indent=2))

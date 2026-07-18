@@ -2,7 +2,10 @@
 
 **Status:** Ratified for v0.3.0. This document is the constitution. Code, docs,
 and roadmap defer to it; where they disagree with it, they are wrong. It
-supersedes the "ensemble of forecasters" framing of v0.1–v0.2.
+supersedes the "ensemble of forecasters" framing of v0.1–v0.2. Amended
+2026-07-14 (per-family trial budgets, §10; bounded data budget, §1/§4;
+cost-calibration carve-out, §10 — rationale and before/after in
+`docs/amendments_2026-07.md`).
 
 **Audience:** the operator (senior quant, solo, zero external budget) and any
 agent extending the system. It assumes AFML-level familiarity with purged CV,
@@ -66,10 +69,12 @@ conditioned by a **regime** layer and gated by the **harness**.
 
 ## 1. Mandate and non-negotiables
 
-**Mandate.** A production-grade, single-operator, zero-data-budget systematic
-trading bot that trades a **cross-section** at a **daily-to-weekly** horizon,
-survives on **free data tiers**, and only ever risks capital on edges that have
-cleared an explicit, deflation-adjusted, cost-aware evidence bar.
+**Mandate.** A production-grade, single-operator, bounded-data-budget
+systematic trading bot that trades a **cross-section** at a **daily-to-weekly**
+horizon, survives on **free data tiers by default** (paid datasets only under
+the §4 amendment: named, ratified, ≤ ~$1,000/yr all-in), and only ever risks
+capital on edges that have cleared an explicit, deflation-adjusted, cost-aware
+evidence bar.
 
 **Non-negotiables (invariants that gate every merge):**
 
@@ -244,6 +249,17 @@ as non-production cross-checks (ToS / US-jurisdiction risk). **Every net claim
 must record the venue and per-fill fee it was priced against** (I-7); a crypto
 `net_edge` priced off Binance.US's 2 bp does not transfer to a Coinbase-default
 fee tier.
+
+**Data-budget amendment (2026-07-14).** The $0 stack is the default posture,
+not an identity. A named dataset may be purchased when a ratified amendment
+records that (i) it closes a *measured* integrity or capacity gap the free
+tiers cannot — the standing candidate is a survivorship-complete US equity
+history, the sole blocker on the mid-cap breadth expansion and the durable fix
+for the free spine's measured symbol-collision class
+(`docs/data_integrity_diagnostic.md`) — (ii) total annual data spend stays
+≤ ~$1,000, and (iii) the dataset's provenance and license enter the coverage-
+ledger discipline of §5. Free-tier survivorship leaks remain measured, never
+hidden; a purchase is an owner act.
 
 ---
 
@@ -540,6 +556,18 @@ annualization is stated.
 is net ≈ −0.01 (daily-annualized) — **net-negative, not breakeven, and un-deflated**
 — so by this spec **nothing is deployable today.**
 
+**Cost-calibration carve-out (amended 2026-07-14).** The gate above governs
+risking capital on a *claimed edge*. A real-money micro-account operated
+purely as the I-9 cost-measurement instrument — total equity ≤ $2,000 (owner
+sets and records the actual figure at funding), orders mirroring the paper
+book's decisions at trivial size, fills venue-tagged `real` in the calibration
+ledger and preferred over paper prints once a bucket reaches its `min_fills`
+guard, P&L never entering any claim packet or promotion read — is a
+measurement expenditure, not a deployment. The paper venue simulates its own
+fills, so paper prints validate the pipeline, not the market; this instrument
+exists to make the per-bucket spread table mean something. Opening, funding,
+and resizing it are owner acts.
+
 **Kill-criterion (co-equal with the promotion gate — a program has a STOP, not
 only a GO).** The residual-reversion equity sleeve is declared **uneconomic at
 daily frequency** — demoted to a lower rebalance frequency or abandoned, *not*
@@ -549,11 +577,20 @@ gate + calibrated per-bucket spreads:
 - its best **deflated** net Sharpe (against the counted construction-trial budget)
   is still < 0, **or**
 - the cost toll ≥ gross in more than ~40% of folds (a structural toll-booth), **or**
-- the cumulative construction-trial budget (pre-registered, ≤ ~30 counted trials)
-  is exhausted without a `net_edge`-tier claim.
+- its pre-registered construction-trial budget is exhausted without a
+  `net_edge`-tier claim.
 
-The construction-trial budget is logged in the ledger and every swept band/factor
-value counts against it, so "cost-bound before signal-bound" cannot become infinite
+Budgets are **per program** (amended 2026-07-14; the residual sleeve's was
+~30 counted trials, closed at 17; momentum's is exactly 8): each candidate
+family receives a fixed, never-refilled budget in its own ratified
+pre-registration, counted in its own selection-set ledger (N5) — which is the
+multiplicity DSR actually deflates. Across-family multiplicity is controlled
+where it binds instead of by a shared counter that starves later programs
+regardless of merit: every pre-registration records the count of prior
+counted programs, at most one counted program runs at a time, and promotion
+always requires genuinely out-of-sample confirmation. The construction-trial
+budget is logged in the ledger and every swept band/factor value counts
+against it, so "cost-bound before signal-bound" cannot become infinite
 runway. **Frequency-demotion and score-smoothing experiments are admissible
 now, before R2** — 2–3-day/weekly rebalance cadence, EWMA-smoothed s-scores,
 continuous sizing in s in place of the ±1.25/−0.5 threshold state machine —
@@ -660,7 +697,9 @@ sequence R0→R4 of `docs/audit.md` (which this spec subsumes and does not repla
   is judged under an uncalibrated flat spread, inside the cost model's own
   error bars in both directions. Exit: turnover responds monotonically to the
   band parameter, and a per-liquidity-bucket effective-spread table exists
-  from paper fills.
+  from paper fills. (Amended 2026-07-14: paper fills validate the pipeline,
+  not the market — the venue simulates its own fills — so the real-money
+  micro-account of the §10 carve-out extends this instrument to real prints.)
 - **R3 · Statistical honesty.** PBO over the real selection set; the canonical
   per-selection-set trial ledger (N5) → `expected_max_sharpe` with an effective
   independent-trial count; stat-arb multiplicity fixes. Exit: every artifact

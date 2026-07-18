@@ -39,9 +39,9 @@ feeds. Settlement is **T+1** (since May 2024); no T+0 mandate is scheduled.
   *Verified (FINRA Regulatory Notice 26-10; broker notices — reconfirm before
   relying).* A **secondary** tailwind, not the linchpin: Prism's N2 next-open
   overnight-hold pattern never day-trades the same security intraday, so PDT was
-  not its binding constraint. Note the residual book runs in a **Reg-T margin
-  account with locates** (it shorts) — the "$0 cash account" applies only to
-  long-only / crypto-long-flat contexts.
+  not its binding constraint. Note the equity long-short book (momentum or residual — both short) runs
+  in a **Reg-T margin account with locates** — the "$0 cash account" applies
+  only to long-only / crypto-long-flat contexts.
 - **Reg NMS tick/access-fee amendments** (Rules 610/612: access-fee cap 30→10
   mils, sub-penny/half-cent ticks for tick-constrained names, new round-lot and
   odd-lot dissemination) were upheld by the D.C. Circuit (2025-10-14) but
@@ -51,9 +51,11 @@ feeds. Settlement is **T+1** (since May 2024); no T+0 mandate is scheduled.
 - PFOF/order-competition and Reg Best-Ex proposals appear deprioritized under the
   current SEC; treat the internalization status quo as intact. *Uncertain.*
 
-**Data at $0.** Alpaca Basic real-time = **IEX only** (~2–3% of consolidated
-volume — thin, non-representative of true NBBO); historical minute/daily bars
-available; ~200 req/min. yfinance (EOD + delayed intraday, ToS-gray, fragile),
+**Data at $0.** Alpaca Basic real-time = **IEX only** (measured ~5% of
+consolidated volume across the 2026 S&P 500 universe — per-name median 4.8%, p5–p95
+3.2–6.6%, `results/iex_eligibility_2026-07-17.json` — thin,
+non-representative of true NBBO); historical minute/daily bars available;
+~200 req/min. yfinance (EOD + delayed intraday, ToS-gray, fragile),
 Stooq (clean daily EOD backfill), SEC EDGAR (fundamentals, free, full history),
 FINRA transparency files (delayed short-sale/ATS volume), Ken French factor
 library. Real-time SIP consolidated data requires a paid tier — **the binding
@@ -75,7 +77,9 @@ normally taxes you does not bind.
 
 **Verdict — CORE.** The canonical zero-budget systematic venue; access barriers
 that historically killed small systematic accounts just fell away, and the
-existing stack is already residual stat-arb on equities. Binding limitation is
+existing stack already runs cross-sectional equity long-short here (mega-cap
+momentum as the live candidate; residual stat-arb as the certified research
+lane). Binding limitation is
 free-data fidelity (argues for daily-bar signals executed intraday, not intraday
 alpha). Monitor the ~Nov-2026 Reg NMS tick/fee change to spreads and rebates.
 
@@ -368,8 +372,11 @@ clears the commission floor in paper.
   SIPC, rehypothecation) and as *variation-margin path dependence* in futures —
   operational-controls problems, not alpha.
 
-**The $0 data spine** (full table in `SPEC.md §4`): one keyed reliable pair
-(Twelve Data + Alpaca) for the price/execution spine, plus unauthenticated
+**The $0 data spine** (full table in `SPEC.md §4`): one keyed pair
+(Twelve Data + Alpaca) for the price/execution spine — with a measured
+caveat: Twelve Data resolves retired/renamed tickers to whatever instrument
+currently owns the symbol (8 of ~574 caches quarantined 2026-07; a standing
+pre-flight sweep exists — `docs/data_integrity_diagnostic.md`) — plus unauthenticated
 official sources (FRED, Treasury, CBOE, SEC EDGAR) for macro/rates/vol/liquidity
 regime — the fragile-source exposure (yfinance, Binance.com) is confined to
 quarantined cross-checks, never a production dependency. Alpaca is the

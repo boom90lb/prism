@@ -29,7 +29,7 @@ scrape) and keeps the same explicit rename-table / skip-set discipline.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Iterable
@@ -45,11 +45,61 @@ WIKI_URL = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
 HISTORY_FLOOR = pd.Timestamp("1990-01-01")
 
 # Manual, *reviewed* ticker remaps from Wikipedia spelling to the price vendor's
-# spelling (Koker's `rename_table`). Seeded empty: entries are added only after
-# the coverage ledger shows a name is missing *and* a human confirms the vendor
-# symbol. Never auto-populate -- a wrong remap silently swaps one company's
-# price history for another's.
-RENAME_TABLE: dict[str, str] = {}
+# spelling (Koker's `rename_table`). Entries are added only after the coverage
+# ledger or an integrity sweep shows a name is wrong/missing *and* a human
+# confirms the vendor symbol. Never auto-populate -- a wrong remap silently
+# swaps one company's price history for another's.
+# Reviewed 2026-07-14 (docs/data_integrity_diagnostic.md §6): pure index
+# renames are invisible to the Wikipedia changes table, the old symbols'
+# vendor resolutions are wrong instruments, and the successor caches carry the
+# full genuine history.
+RENAME_TABLE: dict[str, str] = {
+    "FB": "META",  # Facebook -> Meta Platforms (2022-06); vendor "FB" is a 2025+ stray
+    "PCLN": "BKNG",  # Priceline -> Booking Holdings (2018); vendor "PCLN" is a 2025+ stray
+    "WLTW": "WTW",  # Willis Towers Watson rename (2022-01); vendor "WLTW" is a sparse remnant
+    # EchoStar ticker change (2026-06-24, CUSIP unchanged); the vendor backfills the
+    # full genuine chain under ECHO (verified against Alpaca SIP bars, diagnostic §8).
+    # PIT guard (§9): before 2021-11-23 the ticker ECHO denoted Echo Global Logistics
+    # (buyout completed that date; never an S&P 500 member; no genuine series
+    # retrievable) -- never attribute pre-rename ECHO-ticker references to EchoStar.
+    "SATS": "ECHO",
+}
+
+# Manual, *reviewed* vendor-collision quarantine: symbols whose vendor
+# resolution is known to return a DIFFERENT instrument (or corrupted data),
+# with no genuine series available and no rename successor. Quarantined names
+# are excluded from the price pull and the resolved/tradeable universe and are
+# counted in the coverage skip-list -- the same measured-survivorship-leak
+# treatment as any other unretrievable delisted name. Membership intervals are
+# NOT touched (history is evidence; the mask needs it). Evidence per name:
+# docs/data_integrity_diagnostic.md §3.
+QUARANTINE_TABLE: dict[str, str] = {
+    "ACT": "vendor resolves to Enact Holdings (IPO 2021-09-16), never Watson/Actavis; chain membership ended 2020-05-12 under AGN",
+    "ADS": "vendor resolves to Adidas AG (Xetra), never Alliance Data; membership ended 2020-06-22",
+    "INFO": "dual-feed merge while listed; wrong instrument after the 2022-02 SPGI merger",
+    "SBNY": "no genuine bars (failed 2023-03-15); vendor rows from 2024-08 are a different instrument",
+    "SOLS": "corrupted splice (459,999x single-day return); genuine segment unrecoverable",
+}
+
+# Manual, *reviewed* corrections to the Wikipedia "Selected changes" table:
+# real-world membership-relevant events the upstream table omits, applied to
+# the parsed changes frame before reconstruction (``apply_changes_patches``)
+# so the interval sweep sees them as ordinary add/remove events. Every entry
+# is primary-sourced in docs/data_integrity_diagnostic.md (§10) -- never
+# patch from memory; a wrong event silently rewrites membership history.
+CHANGES_PATCH_TABLE: tuple[dict[str, str], ...] = (
+    # Actavis plc -> Allergan plc rename, ticker ACT -> AGN at the 2015-06-15
+    # open (MIAX corporate-action alert 2015-06-12; Allergan 8-K). Invisible
+    # to the Wikipedia table, which records the seat's 1999-04-12 addition
+    # under ACT (backfilled chain ticker) and its 2020-05-12 removal under
+    # AGN -- without this event the removal is dropped as inconsistent and
+    # the ACT interval never closes (§10). PIT guards, recorded not
+    # mechanized: 1999-04-12 -> 2013-01-24 the seat traded as WPI (Watson
+    # Pharmaceuticals); vendor ACT from 2021-09-16 is Enact Holdings, never
+    # a member (see QUARANTINE_TABLE). Distinct from the legacy Allergan
+    # Inc. seat (AGN, HISTORY_FLOOR -> 2015-03-23), which closes upstream.
+    {"date": "2015-06-15", "added": "AGN", "removed": "ACT"},
+)
 
 
 def normalize_ticker(ticker: str) -> str:
@@ -195,6 +245,31 @@ def fetch_sp500_wikipedia(url: str = WIKI_URL, timeout: float = 30.0) -> tuple[l
 # --------------------------------------------------------------------------- #
 
 
+def apply_changes_patches(
+    changes: pd.DataFrame, patches: tuple[dict[str, str], ...] = CHANGES_PATCH_TABLE
+) -> pd.DataFrame:
+    """Append the reviewed ``CHANGES_PATCH_TABLE`` events to a parsed changes frame.
+
+    Returns a new frame; the input is not mutated. Ordering is free because
+    ``reconstruct_membership`` sorts by date (stable, so upstream rows keep
+    precedence within a shared date). An empty patch table is the identity.
+    """
+    if not patches:
+        return changes
+    patch = pd.DataFrame.from_records(
+        [
+            {
+                "date": pd.Timestamp(p["date"]),
+                "added": normalize_ticker(p.get("added", "")),
+                "removed": normalize_ticker(p.get("removed", "")),
+            }
+            for p in patches
+        ],
+        columns=["date", "added", "removed"],
+    )
+    return pd.concat([changes, patch], ignore_index=True)
+
+
 def reconstruct_membership(
     current_members: Iterable[str],
     changes: pd.DataFrame,
@@ -331,6 +406,7 @@ class CoverageReport:
     resolved: list[str]
     skipped: list[str]
     rename_table: dict[str, str]
+    quarantined: dict[str, str] = field(default_factory=dict)
 
     @property
     def coverage_fraction(self) -> float:
@@ -346,6 +422,7 @@ class CoverageReport:
             "resolved": self.resolved,
             "skipped": self.skipped,
             "rename_table": dict(self.rename_table),
+            "quarantined": dict(self.quarantined),
         }
 
 
@@ -355,6 +432,7 @@ def compute_coverage(
     *,
     asof: str,
     rename_table: dict[str, str] | None = None,
+    quarantine_table: dict[str, str] | None = None,
 ) -> CoverageReport:
     """Split the ever-member union into price-resolved vs skipped (delisted gaps).
 
@@ -362,12 +440,22 @@ def compute_coverage(
     for; a ticker resolves if its (renamed) symbol is in that set. The skipped
     list is the *measured* survivorship leak -- names that belong in the
     universe but have no price history. It must be surfaced, never hidden.
+
+    Quarantined names (``QUARANTINE_TABLE``) can never resolve, even when the
+    vendor answers: the answer is a known wrong instrument, which is strictly
+    worse than no answer. They are counted in ``skipped`` and echoed with
+    their reasons in ``quarantined`` so the exclusion is auditable.
     """
     rename_table = rename_table or RENAME_TABLE
+    quarantine_table = QUARANTINE_TABLE if quarantine_table is None else quarantine_table
     avail = {normalize_ticker(s) for s in available}
-    resolved, skipped = [], []
+    resolved, skipped, quarantined = [], [], {}
     for raw in ever:
         t = normalize_ticker(raw)
+        if t in quarantine_table:
+            skipped.append(t)
+            quarantined[t] = quarantine_table[t]
+            continue
         vendor = normalize_ticker(rename_table.get(t, t))
         (resolved if vendor in avail else skipped).append(t)
     return CoverageReport(
@@ -377,6 +465,7 @@ def compute_coverage(
         resolved=sorted(resolved),
         skipped=sorted(skipped),
         rename_table=dict(rename_table),
+        quarantined=quarantined,
     )
 
 

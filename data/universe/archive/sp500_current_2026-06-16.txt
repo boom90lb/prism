@@ -1,7 +1,8 @@
-# Current S&P 500 members as of 2026-07-17 with local price data (fetchable
-# proxy for the live loop; NOT survivorship-free -- backtests use sp500_pit_*).
-# Built from sp500_membership_2026-07-17.parquet (intervals open at as-of)
-# INTERSECT data/*_1d_*.parquet, minus quarantined symbols. 502 names.
+# Current S&P 500 members as of 2026-06-16 with local price data (fetchable proxy).
+# Built from sp500_membership_2026-06-16.parquet (intervals open at as-of) ∩ data/*_1d_*.parquet.
+# 504 names. Feeds: paper_loop.py --book momentum --universe-file
+# Verify Alpaca IEX serves each on the first run — the loop fails loud on any it cannot fetch,
+# naming it exactly so it can be pruned. Regenerate live with build_sp500_universe --asof <today>.
 A
 AAPL
 ABBV
@@ -9,6 +10,7 @@ ABNB
 ABT
 ACGL
 ACN
+ACT
 ADBE
 ADI
 ADM
@@ -77,6 +79,7 @@ BUD
 BX
 BXP
 C
+CAG
 CAH
 CARR
 CASY
@@ -114,6 +117,7 @@ COP
 COR
 COST
 CPAY
+CPB
 CPRT
 CPT
 CRH
@@ -156,7 +160,6 @@ DVN
 DXCM
 EA
 EBAY
-ECHO
 ECL
 ED
 EFX
@@ -185,6 +188,7 @@ EXR
 F
 FANG
 FAST
+FB
 FCX
 FDS
 FDX
@@ -196,7 +200,6 @@ FIS
 FISV
 FITB
 FIX
-FLEX
 FOX
 FOXA
 FRT
@@ -231,7 +234,6 @@ HIG
 HII
 HLT
 HON
-HONA
 HOOD
 HPE
 HPQ
@@ -320,7 +322,6 @@ MPWR
 MRK
 MRNA
 MRSH
-MRVL
 MS
 MSCI
 MSFT
@@ -377,6 +378,7 @@ PNC
 PNR
 PNW
 PODD
+POOL
 PPG
 PPL
 PRU
@@ -402,6 +404,7 @@ ROST
 RSG
 RTX
 RVTY
+SATS
 SBAC
 SBUX
 SCHW

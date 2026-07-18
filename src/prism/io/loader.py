@@ -213,6 +213,24 @@ class DataLoader:
                 return path
         return None
 
+    def has_cached(
+        self,
+        symbol: str,
+        interval: str = "1d",
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+    ) -> bool:
+        """True if a cached file's *requested* range covers ``[start, end]``.
+
+        Filename-range check only (the same lookup :meth:`fetch_historical_data`
+        performs before going to the network); reads no data. Lets callers that
+        pace themselves under the vendor rate limit skip the pacing for symbols
+        that will never produce an API call.
+        """
+        if not end_date:
+            end_date = datetime.now().strftime("%Y-%m-%d")
+        return self._find_covering_cache(symbol, interval, start_date, end_date) is not None
+
     def fetch_historical_data(
         self,
         symbol: str,

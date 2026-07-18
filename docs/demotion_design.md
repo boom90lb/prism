@@ -16,7 +16,9 @@ before any demotion mechanics exist and before any counted demotion run.
 
 Adjudicated on trial 3's claim packet (`results/r2_t3_full/claim_packet.json`,
 config `d4c93af68855`, code commit `d272c93`, created 2026-07-06), per
-`docs/r2_design.md` §5.
+`docs/r2_design.md` §5. (Code-commit hashes in this document predate the
+v0.3.2 release squash and resolve on branch `backup/pre-squash-v0.3.2`;
+`d272c93` was rewritten there as `9a05840`, bit-identical tree.)
 
 **Condition 1 — fired.** Best deflated net Sharpe across the counted set is
 < 0 under the calibrated bucket schedule. Annualized net Sharpe: t2 −0.75,
