@@ -182,3 +182,79 @@ vendor can mint new collisions at any future delisting/rename (the sweep is
 the standing M6 pre-flight for exactly this), and the loader's fetch-error
 logging exposes the vendor API key in URLs (flagged separately for fix +
 key rotation; out of this diagnostic's scope).
+
+## 8. ECHO identity settled: genuine EchoStar, a rename artifact (2026-07-17)
+
+**Status: uncounted data-hygiene diagnostic; read-only.** Instrument: a
+cross-vendor diff of the quarantined cache against Alpaca daily bars (SIP
+feed, `adjustment=split` — the stack's price convention) via
+`AlpacaBarSource`; no repo data touched. Evidence:
+`results/echo_identity_diff_2026-07-17.json`.
+
+**Verdict: the quarantined series is the continuous, genuine EchoStar
+Corporation history.** Five fingerprint closes match exactly on both vendors
+(2020-01-02 43.21; 2021-12-31 26.35; 2023-12-29 16.57; 2025-08-26 50.87 —
+the +70.25% EchoStar/AT&T spectrum-deal day; 2025-12-31 108.70). Volumes
+agree at consolidated-tape scale (cache rounds to hundreds: 17,427,700 vs
+17,427,709 on 2023-12-29; 46,579,100 vs 46,579,122 on 2025-08-26). Full
+overlap, 1,621 sessions (2020-01-02 → 2026-06-15): 1,612 closes within
+$0.005; max |Δclose| $0.02 on three sessions (2020-01-22, 2021-01-22,
+2021-01-25) — cross-vendor close-rounding noise, not an identity signal.
+Symbology cross-check: Alpaca serves a bit-identical series (1,643 sessions,
+max |Δclose| 0.0) for `ECHO` under current symbology and `SATS` under
+`asof=2026-06-01` — one instrument chain across the rename.
+
+**Mechanism.** SATS → ECHO ticker change effective 2026-06-24 (company
+release 2026-06-22; CUSIP unchanged — a pure rename), and the vendor
+backfills the entire chain under the new symbol. The missing 2021-09 pin
+that quarantined the cache is therefore *expected*, not indicting: the
+ticker ECHO belonged to Echo Global Logistics only until The Jordan
+Company's $48.25 cash buyout **completed 2021-11-23** (announced
+2021-09-10; §7 said "December-2021" — corrected here). On 2021-09-10 the
+cache prints an ordinary −2.1% EchoStar day, exactly as it should. §7's
+"the pre-2022 segment is not the company the PIT universe means by ECHO"
+remains true in *ticker* space; the *data* is genuine EchoStar, so the
+quarantine reason (identity unverified) dissolves.
+
+**What the quarantine actually costs.** `data/SATS_1d_*.parquet` — resolved
+in the 2026-07-14 lineage — is close-identical to the quarantined ECHO cache
+on all 1,621 sessions (same vendor chain under both symbols), so EchoStar's
+genuine bars already serve the SATS membership interval (2026-03-23 →
+2026-06-24; it joined the index at the March-2026 rebalance, S&P DJI release
+2026-03-06). What is lost is the continuation: the 2026-07-14 membership
+carries `ECHO 2026-06-24 → open` as a *separate, unresolved* interval, and
+EchoStar is absent from `sp500_current.txt` — **a legitimate current S&P 500
+member excluded from the live tradeable universe** since the rename date.
+
+## 9. ECHO un-quarantine packet (as posed to the owner 2026-07-17; nothing executed)
+
+1. **`RENAME_TABLE` gains `"SATS": "ECHO"`** (`src/prism/io/universe_sp500.py:56`)
+   — the FB→META mechanism: vendor fetch under ECHO carries the full genuine
+   chain, and the two membership intervals (SATS 2026-03-23 → 2026-06-24,
+   ECHO 2026-06-24 → open) merge into one continuous ECHO interval.
+2. **Delete the `QUARANTINE_TABLE` `"ECHO"` entry** (line 72) — its stated
+   reason is now refuted by §8.
+3. **PIT ticker-semantics guard, recorded not mechanized:** before
+   2021-11-23 the ticker ECHO denotes Echo Global Logistics — never an
+   S&P 500 member (verified: no pre-2026 ECHO interval in either membership
+   parquet), no genuine series retrievable. No membership rows change and
+   membership masking already confines tradeable exposure to 2026-03-23+;
+   the guard lives as a comment on the rename entry so no future consumer
+   reads the vendor's backfilled pre-rename ECHO bars as "ticker ECHO,
+   then an index member."
+4. **Update the content pin** `tests/test_universe_sp500.py:170-172`
+   (RENAME_TABLE gains SATS; QUARANTINE_TABLE set drops ECHO).
+5. **Regenerate universe artifacts** (new asof): ECHO leaves the skip-list
+   and enters `sp500_pit_resolved_<asof>.txt` and `sp500_current.txt`;
+   restore the cache from `data/quarantine/` (content verified §8) or
+   refetch; retire the superseded SATS cache; re-run the integrity sweep
+   (the standing M6 pre-flight) expecting zero suspects. The 2026-07-15
+   lesson stands (live-loop fix `64d7ea1`): universe-file changes bite at
+   the next run's *valuation*, and ECHO becomes fetchable — and tradeable at
+   the next refresh — immediately after regeneration.
+6. **Decision context, not data integrity:** EchoStar's DBS/wireless
+   subsidiaries filed prepackaged Chapter 11 on 2026-06-30; the violent
+   2026-06-11/12 bars (+11.2% on 16.4M shares, then −11.0% on 50.1M — both
+   vendors concur) are that event's run-up. The parent equity remains listed
+   and an index member; if un-quarantined, the momentum sleeve can hold it
+   subject to the ordinary screens.
