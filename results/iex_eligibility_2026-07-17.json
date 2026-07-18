@@ -1,0 +1,4569 @@
+{
+  "meta": {
+    "generated": "2026-07-17",
+    "universe_file": "data/universe/sp500_current.txt",
+    "n_universe_file": 502,
+    "n_held": 98,
+    "n_fetch_set": 503,
+    "feed": "iex",
+    "floor_dollars": 1000000.0,
+    "window_bars": 20,
+    "iex_start": "2026-01-18",
+    "cache_suffix": "_1d_2020-01-01_2026-06-16.parquet",
+    "missing_cache": [],
+    "cache_without_screenable_series": [
+      "FDXF",
+      "HONA"
+    ],
+    "empty_iex": []
+  },
+  "share_stats": {
+    "n": 502,
+    "median": 0.048464346169607826,
+    "p05": 0.032032670642840065,
+    "p25": 0.042439512527885165,
+    "p75": 0.055799839222603155,
+    "p95": 0.06580573598872728,
+    "min": 0.01364398164246428,
+    "max": 0.1281436662272775,
+    "implied_consolidated_floor_at_median": 20633725.182226926
+  },
+  "summary": {
+    "n_names": 503,
+    "n_with_both_feeds_asof": 501,
+    "fail_cons_asof": [],
+    "fail_iex_asof": [
+      "ACT"
+    ],
+    "mask_symmetric_difference_asof": [
+      "ACT"
+    ],
+    "fail_iex_last": [
+      "ACT"
+    ],
+    "near_floor_iex_last": [],
+    "held_failing_iex_last": []
+  },
+  "per_name": {
+    "A": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 305422734.0,
+      "iex_med_asof": 15057028.195,
+      "iex_med_last": 15733173.365000002,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.047724742045690015
+    },
+    "AAPL": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 14418665785.171001,
+      "iex_med_asof": 469844671.17999995,
+      "iex_med_last": 506497073.28999996,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.02798585401190159
+    },
+    "ABBV": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1092704813.2045999,
+      "iex_med_asof": 46442040.49,
+      "iex_med_last": 72479625.89250001,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.039263042129524355
+    },
+    "ABNB": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 497621148.0,
+      "iex_med_asof": 23468328.087500002,
+      "iex_med_last": 21989557.17,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04449970702196213
+    },
+    "ABT": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1004781018.5,
+      "iex_med_asof": 45364663.629999995,
+      "iex_med_last": 50974515.989999995,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.04438769558047065
+    },
+    "ACGL": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 207008413.5,
+      "iex_med_asof": 8937215.7475,
+      "iex_med_last": 7638944.0075,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.03901966655083561
+    },
+    "ACN": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 777047793.5,
+      "iex_med_asof": 36110868.0225,
+      "iex_med_last": 72388542.91,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.04665141404240787
+    },
+    "ACT": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 12018638.0,
+      "iex_med_asof": 737985.2849999999,
+      "iex_med_last": 741629.97,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04347225452939865
+    },
+    "ADBE": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1291080056.453,
+      "iex_med_asof": 49589707.817499995,
+      "iex_med_last": 52922980.004999995,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.03292137878525636
+    },
+    "ADI": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 2086325299.4715002,
+      "iex_med_asof": 71360642.21000001,
+      "iex_med_last": 78338382.87,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.04462520000895376
+    },
+    "ADM": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 270339396.0,
+      "iex_med_asof": 12890722.175,
+      "iex_med_last": 11227754.5375,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04386637673591994
+    },
+    "ADP": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 527429076.872,
+      "iex_med_asof": 22795785.48,
+      "iex_med_last": 21471965.564999998,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04215148937515001
+    },
+    "ADSK": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 526995179.06949997,
+      "iex_med_asof": 27077861.825000003,
+      "iex_med_last": 23316723.970000003,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04708374788938338
+    },
+    "AEE": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 171376997.8202,
+      "iex_med_asof": 8226104.040000001,
+      "iex_med_last": 8005433.39,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04341560238501726
+    },
+    "AEP": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 620787892.5,
+      "iex_med_asof": 32457638.82,
+      "iex_med_last": 27991972.700000003,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04104637385802899
+    },
+    "AES": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 126227910.5,
+      "iex_med_asof": 6360983.445,
+      "iex_med_last": 6486275.174999999,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05067681216622577
+    },
+    "AFL": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 284754063.5,
+      "iex_med_asof": 12838278.049999999,
+      "iex_med_last": 9616114.12,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.03597601860609813
+    },
+    "AIG": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 251613150.0,
+      "iex_med_asof": 11595430.645,
+      "iex_med_last": 12174953.895,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.041625520761769966
+    },
+    "AIZ": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 108332190.5,
+      "iex_med_asof": 5953915.1175,
+      "iex_med_last": 4417297.199999999,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05232282042338014
+    },
+    "AJG": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 345897591.93,
+      "iex_med_asof": 20933327.21,
+      "iex_med_last": 26349835.43,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.060870511268938936
+    },
+    "AKAM": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 608480756.0495,
+      "iex_med_asof": 27377866.63,
+      "iex_med_last": 21837817.53,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.04700205509063644
+    },
+    "ALB": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 354892364.76610005,
+      "iex_med_asof": 15685227.995000001,
+      "iex_med_last": 12292178.9625,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.04508636655671617
+    },
+    "ALGN": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 177812365.86935002,
+      "iex_med_asof": 8724702.84,
+      "iex_med_last": 9681147.96,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.045078404137699035
+    },
+    "ALL": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 322396738.75240004,
+      "iex_med_asof": 17195359.175,
+      "iex_med_last": 18317195.775,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.045598290450240504
+    },
+    "ALLE": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 107492983.0,
+      "iex_med_asof": 5509927.91,
+      "iex_med_last": 8112148.635,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05363247742868742
+    },
+    "AMAT": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 3752944993.6752005,
+      "iex_med_asof": 132100641.215,
+      "iex_med_last": 285374607.99,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.035558115217142305
+    },
+    "AMCR": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 138643130.5,
+      "iex_med_asof": 6721364.4475,
+      "iex_med_last": 5791058.505,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.055032691804990194
+    },
+    "AMD": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 16001702270.069601,
+      "iex_med_asof": 317907444.1875,
+      "iex_med_last": 346562940.745,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.02023617068200655
+    },
+    "AME": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 248719462.0155,
+      "iex_med_asof": 13364153.375,
+      "iex_med_last": 12644024.2,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04304931715152946
+    },
+    "AMGN": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 914988479.0915,
+      "iex_med_asof": 27219943.515,
+      "iex_med_last": 27895368.462500002,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.03529017043444678
+    },
+    "AMP": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 263927164.86879998,
+      "iex_med_asof": 17924391.064999998,
+      "iex_med_last": 17036694.03,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.055521507601987055
+    },
+    "AMT": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 533923112.001,
+      "iex_med_asof": 25844796.81,
+      "iex_med_last": 26109970.96,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04651104499616099
+    },
+    "AMZN": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 10361922568.423199,
+      "iex_med_asof": 481098850.475,
+      "iex_med_last": 527157603.0,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.03980061579703199
+    },
+    "ANET": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1298554845.085,
+      "iex_med_asof": 64059193.18000001,
+      "iex_med_last": 68443718.685,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04347769361682412
+    },
+    "AON": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 469151176.13250005,
+      "iex_med_asof": 27066895.799999997,
+      "iex_med_last": 25430588.05,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06313506449228048
+    },
+    "AOS": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 95550412.0,
+      "iex_med_asof": 4568344.5425,
+      "iex_med_last": 5487404.545,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.049797689820389186
+    },
+    "APA": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 185213200.0,
+      "iex_med_asof": 9483849.215,
+      "iex_med_last": 13562597.735,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.055812160027029836
+    },
+    "APD": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 327669409.9475,
+      "iex_med_asof": 18009343.685000002,
+      "iex_med_last": 19264163.975,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05559601341111954
+    },
+    "APH": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1422818076.362,
+      "iex_med_asof": 70690215.2,
+      "iex_med_last": 58587100.43,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05025101243885513
+    },
+    "APO": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 409605163.0,
+      "iex_med_asof": 21379182.88,
+      "iex_med_last": 30636817.05,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.061594475391628434
+    },
+    "APP": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 2355542437.137,
+      "iex_med_asof": 100806084.76,
+      "iex_med_last": 84199656.195,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.03203431233836051
+    },
+    "APTV": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 206755382.5,
+      "iex_med_asof": 11984103.41,
+      "iex_med_last": 9442283.31,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.048413589914419665
+    },
+    "ARE": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 76704494.0,
+      "iex_med_asof": 3754008.2625,
+      "iex_med_last": 3041358.4250000003,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.045426991605063756
+    },
+    "ARES": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 258743014.5,
+      "iex_med_asof": 16920728.28,
+      "iex_med_last": 14327710.302499998,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06568548787290168
+    },
+    "ATO": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 293663463.076,
+      "iex_med_asof": 12350631.0125,
+      "iex_med_last": 10796513.9275,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.03933588846805108
+    },
+    "AVB": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 195814991.40645,
+      "iex_med_asof": 10345394.94,
+      "iex_med_last": 10185126.4,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05167135100631076
+    },
+    "AVGO": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 13164327215.938,
+      "iex_med_asof": 326779059.72,
+      "iex_med_last": 260431220.8475,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.028003950347721983
+    },
+    "AVY": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 99977132.1245,
+      "iex_med_asof": 6722208.870000001,
+      "iex_med_last": 7138736.639999999,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05310453163967335
+    },
+    "AWK": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 227645774.0,
+      "iex_med_asof": 9998550.09,
+      "iex_med_last": 10667914.02,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.040474422078869574
+    },
+    "AXON": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 441514104.384,
+      "iex_med_asof": 23237309.880000003,
+      "iex_med_last": 24806476.305,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.04633135096218746
+    },
+    "AXP": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 823448211.6594999,
+      "iex_med_asof": 34219011.379999995,
+      "iex_med_last": 42114220.7175,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.03786855120365966
+    },
+    "AZO": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1209477167.75,
+      "iex_med_asof": 54692943.675,
+      "iex_med_last": 48568155.035,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06622930140253155
+    },
+    "BA": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1459986751.0,
+      "iex_med_asof": 49234667.6375,
+      "iex_med_last": 37508016.832499996,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.03458751879193342
+    },
+    "BAC": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1933707275.0,
+      "iex_med_asof": 118451731.855,
+      "iex_med_last": 141171043.02,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.059509797262827596
+    },
+    "BALL": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 140245261.0,
+      "iex_med_asof": 8910759.98,
+      "iex_med_last": 6889887.445,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04862445185570169
+    },
+    "BAX": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 128857661.74655,
+      "iex_med_asof": 8129777.6,
+      "iex_med_last": 10622501.6575,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05889201535999482
+    },
+    "BBY": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 293655269.0,
+      "iex_med_asof": 14900326.072499998,
+      "iex_med_last": 14327605.5975,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04331515146141665
+    },
+    "BDX": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 336003538.24785,
+      "iex_med_asof": 16033377.23,
+      "iex_med_last": 17642853.659999996,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.050121291155275756
+    },
+    "BEN": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 117369131.0,
+      "iex_med_asof": 10188989.260000002,
+      "iex_med_last": 11829980.240000002,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06976271093491511
+    },
+    "BF.B": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 67406024.5,
+      "iex_med_asof": 2962370.9775,
+      "iex_med_last": 2954197.32,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04351705865819703
+    },
+    "BG": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 219807325.571,
+      "iex_med_asof": 14251796.479999999,
+      "iex_med_last": 9194607.975000001,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.05274082501173884
+    },
+    "BIIB": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 177738959.93010002,
+      "iex_med_asof": 9132715.49,
+      "iex_med_last": 14726665.094999999,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04606338771799319
+    },
+    "BKNG": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1190731916.2678,
+      "iex_med_asof": 61073191.345,
+      "iex_med_last": 56566567.08,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06357801327937322
+    },
+    "BKR": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 448566107.0,
+      "iex_med_asof": 28052722.425,
+      "iex_med_last": 33410166.205,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.05242470053781095
+    },
+    "BLDR": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 173511006.0,
+      "iex_med_asof": 9550089.1,
+      "iex_med_last": 9013266.702499999,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.05394424819508084
+    },
+    "BLK": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 726179323.987,
+      "iex_med_asof": 38234508.80499999,
+      "iex_med_last": 70558176.64,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05505663275465478
+    },
+    "BMY": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 589959448.5,
+      "iex_med_asof": 41379748.59,
+      "iex_med_last": 43666495.41,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.060597284885975225
+    },
+    "BNY": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 463086058.8685,
+      "iex_med_asof": 20992688.91,
+      "iex_med_last": 20469040.54,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04255128019284972
+    },
+    "BR": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 199610927.0,
+      "iex_med_asof": 9840264.080000002,
+      "iex_med_last": 8956951.0125,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.04964396354409166
+    },
+    "BRK.B": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 2452809975.6864996,
+      "iex_med_asof": 59128855.6725,
+      "iex_med_last": 64840045.075,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.02373086122348142
+    },
+    "BRO": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 167394415.0,
+      "iex_med_asof": 10760649.0425,
+      "iex_med_last": 12130647.702499999,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.0495625695374641
+    },
+    "BSX": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 960624558.5,
+      "iex_med_asof": 70834746.05000001,
+      "iex_med_last": 59715949.697500005,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.0599853967568723
+    },
+    "BUD": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 146909368.9419,
+      "iex_med_asof": 8126336.395,
+      "iex_med_last": 10115769.6,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.0502923013396404
+    },
+    "BX": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 557004797.0,
+      "iex_med_asof": 24579365.655,
+      "iex_med_last": 23828978.855,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04069266574510984
+    },
+    "BXP": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 80824869.0,
+      "iex_med_asof": 3508023.51,
+      "iex_med_last": 3658086.2300000004,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04180574066413115
+    },
+    "C": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1494023745.5,
+      "iex_med_asof": 69891387.52000001,
+      "iex_med_last": 68772288.29499999,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.040692040322399176
+    },
+    "CAH": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 405581601.31949997,
+      "iex_med_asof": 24045651.7925,
+      "iex_med_last": 27047140.38,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05189413911849783
+    },
+    "CARR": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 424872106.0,
+      "iex_med_asof": 24539146.93,
+      "iex_med_last": 19423233.5,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05783700899569265
+    },
+    "CASY": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 447164890.02849996,
+      "iex_med_asof": 31175433.805,
+      "iex_med_last": 33157355.134999998,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.06504570116345226
+    },
+    "CAT": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 2342903705.8555,
+      "iex_med_asof": 88137469.8,
+      "iex_med_last": 138670815.94,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.035376973472551254
+    },
+    "CB": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 509742647.5935,
+      "iex_med_asof": 25358311.595,
+      "iex_med_last": 26600781.759999998,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04400217977571354
+    },
+    "CBOE": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 395178767.6657,
+      "iex_med_asof": 33756898.785,
+      "iex_med_last": 24716006.229999997,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06580763141184168
+    },
+    "CBRE": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 318871151.088,
+      "iex_med_asof": 14161375.51,
+      "iex_med_last": 12043310.447500002,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05047460733181565
+    },
+    "CCI": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 373912718.0303,
+      "iex_med_asof": 17821252.28,
+      "iex_med_last": 16930661.52,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.043996503758741604
+    },
+    "CCL": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 675060900.5,
+      "iex_med_asof": 39584493.72,
+      "iex_med_last": 34927774.425,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05403828155744411
+    },
+    "CDNS": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 820425665.3594999,
+      "iex_med_asof": 38660007.239999995,
+      "iex_med_last": 34531368.985,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.0460015149038277
+    },
+    "CDW": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 215603353.25370002,
+      "iex_med_asof": 12371806.262500001,
+      "iex_med_last": 14523651.8525,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05730952616400718
+    },
+    "CEG": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 976219210.2709999,
+      "iex_med_asof": 49556028.9025,
+      "iex_med_last": 40261254.6475,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.0461483625988226
+    },
+    "CF": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 312662529.0,
+      "iex_med_asof": 15341904.754999999,
+      "iex_med_last": 14986359.0,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04711695015622665
+    },
+    "CFG": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 268450278.0,
+      "iex_med_asof": 24082180.41,
+      "iex_med_last": 24377221.44,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.0662726049751203
+    },
+    "CHD": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 171457417.7674,
+      "iex_med_asof": 9211935.2025,
+      "iex_med_last": 10146426.5175,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05564527095909039
+    },
+    "CHRW": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 238023059.0,
+      "iex_med_asof": 14669187.015,
+      "iex_med_last": 16205250.0825,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.05894880739565465
+    },
+    "CHTR": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 383209271.7245,
+      "iex_med_asof": 18295724.665,
+      "iex_med_last": 17136282.7125,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.04593237788146097
+    },
+    "CI": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 400587737.5,
+      "iex_med_asof": 17073896.759999998,
+      "iex_med_last": 21940054.7725,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04341421607350816
+    },
+    "CIEN": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1491150034.0,
+      "iex_med_asof": 78805490.195,
+      "iex_med_last": 48887131.96,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.05064599996826692
+    },
+    "CINF": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 100968349.849175,
+      "iex_med_asof": 3839647.81,
+      "iex_med_last": 6265023.84,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.037892579572697455
+    },
+    "CL": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 481806184.5,
+      "iex_med_asof": 26787335.58,
+      "iex_med_last": 22130551.759999998,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.054988916693717846
+    },
+    "CLX": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 236650667.5,
+      "iex_med_asof": 13507180.075,
+      "iex_med_last": 11914930.649999999,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.0473431361444871
+    },
+    "CMCSA": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 659144985.5,
+      "iex_med_asof": 54339464.025,
+      "iex_med_last": 47961926.552499995,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06576972294955374
+    },
+    "CME": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 829153662.2945,
+      "iex_med_asof": 41134173.015,
+      "iex_med_last": 52423861.11,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04851510242479599
+    },
+    "CMG": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 594472169.0,
+      "iex_med_asof": 38951695.34,
+      "iex_med_last": 44867623.3625,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.06856002723857953
+    },
+    "CMI": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 625094800.225,
+      "iex_med_asof": 31996994.1,
+      "iex_med_last": 34118851.315,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.06459732634894012
+    },
+    "CMS": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 210273791.5,
+      "iex_med_asof": 14182098.982499998,
+      "iex_med_last": 15905477.045000002,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.051480286490858417
+    },
+    "CNC": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 260547255.0,
+      "iex_med_asof": 15190723.4725,
+      "iex_med_last": 13283933.16,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.05181945743120316
+    },
+    "CNP": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 208110433.5,
+      "iex_med_asof": 15773351.6,
+      "iex_med_last": 21503729.270000003,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06352194736044245
+    },
+    "COF": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 888637155.0,
+      "iex_med_asof": 46413899.15,
+      "iex_med_last": 43498468.915,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05076921421568789
+    },
+    "COHR": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 2168095728.6705,
+      "iex_med_asof": 106292826.05000001,
+      "iex_med_last": 68081908.77,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.04573697351730839
+    },
+    "COIN": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1427757281.0,
+      "iex_med_asof": 35141435.975,
+      "iex_med_last": 33049028.585,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.020287313225161165
+    },
+    "COO": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 211564103.0,
+      "iex_med_asof": 10935840.42,
+      "iex_med_last": 9832083.274999999,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04274751202955976
+    },
+    "COP": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 728735959.0,
+      "iex_med_asof": 51631516.64,
+      "iex_med_last": 44052042.86,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05263926960284116
+    },
+    "COR": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 394573032.0675,
+      "iex_med_asof": 23051824.384999998,
+      "iex_med_last": 25319385.075,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05289135471778253
+    },
+    "COST": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 2269253715.3055,
+      "iex_med_asof": 67347447.875,
+      "iex_med_last": 73826427.075,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.030606631259735183
+    },
+    "CPAY": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 194459959.7655,
+      "iex_med_asof": 14119114.84,
+      "iex_med_last": 13666316.690000001,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06113865100299985
+    },
+    "CPRT": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 340397598.0,
+      "iex_med_asof": 23733177.189999998,
+      "iex_med_last": 24161025.75,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.0645740367515773
+    },
+    "CPT": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 122493536.5,
+      "iex_med_asof": 7151070.467499999,
+      "iex_med_last": 5912010.1175,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.044284660550558685
+    },
+    "CRH": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 408958946.0,
+      "iex_med_asof": 20940530.729999997,
+      "iex_med_last": 20307190.055,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.044172720548002156
+    },
+    "CRL": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 139925706.0,
+      "iex_med_asof": 9017589.385000002,
+      "iex_med_last": 12185830.395,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05497709453524831
+    },
+    "CRM": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 2575838580.0,
+      "iex_med_asof": 102575259.67500001,
+      "iex_med_last": 70000658.44,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.03814372888213893
+    },
+    "CRWD": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 2428146123.307,
+      "iex_med_asof": 88041501.25999999,
+      "iex_med_last": 63203855.129999995,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.1281436662272775
+    },
+    "CSCO": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 2967343130.0,
+      "iex_med_asof": 140253013.555,
+      "iex_med_last": 116179481.52000001,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.05089079322150908
+    },
+    "CSGP": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 224041928.5,
+      "iex_med_asof": 10815752.69,
+      "iex_med_last": 13357609.245000001,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.0439230992334321
+    },
+    "CSX": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 534883213.5,
+      "iex_med_asof": 40732441.405,
+      "iex_med_last": 44769438.905,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.07555132090281544
+    },
+    "CTAS": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 366951194.8527,
+      "iex_med_asof": 15500197.195,
+      "iex_med_last": 15078779.950000001,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.036306092365814224
+    },
+    "CTSH": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 494520233.5,
+      "iex_med_asof": 29839402.795,
+      "iex_med_last": 36804762.95,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04871628366319912
+    },
+    "CTVA": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 260935285.0,
+      "iex_med_asof": 14577164.5,
+      "iex_med_last": 14408767.169999998,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.053233367095356636
+    },
+    "CVNA": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 686083424.0,
+      "iex_med_asof": 35527645.895,
+      "iex_med_last": 33464211.065,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04406492401492753
+    },
+    "CVS": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 692327985.5,
+      "iex_med_asof": 43644020.52,
+      "iex_med_last": 37567314.64,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05184582884852276
+    },
+    "CVX": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1683527520.286,
+      "iex_med_asof": 56502445.14,
+      "iex_med_last": 58884285.96,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.033546944397833456
+    },
+    "D": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 511997690.0,
+      "iex_med_asof": 40950818.0,
+      "iex_med_last": 31448903.46,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.060450977570989176
+    },
+    "DAL": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 584096575.1321,
+      "iex_med_asof": 25618252.169999998,
+      "iex_med_last": 28008257.91,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04917441797908817
+    },
+    "DASH": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 710540150.9319999,
+      "iex_med_asof": 34372659.83,
+      "iex_med_last": 38735526.345,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.05249162148176284
+    },
+    "DD": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 161482238.7243,
+      "iex_med_asof": 8953951.3,
+      "iex_med_last": 9788057.79,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.01784625785199824
+    },
+    "DDOG": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1313925706.066,
+      "iex_med_asof": 55693980.480000004,
+      "iex_med_last": 58755644.655,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.0470694586739553
+    },
+    "DE": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 866933039.2360001,
+      "iex_med_asof": 40704491.864999995,
+      "iex_med_last": 31412172.07,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06293479776000635
+    },
+    "DECK": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 216018929.0,
+      "iex_med_asof": 10953458.34,
+      "iex_med_last": 13548041.76,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04779057368727966
+    },
+    "DELL": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 3433472343.2455,
+      "iex_med_asof": 121822381.67,
+      "iex_med_last": 99593132.41,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.03873722706485748
+    },
+    "DG": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 388255680.5,
+      "iex_med_asof": 20758819.56,
+      "iex_med_last": 16548634.785,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04905653321729775
+    },
+    "DGX": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 161170406.6085,
+      "iex_med_asof": 7121177.205,
+      "iex_med_last": 8411421.93,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.044330807988843327
+    },
+    "DHI": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 319966591.5833,
+      "iex_med_asof": 15076270.385000002,
+      "iex_med_last": 15521907.7025,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05017831962298761
+    },
+    "DHR": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 647961578.829,
+      "iex_med_asof": 34492427.6875,
+      "iex_med_last": 40181012.0275,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05860235757599652
+    },
+    "DIS": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 835932538.9414,
+      "iex_med_asof": 38411063.59,
+      "iex_med_last": 51423489.1425,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04501144707872557
+    },
+    "DLR": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 373127314.571,
+      "iex_med_asof": 17699932.677500002,
+      "iex_med_last": 27740911.409999996,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04401100075011827
+    },
+    "DLTR": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 306037720.5,
+      "iex_med_asof": 16031333.009999998,
+      "iex_med_last": 14955278.842500001,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.044749977619654685
+    },
+    "DOC": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 133261959.71254998,
+      "iex_med_asof": 7140878.375,
+      "iex_med_last": 8573474.967500001,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.048307045289583225
+    },
+    "DOV": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 172733137.48549998,
+      "iex_med_asof": 10058818.48,
+      "iex_med_last": 12596748.995000001,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05453584967293888
+    },
+    "DOW": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 425792622.00000006,
+      "iex_med_asof": 28262014.155,
+      "iex_med_last": 24748435.439999998,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06218683093323406
+    },
+    "DPZ": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 226702440.22950003,
+      "iex_med_asof": 14507120.34,
+      "iex_med_last": 17746128.3525,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.06229621688250943
+    },
+    "DRI": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 209245894.5,
+      "iex_med_asof": 14505124.287500001,
+      "iex_med_last": 21691289.200000003,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05576287680932312
+    },
+    "DTE": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 193733109.5,
+      "iex_med_asof": 9182214.62,
+      "iex_med_last": 7835355.620000001,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04201496112445535
+    },
+    "DUK": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 388868944.0,
+      "iex_med_asof": 15348611.41,
+      "iex_med_last": 18060670.71,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.038061645833513555
+    },
+    "DVA": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 149663692.132,
+      "iex_med_asof": 6664679.220000001,
+      "iex_med_last": 9756129.120000001,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04588178261110331
+    },
+    "DVN": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 612263716.0,
+      "iex_med_asof": 42930701.09,
+      "iex_med_last": 35717294.3325,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05759179557563675
+    },
+    "DXCM": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 441935871.5,
+      "iex_med_asof": 24081997.310000002,
+      "iex_med_last": 17738317.340000004,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.048087859421615566
+    },
+    "EA": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 320113762.3856,
+      "iex_med_asof": 15528742.129999999,
+      "iex_med_last": 24556325.61,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04346732463043442
+    },
+    "EBAY": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 486957755.0,
+      "iex_med_asof": 21034965.825000003,
+      "iex_med_last": 15211532.61,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04234565174177714
+    },
+    "ECL": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 482141431.00549996,
+      "iex_med_asof": 17388988.6,
+      "iex_med_last": 15145323.932500001,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04739551579151964
+    },
+    "ED": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 223288623.0,
+      "iex_med_asof": 9893232.18,
+      "iex_med_last": 8573635.7225,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.037677377533687266
+    },
+    "EFX": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 272298467.5,
+      "iex_med_asof": 16955333.6475,
+      "iex_med_last": 17982093.5775,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.05717427103624291
+    },
+    "EG": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 131162768.17085,
+      "iex_med_asof": 7303946.01,
+      "iex_med_last": 8727452.735,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05241054772358118
+    },
+    "EIX": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 153935872.135,
+      "iex_med_asof": 6523012.87,
+      "iex_med_last": 5560021.785,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04004857637397354
+    },
+    "EL": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 326476800.0,
+      "iex_med_asof": 15999894.2725,
+      "iex_med_last": 11119261.407499999,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.047973566276254945
+    },
+    "ELV": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 618904235.23995,
+      "iex_med_asof": 26646430.505,
+      "iex_med_last": 29952193.2025,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04298868380047656
+    },
+    "EME": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 278556076.08000004,
+      "iex_med_asof": 16855578.48,
+      "iex_med_last": 20922546.634999998,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06103786262284331
+    },
+    "EMR": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 351300666.0,
+      "iex_med_asof": 18537351.200000003,
+      "iex_med_last": 21351820.380000003,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05045420437960155
+    },
+    "EOG": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 430028505.0,
+      "iex_med_asof": 21229886.6625,
+      "iex_med_last": 18137863.58,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.052847862876121754
+    },
+    "EQIX": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 528415986.6418,
+      "iex_med_asof": 30658959.840000004,
+      "iex_med_last": 43855029.76,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.058045944761247734
+    },
+    "EQR": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 195460337.50000003,
+      "iex_med_asof": 10540954.434999999,
+      "iex_med_last": 8735467.115,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04316686168884536
+    },
+    "EQT": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 314472867.0,
+      "iex_med_asof": 22218590.875,
+      "iex_med_last": 29175007.785000004,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.060908238355504477
+    },
+    "ERIE": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 38750000.6005,
+      "iex_med_asof": 1488475.9749999999,
+      "iex_med_last": 2319355.96,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.04365372656599885
+    },
+    "ES": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 182583462.0,
+      "iex_med_asof": 7719077.250000001,
+      "iex_med_last": 6951214.735,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04391977660546397
+    },
+    "ESS": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 128015256.99999999,
+      "iex_med_asof": 7438354.904999999,
+      "iex_med_last": 6461937.720000001,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05198155223504193
+    },
+    "ETN": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 944757336.6633,
+      "iex_med_asof": 50226782.43,
+      "iex_med_last": 48483535.9875,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.048610328173070975
+    },
+    "ETR": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 378945577.0,
+      "iex_med_asof": 15082736.295,
+      "iex_med_last": 12001918.559999999,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04158560000052736
+    },
+    "EVRG": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 154877432.5,
+      "iex_med_asof": 8010776.07,
+      "iex_med_last": 8474713.1775,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.045287312225170295
+    },
+    "EW": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 410049998.0,
+      "iex_med_asof": 21839910.61,
+      "iex_med_last": 21832016.150000002,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.051951468995328445
+    },
+    "EXC": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 350900643.5,
+      "iex_med_asof": 19041528.060000002,
+      "iex_med_last": 26799109.2475,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06212430079717123
+    },
+    "EXE": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 300737275.9694,
+      "iex_med_asof": 15654996.66,
+      "iex_med_last": 18025212.339999996,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05315888713057709
+    },
+    "EXPD": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 202340197.0,
+      "iex_med_asof": 8982666.765,
+      "iex_med_last": 10809485.467500001,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.048250001502047696
+    },
+    "EXPE": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 340482092.01890004,
+      "iex_med_asof": 19164227.925,
+      "iex_med_last": 17887375.32,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.055993494065407184
+    },
+    "EXR": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 136694100.789,
+      "iex_med_asof": 7573180.9399999995,
+      "iex_med_last": 7297816.105,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04852425752753818
+    },
+    "F": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 919942549.5,
+      "iex_med_asof": 56660126.114999995,
+      "iex_med_last": 27617175.1175,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.049366341376044176
+    },
+    "FANG": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 384353677.0,
+      "iex_med_asof": 17579218.322499998,
+      "iex_med_last": 23503888.65,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.0407301750981518
+    },
+    "FAST": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 331634211.42139995,
+      "iex_med_asof": 17682935.619999997,
+      "iex_med_last": 25102384.38,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05785906066011251
+    },
+    "FCX": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 811532237.0,
+      "iex_med_asof": 60414706.83,
+      "iex_med_last": 61405364.79,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.061332355769797786
+    },
+    "FDS": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 205695426.5925,
+      "iex_med_asof": 9389375.190000001,
+      "iex_med_last": 12556578.8,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.058721340549237576
+    },
+    "FDX": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 608010095.21856,
+      "iex_med_asof": 32452463.354999997,
+      "iex_med_last": 37724940.08499999,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04108152263028565
+    },
+    "FDXF": {
+      "iex_med_last": 11718553.08,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.059671572248423205
+    },
+    "FE": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 201759826.5,
+      "iex_med_asof": 13745261.032499999,
+      "iex_med_last": 11523753.765,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06857622818718068
+    },
+    "FFIV": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 230270639.6975,
+      "iex_med_asof": 16831626.01,
+      "iex_med_last": 14880659.115,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.050988961211776984
+    },
+    "FICO": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 405420292.0055,
+      "iex_med_asof": 23544773.235,
+      "iex_med_last": 21515758.28,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06531308977552264
+    },
+    "FIS": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 276046948.0,
+      "iex_med_asof": 15764537.802499998,
+      "iex_med_last": 15877850.8,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.05597569094825945
+    },
+    "FISV": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 346650344.00245,
+      "iex_med_asof": 14185202.36,
+      "iex_med_last": 18655717.215,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.04276207793427174
+    },
+    "FITB": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 342128257.0,
+      "iex_med_asof": 29750402.1175,
+      "iex_med_last": 29782777.134999998,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.07139411464399709
+    },
+    "FIX": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 850199414.2414999,
+      "iex_med_asof": 50110889.754999995,
+      "iex_med_last": 47414903.28999999,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.06099886049866497
+    },
+    "FLEX": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 780954716.2675,
+      "iex_med_asof": 42770524.29000001,
+      "iex_med_last": 38396291.54000001,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.046858979033417056
+    },
+    "FOX": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 56241160.0,
+      "iex_med_asof": 3072404.195,
+      "iex_med_last": 3962401.3575,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.048787519532008
+    },
+    "FOXA": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 176931135.0,
+      "iex_med_asof": 7910741.955,
+      "iex_med_last": 17020819.675,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.045671207531107
+    },
+    "FRT": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 115270965.0,
+      "iex_med_asof": 6286610.274999999,
+      "iex_med_last": 3939522.0475000003,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.045058026650536175
+    },
+    "FSLR": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 703943279.3385,
+      "iex_med_asof": 33998168.075,
+      "iex_med_last": 21613150.2525,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04087227877549428
+    },
+    "FTNT": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 838772579.0,
+      "iex_med_asof": 36192697.4175,
+      "iex_med_last": 33338821.424999997,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04491272369513967
+    },
+    "FTV": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 185048065.0,
+      "iex_med_asof": 9743164.73,
+      "iex_med_last": 7692006.32,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05595370994728295
+    },
+    "GD": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 331236481.269,
+      "iex_med_asof": 13752727.225,
+      "iex_med_last": 17173942.63,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.03972082633089197
+    },
+    "GDDY": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 197596289.5,
+      "iex_med_asof": 10439268.7575,
+      "iex_med_last": 9167166.33,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.04576148827154981
+    },
+    "GE": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1490929944.6415,
+      "iex_med_asof": 66379930.89,
+      "iex_med_last": 76354634.38,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.041247051446438504
+    },
+    "GEHC": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 284656379.0,
+      "iex_med_asof": 12873919.7625,
+      "iex_med_last": 14925091.4725,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.046169045038046974
+    },
+    "GEN": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 179413874.5,
+      "iex_med_asof": 11433328.92,
+      "iex_med_last": 9504820.940000001,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.059793358483422224
+    },
+    "GEV": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 2584529783.3915,
+      "iex_med_asof": 111385863.96000001,
+      "iex_med_last": 150260774.52,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.03726005622348638
+    },
+    "GILD": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 823780756.296,
+      "iex_med_asof": 44119508.86,
+      "iex_med_last": 37767709.0575,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.036447238279635516
+    },
+    "GIS": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 312701449.0,
+      "iex_med_asof": 19399240.77,
+      "iex_med_last": 25324628.46,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.05894207957065391
+    },
+    "GL": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 79528507.19385,
+      "iex_med_asof": 4952766.9,
+      "iex_med_last": 6008679.9525,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05137444925883253
+    },
+    "GLW": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 2183262827.9309998,
+      "iex_med_asof": 68972919.20750001,
+      "iex_med_last": 131624603.07999998,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.0371697628407602
+    },
+    "GM": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 617678841.0,
+      "iex_med_asof": 31272165.5925,
+      "iex_med_last": 21623883.8525,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.0503738022387791
+    },
+    "GNRC": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 224291507.82420003,
+      "iex_med_asof": 14801412.625,
+      "iex_med_last": 17823206.625,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.05447304344616584
+    },
+    "GOOG": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 7156633326.908501,
+      "iex_med_asof": 205042215.08999997,
+      "iex_med_last": 210856890.59,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.022115397992930205
+    },
+    "GOOGL": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 10790863594.5,
+      "iex_med_asof": 373453264.16999996,
+      "iex_med_last": 356670779.175,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.03008009610099186
+    },
+    "GPC": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 142606473.0,
+      "iex_med_asof": 6866351.155,
+      "iex_med_last": 9919320.3,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.044965072054154016
+    },
+    "GPN": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 259635273.0,
+      "iex_med_asof": 11229474.785,
+      "iex_med_last": 9363455.6775,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.038403548449898635
+    },
+    "GRMN": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 155825793.6684,
+      "iex_med_asof": 8667182.504999999,
+      "iex_med_last": 11020728.47,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.044262601467235
+    },
+    "GS": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 2383857870.977,
+      "iex_med_asof": 77524936.28999999,
+      "iex_med_last": 76054272.9,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.030452547833238777
+    },
+    "GWW": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 319353000.2065,
+      "iex_med_asof": 22622749.96,
+      "iex_med_last": 25451124.285,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06927034942364135
+    },
+    "HAL": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 439206136.66069996,
+      "iex_med_asof": 25940726.86,
+      "iex_med_last": 27345736.1,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.06414160808962388
+    },
+    "HAS": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 175490500.5,
+      "iex_med_asof": 7442921.525,
+      "iex_med_last": 7815075.73,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04342342781498733
+    },
+    "HBAN": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 356074087.0,
+      "iex_med_asof": 21524815.25,
+      "iex_med_last": 17671052.0,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.051395294315226936
+    },
+    "HCA": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 709091215.9449999,
+      "iex_med_asof": 38290375.59,
+      "iex_med_last": 30966158.6725,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04980614911202285
+    },
+    "HD": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1528252278.402,
+      "iex_med_asof": 63428480.2825,
+      "iex_med_last": 57464362.205,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.037080830398783585
+    },
+    "HIG": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 238450974.0,
+      "iex_med_asof": 8647184.765,
+      "iex_med_last": 9386865.2175,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.041796255252425626
+    },
+    "HII": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 134591848.0665,
+      "iex_med_asof": 7576556.535,
+      "iex_med_last": 7556205.390000001,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.049829814110145254
+    },
+    "HLT": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 445265830.9585,
+      "iex_med_asof": 22087485.46,
+      "iex_med_last": 37776130.68,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05250540241669287
+    },
+    "HON": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1105450003.9724998,
+      "iex_med_asof": 43464989.019999996,
+      "iex_med_last": 37521531.4,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.017198644049350294
+    },
+    "HONA": {
+      "iex_med_last": 30588023.310000002,
+      "iex_last_date": "2026-07-17",
+      "held": false
+    },
+    "HOOD": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 2401626722.0,
+      "iex_med_asof": 63995930.379999995,
+      "iex_med_last": 90464931.11500001,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.02363567126807788
+    },
+    "HPE": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1267015993.5,
+      "iex_med_asof": 91678650.9925,
+      "iex_med_last": 62792092.95,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.06930465724567128
+    },
+    "HPQ": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 452738346.0,
+      "iex_med_asof": 35957083.769999996,
+      "iex_med_last": 27322669.11,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05586929330269435
+    },
+    "HRL": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 104805284.0,
+      "iex_med_asof": 7498033.119999999,
+      "iex_med_last": 6166266.65,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05831784628495482
+    },
+    "HSIC": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 99529155.0,
+      "iex_med_asof": 6673134.66,
+      "iex_med_last": 7059687.165000001,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.052444075723496617
+    },
+    "HST": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 191477475.0,
+      "iex_med_asof": 13809494.42,
+      "iex_med_last": 16049707.330000002,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06051182374020636
+    },
+    "HSY": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 336325017.0,
+      "iex_med_asof": 17551885.43,
+      "iex_med_last": 21570243.775000002,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05279251410422939
+    },
+    "HUBB": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 344743620.519325,
+      "iex_med_asof": 26476641.244999997,
+      "iex_med_last": 23904006.725,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.07639202861369801
+    },
+    "HUM": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 401294935.0885,
+      "iex_med_asof": 23784004.475,
+      "iex_med_last": 31545503.917499997,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04565773219473572
+    },
+    "HWM": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 547749273.052,
+      "iex_med_asof": 26205801.5,
+      "iex_med_last": 38208048.045,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.0428968041624604
+    },
+    "IBKR": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 440968585.0,
+      "iex_med_asof": 18526342.725,
+      "iex_med_last": 19648145.2175,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04240225663956365
+    },
+    "IBM": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 2433354840.4605,
+      "iex_med_asof": 89806335.99000001,
+      "iex_med_last": 88873769.41,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.03380024745140843
+    },
+    "ICE": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 582172993.0,
+      "iex_med_asof": 24257162.08,
+      "iex_med_last": 28384453.47,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04875302920290103
+    },
+    "IDXX": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 335574787.81700003,
+      "iex_med_asof": 21442533.17,
+      "iex_med_last": 25302461.265,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.053487765116689456
+    },
+    "IEX": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 134517872.3815,
+      "iex_med_asof": 7258044.692500001,
+      "iex_med_last": 7121921.450000001,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06076794306495982
+    },
+    "IFF": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 153768765.5,
+      "iex_med_asof": 7694183.0975,
+      "iex_med_last": 7830765.8025,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04394033803057784
+    },
+    "INCY": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 170898758.5,
+      "iex_med_asof": 5673159.130000001,
+      "iex_med_last": 8856570.945,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.041873452651464665
+    },
+    "INTC": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 14574538465.0,
+      "iex_med_asof": 413052565.37,
+      "iex_med_last": 308351659.84000003,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.032032584237812675
+    },
+    "INTU": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1997188560.6815,
+      "iex_med_asof": 108585556.71,
+      "iex_med_last": 85128779.67,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.05681854145171284
+    },
+    "INVH": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 161764978.0,
+      "iex_med_asof": 10560262.0975,
+      "iex_med_last": 8936050.399999999,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05654558129057835
+    },
+    "IP": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 190932966.5,
+      "iex_med_asof": 10713985.36,
+      "iex_med_last": 10599410.445,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.055685936902527225
+    },
+    "IQV": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 287821091.1675,
+      "iex_med_asof": 18983365.095,
+      "iex_med_last": 17237582.705,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.07101165215215356
+    },
+    "IR": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 290524126.5,
+      "iex_med_asof": 14494595.530000001,
+      "iex_med_last": 15312578.71,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04584929844955778
+    },
+    "IRM": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 156934829.0,
+      "iex_med_asof": 5988073.43,
+      "iex_med_last": 13575263.469999999,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04054454634072235
+    },
+    "ISRG": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 951602742.7205,
+      "iex_med_asof": 40500366.925,
+      "iex_med_last": 55462510.915,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04000943828492453
+    },
+    "IT": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 185116113.5,
+      "iex_med_asof": 9588223.135000002,
+      "iex_med_last": 10145160.899999999,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.050070720011088476
+    },
+    "ITW": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 321425903.0,
+      "iex_med_asof": 19360416.57,
+      "iex_med_last": 18325972.245,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05419136419855522
+    },
+    "IVZ": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 122676700.0,
+      "iex_med_asof": 8800176.48,
+      "iex_med_last": 11034159.412500001,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.0650181130500484
+    },
+    "J": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 140466679.0,
+      "iex_med_asof": 7191789.697500001,
+      "iex_med_last": 7772911.005,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04372064923018064
+    },
+    "JBHT": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 235046784.9885,
+      "iex_med_asof": 13866026.91,
+      "iex_med_last": 20536023.619999997,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.06123569947435058
+    },
+    "JBL": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 384388829.643,
+      "iex_med_asof": 21516995.945,
+      "iex_med_last": 26763579.165,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.059327922294953775
+    },
+    "JCI": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 529485296.39750004,
+      "iex_med_asof": 24361953.25,
+      "iex_med_last": 27496829.5475,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04260594762380848
+    },
+    "JKHY": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 184748083.0,
+      "iex_med_asof": 13102505.68,
+      "iex_med_last": 11982787.79,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05418664742812965
+    },
+    "JNJ": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1720728328.769,
+      "iex_med_asof": 62127247.99,
+      "iex_med_last": 80116241.1075,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.034343245065899475
+    },
+    "JPM": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 2441383734.519,
+      "iex_med_asof": 78404885.71000001,
+      "iex_med_last": 82822225.22999999,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.025366107417872395
+    },
+    "KDP": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 334756958.0,
+      "iex_med_asof": 25496167.29,
+      "iex_med_last": 28313919.2875,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.0633413276827967
+    },
+    "KEY": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 268618707.0,
+      "iex_med_asof": 11858410.005,
+      "iex_med_last": 16603933.85,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05616936419869544
+    },
+    "KEYS": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 572970392.778,
+      "iex_med_asof": 33315453.285,
+      "iex_med_last": 30711551.425000004,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.057871046836344434
+    },
+    "KHC": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 321311946.0,
+      "iex_med_asof": 19273869.64,
+      "iex_med_last": 19398317.265,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05394496143613646
+    },
+    "KIM": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 93820376.0,
+      "iex_med_asof": 6253889.609999999,
+      "iex_med_last": 6531746.0225,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05915490315166999
+    },
+    "KKR": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 371733884.0,
+      "iex_med_asof": 23351727.8175,
+      "iex_med_last": 19737529.1,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.05740092396200855
+    },
+    "KLAC": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 2168886960.0,
+      "iex_med_asof": 103761494.5,
+      "iex_med_last": 145971516.1125,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.05200444963738614
+    },
+    "KMB": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 415925386.5,
+      "iex_med_asof": 15062224.305,
+      "iex_med_last": 20914583.22,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.039798947029644344
+    },
+    "KMI": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 275542916.5,
+      "iex_med_asof": 18805774.785,
+      "iex_med_last": 17954115.134999998,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05771805732556677
+    },
+    "KO": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1179961871.0,
+      "iex_med_asof": 68981842.325,
+      "iex_med_last": 109816889.085,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.061880601338354206
+    },
+    "KR": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 482676190.0,
+      "iex_med_asof": 22950268.7675,
+      "iex_med_last": 30963361.9,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04974709904544273
+    },
+    "KVUE": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 324042840.0,
+      "iex_med_asof": 20341866.7725,
+      "iex_med_last": 22286241.6025,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.055021530569608124
+    },
+    "L": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 86410366.5,
+      "iex_med_asof": 3432674.795,
+      "iex_med_last": 4542117.335000001,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.03246060016605945
+    },
+    "LDOS": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 155624122.5,
+      "iex_med_asof": 6483478.08,
+      "iex_med_last": 9267714.5,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04239194178588014
+    },
+    "LEN": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 226610531.0,
+      "iex_med_asof": 12514640.77,
+      "iex_med_last": 12200731.58,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.0466445873066597
+    },
+    "LH": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 136430449.9385,
+      "iex_med_asof": 7238769.737500001,
+      "iex_med_last": 9970931.834999999,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.053471430121897034
+    },
+    "LHX": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 296715085.4885,
+      "iex_med_asof": 15676610.004999999,
+      "iex_med_last": 23684026.064999998,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05414442377330003
+    },
+    "LII": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 183571512.8345,
+      "iex_med_asof": 12157716.905000001,
+      "iex_med_last": 17214528.77,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06651524618052426
+    },
+    "LIN": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1153166740.374,
+      "iex_med_asof": 47917900.68,
+      "iex_med_last": 51776800.955,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04059245111497292
+    },
+    "LITE": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 5157658621.6695,
+      "iex_med_asof": 177404626.0525,
+      "iex_med_last": 138400915.765,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.03305382499213391
+    },
+    "LLY": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 3191950213.4725,
+      "iex_med_asof": 129520688.4225,
+      "iex_med_last": 132365467.99000001,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.03807588588454547
+    },
+    "LMT": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 558218828.041,
+      "iex_med_asof": 21892615.0875,
+      "iex_med_last": 18214908.8,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04062283882373485
+    },
+    "LNT": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 169212055.0,
+      "iex_med_asof": 9030932.087499999,
+      "iex_med_last": 11425144.5,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05299153219857974
+    },
+    "LOW": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 660151768.5,
+      "iex_med_asof": 31751769.61,
+      "iex_med_last": 24810580.130000003,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04274798065815973
+    },
+    "LRCX": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 2926643718.3455,
+      "iex_med_asof": 114423877.49,
+      "iex_med_last": 161089981.895,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.034381887239599326
+    },
+    "LULU": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 409049783.5,
+      "iex_med_asof": 15543476.5075,
+      "iex_med_last": 14059202.6025,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.036778629810594765
+    },
+    "LUV": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 279190117.0,
+      "iex_med_asof": 13796122.07,
+      "iex_med_last": 15904247.1025,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.054488926405963076
+    },
+    "LVS": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 191080210.88994998,
+      "iex_med_asof": 9338077.330000002,
+      "iex_med_last": 8907741.1,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.052754358572824
+    },
+    "LYB": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 349641762.5,
+      "iex_med_asof": 16489368.84,
+      "iex_med_last": 15856188.66,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.053653084432515194
+    },
+    "LYV": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 367559377.5,
+      "iex_med_asof": 18040930.44,
+      "iex_med_last": 22690444.089999996,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04589239871691039
+    },
+    "MA": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1878539113.4475,
+      "iex_med_asof": 105682222.3375,
+      "iex_med_last": 82141879.995,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.048653747547777286
+    },
+    "MAA": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 119233563.391,
+      "iex_med_asof": 6299857.4,
+      "iex_med_last": 5853707.38,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.045326508951607294
+    },
+    "MAR": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 538496723.2715,
+      "iex_med_asof": 27676686.47,
+      "iex_med_last": 33252784.39,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.0573725532170474
+    },
+    "MAS": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 151319348.5,
+      "iex_med_asof": 9538723.23,
+      "iex_med_last": 9910814.475,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04958826741924055
+    },
+    "MCD": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1168569248.1785,
+      "iex_med_asof": 41485445.44,
+      "iex_med_last": 54372059.650000006,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.037043632348886316
+    },
+    "MCHP": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1030225675.6926,
+      "iex_med_asof": 45511870.0175,
+      "iex_med_last": 36491084.06,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.042165713598855105
+    },
+    "MCO": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 426536454.5058,
+      "iex_med_asof": 28086294.555,
+      "iex_med_last": 32794418.985,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06149852037920467
+    },
+    "MDLZ": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 460702747.0,
+      "iex_med_asof": 27227213.05,
+      "iex_med_last": 39411825.845,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06209841497196057
+    },
+    "MDT": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 816465047.5,
+      "iex_med_asof": 56713246.22,
+      "iex_med_last": 49151099.2975,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06142767012742925
+    },
+    "MET": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 280668725.0,
+      "iex_med_asof": 12735279.2225,
+      "iex_med_last": 13622180.079999998,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04109204070641312
+    },
+    "META": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 10248581997.327,
+      "iex_med_asof": 303505937.06,
+      "iex_med_last": 410310930.775,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.028364378567952098
+    },
+    "MGM": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 190861807.5,
+      "iex_med_asof": 12439599.3375,
+      "iex_med_last": 7636922.92,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05926976154682555
+    },
+    "MKC": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 168946912.5,
+      "iex_med_asof": 8009700.2775,
+      "iex_med_last": 12214757.975,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.043491403449146246
+    },
+    "MLM": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 301597971.1095,
+      "iex_med_asof": 25070505.759999998,
+      "iex_med_last": 26197097.46,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06807284683019788
+    },
+    "MMM": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 511830593.889,
+      "iex_med_asof": 21147569.775,
+      "iex_med_last": 17668985.020000003,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04175064493505826
+    },
+    "MNST": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 437345560.5,
+      "iex_med_asof": 22511229.87,
+      "iex_med_last": 22990656.375,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04866915816108569
+    },
+    "MO": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 539601816.0,
+      "iex_med_asof": 26702634.5625,
+      "iex_med_last": 29965115.625,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05296597584648982
+    },
+    "MOS": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 187165480.0,
+      "iex_med_asof": 12825014.620000001,
+      "iex_med_last": 12085126.469999999,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.06586465538261246
+    },
+    "MPC": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 569025388.2602,
+      "iex_med_asof": 28827699.295,
+      "iex_med_last": 35898825.70999999,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04976901094862065
+    },
+    "MPWR": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1147861608.0665002,
+      "iex_med_asof": 49972116.94,
+      "iex_med_last": 67053704.46000001,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.050379571184247574
+    },
+    "MRK": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1177332962.0,
+      "iex_med_asof": 45434311.8,
+      "iex_med_last": 48640119.462500006,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.03856684753278419
+    },
+    "MRNA": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 245961148.5,
+      "iex_med_asof": 10325847.807500001,
+      "iex_med_last": 17720362.7425,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.03593807001967464
+    },
+    "MRSH": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 402596351.5,
+      "iex_med_asof": 21459713.705,
+      "iex_med_last": 16888676.975,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.048679483461582546
+    },
+    "MRVL": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 11269894248.7365,
+      "iex_med_asof": 239708758.03,
+      "iex_med_last": 195568133.4775,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.02685700525367666
+    },
+    "MS": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1233302526.5,
+      "iex_med_asof": 58185853.62,
+      "iex_med_last": 66817370.8125,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04086733668483173
+    },
+    "MSCI": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 327864578.605,
+      "iex_med_asof": 25883762.884999998,
+      "iex_med_last": 27473688.085,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06331029083513495
+    },
+    "MSFT": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 13703064213.7645,
+      "iex_med_asof": 352523821.46999997,
+      "iex_med_last": 478951408.355,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.02554552821941864
+    },
+    "MSI": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 443777653.1105,
+      "iex_med_asof": 22443460.605,
+      "iex_med_last": 21824797.72,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.0544531992649024
+    },
+    "MTB": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 206362980.00599998,
+      "iex_med_asof": 10573562.43,
+      "iex_med_last": 11371508.45,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.0457882438166698
+    },
+    "MTD": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 224322023.448,
+      "iex_med_asof": 19949635.935,
+      "iex_med_last": 19765247.9,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.08454120823650241
+    },
+    "MU": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 49321314046.027,
+      "iex_med_asof": 806409566.71,
+      "iex_med_last": 1151127054.37,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.015962289594473884
+    },
+    "NCLH": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 358501236.0,
+      "iex_med_asof": 23981815.004999995,
+      "iex_med_last": 18412009.6,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05419762730555404
+    },
+    "NDAQ": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 271302774.0,
+      "iex_med_asof": 12481863.915,
+      "iex_med_last": 18598774.515,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04550134048236015
+    },
+    "NDSN": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 110176392.0,
+      "iex_med_asof": 5872548.785,
+      "iex_med_last": 4745020.4775,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.048685265425727695
+    },
+    "NEE": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1011688014.0,
+      "iex_med_asof": 69442341.63499999,
+      "iex_med_last": 67518717.9,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.050806443926584635
+    },
+    "NEM": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 803241367.5,
+      "iex_med_asof": 32215640.695,
+      "iex_med_last": 41120177.3775,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.036421781933079996
+    },
+    "NFLX": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 2906042367.0,
+      "iex_med_asof": 191259195.9675,
+      "iex_med_last": 235546807.815,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.05813880166492211
+    },
+    "NI": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 152301394.1232,
+      "iex_med_asof": 9287961.375,
+      "iex_med_last": 13111129.620000001,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06004859102042779
+    },
+    "NKE": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 823903332.0,
+      "iex_med_asof": 44520029.675000004,
+      "iex_med_last": 54507938.95,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.05299454526582617
+    },
+    "NOC": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 543181055.697,
+      "iex_med_asof": 27509646.535000004,
+      "iex_med_last": 31524112.54,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.047353356270865996
+    },
+    "NOW": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 3231081125.0,
+      "iex_med_asof": 120146991.135,
+      "iex_med_last": 80845236.58500001,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.0384008750591917
+    },
+    "NRG": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 325659537.4125,
+      "iex_med_asof": 18608404.06,
+      "iex_med_last": 17260706.815,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.051246917982643164
+    },
+    "NSC": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 339274160.76,
+      "iex_med_asof": 14037847.36,
+      "iex_med_last": 10658779.95,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.03887584792670955
+    },
+    "NTAP": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 527366670.5949,
+      "iex_med_asof": 30139703.525,
+      "iex_med_last": 21564481.025,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.045937126499931674
+    },
+    "NTRS": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 164290854.6945,
+      "iex_med_asof": 7759626.48,
+      "iex_med_last": 8177484.484999999,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.0451683856370663
+    },
+    "NUE": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 332849047.021,
+      "iex_med_asof": 14557849.8,
+      "iex_med_last": 20399780.5825,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.040326062185436905
+    },
+    "NVDA": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 36041076638.506,
+      "iex_med_asof": 1051027087.7775,
+      "iex_med_last": 892077825.03,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.026584653461833696
+    },
+    "NVR": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 179580336.978,
+      "iex_med_asof": 7781919.680000001,
+      "iex_med_last": 7557217.605,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04913661659578319
+    },
+    "NWS": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 36076479.0,
+      "iex_med_asof": 2716905.77,
+      "iex_med_last": 2620246.4524999997,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.0572861488416182
+    },
+    "NWSA": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 101192346.0,
+      "iex_med_asof": 8083673.795,
+      "iex_med_last": 7837767.09,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06755306315432137
+    },
+    "NXPI": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1165934565.865,
+      "iex_med_asof": 45580302.129999995,
+      "iex_med_last": 42300801.69,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04122228945504512
+    },
+    "O": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 346232527.0,
+      "iex_med_asof": 20857166.1575,
+      "iex_med_last": 24058021.655,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05571431191067519
+    },
+    "ODFL": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 441011945.8507,
+      "iex_med_asof": 24305967.36,
+      "iex_med_last": 19575063.345,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.050330184089481256
+    },
+    "OKE": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 300398145.95025,
+      "iex_med_asof": 12068909.92,
+      "iex_med_last": 12564370.559999999,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.041883667945136274
+    },
+    "OMC": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 234546804.5,
+      "iex_med_asof": 11566972.845,
+      "iex_med_last": 15793981.719999999,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04891888343297733
+    },
+    "ON": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1360053086.0,
+      "iex_med_asof": 54533087.345,
+      "iex_med_last": 57730354.025,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.047883307868206375
+    },
+    "ORCL": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 4943536161.0,
+      "iex_med_asof": 133413163.0525,
+      "iex_med_last": 182255252.15999997,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.02631503029647826
+    },
+    "ORLY": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 592243064.2152,
+      "iex_med_asof": 25250602.545,
+      "iex_med_last": 32978642.8475,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.045187391641097904
+    },
+    "OTIS": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 235323340.5,
+      "iex_med_asof": 11662111.129999999,
+      "iex_med_last": 10349604.09,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.049014398081199076
+    },
+    "OXY": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 616393958.0,
+      "iex_med_asof": 38916971.010000005,
+      "iex_med_last": 32716758.325000003,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04451009782904445
+    },
+    "PANW": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 2112341484.6975,
+      "iex_med_asof": 81996541.285,
+      "iex_med_last": 91340732.8925,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.035740293372658785
+    },
+    "PAYX": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 268250156.8204,
+      "iex_med_asof": 12955361.915000001,
+      "iex_med_last": 16836328.725,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04758285930669012
+    },
+    "PCAR": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 336079642.5,
+      "iex_med_asof": 16463160.807500001,
+      "iex_med_last": 15541691.870000001,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04345360303994128
+    },
+    "PCG": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 243684131.0,
+      "iex_med_asof": 14195788.517500002,
+      "iex_med_last": 14633605.844999999,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05268027827698159
+    },
+    "PEG": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 200379544.972,
+      "iex_med_asof": 7741469.725,
+      "iex_med_last": 9642253.125,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04135414533932914
+    },
+    "PEP": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1204322868.8695002,
+      "iex_med_asof": 44529622.144999996,
+      "iex_med_last": 46991821.807500005,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.033893274323134145
+    },
+    "PFE": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 876542914.5,
+      "iex_med_asof": 39898063.11,
+      "iex_med_last": 57450980.69,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.046753842717477956
+    },
+    "PFG": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 102532948.5,
+      "iex_med_asof": 4275163.797499999,
+      "iex_med_last": 10860083.3475,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.041608477064941
+    },
+    "PG": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1186847502.0,
+      "iex_med_asof": 59229975.885,
+      "iex_med_last": 55161527.8875,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04121905306127133
+    },
+    "PGR": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 571138065.0,
+      "iex_med_asof": 27932585.245,
+      "iex_med_last": 36224597.205,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04290187379252412
+    },
+    "PH": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 647260892.614,
+      "iex_med_asof": 46140364.3775,
+      "iex_med_last": 36507518.0125,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.07279871074565794
+    },
+    "PHM": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 176642886.002,
+      "iex_med_asof": 6995066.859999999,
+      "iex_med_last": 7381351.47,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04567437066708762
+    },
+    "PKG": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 150683559.3465,
+      "iex_med_asof": 10417227.855,
+      "iex_med_last": 8216360.425,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.059110493721050164
+    },
+    "PLD": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 451176492.00000006,
+      "iex_med_asof": 17656874.595,
+      "iex_med_last": 25154831.130000003,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.03809166054757304
+    },
+    "PLTR": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 4527272488.201,
+      "iex_med_asof": 135915139.10999998,
+      "iex_med_last": 154674927.925,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.01790840137279586
+    },
+    "PM": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 739997966.23,
+      "iex_med_asof": 27528775.090000004,
+      "iex_med_last": 34770584.474999994,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.03900610398950488
+    },
+    "PNC": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 388281104.5,
+      "iex_med_asof": 16243953.945,
+      "iex_med_last": 30393863.22,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.0458767996238528
+    },
+    "PNR": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 161336125.0,
+      "iex_med_asof": 6566613.625,
+      "iex_med_last": 6904966.5875,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.045962798100879096
+    },
+    "PNW": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 109559348.0,
+      "iex_med_asof": 5502187.5525,
+      "iex_med_last": 6202878.41,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.042157834397769
+    },
+    "PODD": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 210771856.5,
+      "iex_med_asof": 12408600.329999998,
+      "iex_med_last": 14871771.8,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.06792255772045787
+    },
+    "POOL": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 145382113.285,
+      "iex_med_asof": 8786853.030000001,
+      "iex_med_last": 9538356.690000001,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.05803410526124879
+    },
+    "PPG": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 210540575.5,
+      "iex_med_asof": 10085929.04,
+      "iex_med_last": 10608833.809999999,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04729924653385076
+    },
+    "PPL": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 321580918.0,
+      "iex_med_asof": 18489824.884999998,
+      "iex_med_last": 14913196.9,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05301473455825122
+    },
+    "PRU": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 179593020.5,
+      "iex_med_asof": 5984951.15,
+      "iex_med_last": 6037739.55,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.037264426556199715
+    },
+    "PSA": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 254865877.7855,
+      "iex_med_asof": 13648954.28,
+      "iex_med_last": 13507782.86,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04794171614160948
+    },
+    "PSKY": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 74234638.5,
+      "iex_med_asof": 4383291.715,
+      "iex_med_last": 4446563.7475000005,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05133874635754827
+    },
+    "PSX": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 365607863.17550004,
+      "iex_med_asof": 17748071.6,
+      "iex_med_last": 24666050.9875,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.058315826198935244
+    },
+    "PTC": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 201457016.7075,
+      "iex_med_asof": 10527426.620000001,
+      "iex_med_last": 10206908.445,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.0499527727787972
+    },
+    "PWR": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 735536017.0074999,
+      "iex_med_asof": 44188997.292500004,
+      "iex_med_last": 44828368.63,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.05756173856183695
+    },
+    "PYPL": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 604785499.0,
+      "iex_med_asof": 24993872.64,
+      "iex_med_last": 25844374.505,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.04583711827242964
+    },
+    "Q": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 252882845.5815,
+      "iex_med_asof": 11030423.54,
+      "iex_med_last": 15575038.04,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04546244858858186
+    },
+    "QCOM": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 4654393149.926001,
+      "iex_med_asof": 127006130.9,
+      "iex_med_last": 104839625.635,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.02985898508818243
+    },
+    "RCL": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 810540337.029,
+      "iex_med_asof": 43817169.7275,
+      "iex_med_last": 39392664.25,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.050052901174357636
+    },
+    "REG": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 101653866.0,
+      "iex_med_asof": 5991586.86,
+      "iex_med_last": 4700839.8325,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.045999606852886905
+    },
+    "REGN": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 645893722.1345,
+      "iex_med_asof": 54529895.377500005,
+      "iex_med_last": 40564201.675,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05877721961093478
+    },
+    "RF": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 292499608.0,
+      "iex_med_asof": 17276850.259999998,
+      "iex_med_last": 18946340.46,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.052524772002101955
+    },
+    "RJF": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 200879834.2703,
+      "iex_med_asof": 10032649.7025,
+      "iex_med_last": 12375706.19,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.045268097053125636
+    },
+    "RL": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 300713968.0,
+      "iex_med_asof": 23009392.77,
+      "iex_med_last": 15049927.77,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06394856969006103
+    },
+    "RMD": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 293406988.6185,
+      "iex_med_asof": 16141007.18,
+      "iex_med_last": 16027060.055,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.048004887414073195
+    },
+    "ROK": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 287895725.16024995,
+      "iex_med_asof": 16167190.81,
+      "iex_med_last": 23675920.939999998,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06236203301439763
+    },
+    "ROL": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 196559792.0,
+      "iex_med_asof": 11974498.6,
+      "iex_med_last": 13699214.440000001,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04881737509945224
+    },
+    "ROP": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 340479995.149,
+      "iex_med_asof": 16390535.087500002,
+      "iex_med_last": 13385660.149999999,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.04872333087093737
+    },
+    "ROST": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 699827595.0,
+      "iex_med_asof": 34777652.89,
+      "iex_med_last": 28383733.095,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.04342750031770237
+    },
+    "RSG": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 347176671.434,
+      "iex_med_asof": 21948623.82,
+      "iex_med_last": 11880247.852500001,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05191760200128401
+    },
+    "RTX": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 989895719.5,
+      "iex_med_asof": 35483054.775,
+      "iex_med_last": 32262525.4725,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.03875343860156698
+    },
+    "RVTY": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 119623671.0,
+      "iex_med_asof": 7937828.039999999,
+      "iex_med_last": 9231352.059999999,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06128160076797272
+    },
+    "SBAC": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 155917262.8425,
+      "iex_med_asof": 9027374.875,
+      "iex_med_last": 11256745.375,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05626869058387283
+    },
+    "SBUX": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 802164060.5,
+      "iex_med_asof": 36832442.614999995,
+      "iex_med_last": 29301984.555,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04144717101355362
+    },
+    "SCHW": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1003637294.0,
+      "iex_med_asof": 65750587.5075,
+      "iex_med_last": 53585080.7775,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05760093660199672
+    },
+    "SHW": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 654407475.5,
+      "iex_med_asof": 33602543.7525,
+      "iex_med_last": 34951139.53,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.0521196011347792
+    },
+    "SJM": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 167597274.0,
+      "iex_med_asof": 6901153.995,
+      "iex_med_last": 9362834.0175,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.0452391368631842
+    },
+    "SLB": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 675388956.0,
+      "iex_med_asof": 45336844.985,
+      "iex_med_last": 35306750.07,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06195882601076114
+    },
+    "SMCI": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1978492012.0,
+      "iex_med_asof": 74093383.505,
+      "iex_med_last": 45975974.8125,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.03618464472012881
+    },
+    "SNA": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 107609366.3685,
+      "iex_med_asof": 4764308.5649999995,
+      "iex_med_last": 6996469.16,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.0451575493933809
+    },
+    "SNDK": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 18459908367.6485,
+      "iex_med_asof": 344658549.11,
+      "iex_med_last": 576196401.7,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.016143065886146016
+    },
+    "SNPS": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 970437725.6345,
+      "iex_med_asof": 46530439.1,
+      "iex_med_last": 40028928.17,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04625892384300012
+    },
+    "SO": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 526114911.0,
+      "iex_med_asof": 24794263.185000002,
+      "iex_med_last": 22621590.555,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05101654218626424
+    },
+    "SOLV": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 123003626.5,
+      "iex_med_asof": 6210103.9,
+      "iex_med_last": 4202957.385,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04713622428896051
+    },
+    "SPG": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 348226905.0,
+      "iex_med_asof": 13652592.84,
+      "iex_med_last": 17867321.235,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.044951906963095256
+    },
+    "SPGI": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 874195656.424,
+      "iex_med_asof": 48597148.9375,
+      "iex_med_last": 43188987.33,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05154368591035752
+    },
+    "SRE": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 278892311.0,
+      "iex_med_asof": 11992067.0,
+      "iex_med_last": 10345356.58,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.043400122260631536
+    },
+    "STE": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 166858230.924,
+      "iex_med_asof": 9926449.785,
+      "iex_med_last": 12084299.645,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05785591834889412
+    },
+    "STLD": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 282270085.4062,
+      "iex_med_asof": 15416858.73,
+      "iex_med_last": 14345373.015,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.05193797359868856
+    },
+    "STT": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 279387142.554,
+      "iex_med_asof": 15240880.365,
+      "iex_med_last": 22959248.66,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.044036293600306725
+    },
+    "STX": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 2774705001.2250004,
+      "iex_med_asof": 101436122.17,
+      "iex_med_last": 172096731.9475,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.03941137107497908
+    },
+    "STZ": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 315940508.9252,
+      "iex_med_asof": 20082559.7025,
+      "iex_med_last": 21061111.46,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05336842179586619
+    },
+    "SW": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 199462935.0,
+      "iex_med_asof": 10839375.9025,
+      "iex_med_last": 10060169.335,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05035084587992461
+    },
+    "SWK": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 105299823.0,
+      "iex_med_asof": 4646786.455,
+      "iex_med_last": 7051730.5225,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04762628593207958
+    },
+    "SWKS": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 374693239.5,
+      "iex_med_asof": 17730745.810000002,
+      "iex_med_last": 15717367.799999999,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04234099101424111
+    },
+    "SYF": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 237007242.4842,
+      "iex_med_asof": 13065750.044999998,
+      "iex_med_last": 14361065.209999999,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04499577978920524
+    },
+    "SYK": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 863485147.0304999,
+      "iex_med_asof": 46962327.105000004,
+      "iex_med_last": 55012544.18000001,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06024029781553414
+    },
+    "SYY": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 238478011.0,
+      "iex_med_asof": 13347152.5,
+      "iex_med_last": 14770255.620000001,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04610124293093272
+    },
+    "TAP": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 135178521.0,
+      "iex_med_asof": 6968544.575,
+      "iex_med_last": 7442551.99,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05126543367432898
+    },
+    "TDG": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 499059715.04550004,
+      "iex_med_asof": 30103588.08,
+      "iex_med_last": 35350421.475,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06345307668089437
+    },
+    "TDY": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 179072074.38200003,
+      "iex_med_asof": 13267902.260000002,
+      "iex_med_last": 13201664.965,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06711583510494193
+    },
+    "TECH": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 141499145.0,
+      "iex_med_asof": 7877361.0375,
+      "iex_med_last": 17431852.0425,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05587353692894231
+    },
+    "TEL": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 493372737.0,
+      "iex_med_asof": 34722772.875,
+      "iex_med_last": 28592233.7575,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.061061501503309044
+    },
+    "TER": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1336552663.8875,
+      "iex_med_asof": 50825296.05,
+      "iex_med_last": 69821903.78,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.04103834578519404
+    },
+    "TFC": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 389373030.0,
+      "iex_med_asof": 26935153.82,
+      "iex_med_last": 25511882.06,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.058755639261678115
+    },
+    "TGT": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 601360622.5,
+      "iex_med_asof": 30497264.64,
+      "iex_med_last": 30064637.44,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.040668152685498685
+    },
+    "TJX": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 930640666.5,
+      "iex_med_asof": 41046531.557500005,
+      "iex_med_last": 34143636.275,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.03777122032011772
+    },
+    "TKO": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 231066177.32549998,
+      "iex_med_asof": 12816892.829999998,
+      "iex_med_last": 14188423.969999999,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.046652284519835385
+    },
+    "TMO": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 953802866.424,
+      "iex_med_asof": 65900187.215,
+      "iex_med_last": 55841122.072500005,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05702779556657172
+    },
+    "TMUS": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 853306537.8440001,
+      "iex_med_asof": 32881484.26,
+      "iex_med_last": 36494479.70999999,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.03932225187652341
+    },
+    "TPL": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 147077818.0903,
+      "iex_med_asof": 6343654.49,
+      "iex_med_last": 5698719.275,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.044687949015864065
+    },
+    "TPR": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 344205643.0,
+      "iex_med_asof": 16170582.97,
+      "iex_med_last": 20145350.224999998,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04778534431626766
+    },
+    "TRGP": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 274224794.7985,
+      "iex_med_asof": 13597060.695,
+      "iex_med_last": 20687379.0,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.05821847693137689
+    },
+    "TRMB": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 153418486.0,
+      "iex_med_asof": 8851751.7325,
+      "iex_med_last": 7199783.805,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.04382913196537621
+    },
+    "TROW": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 177200602.0,
+      "iex_med_asof": 9054148.29,
+      "iex_med_last": 12181717.5725,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04713178087697805
+    },
+    "TRV": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 419421211.32500005,
+      "iex_med_asof": 17051510.865000002,
+      "iex_med_last": 21951174.75,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.03609833507754914
+    },
+    "TSCO": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 375870316.5,
+      "iex_med_asof": 24731676.415,
+      "iex_med_last": 21442205.125,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.0588711599403662
+    },
+    "TSLA": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 18931505489.473503,
+      "iex_med_asof": 320038011.88,
+      "iex_med_last": 352108512.555,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.01364398164246428
+    },
+    "TSN": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 209849060.5,
+      "iex_med_asof": 9234819.175,
+      "iex_med_last": 7565175.077500001,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04194094619751967
+    },
+    "TT": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 602989328.9665,
+      "iex_med_asof": 32083519.48,
+      "iex_med_last": 35929164.635000005,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.0586072077904205
+    },
+    "TTD": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 418600379.40024996,
+      "iex_med_asof": 18884647.045,
+      "iex_med_last": 15126311.415,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.04930724142170122
+    },
+    "TTWO": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 499818052.5,
+      "iex_med_asof": 22406999.225,
+      "iex_med_last": 28573581.96,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04788202910482203
+    },
+    "TXN": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 2301012564.0445004,
+      "iex_med_asof": 108730041.00999999,
+      "iex_med_last": 101234481.305,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.03970116744906378
+    },
+    "TXT": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 113370553.0,
+      "iex_med_asof": 4869175.545,
+      "iex_med_last": 6592047.529999999,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.042630825280398306
+    },
+    "TYL": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 209193211.80334997,
+      "iex_med_asof": 12938249.594999999,
+      "iex_med_last": 14786066.575,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.059475698497534715
+    },
+    "UAL": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 594604784.0,
+      "iex_med_asof": 25094398.335,
+      "iex_med_last": 29815769.0075,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.03982693845044172
+    },
+    "UBER": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1356091078.5,
+      "iex_med_asof": 92883387.16499999,
+      "iex_med_last": 76095996.2625,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.047684198179757435
+    },
+    "UDR": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 155401785.5,
+      "iex_med_asof": 12183076.535,
+      "iex_med_last": 11659139.535,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06516925538812154
+    },
+    "UHS": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 155900680.0,
+      "iex_med_asof": 9217427.95,
+      "iex_med_last": 8101964.5225,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05292282153762876
+    },
+    "ULTA": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 361787329.663,
+      "iex_med_asof": 21393881.495,
+      "iex_med_last": 15817670.35,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05098461424711307
+    },
+    "UNH": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 2610256484.4355,
+      "iex_med_asof": 97084778.06,
+      "iex_med_last": 96517471.425,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.03161221607465661
+    },
+    "UNP": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 727118145.5,
+      "iex_med_asof": 35134916.0,
+      "iex_med_last": 32320821.96,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.050064162015664146
+    },
+    "UPS": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 563904290.5,
+      "iex_med_asof": 22870494.8325,
+      "iex_med_last": 20286280.175,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.035033996791889246
+    },
+    "URI": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 501666358.51199996,
+      "iex_med_asof": 30250455.14,
+      "iex_med_last": 25743161.86,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06837989445168499
+    },
+    "USB": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 414904937.0,
+      "iex_med_asof": 32120304.07,
+      "iex_med_last": 39930231.56,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06752019857513794
+    },
+    "V": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 2325649551.3815002,
+      "iex_med_asof": 98483996.685,
+      "iex_med_last": 131415753.6825,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04488811219154894
+    },
+    "VEEV": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 364089460.224,
+      "iex_med_asof": 22351076.07,
+      "iex_med_last": 20205197.55,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.0554029710301532
+    },
+    "VICI": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 220734523.5,
+      "iex_med_asof": 10730402.940000001,
+      "iex_med_last": 16577932.287500001,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.050576071198041694
+    },
+    "VLO": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 678670738.5,
+      "iex_med_asof": 29975206.754999995,
+      "iex_med_last": 39656275.21,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.04955829927091582
+    },
+    "VLTO": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 175987743.49355,
+      "iex_med_asof": 8353600.79,
+      "iex_med_last": 7887984.174999999,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04504270698160388
+    },
+    "VMC": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 341326711.35649997,
+      "iex_med_asof": 23408583.990000002,
+      "iex_med_last": 24427860.2175,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05643073855960193
+    },
+    "VRSK": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 348548321.5,
+      "iex_med_asof": 20295956.0975,
+      "iex_med_last": 26107569.565,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.04927168547830597
+    },
+    "VRSN": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 233917050.6345,
+      "iex_med_asof": 11993865.7575,
+      "iex_med_last": 11169654.509999998,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05015230603917227
+    },
+    "VRT": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1798372733.1834998,
+      "iex_med_asof": 79471028.99,
+      "iex_med_last": 94111452.535,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.04048745611268627
+    },
+    "VRTX": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 575436375.7406,
+      "iex_med_asof": 21597522.159999996,
+      "iex_med_last": 35649502.495000005,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.039847587629791174
+    },
+    "VST": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 686460312.6214,
+      "iex_med_asof": 26902798.235,
+      "iex_med_last": 29954424.339999996,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04377767443346332
+    },
+    "VTR": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 304981842.47145,
+      "iex_med_asof": 14312197.64,
+      "iex_med_last": 14862311.0,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.0406867237481176
+    },
+    "VTRS": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 141714915.0,
+      "iex_med_asof": 9863607.719999999,
+      "iex_med_last": 11269851.5,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.052903800165443396
+    },
+    "VZ": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1086140386.0,
+      "iex_med_asof": 54444974.5475,
+      "iex_med_last": 73672920.2225,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.0513459695365395
+    },
+    "WAB": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 201276916.5,
+      "iex_med_asof": 12410349.98,
+      "iex_med_last": 13147918.287500001,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05615869327522421
+    },
+    "WAT": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 277290090.0,
+      "iex_med_asof": 25107667.205,
+      "iex_med_last": 22086568.485,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06994866277371418
+    },
+    "WBD": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 520951317.6734,
+      "iex_med_asof": 43706710.035,
+      "iex_med_last": 39185881.24,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.06618356382947235
+    },
+    "WDAY": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 694999806.6252999,
+      "iex_med_asof": 33461012.542499997,
+      "iex_med_last": 23448380.955,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.04693012274882452
+    },
+    "WDC": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 3380809974.8585,
+      "iex_med_asof": 114391549.795,
+      "iex_med_last": 221570204.1325,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.030934540029863754
+    },
+    "WEC": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 254541921.5,
+      "iex_med_asof": 9522467.58,
+      "iex_med_last": 8434167.6075,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.03606406511051963
+    },
+    "WELL": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 657489780.1159999,
+      "iex_med_asof": 32756730.43,
+      "iex_med_last": 33151680.91,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.041462074312310956
+    },
+    "WFC": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 1200056680.5,
+      "iex_med_asof": 88024466.9075,
+      "iex_med_last": 71719333.695,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05674326783948287
+    },
+    "WM": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 473639537.3035,
+      "iex_med_asof": 18823783.32,
+      "iex_med_last": 22651177.6675,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04660829602702926
+    },
+    "WMB": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 455773833.5,
+      "iex_med_asof": 26556937.14,
+      "iex_med_last": 33147628.2,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.06003667004702634
+    },
+    "WMT": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 2776012460.0,
+      "iex_med_asof": 121674491.17500001,
+      "iex_med_last": 93086742.30000001,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.03468555042013642
+    },
+    "WRB": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 134338652.0,
+      "iex_med_asof": 5932211.897499999,
+      "iex_med_last": 6570263.987500001,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.04407051488780733
+    },
+    "WSM": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 233657347.37300003,
+      "iex_med_asof": 16514910.99,
+      "iex_med_last": 16570484.774999999,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.056639980872967094
+    },
+    "WST": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 199824009.1455,
+      "iex_med_asof": 12786518.620000001,
+      "iex_med_last": 16890568.27,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.0605137828428078
+    },
+    "WTW": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 174480368.3175,
+      "iex_med_asof": 11998172.16,
+      "iex_med_last": 9932725.08,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.07049509699509673
+    },
+    "WY": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 117823626.0,
+      "iex_med_asof": 7621540.7175,
+      "iex_med_last": 7267703.91,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05967098777230196
+    },
+    "WYNN": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 142925349.0,
+      "iex_med_asof": 8809384.625,
+      "iex_med_last": 6541027.762499999,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.054244781631342325
+    },
+    "XEL": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 433769273.66745,
+      "iex_med_asof": 27732427.667499997,
+      "iex_med_last": 24330490.89,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05164373340201148
+    },
+    "XOM": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 2492857189.0,
+      "iex_med_asof": 77802983.255,
+      "iex_med_last": 67958515.975,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.03910319955973045
+    },
+    "XYL": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 189440700.0,
+      "iex_med_asof": 7478227.21,
+      "iex_med_last": 10968991.885,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.045630959000773894
+    },
+    "XYZ": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 400470415.0,
+      "iex_med_asof": 17267759.595,
+      "iex_med_last": 18275469.932499997,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.03964502848888608
+    },
+    "YUM": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 307731911.331625,
+      "iex_med_asof": 16282520.174999999,
+      "iex_med_last": 19982282.21,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.05690637943941065
+    },
+    "ZBH": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 172701957.0,
+      "iex_med_asof": 10613867.33,
+      "iex_med_last": 11843530.81,
+      "iex_last_date": "2026-07-17",
+      "held": false,
+      "share_median": 0.058869912876675284
+    },
+    "ZBRA": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 249971242.11299998,
+      "iex_med_asof": 17022257.89,
+      "iex_med_last": 10358430.462499999,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.06337358775587447
+    },
+    "ZTS": {
+      "asof": "2026-06-15",
+      "cons_med_asof": 580121580.5,
+      "iex_med_asof": 24014218.435000002,
+      "iex_med_last": 18218316.17,
+      "iex_last_date": "2026-07-17",
+      "held": true,
+      "share_median": 0.04515229918680429
+    }
+  }
+}

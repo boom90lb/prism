@@ -160,6 +160,21 @@ def _load_universe_file(path: Path) -> list[str]:
     return symbols
 
 
+def _with_held_names(symbols: list[str], state: Any) -> tuple[list[str], list[str]]:
+    """Fetch universe = configured universe ∪ persisted held book.
+
+    A held name must stay fetchable until the book exits it: the mark step
+    values every position and refuses loudly otherwise (N7), and only a priced
+    name can be rebalanced to flat. Index leavers drop out of a regenerated
+    universe file while the book still holds them (POOL, 2026-07-15), so the
+    extras ride along for valuation/exit — the caller keeps them OUT of the
+    scoring universe so they can leave the book but never re-enter it.
+    """
+    held = getattr(state, "positions", None) if state is not None else None
+    extras = sorted(set(held) - set(symbols)) if held else []
+    return symbols + extras, extras
+
+
 def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     args = _parse_args(argv)
@@ -169,6 +184,16 @@ def main(argv: list[str] | None = None) -> int:
         symbols = [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
     else:
         raise SystemExit("provide --symbols or --universe-file")
+
+    score_universe = list(symbols)
+    symbols, valuation_extras = _with_held_names(symbols, StateStore(args.run_dir / "state.json").load())
+    if valuation_extras:
+        logger.warning(
+            "universe file lacks %d held name(s) %s; fetching them for valuation/exit only "
+            "(they are masked out of scoring and exit at the next refresh)",
+            len(valuation_extras),
+            valuation_extras,
+        )
 
     # Bars from Alpaca (the broker's own feed) by default so decision and fill
     # share one venue and clock; the Twelve Data spine stays available as a
@@ -210,11 +235,19 @@ def main(argv: list[str] | None = None) -> int:
         21 if args.book == "momentum" else 1
     )
     if args.book == "momentum":
+        # Valuation-only extras are masked ineligible: NaN-scored names get an
+        # explicit 0.0 from the decile construct (its explicit-flat pin), so a
+        # departed-but-held name exits at the next refresh and cannot re-enter.
+        score_mask = None
+        if valuation_extras:
+            score_mask = pd.DataFrame(False, index=close.index, columns=close.columns)
+            score_mask.loc[:, [s for s in score_universe if s in close.columns]] = True
         signal = MomentumSignalNode(
             ResidualStatArbConfig(),
             lookback_bars=args.mom_lookback,
             skip_bars=args.mom_skip,
             horizon_bars=decision_every,
+            membership_mask=score_mask,
         )
         signal.fit(close, volume)
         config = DailyBookConfig(

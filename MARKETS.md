@@ -51,9 +51,11 @@ feeds. Settlement is **T+1** (since May 2024); no T+0 mandate is scheduled.
 - PFOF/order-competition and Reg Best-Ex proposals appear deprioritized under the
   current SEC; treat the internalization status quo as intact. *Uncertain.*
 
-**Data at $0.** Alpaca Basic real-time = **IEX only** (~2–3% of consolidated
-volume — thin, non-representative of true NBBO); historical minute/daily bars
-available; ~200 req/min. yfinance (EOD + delayed intraday, ToS-gray, fragile),
+**Data at $0.** Alpaca Basic real-time = **IEX only** (measured ~5% of
+consolidated volume on the 2026 S&P 500 book — per-name median 4.8%, p5–p95
+3.2–6.6%, `results/iex_eligibility_2026-07-17.json` — thin,
+non-representative of true NBBO); historical minute/daily bars available;
+~200 req/min. yfinance (EOD + delayed intraday, ToS-gray, fragile),
 Stooq (clean daily EOD backfill), SEC EDGAR (fundamentals, free, full history),
 FINRA transparency files (delayed short-sale/ATS volume), Ken French factor
 library. Real-time SIP consolidated data requires a paid tier — **the binding

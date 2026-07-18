@@ -12,6 +12,8 @@ import pytest
 
 from prism.io.universe_sp500 import (
     HISTORY_FLOOR,
+    QUARANTINE_TABLE,
+    RENAME_TABLE,
     CoverageReport,
     build_membership_mask,
     compute_coverage,
@@ -147,6 +149,27 @@ def test_coverage_applies_rename_table() -> None:
         ["BRK.B"], available=["BRK/B"], asof="2026-01-01", rename_table={"BRK.B": "BRK/B"}
     )
     assert report.resolved == ["BRK.B"] and report.skipped == []
+
+
+def test_coverage_quarantine_never_resolves_even_when_vendor_answers() -> None:
+    # The vendor "answers" for B, but the answer is a known wrong instrument:
+    # quarantine wins, and the exclusion is counted (skip-list) and auditable.
+    report = compute_coverage(
+        ["A", "B"], available=["A", "B"], asof="2026-01-01", quarantine_table={"B": "wrong instrument"}
+    )
+    assert report.resolved == ["A"]
+    assert report.skipped == ["B"]
+    assert report.quarantined == {"B": "wrong instrument"}
+    assert report.n_ever_members == 2 and report.n_resolved == 1
+    assert report.to_dict()["quarantined"] == {"B": "wrong instrument"}
+
+
+def test_seeded_tables_carry_the_reviewed_2026_07_entries() -> None:
+    # Pins the reviewed seed content (docs/data_integrity_diagnostic.md §6) so
+    # accidental edits are loud; any legitimate change re-reviews and updates here.
+    assert RENAME_TABLE == {"FB": "META", "PCLN": "BKNG", "WLTW": "WTW"}
+    assert set(QUARANTINE_TABLE) == {"ADS", "ECHO", "INFO", "SBNY", "SOLS"}
+    assert all(reason for reason in QUARANTINE_TABLE.values())
 
 
 CONSTITUENTS_HTML = """
