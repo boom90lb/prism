@@ -45,7 +45,10 @@ findings changed character under verification and were executed the same day
    fold-start re-buy duplicates refresh churn. A carry-mode counterfactual is
    impossible in-tree (`walk_forward.py:92-93` raises), so quantifying what
    flattening does to the drawdown/vol/skew statistics the eventual sizing
-   decision will consume requires new code. Open; worth doing before M6.
+   decision will consume requires new code. **Measured 2026-07-17**
+   (`docs/carry_flatten_diagnostic.md`): the flatten is 43.7% of certified
+   turnover / −19.4 bps/yr — not 63% — and the certified tail statistics
+   are not artifacts of it (worst day identical, skew barely moves).
 
 4. **The promotion conjunct that waits on a year of paper data is nearly
    uninformative.** Rolling PSR > 0.5 at ~1y on a true-0.465 strategy passes
@@ -166,8 +169,13 @@ amendments, drafted and applied to SPEC §1/§4/§10 with rationale in
 trial budgets, the bounded data budget, and the real-money cost-calibration
 carve-out.
 
+Executed 2026-07-17: the carry-mode fold-flattening quantification
+(`docs/carry_flatten_diagnostic.md`, instrument
+`research/scripts/carry_flatten_diagnostic.py`) — finding 3's open item —
+with the combined M6 pin: live ≈ certified − 17 bps/yr net
+(+19.4 flatten − 36.1 dividends).
+
 Still open, unchanged in substance: the data purchase itself and the
 micro-account funding (owner acts the amendments now permit), the
-crash-convex ETF-trend second sleeve (P3), an always-on box for the paper
-stream, and a carry-mode fold-flattening quantification before M6. No
-counted trial was touched by any of this.
+crash-convex ETF-trend second sleeve (P3), and an always-on box for the
+paper stream. No counted trial was touched by any of this.
