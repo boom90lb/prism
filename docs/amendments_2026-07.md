@@ -100,9 +100,12 @@ in this commit's diff, which is the auditable record.
 
 ## A4. Concurrency criterion for non-promoting counted reads (SPEC §10) — DRAFTED 2026-07-19
 
-**Status: DRAFTED under the owner's 2026-07-19 execution directive (item 6
-of the desk-review adjudication list); ratification = the owner's push of
-this dedicated commit, per the A1–A3 convention.**
+**Status: RATIFIED 2026-07-19 — by the owner's push of the dedicated A4
+commit (`b51e5c8`) to origin, per the A1–A3 convention.** Family-posture
+note recorded at ratification: a family opts into A4 concurrency in its own
+ratified banner; absent an explicit opt-in, its counted reads take the
+serial slot exactly as before (momentum, replication, trend, and
+learned_xsection all currently stand on their as-ratified postures).
 
 **What it changes.** SPEC §10's "at most one counted program runs at a time"
 becomes a rule about the *adjudication slot*, with a criterion replacing the
