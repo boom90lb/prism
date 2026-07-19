@@ -185,7 +185,12 @@ per-decision-bar answer is cached as `spinoff_mask_<bar>.json` in the run
 dir — a same-bar rerun never refetches, and only events with ex-date ≤ the
 decision bar flag (causal). A detection failure is a loud N7 warning naming
 every unchecked symbol and the refresh proceeds UNMASKED: the mask is a
-protection, not a correctness precondition. Replay: the library seam
+protection, not a correctness precondition. **Endpoint shape live-verified
+2026-07-19** (direct probe, current universe, trailing year): 10 records,
+`source_symbol`/`ex_date` fields as coded, and the in-window flag set
+{APTV, BDX, CMCSA, DD, FDX, HON, SPGI} independently matches this
+document's §1 adjustment-flagged names — two instruments concordant; WDC/FTV
+correctly absent (their events have aged out of the trailing window). Replay: the library seam
 (`replay_daily_cycles(unrankable=...)`) accepts an injected offline provider;
 the replay CLI carries no flag because a replay has no event source.
 
