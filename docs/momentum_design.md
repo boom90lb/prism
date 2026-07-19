@@ -208,4 +208,4 @@ already at ~61% of the fundamental-law ceiling and the ceiling's own
 viability unpinned at the lower-CI IC, the plausible upside from
 configuration choices is small, and the program's outcome is dominated by
 whether one more year of data pins the IC above zero. That is an argument
-for patience (M6 and the paper monitor), not for spending M7.
+for the M6 read and the paper monitor, not for spending M7.

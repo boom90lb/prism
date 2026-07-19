@@ -29,8 +29,8 @@ slow-signal candidate is 12−1 cross-sectional momentum, and its status is
 through ≥ 2027-06, DSR > 0.5 against the momentum ledger, periodic net Sharpe above
 the then-current cash hurdle, and a live-monitor read not in contradiction
 (`docs/momentum_design.md §3`). This aim-portfolio sits at Phase B of the
-sequencing — "the two-speed book (+2 → +6 months)… G-P multi-signal band with
-heterogeneous decay rates (its native case)" (`docs/handoff.md §5`) — which is
+sequencing — "the two-speed book… G-P multi-signal band with
+heterogeneous decay rates (its native case)" (`docs/handoff.md §6`) — which is
 gated behind Phase A's trustworthy verdict and, per the pre-registered decision
 table, is the "slow-sleeve netting book [that] gets *one* pre-registered budget"
 only after the kill-criterion resolves (`docs/handoff.md §8`). Until the momentum

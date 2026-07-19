@@ -22,9 +22,11 @@
 > budget ([`docs/momentum_design.md`](docs/momentum_design.md), ratified
 > 2026-07-06): entered at `mechanics_clean`, paper-trading nightly since
 > 2026-07-13, promotion readable only at the M6 extension window (≥ 2027-06
-> data). Two successor pre-registrations are drafted, not ratified
-> ([`docs/replication_preregistration.md`](docs/replication_preregistration.md),
-> [`docs/trend_design.md`](docs/trend_design.md)). No
+> data). Two successor pre-registrations are ratified (2026-07-18):
+> [`docs/replication_preregistration.md`](docs/replication_preregistration.md)
+> (gated per-cell on a §3-qualifying panel) and
+> [`docs/trend_design.md`](docs/trend_design.md) (design frozen, OOS clock
+> running since ratification). No
 > configuration has ever cleared the deflated evidence bar; nothing is
 > deployable today.
 
@@ -72,7 +74,7 @@ nightly paper loop on your own (free) Alpaca paper account — with
 reproduces. See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the end-to-end data
 flow (what calls what), [`docs/operations.md`](docs/operations.md) for
 operational gotchas (vendor tier, interval mapping, member contribution, per-bar cost),
-[`docs/handoff.md`](docs/handoff.md) for the long-horizon doctrine
+[`docs/handoff.md`](docs/handoff.md) for the standing doctrine
 behind the roadmap, and [`formal/`](formal/README.md) for the Lean 4
 machine-checked kernel invariants.
 

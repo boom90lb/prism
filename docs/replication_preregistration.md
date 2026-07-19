@@ -258,11 +258,12 @@ own future amendment; this document governs research reads only.
 ## 8. Amendment 2026-07-17: the purchase reversed, the design unchanged
 
 Owner decision, same day as drafting: the Norgate purchase is reversed in
-favor of slowly accumulating survivorship-bias-free data at enterprise
+favor of accumulating survivorship-bias-free data at enterprise
 quality in-house — prospective capture via `prism-observatory` (companion
 repository, publication pending) as the
-backbone, a dead-ticker price layer as future design work
-(`docs/data_purchase_evaluation.md` §6 records the outcome against the
+backbone, a dead-ticker price layer as companion design work
+(drafted 2026-07-18: `docs/dead_ticker_price_design.md`;
+`docs/data_purchase_evaluation.md` §6 records the outcome against the
 evaluation). Consequences, stated now so they cannot be discovered later:
 
 - **Every §3 gate is already source-agnostic** — the gates define panel
@@ -276,8 +277,9 @@ evaluation). Consequences, stated now so they cannot be discovered later:
   the observatory's IJH point-in-time holdings (~2010 onward); C1
   delisted-name *prices* are the accumulation target (recent deaths are
   the recoverable class). C2/C3 have **no known free source for pre-2020
-  delisted prices**: those cells stay registered and unscheduled, and the
-  crash-era read (C2) is deferred indefinitely. Recording this is the
+  delisted prices**: those cells stay registered and unscheduled; the
+  crash-era read (C2) activates only on a qualifying pre-2020 source,
+  none known today. Recording this is the
   honest price of the reversal, paid knowingly.
 - **An accumulated multi-source panel faces the same discipline as any
   vendor panel**: the §3 integrity sweep treats splice seams between

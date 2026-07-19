@@ -1,8 +1,8 @@
-# Handoff — the long-horizon doctrine
+# Handoff — the standing doctrine
 
 **Standing.** `SPEC.md` is the constitution: rules, contracts, gates. This
 document is the jurisprudence and the strategy — *why* the rules are what they
-are, what to build over the next 18–24 months, which decisions are already
+are, what to build next, which decisions are already
 made, and the ranked ways the project can fail. It binds nothing; where it
 disagrees with `SPEC.md`, the spec wins. It exists because the constitution
 deliberately does not editorialize, and a future maintainer (human or agent)
@@ -111,7 +111,7 @@ cost is turnover × effective spread, and turnover is a property of the signal
 
 ## 4. Evidence doctrine
 
-The claim-tier ladder is the public API of the project. Long-term, a *claim
+The claim-tier ladder is the public API of the project. Ultimately, a *claim
 packet* — config hash, code commit, data convention, trial ledger, tier — is
 what Prism certifies; strategies are just inputs. Doctrine:
 
@@ -182,13 +182,13 @@ append-only monotonicity as a tiny state machine. The package stays
 core-only; any proposal to import Mathlib must name the theorem that needs it
 and why a property test is not the right tool instead.
 
-## 6. The long-term roadmap
+## 6. The extension roadmap
 
 Extends `SPEC §13`; phase letters continue the R-series. Each phase has an
 exit artifact, and the standing rule is unchanged: cost-bound before
 signal-bound, everything counted.
 
-**Phase A — make the verdict trustworthy (now → +2 months).**
+**Phase A — make the verdict trustworthy.**
 Honesty plumbing: grid-size-aware DSR deflation (count searched, not
 surviving, trials); fold-count assertion in the WFO consumers; wire
 `step_no_trade_band` into the residual WFO (or formally de-claim −0.01);
@@ -200,7 +200,7 @@ embryo of `live/`. *Exit: a claim packet whose every number has an in-tree
 reproduction path and a calibrated (or explicitly bracketed) spread
 assumption.*
 
-**Phase B — the two-speed book (+2 → +6 months).**
+**Phase B — the two-speed book.**
 Slow sleeve (1–3 month cross-sectional momentum) admitted as construction
 machinery; G-P multi-signal band with heterogeneous decay rates (its native
 case); internal netting measured as a cost-toll delta; incremental data store
@@ -209,7 +209,7 @@ error-vs-absence distinction — a rate-limit failure must never be bookable as
 a delisting). *Exit: the kill-criterion fires — GO or STOP — on calibrated
 inputs, and either verdict ships as a public claim packet.*
 
-**Phase C — deployment or certification (+6 → +12 months).**
+**Phase C — deployment or certification.**
 GO branch: live at minimum size, rolling PSR/DSR live monitor armed as the
 kill-switch, scale strictly along the (fixed-denominator) capacity curve.
 STOP branch: the negative result is written up as the harness's first public
@@ -219,7 +219,7 @@ at `mechanics_clean` and climbs. Either branch: stabilize the Signal/Construct
 Prism certifies them. That is the open-source product regardless of the
 alpha's fate.
 
-**Phase D — the platform (+12 → +24 months).**
+**Phase D — the platform.**
 Second market lane (crypto time-series book) only after the equity verdict,
 under its own `net_edge` bar and venue-priced fees. Contributor surface:
 CONTRIBUTING.md, claim-packet reader docs, mypy + multi-Python CI, hypothesis
