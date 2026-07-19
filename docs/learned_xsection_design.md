@@ -1,14 +1,17 @@
 # Learned cross-section pre-registration — frontier axis, monthly-cadence learned ranking (DRAFT)
 
-> **Status: DRAFT — not ratified.** Drafted 2026-07-18 under the owner's
-> frontier directive. Ratification is the owner's dedicated commit; from that
-> commit the design freezes, the amendment rule applies (seams may be pinned,
-> no trial value may move), and every subsequent bar accrues as out-of-sample
-> by construction while the program queues — the binding act is ratification,
-> not the first run (`docs/trend_design.md` banner precedent). **No backtest
-> of any configuration in this family runs before ratification, and none runs
-> after it outside the §3 counted set** — the budget-amnesia failure mode
-> (`docs/handoff.md` §7.2) is blocked here exactly as in the sibling designs.
+> **Status: RATIFIED 2026-07-19** (this commit is the dedicated ratification
+> commit; the decision was delegated by the owner to the session in the same
+> turn — the `docs/momentum_design.md` delegation precedent; drafted
+> 2026-07-18 under the owner's frontier directive). **The design is frozen
+> from this commit: the out-of-sample clock runs.** The §6 flagged values are
+> resolved as written: `rev_1` stays in F0, X4 stays in budget. The family's
+> no-concurrency posture stands as written; opting into the A4 criterion
+> (`docs/amendments_2026-07.md`) would be a banner amendment. From this
+> commit the amendment rule applies: seams may be pinned, no trial value may
+> move. **No backtest of any configuration in this family runs outside the
+> §3 counted set** — the budget-amnesia failure mode (`docs/handoff.md`
+> §7.2) stays blocked exactly as in the sibling designs.
 
 ## 0. Provenance and the honest prior
 
