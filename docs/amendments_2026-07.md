@@ -97,3 +97,43 @@ rule changes under any of the three. The momentum program's promotion still
 reads only at M6 + paper under `docs/momentum_design.md` §3 as ratified. The
 SPEC status stamp gains an amendment note; the full before/after text lives
 in this commit's diff, which is the auditable record.
+
+## A4. Concurrency criterion for non-promoting counted reads (SPEC §10) — DRAFTED 2026-07-19
+
+**Status: DRAFTED under the owner's 2026-07-19 execution directive (item 6
+of the desk-review adjudication list); ratification = the owner's push of
+this dedicated commit, per the A1–A3 convention.**
+
+**What it changes.** SPEC §10's "at most one counted program runs at a time"
+becomes a rule about the *adjudication slot*, with a criterion replacing the
+per-family ad-hoc grant mechanism the replication family exercised. A
+counted read may run concurrently with the slot-holder iff all three hold:
+
+1. **Ratified and frozen** — the read belongs to a ratified pre-registration
+   whose trial values are frozen (no free parameter has moved since
+   ratification);
+2. **Cannot promote** — it is a kill/fragility-class read (the T0–T4 /
+   X0–X4 class: "they can kill, they cannot promote",
+   `docs/trend_design.md` §3). Promotion reads (T5, X5, M6-class extension
+   re-runs) always require the serial slot;
+3. **Firewalled** — its outputs are barred from every cross-family
+   adjudication until the slot opens, transplanting the replication family's
+   bar verbatim (`docs/replication_preregistration.md` §5: cannot move the
+   M6 adjudication in either direction).
+
+**Why.** The serial slot's recorded ground is operator bandwidth
+(`docs/handoff.md` §8: "the ledger discipline doesn't parallelize across an
+operator of one"), not the False Strategy Theorem — the statistical control
+is the per-family budget, which is the DSR denominator and is untouched
+here. The only information the queue withholds from a ratified frozen
+family is an early kill, which spends no out-of-sample data and, firewalled,
+cannot contaminate any promotion. Releasing kills is strictly informative.
+The granted replication exception (its §6) stands as granted; A4 is that
+exception's grounds stated as a rule.
+
+**What A4 does not do.** No budget, threshold, gate, or deflation rule
+moves. Concurrency is *permitted, not mandated* — operator bandwidth remains
+a legitimate reason to run nothing concurrently. One promotion adjudication
+at a time stands absolutely. A read run under A4 still appends to its
+family's ledger and counts against its family's budget exactly as if it had
+run in the slot.

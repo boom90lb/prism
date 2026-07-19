@@ -587,7 +587,10 @@ pre-registration, counted in its own selection-set ledger (N5) — which is the
 multiplicity DSR actually deflates. Across-family multiplicity is controlled
 where it binds instead of by a shared counter that starves later programs
 regardless of merit: every pre-registration records the count of prior
-counted programs, at most one counted program runs at a time, and promotion
+counted programs, at most one counted program holds the adjudication slot at
+a time (A4, `docs/amendments_2026-07.md`: non-promoting kill/fragility reads
+from ratified frozen sets may run concurrently with their outputs firewalled
+until the slot opens; promotion reads always require the slot), and promotion
 always requires genuinely out-of-sample confirmation. The construction-trial
 budget is logged in the ledger and every swept band/factor value counts
 against it, so "cost-bound before signal-bound" cannot become infinite
