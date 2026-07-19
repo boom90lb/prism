@@ -56,3 +56,16 @@ is wrong by construction.
   invariant (`DataLoader._redact`, test-enforced); exposed key rotated
   2026-07-18. Closed. This incident is why §2.4 is stated as an invariant
   and not a style preference.
+
+- **2026-07-18 — WSL disk-flush failure wrote zero-byte git objects.** During
+  a ratification commit, a flush failure produced four zero-byte loose
+  objects (one commit plus its tree/blob set, destroyed before push). Repair:
+  purge the empty objects, rebuild the index (`rm .git/index` +
+  `git read-tree HEAD` — a stale index referencing purged blobs breaks
+  `git reset`), expire reflogs, recommit from worktree text, `fsck` clean.
+  Consequences adopted: the paper-loop ledgers under `runs/` — the one
+  artifact class that cannot be regenerated, only re-accumulated — are
+  snapshotted to a dedicated backup repository by the nightly sync script,
+  with an off-box push once a private remote exists; ratification commits
+  carry never-retargeted `ratify/*` tags on origin. Open until the off-box
+  push is live.
