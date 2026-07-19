@@ -66,6 +66,7 @@ from prism.live.loop import (
     settle,
 )
 from prism.live.monitor import book_concordance, paper_monitor_read
+from prism.live.safety import SafetyConfig, check_orders, halt_reason
 from prism.live.state import LoopState
 from prism.portfolio.construct import (
     construct_decile_neutral,
@@ -137,6 +138,7 @@ class DailyCycleResult:
     target_weights: pd.Series
     monitor_read: dict | None = None
     concordance: dict | None = None
+    halted: str | None = None
 
 
 def fetch_universe_panels(
@@ -224,6 +226,7 @@ def run_daily_cycle(
     volume: pd.DataFrame | None,
     config: DailyBookConfig,
     decision_bar: str | None = None,
+    safety: SafetyConfig | None = None,
 ) -> DailyCycleResult:
     """Run one settle → mark → score → construct → decide/submit cycle.
 
@@ -231,6 +234,13 @@ def run_daily_cycle(
     decision bar *t* (N1); ``decision_bar`` defaults to that row's date.
     Re-running within the same bar resumes the persisted decision without
     settling or re-deciding (the write-ahead protocol's restart semantics).
+
+    ``safety`` (``prism.live.safety``, ``None`` = no rails) adds two vetoes:
+    a *halt* (kill-switch file, drawdown bound) checked after the mark step —
+    the cycle still settles and marks NAV so the ledger stays continuous, but
+    skips score → construct → submit and reports ``halted`` — and an *order
+    guard* (per-order notional, order count) enforced inside the write-ahead
+    protocol before anything is persisted or submitted.
     """
     if close.empty:
         raise ValueError("empty close panel — nothing to decide on")
@@ -302,11 +312,28 @@ def run_daily_cycle(
                 None if concordance["weight_corr"] is None else round(concordance["weight_corr"], 4),
             )
 
+    # 2c. Halt rails (kill switch, drawdown) — decided on the marked equity
+    # before any decision is constructed or persisted. A halted cycle still
+    # settles and marks NAV (the ledger stays continuous through a halt) but
+    # initiates nothing, and it does NOT resume a pending submission either:
+    # the kill switch must gate every path to the venue.
+    halted: str | None = None
+    if safety is not None:
+        halted = halt_reason(safety, equity, ctx.equity_ledger)
+        if halted is not None:
+            logger.error(
+                "SAFETY HALT (%s): settling and marking NAV only — no decision, no orders "
+                "this cycle",
+                halted,
+            )
+
     # 3. Cadence gate, then score → construct against held weights. Off a refresh
     # session (the decision cadence has not elapsed) the book holds its filled
     # weights — no re-score, no trades — so a monthly book rebalances monthly
     # while NAV still marks daily.
-    refresh = _is_refresh_session(state, decision_bar, close.index, config.decision_every)
+    refresh = halted is None and _is_refresh_session(
+        state, decision_bar, close.index, config.decision_every
+    )
     if refresh:
         score_row = pd.DataFrame([signal.score(close, volume)], index=close.index[-1:])
         if config.book == "decile_neutral":
@@ -346,23 +373,30 @@ def run_daily_cycle(
     else:
         targets = prev_weights  # hold the filled book: no decision this session
 
-    # 4. Write-ahead decide and idempotent submit.
-    orders = decide_and_submit(
-        ctx,
-        decision_bar,
-        targets,
-        prices,
-        min_order_notional=config.min_order_notional,
-        whole_shares=config.whole_shares,
-        refresh_bar=decision_bar if refresh else None,
-    )
-    logger.info(
-        "decision %s: %d orders submitted, equity %.2f, gross %.4f",
-        decision_bar,
-        len(orders),
-        equity,
-        float(targets.abs().sum()),
-    )
+    # 4. Write-ahead decide and idempotent submit. Skipped entirely under a
+    # halt — a persisted-but-unsubmitted decision would resume trading on the
+    # next non-halted run, which is not what a kill switch means.
+    orders: list[Order] = []
+    if halted is None:
+        orders = decide_and_submit(
+            ctx,
+            decision_bar,
+            targets,
+            prices,
+            min_order_notional=config.min_order_notional,
+            whole_shares=config.whole_shares,
+            refresh_bar=decision_bar if refresh else None,
+            order_guard=(
+                None if safety is None else (lambda order_list: check_orders(order_list, equity, safety))
+            ),
+        )
+        logger.info(
+            "decision %s: %d orders submitted, equity %.2f, gross %.4f",
+            decision_bar,
+            len(orders),
+            equity,
+            float(targets.abs().sum()),
+        )
     # Record the post-settle mark-to-market NAV for this bar (the anytime-valid
     # monitor's return-series source). Idempotent per bar, so same-bar restarts
     # never double-count. Written last so a crash mid-cycle logs no equity for
@@ -393,6 +427,7 @@ def run_daily_cycle(
         target_weights=targets,
         monitor_read=monitor_read,
         concordance=concordance,
+        halted=halted,
     )
 
 

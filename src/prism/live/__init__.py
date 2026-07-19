@@ -64,6 +64,7 @@ from prism.live.replay import (
     load_local_bar_panels,
     replay_daily_cycles,
 )
+from prism.live.safety import SafetyConfig, SafetyViolation, check_orders, halt_reason
 from prism.live.state import LoopState, StateStore
 
 __all__ = [
@@ -84,10 +85,14 @@ __all__ = [
     "LoopState",
     "Order",
     "ReplayBroker",
+    "SafetyConfig",
+    "SafetyViolation",
     "StateStore",
     "align_replay_panels",
     "book_concordance",
+    "check_orders",
     "decide_and_submit",
+    "halt_reason",
     "fetch_universe_panels",
     "load_local_bar_panels",
     "paper_monitor_read",
