@@ -1,0 +1,158 @@
+# Bar-vendor divergence — measurement record
+
+**Status: uncounted, read-only diagnostic. Recorded 2026-07-19.** No ratified
+statistic moves here; no configuration changes; no counted machinery invoked.
+Like the dividend wedge and the carry-flatten counterfactual, the result is
+**divergence-ledger context for M6, not an amendment** — folding any of it
+into `docs/momentum_design.md` §3 is an owner decision.
+
+## 1. Question
+
+The live paper loop decides and marks on Alpaca IEX daily bars
+(`src/prism/live/alpaca_data.py`, `DEFAULT_FEED = "iex"` — chosen so decision
+and fill share one venue and one clock), while certification, backtests, and
+the replay concordance all price off the spine-vendor parquet caches
+(`data/*_1d_*.parquet`). `docs/replay_concordance_diagnostic.md` established
+CONCORDANT with the **same prices on both sides by construction**, and its
+closing residual-wedge list (§"Consequence for M6", lines 129–135) names venue
+fill rates and the IEX-volume eligibility screen — bar-vendor divergence is
+absent from it. Decile membership (`floor(n·0.10)` per leg,
+`prism.portfolio.construct._decile_row`) and NAV marks are rank- and
+level-sensitive, so a close-level disagreement between the two vendors is a
+live-vs-certified wedge the concordance instrument is structurally blind to.
+This record measures it.
+
+## 2. Method
+
+**Instrument:** `research/scripts/bar_vendor_divergence.py` (tests in
+`tests/test_bar_vendor_divergence.py`; the network seam is an injectable
+requests-compatible session, the `AlpacaBarSource` pattern, so every mapping
+runs offline). Evidence: `results/bar_vendor_divergence_2026-07-19.json`.
+
+**Panels.** Spine closes from the frozen bar caches
+(`_1d_2020-01-01_2026-06-16.parquet`); IEX closes via
+`AlpacaBarSource.fetch_batch` (feed `iex`, `adjustment=split`), fetched from
+2025-01-02 so every in-window decision bar's 252-bar lookback endpoint lands
+inside IEX history. The fetch covers the **union of the universe file and the
+held book** — the live loop itself prices file ∪ book (the 64d7ea1 lesson;
+POOL is held, exit-only, and absent from `sp500_current.txt`). 21 paginated
+multi-symbol requests for 503 names, well inside the IEX budget.
+
+**Close-diff panel.** `(iex/spine − 1)·1e4` bps over the common sessions of
+2026-01-02 → latest common session, per-name and pooled distributions, tail
+fractions at 5/25 bps. Names or sessions on one side only, and name-days NaN
+on one side, are counted and listed, never dropped (N7).
+
+**Adjustment-basis flagging.** The spine caches are frozen at 2026-06-16;
+Alpaca serves a *current* split-adjusted series. A corporate action after the
+freeze rebases Alpaca's whole history for that name, so a level-stable ratio
+(|median diff| > 250 bps) is an adjustment-basis artifact, not price
+divergence: flagged, reported separately, excluded from the distribution and
+rank reads.
+
+**Rank impact.** At each month-end decision bar in the window (Jan–May 2026;
+the truncated June stub is dropped, and month-end is a representative grid —
+the live cadence is a 21-bar refresh), the 12-1 score
+`close[t−21]/close[t−252] − 1` (the `MomentumSignalNode` convention) is
+computed from both vendors' closes at the **same two endpoint sessions** on
+the spine calendar, and top/bottom-decile membership (`floor(n·decile)` per
+leg, stable sort over the symbol-sorted cross-section) is compared on the
+names finite on both sides. One-sided names are excluded loudly. The
+eligibility screen the live book applies is *not* reproduced here; the rank
+read is over the current-universe cross-section.
+
+**Decile-boundary sensitivity (fallback/robustness).** Spine endpoint closes
+perturbed multiplicatively by draws from the measured empirical diff
+distribution (iid per name per endpoint, 200 draws, seed 20260719), leg flips
+recounted against the unperturbed legs. With the 2025-01-02 fetch start the
+direct read covered every refresh (PSKY the one exclusion, IEX-history-short),
+so this served as a robustness band rather than the primary read.
+
+**NAV mark.** The held 98-name book (`runs/paper_loop_momentum2/state.json`,
+last settled 2026-07-13) marked session by session on IEX vs spine closes,
+difference in bps of NAV (cash included). Two reads: **raw** (every held
+name — what a naive cross-vendor mark would show) and **ex-flagged** (genuine
+per-session vendor divergence, the headline), because a held
+adjustment-flagged name marks hugely differently for frozen-cache reasons,
+not vendor disagreement. Marking a book decided 2026-07-13 over the Jan–Jun
+overlap window is a counterfactual mark of the current book, stated as such.
+
+## 3. Results
+
+Window effective 2026-01-02 → 2026-06-15, 113 common sessions, 503 common
+names (502-name universe plus held POOL). Zero names missing on either side;
+22 sessions are IEX-only (post-freeze, expected); 4 name-days NaN on IEX
+inside the window (FDXF 3, HONA 1 — new listings' first days). HONA has
+**zero** sessions priced by both vendors — the spine cache holds only its
+2026-06-15 debut bar and IEX lacks exactly that bar — so it is absent from
+every distribution, reported not silent; hence 497 distribution names
+(502 − 4 flagged − HONA).
+
+**Adjustment-basis flags (4):** CRWD −7,500 bps (ratio ×0.25), DD +19,998
+(×3.0), HON +10,000 (×2.0), FDX +2,409 — level-stable across all 113
+sessions, i.e. corporate actions between the 2026-06-16 cache freeze and the
+fetch date, rebasings not price disagreements.
+
+**Close-diff distribution** (497 universe names ex-flagged, 56,059
+name-days): median |diff| **2.14 bps**, mean |diff| 4.29, p95 8.84, p99
+16.0 bps; signed mean +1.25 bps (IEX marginally above spine). Exactly equal
+closes: 8.4% of name-days. Tails: **17.0%** of name-days beyond 5 bps,
+**0.28%** beyond 25 bps, max 2,730 bps (BDX). The tail is not noise: BDX
+(~2,730 bps level shift across late Jan–Feb 2026), CMCSA (670 bps on
+2026-01-02 only), DOW (149 bps on 2026-03-30 only) are
+corporate-action-window disagreements — the spine back-adjusts spin-offs
+while Alpaca's split-only series does not, so the two series part company for
+bars before an action date until the event clears the comparison window.
+
+**Rank impact** (5 refreshes, ~494 names, 49 per leg): **0 long-leg flips, 4
+short-leg flips** — one per refresh Jan–Apr, zero in May. Spearman
+0.9972–0.9996; median |score diff| 3.6–4.6 bps per refresh. The flip driver
+is the spin-off adjustment convention, not close noise: FTV's 2025-01-30
+lookback close is 61.51 on the spine (spin-adjusted) vs 81.62 on IEX (raw),
+depressing its IEX-side score into the short decile (short-in at the Jan and
+Feb refreshes; NCLH and CRM displaced); BDX enters short on the Mar refresh
+the same way; the Apr flip (KMB in, DPZ out) is genuine boundary noise. WDC's
+Jan-refresh score differs by 8,648 bps (lookback endpoint predates the SNDK
+separation) without flipping a leg — it sits nowhere near the boundary.
+Excluded per refresh: PSKY (spine score only, IEX history short) — 1 name,
+listed. The spine's spin-adjusted series is the economically correct basis
+for a price-ratio score, so on affected names the live Alpaca-fed rank is
+the distorted one until the lookback window clears the event.
+
+**Decile-boundary sensitivity** (200 draws/refresh): mean 0.10–0.82 flips per
+refresh, p95 ≤ 2, max 2 — consistent with the direct read's ~1 flip per
+refresh at 49 names per leg.
+
+**NAV mark** (113 sessions, min coverage 97/97 ex-flagged): headline
+ex-flagged median |ΔNAV| **0.45 bps**, mean 0.54, max **1.78 bps** — the
+long-short book nets the already-small per-name diffs. Raw including held DD:
+median **84.6 bps**, max 111.8 — entirely the DD ×3.0 rebasing, i.e. an
+artifact any naive cross-vendor comparison against the frozen caches would
+show for as long as a post-freeze-rebased name is held. No held name was
+unpriceable on either vendor.
+
+## 4. Reading and limits
+
+The wedge is bimodal. The bulk is venue close noise — IEX official closes vs
+the spine's consolidated closes — at ~2 bps median, which nets to sub-2 bps
+on the hedged book's NAV and moves essentially nothing. The consequential
+component is **corporate-action adjustment-convention divergence**
+(spin-offs chiefly): it produced every systematic rank flip measured here
+(~1 name per leg per refresh at the short boundary, ~2% of a leg) and, for
+post-freeze actions, a level artifact that a naive live-vs-certified equity
+comparison would misread as tens of bps of NAV divergence. For the M6
+divergence ledger: (a) live decile membership can legitimately differ from a
+spine-computed book by ~1 boundary name per leg on refreshes where a recent
+spin-off sits inside the lookback window — a conjunct-#4 read should check
+the flip lists here before attributing such a difference to spine mechanics;
+(b) any cross-vendor NAV or price comparison must exclude or re-base
+adjustment-flagged names first, or it measures the freeze, not the vendors.
+
+Limits, stated: the eligibility screen is not reproduced (rank read is the
+raw current-universe cross-section); the month-end grid approximates the
+21-bar live cadence; the universe file is the 2026-07-17 regeneration read
+back over Jan–Jun (survivorship in the cross-section, fine for a vendor-diff
+read, not a backtest); the NAV read marks the current book counterfactually
+over the overlap window; and the spine freeze bounds the comparison at
+2026-06-15 — the diagnostic is rerunnable against any fresher cache vintage
+by pointing `--cache_suffix` at it.
