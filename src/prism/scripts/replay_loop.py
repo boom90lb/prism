@@ -128,6 +128,14 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--max-symbol-weight", type=float, default=0.10)
     parser.add_argument("--band", type=float, default=0.0, help="Online no-trade half-width (0 disables).")
     parser.add_argument("--min-notional", type=float, default=1.0)
+    parser.add_argument(
+        "--tif",
+        choices=("opg", "day"),
+        default="opg",
+        help="Sizing semantics to model: opg = whole shares (the live OPG book, "
+        "default = parity with every prior replay), day = fractional shares "
+        "(the live --tif day path). Fills are modeled either way.",
+    )
     parser.add_argument("--horizon", type=int, default=5, help="Ensemble signal forward horizon in bars.")
     return parser.parse_args(argv)
 
@@ -208,7 +216,7 @@ def main(argv: list[str] | None = None) -> int:
             max_symbol_abs_weight=args.max_symbol_weight,
             no_trade_band=args.band,
             min_order_notional=args.min_notional,
-            whole_shares=True,
+            whole_shares=(args.tif == "opg"),
         )
     else:
 
@@ -221,7 +229,7 @@ def main(argv: list[str] | None = None) -> int:
             max_symbol_abs_weight=args.max_symbol_weight,
             no_trade_band=args.band,
             min_order_notional=args.min_notional,
-            whole_shares=True,
+            whole_shares=(args.tif == "opg"),
         )
 
     results, broker = replay_daily_cycles(

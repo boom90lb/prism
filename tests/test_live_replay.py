@@ -258,3 +258,14 @@ def test_replay_refuses_a_start_bar_without_required_history(tmp_path) -> None:
             tmp_path / "replay",
             start_bar=str(close.index[2].date()),
         )
+
+
+def test_replay_cli_tif_defaults_to_whole_share_parity() -> None:
+    """--tif defaults to opg (whole shares, parity with every prior scripted
+    replay); day is the fractional-share sizing path mirroring paper_loop."""
+    from prism.scripts.replay_loop import _parse_args
+
+    assert _parse_args([]).tif == "opg"
+    assert _parse_args(["--tif", "day"]).tif == "day"
+    with pytest.raises(SystemExit):
+        _parse_args(["--tif", "ioc"])

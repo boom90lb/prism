@@ -2,8 +2,9 @@
 
 > **Status: uncounted diagnostic (run 2026-07-18).** Measures an execution
 > mechanic, searches nothing, moves no ratified statistic. Instrument:
-> `research/scripts/account_size_floor.py` over five replay runs; artifact:
-> `results/account_size_floor_2026-07-18.json` (tracked). Modeled fills
+> `research/scripts/account_size_floor.py` over five replay runs; artifacts:
+> `results/account_size_floor_2026-07-18.json` and (§6 follow-up)
+> `results/account_size_floor_day_2026-07-18.json` (tracked). Modeled fills
 > (prism/live/replay.py): the cross-size *relative* comparison is the
 > measurement; the absolute window return is one membership-blind sample and
 > claims nothing.
@@ -63,8 +64,8 @@ docs/momentum_design.md).
 faithfully; $50k is the edge of the concordance bar; below that the account
 trades a materially different portfolio. The in-tree escape hatch for small
 accounts is `--tif day` (fractional shares admitted, at the cost of trading
-the open market instead of the auction) — unmeasured here; measuring the
-DAY-order fractional path at $10–25k is the natural follow-up.
+the open market instead of the auction) — measured in §6: the floor is a
+whole-share artifact, and fractional sizing removes it at every size tested.
 
 ## 5. Limits
 
@@ -73,3 +74,34 @@ print everything (live OPG auctions print ~20–25% before the sweep, which
 adds a size-independent divergence on top). Censoring depends on the price
 distribution of the current membership — a future high-priced index cohort
 moves the floor up.
+
+## 6. The DAY-order fractional path (measured 2026-07-18)
+
+Three replays identical to §2 except `--tif day` — `prism.scripts.replay_loop`
+now carries the same `--tif` flag as `paper_loop` (sizing semantics only;
+fills are modeled either way; the default `opg` is whole-share parity).
+Reproduction control: with the flag at its default, the modified CLI
+reproduces the recorded $10k run **bit-identically** (targets/fills/equity
+ledgers byte-compared), so the comparison below is controlled flag-for-flag.
+Baseline for the gap column: the §3 $1M whole-share run.
+
+| Starting cash | Active share (mean / max) | Gross deployed | Names censored per refresh | Window return | Gap vs $1M |
+|---|---|---|---|---|---|
+| $10,000 day | 0.0001 / 0.0002 | 1.000 | 0.0 | +26.7% | +0.06pp |
+| $25,000 day | 0.0000 / 0.0000 | 1.000 | 0.0 | +26.7% | +0.05pp |
+| $50,000 day | 0.0000 / 0.0000 | 1.000 | 0.0 | +26.7% | +0.05pp |
+
+**Reading: the account-size floor is a property of whole-share sizing, not
+of the strategy.** Under fractional day sizing, a $10k account holds the
+decided 98-name book with *tighter* concordance (0.0001) than the $1M
+whole-share book itself (0.0027, §3 — the large account still rounds), zero
+censoring, full gross, and the baseline's window return to within rounding.
+Artifact: `results/account_size_floor_day_2026-07-18.json`.
+
+Two venue properties sit between this measurement and an A3 micro-account
+relying on it, neither modeled by replay fills, both one-session checks on
+the paper account: (i) day orders trade the open market rather than the
+auction — an execution-quality difference, not a discretization one; (ii)
+fractional *short* acceptance and per-name fractionability flags — the B1
+book is long−short, and a venue that takes fractional longs but whole-share
+shorts re-introduces half the floor.
