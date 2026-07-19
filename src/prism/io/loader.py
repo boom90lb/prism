@@ -44,13 +44,14 @@ DIVIDEND_NEGATIVE_CACHE_TTL_DAYS = 7.0
 
 def _ensure_bar_tz(df: pd.DataFrame) -> pd.DataFrame:
     """Localize a price DataFrame's DatetimeIndex to BAR_TZ if it is naive."""
-    if not isinstance(df.index, pd.DatetimeIndex):
+    idx = df.index
+    if not isinstance(idx, pd.DatetimeIndex):
         return df
-    if df.index.tz is None:
-        df.index = df.index.tz_localize(BAR_TZ, nonexistent="shift_forward", ambiguous="NaT")
+    if idx.tz is None:
+        df.index = idx.tz_localize(BAR_TZ, nonexistent="shift_forward", ambiguous="NaT")
         df = df[df.index.notna()]
-    elif str(df.index.tz) != BAR_TZ:
-        df.index = df.index.tz_convert(BAR_TZ)
+    elif str(idx.tz) != BAR_TZ:
+        df.index = idx.tz_convert(BAR_TZ)
     return df
 
 
@@ -567,14 +568,15 @@ class DataLoader:
             except Exception as e:
                 logger.error(f"Error reading dividend cache {cache_hit}: {e}")
 
-        series = self._request_dividends(symbol, start_date, end_date)
-        if series is None:
+        fetched = self._request_dividends(symbol, start_date, end_date)
+        if fetched is None:
             # Fetch failed: no durable record, empty for this call only.
             logger.error(
                 f"Dividend fetch failed for {symbol} [{start_date}..{end_date}]; "
                 "returning empty WITHOUT caching (backtest treats as no-op)"
             )
             return pd.Series(dtype="float64", name="amount")
+        series = fetched
 
         start_token = start_date if start_date else CACHE_START_SENTINEL
         cache_file = self.cache_dir / f"{symbol}_dividends_{start_token}_{end_date}.parquet"
