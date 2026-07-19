@@ -10,7 +10,7 @@ import logging
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 import pandas as pd
 import requests
@@ -30,6 +30,11 @@ logger = logging.getLogger(__name__)
 BAR_TZ = "America/New_York"
 BAR_CLOSE_HOUR = 16
 DEFAULT_REQUEST_TIMEOUT_SECONDS = 30.0
+# Bounded HTTP-429 retry schedule. The shared token bucket paces THIS process,
+# but the vendor meters the key itself, so another process on the same key
+# (nightly loop + a manual session) can still draw a 429 here. Delays are
+# tuned to the vendor's one-minute metering window.
+DEFAULT_RETRY_429_DELAYS: tuple[float, ...] = (10.0, 30.0, 61.0)
 # How long a cached *empty* ("no dividends in range") answer is honored before
 # refetching (SPEC §7.0 negative-cache TTL): a range ending near the present
 # can gain a newly declared ex-date. Non-empty answers are range-keyed and
@@ -167,6 +172,8 @@ class DataLoader:
         request_timeout: float = DEFAULT_REQUEST_TIMEOUT_SECONDS,
         dividend_negative_cache_ttl_days: float = DIVIDEND_NEGATIVE_CACHE_TTL_DAYS,
         rate_limiter: Optional[TokenBucket] = None,
+        retry_429_delays: tuple[float, ...] = DEFAULT_RETRY_429_DELAYS,
+        sleep: Optional[Callable[[float], None]] = None,
     ):
         """Initialize the data loader.
 
@@ -182,6 +189,10 @@ class DataLoader:
                 loaders against one API key should pass a shared bucket.
                 Cache hits never consume a token. Exhausting the daily budget
                 raises ``DataBudgetExhausted`` (N7) instead of degrading.
+            retry_429_delays: Sleep schedule between bounded retries after an
+                HTTP 429; empty tuple disables retrying. Each retry consumes
+                a fresh rate-limiter token (it is a real request).
+            sleep: Injectable sleep for the 429 backoff (tests).
         """
         self.api_key = api_key or TWELVEDATA_API_KEY
         if not self.api_key:
@@ -192,6 +203,46 @@ class DataLoader:
         self.request_timeout = float(request_timeout)
         self.dividend_negative_cache_ttl_days = float(dividend_negative_cache_ttl_days)
         self.rate_limiter = rate_limiter or TokenBucket()
+        self.retry_429_delays = tuple(float(d) for d in retry_429_delays)
+        self._sleep = sleep or time.sleep
+
+    def _redact(self, obj: object) -> str:
+        """``str(obj)`` with the API key replaced by ``***``.
+
+        The vendor takes the key as a query parameter (loader contract), so
+        ``requests`` exception text embeds it via the full request URL. Every
+        log line built from a fetch exception must pass through here
+        (``regime.fetch.FredClient`` precedent; credential-hygiene invariant,
+        docs/security.md).
+        """
+        text = str(obj)
+        if self.api_key:
+            text = text.replace(self.api_key, "***")
+        return text
+
+    def _request_json(self, url: str, params: dict) -> dict:
+        """One metered GET returning parsed JSON, with bounded 429 backoff.
+
+        ``rate_limiter.acquire()`` runs per attempt (a retry is a real
+        request against the daily budget; ``DataBudgetExhausted`` propagates,
+        N7). Non-429 HTTP errors raise immediately via ``raise_for_status``.
+        The 429 probe reads ``status_code`` defensively so requests-compatible
+        test doubles without the attribute mean "not a 429".
+        """
+        attempts = len(self.retry_429_delays) + 1
+        for attempt in range(attempts):
+            self.rate_limiter.acquire()
+            response = requests.get(url, params=params, timeout=self.request_timeout)
+            if getattr(response, "status_code", None) == 429 and attempt < attempts - 1:
+                delay = self.retry_429_delays[attempt]
+                logger.warning(
+                    f"HTTP 429 from {url}; retry {attempt + 1}/{attempts - 1} in {delay:.0f}s"
+                )
+                self._sleep(delay)
+                continue
+            response.raise_for_status()
+            return response.json()
+        raise AssertionError("unreachable: the loop returns or raises")
 
     def _find_covering_cache(
         self, symbol: str, interval: str, req_start: Optional[str], req_end: str
@@ -329,20 +380,13 @@ class DataLoader:
             if end_date:
                 params["end_date"] = end_date
 
-            # Make API request (metered; DataBudgetExhausted propagates)
-            self.rate_limiter.acquire()
-            response = requests.get(  # type: ignore
-                "https://api.twelvedata.com/time_series",
-                params=params,
-                timeout=self.request_timeout,
-            )
-            response.raise_for_status()
-            data = response.json()
+            # Make API request (metered, 429-retried; DataBudgetExhausted propagates)
+            data = self._request_json("https://api.twelvedata.com/time_series", params)
 
             # Check for API errors
             if "status" in data and data["status"] == "error":
                 error_msg = data.get("message", "Unknown API error")
-                logger.error(f"API error for {symbol}: {error_msg}")
+                logger.error(f"API error for {symbol}: {self._redact(error_msg)}")
                 return pd.DataFrame()
 
             # Process response
@@ -385,7 +429,8 @@ class DataLoader:
         except DataBudgetExhausted:
             raise  # a spent daily budget must stop the run, not empty-frame it (N7)
         except Exception as e:
-            logger.error(f"Error fetching data for {symbol}: {e}")
+            # Redacted: HTTPError text embeds the full ?apikey=… request URL.
+            logger.error(f"Error fetching data for {symbol}: {self._redact(e)}")
             return pd.DataFrame()
 
     def fetch_incremental(
@@ -558,18 +603,13 @@ class DataLoader:
         if end_date:
             params["end_date"] = end_date
         try:
-            self.rate_limiter.acquire()
-            response = requests.get(
-                "https://api.twelvedata.com/dividends",
-                params=params,
-                timeout=self.request_timeout,
-            )
-            response.raise_for_status()
-            return _parse_dividends_payload(response.json())
+            payload = self._request_json("https://api.twelvedata.com/dividends", params)
+            return _parse_dividends_payload(payload)
         except DataBudgetExhausted:
             raise  # a spent daily budget must stop the run, not no-op it (N7)
         except Exception as e:
-            logger.error(f"Error fetching dividends for {symbol}: {e}")
+            # Redacted: HTTPError text embeds the full ?apikey=… request URL.
+            logger.error(f"Error fetching dividends for {symbol}: {self._redact(e)}")
             return None
 
     @staticmethod
