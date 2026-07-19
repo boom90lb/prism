@@ -77,6 +77,7 @@ dev = [
 # universe builder gets a console script.
 [project.scripts]
 prism-build-universe = "prism.scripts.build_sp500_universe:main"
+prism-doctor = "prism.scripts.doctor:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/prism"]

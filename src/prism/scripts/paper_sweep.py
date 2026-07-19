@@ -53,12 +53,24 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Client-id suffix for sweep orders ({original_id}:{suffix}); one "
         "completion generation per decision.",
     )
+    parser.add_argument(
+        "--kill-switch",
+        type=Path,
+        default=None,
+        help="Halt-file path; its PRESENCE stops the sweep (exit 2). Default "
+        "{run-dir}/KILL_SWITCH — the same file that halts the evening loop, so one "
+        "touch stops every path to the venue. 'off' disables the rail.",
+    )
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     args = _parse_args(argv)
+    kill_switch = args.run_dir / "KILL_SWITCH" if args.kill_switch is None else args.kill_switch
+    if str(kill_switch) != "off" and Path(kill_switch).exists():
+        logger.error("SAFETY HALT (kill switch present at %s): not sweeping", kill_switch)
+        return 2
     ctx = LiveLoopContext(
         store=StateStore(args.run_dir / "state.json"),
         # DAY market orders: the auction the original OPG orders were for has

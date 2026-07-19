@@ -31,6 +31,7 @@ import logging
 import math
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 import pandas as pd
 
@@ -171,6 +172,7 @@ def decide_and_submit(
     min_order_notional: float = 0.0,
     whole_shares: bool = False,
     refresh_bar: str | None = None,
+    order_guard: Callable[[list[Order]], None] | None = None,
 ) -> list[Order]:
     """One decision step: reconcile → decide once → write ahead → submit.
 
@@ -180,6 +182,12 @@ def decide_and_submit(
     holdings are unknown until then. ``refresh_bar``, when provided, advances
     the persisted decision-cadence anchor (``last_refresh_bar``) inside the same
     write-ahead save; the caller passes it only on a refresh session.
+    ``order_guard`` is the safety seam (``prism.live.safety``): it sees the
+    freshly diffed order list *before* the write-ahead persist, so a raised
+    :class:`~prism.live.safety.SafetyViolation` leaves no pending state and
+    nothing at the venue. A resumed (already-persisted) decision is not
+    re-guarded — it was vetted when decided, and re-deciding is the defect
+    the protocol exists to prevent.
     """
     state = ctx.store.load() or LoopState()
 
@@ -204,7 +212,7 @@ def decide_and_submit(
         equity = state.cash + sum(
             shares * _require_price(prices, symbol) for symbol, shares in state.positions.items()
         )
-        state.pending_orders = targets_to_orders(
+        orders = targets_to_orders(
             target_weights,
             state.positions,
             prices,
@@ -214,6 +222,9 @@ def decide_and_submit(
             whole_shares=whole_shares,
             order_id_prefix=ctx.order_id_prefix,
         )
+        if order_guard is not None:
+            order_guard(orders)  # SafetyViolation propagates BEFORE the write-ahead save
+        state.pending_orders = orders
         state.pending_decision_bar = decision_bar
         if refresh_bar is not None:
             state.last_refresh_bar = refresh_bar  # advance the cadence anchor atomically

@@ -47,6 +47,7 @@ from prism.live import (
     AlpacaBroker,
     DailyBookConfig,
     LiveLoopContext,
+    SafetyConfig,
     StateStore,
     fetch_universe_panels,
     run_daily_cycle,
@@ -144,6 +145,36 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default="opg",
         help="Order time-in-force: opg = next-open auction (N2, whole shares), "
         "day = market at next session (admits fractional shares).",
+    )
+    parser.add_argument(
+        "--kill-switch",
+        type=Path,
+        default=None,
+        help="Halt-file path; its PRESENCE stops the book (settle + NAV mark only, no orders, "
+        "exit 2). Default {run-dir}/KILL_SWITCH; 'off' disables the rail.",
+    )
+    parser.add_argument(
+        "--max-drawdown",
+        type=float,
+        default=0.5,
+        help="Peak-to-current drawdown fraction on the equity ledger beyond which the book "
+        "halts (default 0.5 — catastrophic-only for the paper instrument; tighten for real "
+        "money). 0 disables.",
+    )
+    parser.add_argument(
+        "--max-order-fraction",
+        type=float,
+        default=None,
+        help="Per-order notional bound as a fraction of equity, enforced before the write-ahead "
+        "persist. Default 2x --max-symbol-weight (no legitimate single order can exceed 1x "
+        "under the down-only caps and the flip-to-flat clamp). 0 disables.",
+    )
+    parser.add_argument(
+        "--max-orders",
+        type=int,
+        default=None,
+        help="Per-decision order-count bound. Default 2x universe size + 10 (an order per "
+        "name entering plus one per name exiting is the geometric ceiling). 0 disables.",
     )
     return parser.parse_args(argv)
 
@@ -287,6 +318,29 @@ def main(argv: list[str] | None = None) -> int:
             signal.weight_basis_,
         )
 
+    # Safety rails (prism.live.safety): inert at this book's normal state, loud
+    # at pathology. The notional bound is derived from the construction cap
+    # (2x is slack for whole-share rounding), the order-count bound from the
+    # universe's geometric ceiling; both catch order-of-magnitude corruption,
+    # not strategy behavior. 'off'/0 disables a rail explicitly.
+    kill_switch: Path | None
+    if args.kill_switch is None:
+        kill_switch = args.run_dir / "KILL_SWITCH"
+    elif str(args.kill_switch) == "off":
+        kill_switch = None
+    else:
+        kill_switch = args.kill_switch
+    max_order_fraction = (
+        args.max_order_fraction if args.max_order_fraction is not None else 2.0 * args.max_symbol_weight
+    )
+    max_orders = args.max_orders if args.max_orders is not None else 2 * len(symbols) + 10
+    safety = SafetyConfig(
+        kill_switch=kill_switch,
+        max_drawdown=args.max_drawdown if args.max_drawdown > 0 else None,
+        max_order_fraction=max_order_fraction if max_order_fraction > 0 else None,
+        max_orders=max_orders if max_orders > 0 else None,
+    )
+
     args.run_dir.mkdir(parents=True, exist_ok=True)
     ctx = LiveLoopContext(
         store=StateStore(args.run_dir / "state.json"),
@@ -302,7 +356,7 @@ def main(argv: list[str] | None = None) -> int:
         # ids they were decided with, so flipping the prefix is resume-safe.
         order_id_prefix="mom:" if args.book == "momentum" else "",
     )
-    result = run_daily_cycle(ctx, signal, close, volume, config)
+    result = run_daily_cycle(ctx, signal, close, volume, config, safety=safety)
 
     held = result.target_weights[result.target_weights.abs() > 1e-9]
     logger.info(
@@ -313,6 +367,11 @@ def main(argv: list[str] | None = None) -> int:
         result.equity,
         {k: round(v, 4) for k, v in held.sort_values().items()},
     )
+    if result.halted is not None:
+        # Exit non-zero so the nightly wrapper's failure path fires: a halted
+        # book — even a deliberately halted one — is a state that demands eyes.
+        logger.error("cycle %s HALTED: %s", result.decision_bar, result.halted)
+        return 2
     return 0
 
 

@@ -65,9 +65,13 @@ The current candidate under the bar is the momentum program
 ([`docs/momentum_design.md`](docs/momentum_design.md)), held to exactly the
 tier its evidence supports.
 
-See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the end-to-end data flow (what
-calls what), [`docs/operations.md`](docs/operations.md) for operational
-gotchas (vendor tier, interval mapping, member contribution, per-bar cost),
+See [`docs/quickstart.md`](docs/quickstart.md) to go from a clone to a
+nightly paper loop on your own (free) Alpaca paper account — with
+[`docs/security.md`](docs/security.md) for the credential doctrine and
+[`docs/free_tier_profile.md`](docs/free_tier_profile.md) for exactly what $0
+reproduces. See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the end-to-end data
+flow (what calls what), [`docs/operations.md`](docs/operations.md) for
+operational gotchas (vendor tier, interval mapping, member contribution, per-bar cost),
 [`docs/handoff.md`](docs/handoff.md) for the long-horizon doctrine
 behind the roadmap, and [`formal/`](formal/README.md) for the Lean 4
 machine-checked kernel invariants.
