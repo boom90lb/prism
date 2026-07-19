@@ -65,9 +65,16 @@ from prism.live.replay import (
     replay_daily_cycles,
 )
 from prism.live.safety import SafetyConfig, SafetyViolation, check_orders, halt_reason
+from prism.live.spinoff_mask import (
+    CORPORATE_ACTIONS_URL,
+    fetch_spinoffs,
+    spinoff_flags,
+    spinoff_unrankable,
+)
 from prism.live.state import LoopState, StateStore
 
 __all__ = [
+    "CORPORATE_ACTIONS_URL",
     "DATA_BASE_URL",
     "DEFAULT_FEED",
     "LIVE_BASE_URL",
@@ -92,6 +99,7 @@ __all__ = [
     "book_concordance",
     "check_orders",
     "decide_and_submit",
+    "fetch_spinoffs",
     "halt_reason",
     "fetch_universe_panels",
     "load_local_bar_panels",
@@ -103,6 +111,8 @@ __all__ = [
     "replay_daily_cycles",
     "run_daily_cycle",
     "settle",
+    "spinoff_flags",
+    "spinoff_unrankable",
     "sweep_pending",
     "targets_to_orders",
 ]

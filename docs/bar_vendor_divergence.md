@@ -1,10 +1,11 @@
 # Bar-vendor divergence — measurement record
 
-**Status: uncounted, read-only diagnostic. Recorded 2026-07-19.** No ratified
-statistic moves here; no configuration changes; no counted machinery invoked.
-Like the dividend wedge and the carry-flatten counterfactual, the result is
-**divergence-ledger context for M6, not an amendment** — folding any of it
-into `docs/momentum_design.md` §3 is an owner decision.
+**Status: uncounted, read-only diagnostic (§1–§4, recorded 2026-07-19); §5 is
+the owner-approved remediation mechanic, landed default-off.** No ratified
+statistic moves here; no counted machinery invoked. Like the dividend wedge
+and the carry-flatten counterfactual, the measurement is **divergence-ledger
+context for M6, not an amendment** — folding any of it into
+`docs/momentum_design.md` §3 is an owner decision.
 
 ## 1. Question
 
@@ -156,3 +157,44 @@ read, not a backtest); the NAV read marks the current book counterfactually
 over the overlap window; and the spine freeze bounds the comparison at
 2026-06-15 — the diagnostic is rerunnable against any fresher cache vintage
 by pointing `--cache_suffix` at it.
+
+## 5. Remediation — spin-off eligibility mask (owner-approved; mechanic landed 2026-07-19)
+
+**Status: mechanic landed default-off; live activation recorded in the
+nightly runner.** With the flag off the loop is bit-identical to the
+unmasked loop (`tests/test_spinoff_mask.py::test_flag_off_is_bit_identical_to_empty_mask`).
+
+**Mechanism.** A name with a spin-off ex-date inside the trailing 252-bar
+lookback at a refresh is **unrankable**: it is scored NaN before construction
+(so it cannot distort decile membership — the decile recomputes over the
+rankable cross-section) and its target carries *no decision* (NaN), which the
+live loop's pinned NaN-target semantics resolve to hold-never-liquidate
+(`step_no_trade_band`, `prism/portfolio/construct.py`; `targets_to_orders`,
+`prism/live/loop.py`). Net: no NEW position may open on a divergent rank; an
+already-held flagged name is HELD until the event clears the lookback, then
+ranks normally. Valuation-only extras (index leavers still held) stay
+exit-only — an index-leaver's exit is a universe decision, not a rank
+decision.
+
+**Detection.** Alpaca corporate-actions `spin_off` records (the dividend-wedge
+surface, paper key, $0) over the fetched universe (file ∪ held) and the
+trailing lookback window, at each refresh session only
+(`prism/live/spinoff_mask.py`; applied at the `unrankable` seam of
+`run_daily_cycle`; CLI `--spinoff-mask` on `prism.scripts.paper_loop`). The
+per-decision-bar answer is cached as `spinoff_mask_<bar>.json` in the run
+dir — a same-bar rerun never refetches, and only events with ex-date ≤ the
+decision bar flag (causal). A detection failure is a loud N7 warning naming
+every unchecked symbol and the refresh proceeds UNMASKED: the mask is a
+protection, not a correctness precondition. Replay: the library seam
+(`replay_daily_cycles(unrankable=...)`) accepts an injected offline provider;
+the replay CLI carries no flag because a replay has no event source.
+
+**Residual, stated.** A position entered on a divergent rank before masking
+(or during an unmasked refresh, e.g. after a detection failure) persists at
+most 252 bars — the mask blocks entries and holds; it never forces an exit.
+FTV's two short-boundary entries (§3) are exactly this class.
+
+**M6.** The per-refresh masked-name lists (the run-dir `spinoff_mask_*.json`
+records) join the divergence ledger §4 routes: a conjunct-#4 read consults
+them — alongside the §3 flip lists — before attributing a live-vs-spine book
+difference to spine mechanics.

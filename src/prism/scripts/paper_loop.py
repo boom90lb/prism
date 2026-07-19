@@ -51,6 +51,7 @@ from prism.live import (
     StateStore,
     fetch_universe_panels,
     run_daily_cycle,
+    spinoff_unrankable,
 )
 from prism.residual.factors import ResidualStatArbConfig
 from prism.signal.ensemble_node import EnsembleNodeConfig, EnsembleSignalNode
@@ -147,6 +148,15 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "day = market at next session (admits fractional shares).",
     )
     parser.add_argument(
+        "--spinoff-mask",
+        action="store_true",
+        help="Mask names with an Alpaca-reported spin-off inside the momentum lookback as "
+        "unrankable this refresh (docs/bar_vendor_divergence.md §5): no new position may "
+        "open on a divergent rank; a held name is held until the window clears the event. "
+        "Momentum book only; default off. Detection is cached per decision bar in --run-dir; "
+        "a detection failure warns loudly and the refresh proceeds unmasked.",
+    )
+    parser.add_argument(
         "--kill-switch",
         type=Path,
         default=None,
@@ -215,6 +225,11 @@ def main(argv: list[str] | None = None) -> int:
         symbols = [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
     else:
         raise SystemExit("provide --symbols or --universe-file")
+    if args.spinoff_mask and args.book != "momentum":
+        raise SystemExit(
+            "--spinoff-mask applies to --book momentum only (the lookback-window mechanic, "
+            "docs/bar_vendor_divergence.md §5)"
+        )
 
     score_universe = list(symbols)
     symbols, valuation_extras = _with_held_names(symbols, StateStore(args.run_dir / "state.json").load())
@@ -318,6 +333,24 @@ def main(argv: list[str] | None = None) -> int:
             signal.weight_basis_,
         )
 
+    # Spin-off eligibility mask (docs/bar_vendor_divergence.md §5): a name with
+    # a spin-off inside the momentum lookback is unrankable this refresh —
+    # detection covers the full fetched universe (file ∪ held) so the per-bar
+    # run-dir cache is complete, while the applied mask keeps valuation-only
+    # extras exit-only (an index-leaver's exit is a universe decision, not a
+    # rank decision). Consulted by run_daily_cycle on refresh sessions only.
+    unrankable = None
+    if args.spinoff_mask:
+        window_start = str(close.index[max(0, len(close) - 1 - args.mom_lookback)].date())
+        checked = sorted(close.columns)
+        rankable_names = set(score_universe)
+
+        def _unrankable(decision_bar: str) -> list[str]:
+            flagged = spinoff_unrankable(args.run_dir, decision_bar, checked, window_start)
+            return sorted(set(flagged) & rankable_names)
+
+        unrankable = _unrankable
+
     # Safety rails (prism.live.safety): inert at this book's normal state, loud
     # at pathology. The notional bound is derived from the construction cap
     # (2x is slack for whole-share rounding), the order-count bound from the
@@ -356,7 +389,7 @@ def main(argv: list[str] | None = None) -> int:
         # ids they were decided with, so flipping the prefix is resume-safe.
         order_id_prefix="mom:" if args.book == "momentum" else "",
     )
-    result = run_daily_cycle(ctx, signal, close, volume, config, safety=safety)
+    result = run_daily_cycle(ctx, signal, close, volume, config, safety=safety, unrankable=unrankable)
 
     held = result.target_weights[result.target_weights.abs() > 1e-9]
     logger.info(

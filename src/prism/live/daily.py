@@ -50,7 +50,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Sequence
+from typing import Any, Callable, Collection, Sequence
 
 import pandas as pd
 
@@ -139,6 +139,10 @@ class DailyCycleResult:
     monitor_read: dict | None = None
     concordance: dict | None = None
     halted: str | None = None
+    # Symbols the ``unrankable`` provider masked at this refresh (empty = the
+    # provider ran and flagged nothing; None = no provider, or not a refresh
+    # session so nothing was scored).
+    masked: list[str] | None = None
 
 
 def fetch_universe_panels(
@@ -227,6 +231,7 @@ def run_daily_cycle(
     config: DailyBookConfig,
     decision_bar: str | None = None,
     safety: SafetyConfig | None = None,
+    unrankable: Callable[[str], Collection[str]] | None = None,
 ) -> DailyCycleResult:
     """Run one settle → mark → score → construct → decide/submit cycle.
 
@@ -241,6 +246,17 @@ def run_daily_cycle(
     skips score → construct → submit and reports ``halted`` — and an *order
     guard* (per-order notional, order count) enforced inside the write-ahead
     protocol before anything is persisted or submitted.
+
+    ``unrankable`` (``None`` = off, bit-identical to the unmasked loop) is
+    consulted only on refresh sessions with the decision bar and returns
+    symbols that may not be ranked this refresh — e.g. names with a spin-off
+    inside the momentum lookback, where the live vendor's split-only bars
+    diverge from the spine's back-adjusted basis
+    (docs/bar_vendor_divergence.md §5, ``prism.live.spinoff_mask``). A masked
+    name is scored NaN (it cannot distort decile membership) and its target
+    carries NO decision (NaN): no new position opens on a divergent rank, a
+    held position is held until the window clears the event. The provider owns
+    its failure policy (fetch failure = loud warning, empty mask).
     """
     if close.empty:
         raise ValueError("empty close panel — nothing to decide on")
@@ -334,8 +350,21 @@ def run_daily_cycle(
     refresh = halted is None and _is_refresh_session(
         state, decision_bar, close.index, config.decision_every
     )
+    masked: list[str] | None = None
     if refresh:
         score_row = pd.DataFrame([signal.score(close, volume)], index=close.index[-1:])
+        if unrankable is not None:
+            # Unrankable names (spin-off inside the lookback — see the
+            # docstring) leave the scored cross-section entirely, so decile
+            # membership is decided over rankable names only.
+            masked = sorted(set(unrankable(decision_bar)) & set(score_row.columns))
+            if masked:
+                score_row.loc[:, masked] = float("nan")
+                logger.info(
+                    "unrankable mask: %d name(s) held out of ranking this refresh: %s",
+                    len(masked),
+                    masked,
+                )
         if config.book == "decile_neutral":
             # The decile construct emits an explicit weight (0.0 outside the
             # decile) for every scored name, so a held name that falls out of the
@@ -358,6 +387,13 @@ def run_daily_cycle(
                 max_symbol_abs_weight=config.max_symbol_abs_weight,
                 no_trade_band=0.0,  # the online step below owns hysteresis (never the flat replay)
             ).iloc[0]
+        if masked:
+            # Hold, don't flatten: the decile construct pins a NaN score to an
+            # explicit 0.0 (exit), but an unrankable name carries NO decision.
+            # A NaN target resolves to the held weight in step_no_trade_band
+            # (0.0 for an unheld name), so no new position opens on a divergent
+            # rank and a held name is held until the event clears the lookback.
+            raw.loc[masked] = float("nan")
         targets = step_no_trade_band(prev_weights, raw, config.no_trade_band)
         if config.max_participation is not None:
             if volume is None:
@@ -428,6 +464,7 @@ def run_daily_cycle(
         monitor_read=monitor_read,
         concordance=concordance,
         halted=halted,
+        masked=masked,
     )
 
 
