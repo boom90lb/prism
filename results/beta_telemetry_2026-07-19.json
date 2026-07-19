@@ -1,0 +1,194 @@
+{
+  "meta": {
+    "generated": "2026-07-19",
+    "script": "research/scripts/beta_telemetry.py",
+    "status": "uncounted diagnostic: searches nothing, changes no trial code path, appends nothing to the trials ledger, moves no ratified statistic",
+    "run_dir": "results/demotion_b1",
+    "config_hash": "000b74941cfd",
+    "certified_sharpe": 0.46544245642237375,
+    "parameters": {
+      "rolling_window": 63,
+      "trailing_bars": 21,
+      "decile": 0.1,
+      "drawdown_threshold": 0.05,
+      "min_obs": 21
+    }
+  },
+  "book": {
+    "source": "results/demotion_b1/returns.csv",
+    "n_days": 1308,
+    "span": [
+      "2021-03-30",
+      "2026-06-12"
+    ]
+  },
+  "market_series": {
+    "spy": {
+      "files": [
+        "SPY_1d_2025-06-01_2026-07-17.parquet"
+      ],
+      "span": [
+        "2025-06-03",
+        "2026-07-16"
+      ],
+      "n_days": 281,
+      "joint_span": [
+        "2025-06-03",
+        "2026-06-12"
+      ],
+      "n_joint": 259,
+      "coverage_note": "local SPY coverage begins 2025-06-03 but the certified book sample begins 2021-03-30; SPY cells measure only the overlap window \u2014 the earlier span (including the 2022 bear) is measured by the equal-weight panel proxy, never silently by SPY"
+    },
+    "ew_proxy": {
+      "definition": "cap-blind equal-weight daily mean return over the certified run's own bar-cache panel (quarantine fallback included) \u2014 a market proxy, not SPY",
+      "n_names": 574,
+      "missing_caches": [],
+      "names_per_day_median": 557.0,
+      "names_per_day_min": 0,
+      "joint_span": [
+        "2021-03-30",
+        "2026-06-12"
+      ],
+      "n_joint": 1308,
+      "validation_vs_spy_overlap": {
+        "n": 260,
+        "beta": 0.8113022373818448,
+        "alpha_daily": 1.8463850730392954e-05,
+        "corr": 0.7844394181700935,
+        "r2": 0.6153452007790349
+      }
+    }
+  },
+  "unconditional": {
+    "spy": {
+      "n": 259,
+      "beta": 0.2373018580821026,
+      "alpha_daily": 0.0004695064251339618,
+      "corr": 0.2031138128035272,
+      "r2": 0.041255220951586284
+    },
+    "ew_proxy": {
+      "n": 1308,
+      "beta": -0.08117925195105917,
+      "alpha_daily": 0.00024924105406637186,
+      "corr": -0.12170745411067467,
+      "r2": 0.014812704386101981
+    }
+  },
+  "rolling": {
+    "spy": {
+      "window": 63,
+      "n_windows": 197,
+      "mean": 0.23980526838747213,
+      "min": -0.1699084810638299,
+      "min_date": "2025-09-02",
+      "max": 0.49581642454164454,
+      "max_date": "2026-02-04",
+      "last": 0.3073331781009476,
+      "last_date": "2026-06-12"
+    },
+    "ew_proxy": {
+      "window": 63,
+      "n_windows": 1246,
+      "mean": -0.059586755741199905,
+      "min": -0.49403310115217425,
+      "min_date": "2024-01-29",
+      "max": 0.4676007616521453,
+      "max_date": "2021-09-17",
+      "last": 0.16892797543528856,
+      "last_date": "2026-06-12"
+    }
+  },
+  "conditional": {
+    "worst_decile_market_21bar": {
+      "definition": "beta over sessions whose prior-session trailing 21-bar market return is in the worst 10% of the joint sample (conditioning strictly prior)",
+      "spy": {
+        "n": 24,
+        "beta": 0.41992988710200135,
+        "alpha_daily": 0.0028126467791388197,
+        "corr": 0.4422595777844896,
+        "r2": 0.195593534142115,
+        "threshold_trailing_return": -0.017981751321183567,
+        "n_conditioning_days_defined": 238
+      },
+      "ew_proxy": {
+        "n": 131,
+        "beta": -0.011988780306954118,
+        "alpha_daily": 0.00014723944584682982,
+        "corr": -0.026105334997364546,
+        "r2": 0.0006814885153246261,
+        "threshold_trailing_return": -0.04988326010513935,
+        "n_conditioning_days_defined": 1308
+      }
+    },
+    "book_drawdown_state": {
+      "definition": "beta over sessions whose prior close had book equity more than 5% below its running peak",
+      "n_state_days_full_book_sample": 603,
+      "max_drawdown_full_book_sample": 0.13999581002068828,
+      "spy": {
+        "n": 85,
+        "beta": 0.15442833166368025,
+        "alpha_daily": 0.0011115269708957731,
+        "corr": 0.12752134291687686,
+        "r2": 0.0162616928993237
+      },
+      "ew_proxy": {
+        "n": 603,
+        "beta": -0.10453643687776308,
+        "alpha_daily": 0.0005572257094729652,
+        "corr": -0.1583199196560052,
+        "r2": 0.02506519695988394
+      }
+    },
+    "worst_decile_book_months": {
+      "definition": "beta over sessions inside the book's worst-10% calendar months of the joint sample \u2014 ex-post attribution (month selected on the returns it conditions), not a tradeable state",
+      "spy": {
+        "n": 41,
+        "beta": 0.41525245968301516,
+        "alpha_daily": -0.001614987611112717,
+        "corr": 0.3302584773553592,
+        "r2": 0.1090706618650803,
+        "threshold_monthly_return": -0.02518667000540926,
+        "worst_months": [
+          "2025-07",
+          "2025-11"
+        ],
+        "n_months_in_joint_sample": 13
+      },
+      "ew_proxy": {
+        "n": 145,
+        "beta": -0.1630527886160291,
+        "alpha_daily": -0.0014617120557136268,
+        "corr": -0.24638710437528188,
+        "r2": 0.06070660520243605,
+        "threshold_monthly_return": -0.030646269550834826,
+        "worst_months": [
+          "2021-12",
+          "2022-01",
+          "2022-07",
+          "2022-11",
+          "2023-01",
+          "2023-12",
+          "2024-07"
+        ],
+        "n_months_in_joint_sample": 64
+      }
+    }
+  },
+  "replay_cross_check": {
+    "source": "runs/replay_floor_1000000/equity.jsonl",
+    "n_sessions": 112,
+    "span": [
+      "2026-01-05",
+      "2026-06-15"
+    ],
+    "beta_vs_spy": {
+      "n": 112,
+      "beta": 0.688758632530152,
+      "alpha_daily": 0.0015497507360080088,
+      "corr": 0.49646049605819265,
+      "r2": 0.24647302414634673
+    },
+    "note": "113-session replay stream through live-loop mechanics; too short to stand alone, read only as a cross-check against the certified-stream SPY cell"
+  }
+}
