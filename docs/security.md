@@ -53,6 +53,6 @@ is wrong by construction.
 - **2026-07 — Twelve Data key in fetch-error logs.** Loader error paths logged
   `str(exception)`, which embeds the full request URL including `apikey=`,
   during vendor-outage and rate-limit events. Fixed by the §2.4 redaction
-  invariant (`DataLoader._redact`, test-enforced). Key rotation: owner action,
-  pending as of 2026-07-18. This incident is why §2.4 is stated as an
-  invariant and not a style preference.
+  invariant (`DataLoader._redact`, test-enforced); exposed key rotated
+  2026-07-18. Closed. This incident is why §2.4 is stated as an invariant
+  and not a style preference.
