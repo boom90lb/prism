@@ -65,9 +65,10 @@ is wrong by construction.
   `git reset`), expire reflogs, recommit from worktree text, `fsck` clean.
   Consequences adopted: the paper-loop ledgers under `runs/` — the one
   artifact class that cannot be regenerated, only re-accumulated — are
-  snapshotted to a dedicated local backup repository (first snapshot
-  2026-07-19; sync script staged, run manually); the off-box push and its
-  nightly wiring activate when a private remote exists; ratification commits
-  carry never-retargeted `ratify/*` tags on origin. Open until the off-box
-  push is live — until then the second copy shares the disk this incident
-  is about.
+  snapshotted to a dedicated backup repository and pushed off-box to a
+  private remote (`prism-artifacts`) by the nightly sync
+  (`~/bin/prism_artifacts_sync.sh`, wired into the nightly runner and
+  unconditional on loop exit status — a red loop is exactly when the ledger
+  copy matters most); ratification commits carry never-retargeted
+  `ratify/*` tags on origin with OpenTimestamps proofs in-tree
+  (`docs/anchors/`). Closed 2026-07-19: first off-box push verified.
