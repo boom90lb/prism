@@ -1,8 +1,15 @@
 # Dead-ticker price layer — forward accumulation design
 
-> **Status: DRAFT — not ratified.** Infrastructure design for the
-> survivorship-free data program (the observatory's price companion), drafted
-> 2026-07-18. Ratification is the owner's dedicated commit (AGENTS.md §2).
+> **Status: RATIFIED 2026-07-19** (this commit is the dedicated ratification
+> commit; decision delegated by the owner to the session in the same turn —
+> the in-repo delegation precedent; drafted 2026-07-18). **§5 resolved at
+> ratification, each per this document's own recommendation: (1) home =
+> prism-observatory; (2) the IEX daily-bar completeness probe is the first
+> execution item — it informs source choice, it does not gate capture (the
+> manifest records whatever a source fails to serve); (3) T0 = 2026-07-19,
+> this ratification — `gap_days` accountability runs from T0, so lane-build
+> lag is measured, not hidden; (4) the Alpha Vantage backfill lane is a
+> separate opportunistic manifest lane that never gates forward capture.**
 > This designs *accumulation machinery*, not a trial: nothing here touches
 > counted budgets, and the C2/C3 registration (no known free source for
 > pre-2020 delisted prices, docs/replication_preregistration.md §8) stands —
