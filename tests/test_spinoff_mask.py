@@ -25,6 +25,7 @@ from prism.live import (
     run_daily_cycle,
     spinoff_flags,
     spinoff_unrankable,
+    spinoff_unrankable_provider,
 )
 from prism.scripts.paper_loop import _parse_args, main
 from tests.test_live_daily import ConstSignal, _panels
@@ -281,6 +282,156 @@ def test_cycle_proceeds_unmasked_on_detection_failure(tmp_path, caplog) -> None:
     assert result.masked == []
     longs = {o.symbol for o in result.submitted_orders if o.qty > 0}
     assert longs == {"S8", "S9"}  # the full unmasked book decided and submitted
+
+
+def test_cache_read_oserror_falls_back_to_fetch(tmp_path, caplog) -> None:
+    # The cache path exists but reading it raises an OSError (here: it is a
+    # directory, so read_text raises IsADirectoryError). The cache is an
+    # optimization: its failure warns and falls through to the fetch — the
+    # mask still applies from the fetched records.
+    (tmp_path / "spinoff_mask_2026-07-18.json").mkdir()
+    session = FakeSession([{"corporate_actions": {"spin_offs": [_SPIN]}, "next_page_token": None}])
+    with caplog.at_level(logging.WARNING, logger="prism.live.spinoff_mask"):
+        out = spinoff_unrankable(
+            tmp_path, "2026-07-18", ["AAA", "FTV"], "2025-07-18", key_id="k", secret_key="s", session=session
+        )
+    assert out == ["FTV"]
+    assert "unreadable spin-off mask cache" in caplog.text
+    assert len(session.requests) == 1  # the fetch happened
+
+
+def test_cache_read_oserror_with_fetch_failure_is_loud_unmasked_and_the_cycle_completes(
+    tmp_path, caplog
+) -> None:
+    # Cache read raises OSError AND the fallback fetch fails: the whole
+    # detection path honors loud-warn-and-proceed-unmasked — the cycle
+    # completes on the full unmasked book instead of crashing the refresh.
+    ctx = _ctx(tmp_path)
+    run_dir = tmp_path / "run"
+
+    def provider(bar: str) -> list[str]:
+        cache = run_dir / f"spinoff_mask_{bar}.json"
+        if not cache.exists():
+            cache.mkdir(parents=True)  # exists, but read_text -> OSError
+        return spinoff_unrankable(
+            run_dir,
+            bar,
+            [f"S{i}" for i in range(10)],
+            "2025-07-18",
+            key_id="k",
+            secret_key="s",
+            session=ExplodingSession(),
+        )
+
+    with caplog.at_level(logging.WARNING, logger="prism.live.spinoff_mask"):
+        result = run_daily_cycle(ctx, _ranked(), *_decile_panels(), _DECILE, unrankable=provider)
+    assert "unreadable spin-off mask cache" in caplog.text
+    assert "UNMASKED" in caplog.text
+    assert result.masked == []
+    longs = {o.symbol for o in result.submitted_orders if o.qty > 0}
+    assert longs == {"S8", "S9"}  # the full unmasked book decided and submitted
+
+
+def test_missing_corporate_actions_container_is_a_named_detection_failure(tmp_path, caplog) -> None:
+    # Response-shape drift: a payload without the "corporate_actions"
+    # container is indistinguishable from "no spin-offs" only via silence —
+    # it must be a NAMED failure: fetch raises, the refresh proceeds
+    # UNMASKED, and no all-clear is cached (cache poisoning would make every
+    # same-bar rerun silently unmasked too).
+    with pytest.raises(ValueError, match="corporate_actions"):
+        fetch_spinoffs(
+            ["AAA"],
+            "2025-07-18",
+            "2026-07-18",
+            key_id="k",
+            secret_key="s",
+            session=FakeSession([{"next_page_token": None}]),
+        )
+    with caplog.at_level(logging.WARNING, logger="prism.live.spinoff_mask"):
+        out = spinoff_unrankable(
+            tmp_path,
+            "2026-07-18",
+            ["AAA", "FTV"],
+            "2025-07-18",
+            key_id="k",
+            secret_key="s",
+            session=FakeSession([{"next_page_token": None}]),
+        )
+    assert out == []  # unmasked proceed
+    assert "UNMASKED" in caplog.text
+    assert not (tmp_path / "spinoff_mask_2026-07-18.json").exists()  # no poisoned all-clear
+
+
+def test_present_container_without_spin_offs_key_is_a_valid_all_clear(tmp_path) -> None:
+    # The endpoint omits empty type keys (live-verified vendor behavior, §6
+    # probes): a PRESENT container with no spin_offs list is a real
+    # all-clear and caches as one.
+    session = FakeSession([{"corporate_actions": {}, "next_page_token": None}])
+    out = spinoff_unrankable(
+        tmp_path, "2026-07-18", ["AAA", "FTV"], "2025-07-18", key_id="k", secret_key="s", session=session
+    )
+    assert out == []
+    cache = json.loads((tmp_path / "spinoff_mask_2026-07-18.json").read_text(encoding="utf-8"))
+    assert cache["flagged"] == {} and cache["n_records"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Provider factory: the window/universe/intersection decisions the CLI shell
+# must not hold (paper_loop's no-logic rule)
+# ---------------------------------------------------------------------------
+
+
+def test_provider_factory_window_universe_and_intersection(tmp_path) -> None:
+    idx = pd.bdate_range("2026-01-05", periods=30)
+    close = pd.DataFrame(100.0, index=idx, columns=["AAA", "BBB", "EXTRA"])
+    lookback = 10
+    decision_bar = str(idx[-1].date())
+    on_start = str(idx[len(idx) - 1 - lookback].date())  # the earliest score endpoint
+    inside = str(idx[len(idx) - lookback].date())  # one bar later: inside the window
+    session = FakeSession(
+        [
+            {
+                "corporate_actions": {
+                    "spin_offs": [
+                        {"source_symbol": "AAA", "ex_date": on_start},
+                        {"source_symbol": "BBB", "ex_date": inside},
+                        {"source_symbol": "EXTRA", "ex_date": inside},
+                    ]
+                },
+                "next_page_token": None,
+            }
+        ]
+    )
+    provider = spinoff_unrankable_provider(
+        close, lookback, ["AAA", "BBB"], tmp_path, key_id="k", secret_key="s", session=session
+    )
+    out = provider(decision_bar)
+    # window_start is the momentum score's earliest endpoint: score's base row
+    # close.iloc[-1 - lookback] (MomentumSignalNode.score).
+    assert session.requests[0]["start"] == on_start == str(close.index[-1 - lookback].date())
+    # Boundary: an event dated exactly ON window_start never flags — both
+    # score endpoints postdate it, so the two vendors' ratio agrees.
+    assert out == ["BBB"]
+    # Detection covered EVERY panel column (the complete M6 cache record)...
+    cache = json.loads((tmp_path / f"spinoff_mask_{decision_bar}.json").read_text(encoding="utf-8"))
+    assert cache["symbols_checked"] == ["AAA", "BBB", "EXTRA"]
+    # ...and the flagged valuation-only extra is recorded but NOT masked: it
+    # stays exit-pinned by the score mask (a universe decision), never
+    # hold-pinned by this one (a rank decision).
+    assert sorted(cache["flagged"]) == ["BBB", "EXTRA"]
+
+
+def test_provider_factory_floors_window_start_at_the_first_bar(tmp_path) -> None:
+    # A panel shorter than the lookback (max_missing-tolerated short history)
+    # floors window_start at the first row instead of wrapping negative.
+    idx = pd.bdate_range("2026-06-01", periods=5)
+    close = pd.DataFrame(100.0, index=idx, columns=["AAA"])
+    session = FakeSession([{"corporate_actions": {}, "next_page_token": None}])
+    provider = spinoff_unrankable_provider(
+        close, 252, ["AAA"], tmp_path, key_id="k", secret_key="s", session=session
+    )
+    assert provider(str(idx[-1].date())) == []
+    assert session.requests[0]["start"] == str(idx[0].date())
 
 
 # ---------------------------------------------------------------------------

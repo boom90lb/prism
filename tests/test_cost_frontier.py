@@ -13,6 +13,8 @@ from research.scripts.cost_frontier import (  # noqa: E402
     decompose_costs,
     realized_effective_spread_bps,
     reprice,
+    require_finite,
+    validate_against_summary,
 )
 
 COMMISSION_BPS = 1.0
@@ -48,6 +50,37 @@ def synthetic_run(n: int = 504, spread_bps: float = SPREAD_BPS) -> tuple[pd.Seri
     )
     returns = (gross - total).rename("daily_return")
     return returns, costs
+
+
+def test_validation_gates_reject_non_finite_inputs_loudly() -> None:
+    # NaN compares False against any tolerance, so a NaN-bearing column would
+    # sail through every `if error > tol: raise` gate and then be dropped
+    # silently downstream — the gates assert finiteness first and name the
+    # offending column.
+    returns, costs = synthetic_run(n=40)
+    bad_costs = costs.copy()
+    bad_costs.loc[bad_costs.index[5], "impact"] = np.nan
+    with pytest.raises(ValueError, match="'impact'.*non-finite"):
+        decompose_costs(returns, bad_costs, COMMISSION_BPS)
+
+    bad_returns = returns.copy()
+    bad_returns.iloc[3] = np.nan
+    with pytest.raises(ValueError, match="'daily_return'.*non-finite"):
+        decompose_costs(bad_returns, costs, COMMISSION_BPS)
+
+    summary = {
+        "sharpe": float(returns.mean() / returns.std(ddof=1) * np.sqrt(252.0)),
+        "total_cost": float(costs["total"].sum()),
+        "avg_turnover": float(costs["turnover"].mean()),
+    }
+    bad_turnover = costs.copy()
+    bad_turnover.loc[bad_turnover.index[2], "turnover"] = np.nan
+    with pytest.raises(ValueError, match="'turnover'.*non-finite"):
+        validate_against_summary(returns, bad_turnover, summary)
+
+    # The helper's message carries the count and location for the operator.
+    with pytest.raises(ValueError, match="1 non-finite"):
+        require_finite(pd.Series([1.0, np.nan, 2.0]), "leg", "unit context")
 
 
 def test_decomposition_recovers_effective_spread_exactly() -> None:

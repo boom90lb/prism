@@ -103,6 +103,28 @@ ETF_FACTOR_RECORD: dict[str, float | int | str] = {
 AGGREGATE_CROSS_CHECK_TOL = 0.03
 
 
+def require_finite(values: pd.Series, column: str, context: str) -> None:
+    """Raise loudly on any non-finite value in a gated series.
+
+    Every validation gate here is ``if error > tol: raise`` and NaN compares
+    False against any tolerance, so a NaN-bearing column would sail through
+    the exact gates the doc advertises and then be dropped silently
+    downstream. Finiteness is therefore asserted explicitly before any
+    tolerance gate runs. Every stored run to date is finite — this hardens
+    the gates for future inputs; it is not a data-corruption alarm on the
+    committed artifacts.
+    """
+    arr = pd.to_numeric(values, errors="coerce").to_numpy(dtype=float)
+    bad = ~np.isfinite(arr)
+    if bad.any():
+        where = [str(ix) for ix in values.index[bad][:10]]
+        raise ValueError(
+            f"{context}: column {column!r} carries {int(bad.sum())} non-finite value(s) "
+            f"(first at {where}); the tolerance gates cannot evaluate non-finite inputs, "
+            "so this input is rejected before any frontier row is read"
+        )
+
+
 def load_run_series(run_dir: Path) -> tuple[pd.Series, pd.DataFrame, dict, dict]:
     """Stored per-day artifacts of a finished run, on a shared calendar."""
     config = json.loads((run_dir / "config.json").read_text())
@@ -126,6 +148,12 @@ def decompose_costs(returns: pd.Series, costs: pd.DataFrame, commission_bps: flo
     for column in ("commission_spread", "impact", "borrow", "total", "turnover", "gross", "net"):
         if column not in costs.columns:
             raise ValueError(f"costs frame lacks column {column!r}; not a stored run costs.csv")
+    # Finiteness before the reconstruction gate: a NaN residual passes the
+    # ``> 1e-12`` check (NaN compares False) and the NaN days then vanish
+    # downstream — require_finite rejects such inputs loudly instead.
+    require_finite(returns, "daily_return", "cost decomposition")
+    for column in ("commission_spread", "impact", "borrow", "total", "turnover", "gross", "net"):
+        require_finite(costs[column], column, "cost decomposition")
     commission = costs["turnover"] * commission_bps / 1e4
     spread_cost = costs["commission_spread"] - commission
     if (spread_cost < -1e-15).any():
@@ -274,7 +302,15 @@ def daily_frontier(
 
 
 def validate_against_summary(returns: pd.Series, costs: pd.DataFrame, summary: dict) -> dict:
-    """Gate: the loaded series must reproduce the stored summary statistics."""
+    """Gate: the loaded series must reproduce the stored summary statistics.
+
+    Finiteness is asserted first: the tolerance comparison below is NaN-blind
+    (NaN compares False against any tolerance), so a non-finite input would
+    otherwise pass the gate unexamined.
+    """
+    require_finite(returns, "daily_return", "summary validation gate")
+    for column in ("total", "turnover"):
+        require_finite(costs[column], column, "summary validation gate")
     recomputed_sharpe = float(returns.mean() / returns.std(ddof=1) * np.sqrt(252.0))
     recomputed_total_cost = float(costs["total"].sum())
     recomputed_turnover = float(costs["turnover"].mean())
@@ -284,6 +320,12 @@ def validate_against_summary(returns: pd.Series, costs: pd.DataFrame, summary: d
         "avg_turnover": (recomputed_turnover, float(summary["avg_turnover"])),
     }
     for name, (got, stored) in checks.items():
+        if not (np.isfinite(got) and np.isfinite(stored)):
+            raise ValueError(
+                f"validation gate cannot evaluate {name}: recomputed {got!r} vs stored "
+                f"{stored!r} carries a non-finite value the tolerance comparison would "
+                "silently pass; input rejected, frontier not computed"
+            )
         if abs(got - stored) > 1e-9 * max(1.0, abs(stored)):
             raise ValueError(
                 f"validation gate FAILED on {name}: recomputed {got!r} != stored {stored!r}; "

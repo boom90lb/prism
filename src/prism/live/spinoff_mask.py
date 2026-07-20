@@ -23,6 +23,15 @@ masked-name record the M6 divergence ledger consults. A detection failure is
 a LOUD N7 warning naming every unchecked symbol, and the refresh proceeds
 UNMASKED — the mask is a protection, not a correctness precondition.
 
+Known limitation — rename-window blindness (vendor convention unverified):
+``spinoff_flags`` exact-matches each record's ``source_symbol`` against the
+CURRENT panel symbols. If the vendor keys historical corporate-action records
+to event-time symbology, a parent that renames after an in-window spin-off is
+never matched and goes unmasked silently for the remainder of the window.
+Which convention Alpaca uses is unverified; no rename map is maintained
+here — the limitation is recorded, not papered over
+(docs/bar_vendor_divergence.md §5).
+
 Production-import-path safe (N8): stdlib + requests only.
 """
 
@@ -33,7 +42,7 @@ import logging
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Collection, Sequence
+from typing import Any, Callable, Collection, Sequence
 
 import requests
 
@@ -61,6 +70,12 @@ def fetch_spinoffs(
 
     Credentials travel only in request headers (the ``AlpacaBroker``
     convention) — never in URLs, exceptions, or logs.
+
+    A payload MISSING the ``corporate_actions`` container is response-shape
+    drift and raises — a NAMED detection failure, never a silent all-clear
+    (N7). A PRESENT container without a ``spin_offs`` key is a valid
+    all-clear: the endpoint omits empty type keys (live-verified vendor
+    behavior, docs/bar_vendor_divergence.md §6 probes).
     """
     sess = session if session is not None else requests.Session()
     headers = {"APCA-API-KEY-ID": key_id, "APCA-API-SECRET-KEY": secret_key}
@@ -82,7 +97,15 @@ def fetch_spinoffs(
             resp = sess.get(CORPORATE_ACTIONS_URL, params=params, headers=headers, timeout=timeout)
             resp.raise_for_status()
             payload = resp.json()
-            records.extend(payload.get("corporate_actions", {}).get("spin_offs", []) or [])
+            container = payload.get("corporate_actions")
+            if container is None:
+                raise ValueError(
+                    "corporate-actions response lacks the 'corporate_actions' "
+                    f"container (top-level keys: {sorted(payload)}) — "
+                    "response-shape drift is a detection failure, not an "
+                    "all-clear (N7)"
+                )
+            records.extend(container.get("spin_offs", []) or [])
             page_token = payload.get("next_page_token")
             if not page_token:
                 break
@@ -227,8 +250,68 @@ def spinoff_unrankable(
     return sorted(flagged)
 
 
+def spinoff_unrankable_provider(
+    close: Any,
+    lookback_bars: int,
+    rankable: Collection[str],
+    run_dir: str | Path,
+    *,
+    key_id: str | None = None,
+    secret_key: str | None = None,
+    session: Any | None = None,
+    timeout: float = 30.0,
+) -> Callable[[str], list[str]]:
+    """The ``run_daily_cycle`` ``unrankable`` provider for a fetched panel.
+
+    Binds the three decisions the CLI shell must not hold (its own no-logic
+    rule — ``prism.scripts.paper_loop`` module docstring):
+
+    * ``window_start`` is the panel date of the earliest score endpoint —
+      row ``len(close) - 1 - lookback_bars``, floored at the first row;
+      exactly ``MomentumSignalNode.score``'s base row
+      (``close.iloc[-1 - lookback]``). An event dated ON ``window_start``
+      is outside the lookback (both score endpoints postdate it, so the two
+      vendors' ratio agrees) and never flags.
+    * Detection checks EVERY panel column (universe file ∪ held book) so the
+      per-bar run-dir cache is the complete M6 record.
+    * The applied mask intersects ``rankable`` (the scored universe): a
+      flagged valuation-only extra — an index leaver still held — is
+      recorded in the cache but NEVER masked, because masking pins a name
+      hold-never-liquidate while the leaver must stay exit-pinned by the
+      score mask (its exit is a universe decision, not a rank decision).
+
+    ``close`` is duck-typed (``.index``/``.columns`` only), keeping this
+    module production-import-path safe (N8): stdlib + requests only.
+    """
+    window_start = str(close.index[max(0, len(close) - 1 - int(lookback_bars))].date())
+    checked = sorted(close.columns)
+    rankable_names = set(rankable)
+
+    def provider(decision_bar: str) -> list[str]:
+        flagged = spinoff_unrankable(
+            run_dir,
+            decision_bar,
+            checked,
+            window_start,
+            key_id=key_id,
+            secret_key=secret_key,
+            session=session,
+            timeout=timeout,
+        )
+        return sorted(set(flagged) & rankable_names)
+
+    return provider
+
+
 def _read_cache(cache_path: Path, window_start: str, checked: list[str]) -> list[str] | None:
-    """Cached flag list for this exact question, else ``None`` (fetch)."""
+    """Cached flag list for this exact question, else ``None`` (fetch).
+
+    An unreadable cache — malformed JSON, missing keys, or an ``OSError``
+    from the read itself (permission flip, transient I/O) — warns and falls
+    through to the fetch: the cache is an optimization, and its failure must
+    never abort the detection path the loud-warn-and-proceed-unmasked policy
+    guards.
+    """
     if not cache_path.exists():
         return None
     try:
@@ -236,7 +319,7 @@ def _read_cache(cache_path: Path, window_start: str, checked: list[str]) -> list
         cached_window = payload["window_start"]
         cached_symbols = sorted(set(payload["symbols_checked"]))
         flagged = sorted(payload["flagged"])
-    except (ValueError, KeyError, TypeError) as exc:
+    except (OSError, ValueError, KeyError, TypeError) as exc:
         logger.warning("unreadable spin-off mask cache %s (%s) — refetching", cache_path, exc)
         return None
     if cached_window != window_start or cached_symbols != checked:

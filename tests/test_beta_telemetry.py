@@ -10,6 +10,7 @@ from research.scripts.beta_telemetry import (  # noqa: E402
     beta_cell,
     drawdown_state_mask,
     equal_weight_returns,
+    load_replay_returns,
     rolling_beta,
     rolling_summary,
     strip_sessions,
@@ -162,3 +163,38 @@ def test_equal_weight_returns_skips_missing_names() -> None:
     assert counts.loc[idx[1]] == 3 and counts.loc[idx[2]] == 2
     # Day 0 has no prior bar for any name and is dropped, not read as zero.
     assert idx[0] not in proxy.index
+
+
+def test_names_per_day_excludes_structural_first_row() -> None:
+    # pct_change's first row has no prior bar (count 0 by construction); with
+    # it included, names_per_day.min() was a degenerate always-0 and the one
+    # thinness field could never fire on a genuinely thin interior day.
+    idx = sessions(4)
+    closes = pd.DataFrame(
+        {
+            "AAA": [100.0, 101.0, 102.0, 103.0],
+            "BBB": [50.0, np.nan, np.nan, 51.0],
+            "CCC": [200.0, 202.0, np.nan, 204.0],
+        },
+        index=idx,
+    )
+    _, counts = equal_weight_returns(closes)
+    assert idx[0] not in counts.index  # structural row excluded, not counted as 0
+    # Interior thin day (only AAA has consecutive bars on day 2) is now the min.
+    assert counts.loc[idx[2]] == 1
+    assert int(counts.min()) == 1
+
+
+def test_load_replay_returns_reports_row_count_with_returns(tmp_path) -> None:
+    # n equity rows -> n-1 returns; both travel together so reporting derives
+    # its counts from the ledger instead of hardcoding either.
+    ledger = tmp_path / "equity.jsonl"
+    ledger.write_text(
+        '{"decision_bar": "2026-01-05", "equity": 100.0}\n'
+        '{"decision_bar": "2026-01-06", "equity": 101.0}\n'
+        '{"decision_bar": "2026-01-07", "equity": 102.01}\n'
+    )
+    replay, n_rows = load_replay_returns(ledger)
+    assert n_rows == 3 and len(replay) == 2
+    assert replay.iloc[0] == pytest.approx(0.01)
+    assert load_replay_returns(tmp_path / "missing.jsonl") is None

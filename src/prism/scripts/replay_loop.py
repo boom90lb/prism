@@ -152,6 +152,37 @@ def _load_universe_file(path: Path) -> list[str]:
     return symbols
 
 
+def _book_config(args: argparse.Namespace, decision_every: int) -> DailyBookConfig:
+    """Construction config for the parsed args — sizing semantics wired once.
+
+    Both book paths thread ``whole_shares=(--tif == "opg")``: opg models the
+    live whole-share OPG book (parity with every prior scripted replay), day
+    the fractional-share sizing of paper_loop's ``--tif day`` path. Extracted
+    from the two inline constructions so the wiring is testable without a
+    replay run (tests/test_live_replay.py).
+    """
+    whole_shares = args.tif == "opg"
+    if args.book == "momentum":
+        return DailyBookConfig(
+            book="decile_neutral",
+            decile=args.decile,
+            decision_every=decision_every,
+            max_gross=args.max_gross,
+            max_symbol_abs_weight=args.max_symbol_weight,
+            no_trade_band=args.band,
+            min_order_notional=args.min_notional,
+            whole_shares=whole_shares,
+        )
+    return DailyBookConfig(
+        position_size=args.position_size,
+        max_gross=args.max_gross,
+        max_symbol_abs_weight=args.max_symbol_weight,
+        no_trade_band=args.band,
+        min_order_notional=args.min_notional,
+        whole_shares=whole_shares,
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     args = _parse_args(argv)
@@ -184,6 +215,7 @@ def main(argv: list[str] | None = None) -> int:
     decision_every = args.decision_every if args.decision_every is not None else (
         21 if args.book == "momentum" else 1
     )
+    config = _book_config(args, decision_every)
     if args.book == "momentum":
         membership_mask = None
         if args.membership_file is not None:
@@ -208,29 +240,10 @@ def main(argv: list[str] | None = None) -> int:
                 membership_mask=membership_mask,
             )
 
-        config = DailyBookConfig(
-            book="decile_neutral",
-            decile=args.decile,
-            decision_every=decision_every,
-            max_gross=args.max_gross,
-            max_symbol_abs_weight=args.max_symbol_weight,
-            no_trade_band=args.band,
-            min_order_notional=args.min_notional,
-            whole_shares=(args.tif == "opg"),
-        )
     else:
 
         def signal_factory() -> Signal:
             return EnsembleSignalNode(EnsembleNodeConfig(horizon_bars=args.horizon))
-
-        config = DailyBookConfig(
-            position_size=args.position_size,
-            max_gross=args.max_gross,
-            max_symbol_abs_weight=args.max_symbol_weight,
-            no_trade_band=args.band,
-            min_order_notional=args.min_notional,
-            whole_shares=(args.tif == "opg"),
-        )
 
     results, broker = replay_daily_cycles(
         signal_factory,

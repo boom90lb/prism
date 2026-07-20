@@ -30,8 +30,9 @@ Data (committed local artifacts only; this script performs no network I/O):
 - market, full sample: cap-blind equal-weight proxy over the run's own bar
   caches (quarantine fallback included — the certified run consumed those
   bars), validated against SPY on the overlap window before being read;
-- cross-check: ``runs/replay_floor_1000000/equity.jsonl`` (113-session
-  replay stream through the live-loop mechanics).
+- cross-check: ``runs/replay_floor_1000000/equity.jsonl`` (the replay
+  equity ledger through the live-loop mechanics; row and return counts are
+  derived from the ledger at run time, never hardcoded).
 
 Uncounted diagnostic: searches nothing, changes no trial code path, never
 appends to the trials ledger, writes one JSON. Frame and results:
@@ -201,9 +202,13 @@ def equal_weight_returns(closes: pd.DataFrame) -> tuple[pd.Series, pd.Series]:
     """Cap-blind equal-weight daily return across names with a bar that day.
 
     Returns ``(proxy_returns, names_per_day)``; days with zero contributing
-    names are dropped rather than read as zero return.
+    names are dropped rather than read as zero return. ``names_per_day``
+    excludes the structural first row (``pct_change`` has no prior bar there,
+    so its count is 0 by construction): keeping it made the reported
+    ``names_per_day_min`` a degenerate always-0 — the one thinness field that
+    could never fire on a genuinely thin interior day.
     """
-    returns = closes.pct_change(fill_method=None)
+    returns = closes.pct_change(fill_method=None).iloc[1:]
     counts = returns.notna().sum(axis=1)
     proxy = returns.mean(axis=1)
     return proxy[counts > 0], counts
@@ -263,13 +268,18 @@ def load_panel_closes(
     return closes, missing
 
 
-def load_replay_returns(path: Path) -> pd.Series | None:
+def load_replay_returns(path: Path) -> tuple[pd.Series, int] | None:
+    """Replay daily returns plus the equity-ledger row count they derive from.
+
+    The row count travels with the returns so reporting can state both
+    correctly (n rows -> n-1 returns) instead of hardcoding either.
+    """
     if not path.exists():
         return None
     rows = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
     equity = pd.Series({r["decision_bar"]: float(r["equity"]) for r in rows}).sort_index()
     equity.index = strip_sessions(pd.DatetimeIndex(pd.to_datetime(equity.index)))
-    return equity.pct_change().dropna()
+    return equity.pct_change().dropna(), int(len(equity))
 
 
 # ---------------------------------------------------------------------------
@@ -406,21 +416,24 @@ def main() -> None:
         cell["n_months_in_joint_sample"] = n_months
         cond_months[name] = cell
 
-    replay = load_replay_returns(Path(args.replay_dir) / "equity.jsonl")
-    if replay is None:
+    loaded = load_replay_returns(Path(args.replay_dir) / "equity.jsonl")
+    if loaded is None:
         replay_block: dict = {
             "source": str(Path(args.replay_dir) / "equity.jsonl"),
             "note": "replay ledger not present; cross-check not run",
         }
     else:
+        replay, n_equity_rows = loaded
         replay_block = {
             "source": str(Path(args.replay_dir) / "equity.jsonl"),
+            "n_equity_rows": n_equity_rows,
             "n_sessions": int(len(replay)),
             "span": _span(replay.index),
             "beta_vs_spy": beta_cell(replay, spy, min_obs=args.min_obs),
             "note": (
-                "113-session replay stream through live-loop mechanics; too short to stand alone, "
-                "read only as a cross-check against the certified-stream SPY cell"
+                f"replay stream through live-loop mechanics: {n_equity_rows} equity-ledger "
+                f"rows -> {len(replay)} daily returns; too short to stand alone, read only "
+                "as a cross-check against the certified-stream SPY cell"
             ),
         }
 

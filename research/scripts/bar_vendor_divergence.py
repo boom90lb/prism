@@ -164,9 +164,20 @@ def align_panels(
         "sessions_iex_only": [str(d.date()) for d in iex_w.index.difference(spine_w.index)],
         "name_days_nan_spine": int(s.isna().to_numpy().sum()),
         "name_days_nan_iex": int((x.isna() & s.notna()).to_numpy().sum()),
+        # Non-positive closes (0.0 or negative): the spine side NaNs out of the
+        # diff via ``s.where(s > 0.0)`` without ever entering the NaN counts, so
+        # they get their own symmetric field — a vanished name-day must be
+        # counted somewhere, never silently uncounted (N7).
+        "name_days_nonpositive_spine": int((s <= 0.0).to_numpy().sum()),
+        "name_days_nonpositive_iex": int((x <= 0.0).to_numpy().sum()),
         "names_partial_iex": {
             sym: int(n)
             for sym, n in (x.isna() & s.notna()).sum(axis=0).items()
+            if int(n) > 0
+        },
+        "names_partial_spine": {
+            sym: int(n)
+            for sym, n in (s.isna() & x.notna()).sum(axis=0).items()
             if int(n) > 0
         },
         # Common names whose diff column is entirely NaN (zero sessions where
@@ -247,23 +258,51 @@ def panel_diff_stats(
 
 def month_end_decision_bars(
     calendar: pd.DatetimeIndex, start: str, end: str | None = None
-) -> list[pd.Timestamp]:
-    """Last session of each calendar month within ``[start, end]``.
+) -> tuple[list[pd.Timestamp], list[str]]:
+    """Last session of each calendar month within ``[start, end]``, plus loud notes.
 
-    A trailing candidate that is merely the panel's final session mid-month
-    (the cache freeze truncating the month, not a genuine month boundary) is
-    dropped: it would masquerade as a decision bar that never happened.
+    The trailing candidate is a genuine month-end iff the FULL spine calendar
+    contains no later session in the same month. When it does (the window's
+    ``end`` — e.g. a stale ``--iex_cache`` — truncated the month), the
+    fragment is dropped with a named note: it would masquerade as a decision
+    bar that never happened. When the candidate is the calendar's own final
+    session, the cache freeze may itself have truncated the month; the
+    ``BMonthEnd`` heuristic used there is holiday-blind (the repo carries no
+    exchange calendar), so a candidate it drops could be a genuine
+    holiday-shortened month-end — that drop is named too, never silent (N7).
+    Returned notes must reach stdout and the JSON payload.
     """
     lo = pd.Timestamp(start)
     hi = pd.Timestamp(end) if end else calendar.max()
     window = calendar[(calendar >= lo) & (calendar <= hi)]
     bars = [group.max() for _, group in window.to_series().groupby([window.year, window.month])]
     bars = sorted(bars)
-    if bars and bars[-1] == calendar.max():
-        month_last_bday = pd.offsets.BMonthEnd().rollforward(bars[-1])
-        if month_last_bday != bars[-1]:
+    notes: list[str] = []
+    if bars:
+        last = bars[-1]
+        later_same_month = calendar[
+            (calendar > last) & (calendar.year == last.year) & (calendar.month == last.month)
+        ]
+        if len(later_same_month) > 0:
+            notes.append(
+                f"dropped trailing candidate {last.date()}: the window end truncates "
+                f"{last.year}-{last.month:02d} mid-month (the full spine calendar continues "
+                f"through {later_same_month.max().date()}), so it is a window fragment, "
+                "not a month-end decision bar"
+            )
             bars = bars[:-1]
-    return bars
+        elif last == calendar.max():
+            month_last_bday = pd.offsets.BMonthEnd().rollforward(last)
+            if month_last_bday != last:
+                notes.append(
+                    f"dropped trailing candidate {last.date()} at the cache-freeze boundary: "
+                    f"BMonthEnd expects {month_last_bday.date()} — without an exchange "
+                    "calendar this is ambiguous between a freeze-truncated month and a "
+                    "genuine holiday-shortened month-end, so the bar is dropped loudly, "
+                    "never silently (N7)"
+                )
+                bars = bars[:-1]
+    return bars, notes
 
 
 def score_endpoints(
@@ -320,21 +359,36 @@ def decile_legs(scores: pd.Series, decile: float = 0.10) -> tuple[frozenset, fro
 
 
 def leg_flip_report(
-    spine_scores: pd.Series, iex_scores: pd.Series, decile: float = 0.10
+    spine_scores: pd.Series, iex_scores: pd.Series, decile: float = 0.10, *, bar: str = "?"
 ) -> dict:
     """Decile-membership flips when the same cross-section is ranked per vendor.
 
     Restricted to names finite on BOTH sides so leg sizes match; one-sided
     names are counted (and listed) as excluded rather than dropped silently.
+    An empty or sub-decile-threshold overlap fails LOUD naming ``bar``: a
+    refresh that could not be measured must never read as zero flips —
+    silent-zero is vendor agreement it did not earn (N7).
     """
     both = sorted(set(spine_scores.dropna().index) & set(iex_scores.dropna().index))
     excluded_spine_only = sorted(set(spine_scores.dropna().index) - set(both))
     excluded_iex_only = sorted(set(iex_scores.dropna().index) - set(both))
+    if not both:
+        raise SystemExit(
+            f"leg flip report at refresh {bar}: zero names scored finite on BOTH vendors "
+            f"({len(excluded_spine_only)} spine-only, {len(excluded_iex_only)} iex-only) — "
+            "an unmeasured refresh must fail loud, not report zero flips (N7)"
+        )
     s = spine_scores.reindex(both)
     x = iex_scores.reindex(both)
     s_long, s_short, n_dec = decile_legs(s, decile)
     x_long, x_short, n_dec_x = decile_legs(x, decile)
     assert n_dec == n_dec_x, "leg sizes must match on a shared cross-section"
+    if n_dec < 1:
+        raise SystemExit(
+            f"leg flip report at refresh {bar}: {len(both)} common names form zero-size "
+            f"decile legs (floor({len(both)} * {decile:g}) < 1) — too thin to measure, "
+            "failing loud rather than reporting zero flips (N7)"
+        )
     score_diff_bps = ((x - s).abs() * 1e4).astype(float)
     return {
         "n_common": len(both),
@@ -458,6 +512,21 @@ def nav_mark_report(
 # ------------------------------------------------------------------------ main
 
 
+def _clean(obj):
+    """NaN → null recursively so the JSON never carries a bare NaN token.
+
+    (The ``beta_telemetry._clean`` idiom: ``json.dumps`` emits non-strict
+    ``NaN`` tokens for float NaN, which downstream strict parsers reject.)
+    """
+    if isinstance(obj, dict):
+        return {k: _clean(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_clean(v) for v in obj]
+    if isinstance(obj, float) and not np.isfinite(obj):
+        return None
+    return obj
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -557,7 +626,11 @@ def main() -> None:
 
     # ---- rank impact at month-end decision bars ---------------------------
     calendar = pd.DatetimeIndex(spine_closes.dropna(how="all").index)
-    decision_bars = month_end_decision_bars(calendar, args.start, coverage["window_effective"][1])
+    decision_bars, month_end_notes = month_end_decision_bars(
+        calendar, args.start, coverage["window_effective"][1]
+    )
+    for note in month_end_notes:
+        print(f"LOUD: {note}")
     diff_sample = universe_diff.drop(columns=flagged_names, errors="ignore").to_numpy().ravel()
     diff_sample = diff_sample[np.isfinite(diff_sample)]
 
@@ -572,7 +645,7 @@ def main() -> None:
         iex_cross = iex_closes[[s for s in rank_names if s in iex_closes.columns]]
         s_scores = endpoint_scores(spine_cross, skip_date, look_date)
         x_scores = endpoint_scores(iex_cross, skip_date, look_date)
-        report = leg_flip_report(s_scores, x_scores, args.decile)
+        report = leg_flip_report(s_scores, x_scores, args.decile, bar=str(bar.date()))
         report.update(
             date=str(bar.date()),
             skip_endpoint=str(skip_date.date()),
@@ -652,6 +725,7 @@ def main() -> None:
         "adjustment_basis_flags": flagged,
         "rank_impact": {
             "decision_bars": [str(b.date()) for b in decision_bars],
+            "month_end_notes": month_end_notes,
             "total_long_flips": sum(r["long_flips"] for r in per_refresh),
             "total_short_flips": sum(r["short_flips"] for r in per_refresh),
             "per_refresh": per_refresh,
@@ -659,6 +733,7 @@ def main() -> None:
         "decile_boundary_sensitivity": perturbation,
         "nav_mark": nav,
     }
+    payload = _clean(payload)  # NaN-safe: json.dumps must never emit a bare NaN token
     out_path = (
         Path(args.out)
         if args.out
@@ -670,10 +745,11 @@ def main() -> None:
         for k, v in payload.items()
         if k not in ("close_diff_per_name", "decile_boundary_sensitivity")
     }
+    nav_cleaned = payload["nav_mark"]
     compact["nav_mark"] = {
-        **{k: v for k, v in nav.items() if k != "ex_adjustment_flagged"},
+        **{k: v for k, v in nav_cleaned.items() if k != "ex_adjustment_flagged"},
         "ex_adjustment_flagged": {
-            k: v for k, v in nav["ex_adjustment_flagged"].items() if k != "per_session"
+            k: v for k, v in nav_cleaned["ex_adjustment_flagged"].items() if k != "per_session"
         },
     }
     print(json.dumps(compact, indent=2))

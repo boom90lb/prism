@@ -18,6 +18,7 @@ pytestmark = pytest.mark.research
 from prism.live.alpaca_data import DATA_BASE_URL, AlpacaBarSource  # noqa: E402
 from research.scripts.bar_vendor_divergence import (  # noqa: E402
     CountingSession,
+    _clean,
     align_panels,
     decile_legs,
     endpoint_scores,
@@ -218,13 +219,40 @@ def test_panel_diff_stats_tails_and_exclusion() -> None:
 
 def test_month_end_decision_bars_drop_truncated_final_month() -> None:
     calendar = pd.bdate_range("2026-01-02", "2026-03-13")
-    bars = month_end_decision_bars(calendar, "2026-01-02")
+    bars, notes = month_end_decision_bars(calendar, "2026-01-02")
     assert [str(b.date()) for b in bars] == ["2026-01-30", "2026-02-27"]
+    # The drop is loud and named, never silent (N7).
+    assert len(notes) == 1 and "2026-03-13" in notes[0]
 
     # A calendar ending exactly on a business-month end keeps that month.
     full = pd.bdate_range("2026-01-02", "2026-02-27")
-    bars = month_end_decision_bars(full, "2026-01-02")
+    bars, notes = month_end_decision_bars(full, "2026-01-02")
     assert [str(b.date()) for b in bars] == ["2026-01-30", "2026-02-27"]
+    assert notes == []
+
+
+def test_month_end_decision_bars_end_argument_truncation_is_named() -> None:
+    # The window `end` (a stale --iex_cache) truncates May mid-month while the
+    # FULL spine calendar continues: the fragment must not masquerade as a May
+    # month-end decision bar, and the drop names both the bar and the reason.
+    calendar = pd.bdate_range("2026-01-02", "2026-06-15")
+    bars, notes = month_end_decision_bars(calendar, "2026-01-02", "2026-05-15")
+    assert [str(b.date()) for b in bars][-1] == "2026-04-30"
+    assert len(notes) == 1
+    assert "2026-05-15" in notes[0] and "window" in notes[0]
+
+
+def test_month_end_decision_bars_holiday_boundary_drop_is_named() -> None:
+    # Freeze boundary on a genuine holiday-shortened month-end (2024-03-28,
+    # Good Friday 2024-03-29): without an exchange calendar the case is
+    # ambiguous against a mid-month freeze, so the bar is dropped — but the
+    # drop is LOUD and names the ambiguity, never silent (N7).
+    march_2024 = pd.bdate_range("2024-01-02", "2024-03-28")
+    calendar = march_2024[march_2024 != pd.Timestamp("2024-03-29")]
+    bars, notes = month_end_decision_bars(calendar, "2024-01-02")
+    assert [str(b.date()) for b in bars] == ["2024-01-31", "2024-02-29"]
+    assert len(notes) == 1
+    assert "2024-03-28" in notes[0] and "ambiguous" in notes[0]
 
 
 def test_score_endpoints_position_math_and_history_gate() -> None:
@@ -282,6 +310,54 @@ def test_leg_flip_report_counts_boundary_swap() -> None:
     assert report["n_common"] == 10
     assert report["n_excluded_spine_score_only"] == 1
     assert report["excluded_spine_score_only"] == ["ZZZ"]
+
+
+def test_leg_flip_report_fails_loud_on_empty_overlap() -> None:
+    # An unmeasured refresh must never read as zero flips (N7): all-NaN on one
+    # vendor (a lookback endpoint outside IEX history) is a SystemExit naming
+    # the refresh bar, not a 0-flip row summed into the headline totals.
+    base = {chr(65 + i): float(i) for i in range(10)}
+    spine = pd.Series(base)
+    iex_all_nan = pd.Series({k: float("nan") for k in base})
+    with pytest.raises(SystemExit, match="2026-01-30"):
+        leg_flip_report(spine, iex_all_nan, decile=0.10, bar="2026-01-30")
+
+
+def test_leg_flip_report_fails_loud_on_sub_decile_overlap() -> None:
+    # 5 common names at decile 0.10 -> floor(0.5) = 0 per leg: too thin to
+    # measure, and the failure names the bar rather than reporting zero flips.
+    thin = {chr(65 + i): float(i) for i in range(5)}
+    with pytest.raises(SystemExit, match="too thin"):
+        leg_flip_report(pd.Series(thin), pd.Series(thin).copy(), decile=0.10, bar="2026-02-27")
+
+
+def test_align_panels_counts_nonpositive_and_spine_partials() -> None:
+    # A 0.0 spine close NaNs out of the diff via s.where(s > 0) — it must land
+    # in a named coverage field, and spine-side partial coverage gets the same
+    # per-name listing the IEX side always had (symmetric, N7).
+    idx = naive_dates("2026-01-05", "2026-01-06", "2026-01-07")
+    spine = pd.DataFrame(
+        {"AAA": [100.0, 0.0, 100.0], "BBB": [np.nan, 50.0, 50.0]}, index=idx
+    )
+    iex = pd.DataFrame(
+        {"AAA": [100.0, 100.0, 100.0], "BBB": [50.0, 50.0, 50.0]}, index=idx
+    )
+    _, coverage = align_panels(spine, iex, "2026-01-05")
+    assert coverage["name_days_nonpositive_spine"] == 1
+    assert coverage["name_days_nonpositive_iex"] == 0
+    assert coverage["names_partial_spine"] == {"BBB": 1}
+    assert coverage["name_days_nan_spine"] == 1
+
+
+def test_clean_replaces_non_finite_with_null() -> None:
+    # json.dumps emits non-strict NaN tokens for float NaN; the payload is
+    # cleaned recursively so the results file stays strict JSON.
+    dirty = {
+        "a": float("nan"),
+        "b": [1.0, float("inf")],
+        "c": {"d": float("-inf"), "e": 2.0},
+    }
+    assert _clean(dirty) == {"a": None, "b": [1.0, None], "c": {"d": None, "e": 2.0}}
 
 
 def test_perturbed_flip_stats_zero_noise_and_determinism() -> None:

@@ -42,7 +42,10 @@ multi-symbol requests for 503 names, well inside the IEX budget.
 **Close-diff panel.** `(iex/spine − 1)·1e4` bps over the common sessions of
 2026-01-02 → latest common session, per-name and pooled distributions, tail
 fractions at 5/25 bps. Names or sessions on one side only, and name-days NaN
-on one side, are counted and listed, never dropped (N7).
+on one side, are counted and listed, never dropped (N7). (Per-name listing of
+spine-side NaN name-days — `names_partial_spine`, symmetric to
+`names_partial_iex` — exists from this revision; the published 2026-07-19 run
+predates it and carries the spine-side count in aggregate only.)
 
 **Adjustment-basis flagging.** The spine caches are frozen at 2026-06-16;
 Alpaca serves a *current* split-adjusted series. A corporate action after the
@@ -100,13 +103,20 @@ rebasing, and its shift is not in fact level-stable across all 113 sessions.)
 name-days): median |diff| **2.14 bps**, mean |diff| 4.29, p95 8.84, p99
 16.0 bps; signed mean +1.25 bps (IEX marginally above spine). Exactly equal
 closes: 8.4% of name-days. Tails: **17.0%** of name-days beyond 5 bps,
-**0.28%** beyond 25 bps, max 2,730 bps (BDX). The tail is not noise: BDX
+**0.28%** beyond 25 bps, max 2,730 bps (BDX). (§6 reclassifies FDX — excluded
+from these stats as adjustment-flagged — as genuine convention divergence;
+restoring its ~102 in-window divergent name-days at ~2,400 bps puts the
+>25 bps tail near 0.46%, roughly double the ex-flagged figure quoted here,
+and lifts p99. Cite the ex-flagged numbers only with that caveat.) The tail
+is not noise: BDX
 (~2,730 bps level shift across late Jan–Feb 2026), CMCSA (670 bps on
 2026-01-02 only), DOW (149 bps on 2026-03-30 only) are
 corporate-action-window disagreements — the spine back-adjusts spin-offs
 while Alpaca's split-only series does not, so the two series part company for
 bars before an action date until the event clears the comparison window.
-(§6 withdraws DOW from this attribution — no action record exists for it.)
+(§6 withdraws DOW from this attribution — no action record exists for it —
+and qualifies the universal: spine spin-adjustment is not uniform; APTV's
+spin sits raw on the spine too.)
 
 **Rank impact** (5 refreshes, ~494 names, 49 per leg): **0 long-leg flips, 4
 short-leg flips** — one per refresh Jan–Apr, zero in May. Spearman
@@ -121,7 +131,11 @@ separation) without flipping a leg — it sits nowhere near the boundary.
 Excluded per refresh: PSKY (spine score only, IEX history short) — 1 name,
 listed. The spine's spin-adjusted series is the economically correct basis
 for a price-ratio score, so on affected names the live Alpaca-fed rank is
-the distorted one until the lookback window clears the event.
+the distorted one until the lookback window clears the event. (§6 qualifies:
+spine spin-adjustment is non-uniform — on APTV-class names the raw
+distribution step sits on *both* bases and the distortion is shared, not
+live-only; "spine correct / Alpaca distorted" holds for the BDX/CMCSA/FDX/FTV
+class, not universally.)
 
 **Decile-boundary sensitivity** (200 draws/refresh): mean 0.10–0.82 flips per
 refresh, p95 ≤ 2, max 2 — consistent with the direct read's ~1 flip per
@@ -151,6 +165,10 @@ spin-off sits inside the lookback window — a conjunct-#4 read should check
 the flip lists here before attributing such a difference to spine mechanics;
 (b) any cross-vendor NAV or price comparison must exclude or re-base
 adjustment-flagged names first, or it measures the freeze, not the vendors.
+(§6 qualifies rule (b): the flag set mixes mechanisms — for FDX-class names
+the median gate auto-flags *genuine* convention divergence, so excluding
+them removes real vendor-divergence evidence under a freeze-artifact label;
+separate the classes per §6 before excluding.)
 
 Limits, stated: the eligibility screen is not reproduced (rank read is the
 raw current-universe cross-section); the month-end grid approximates the
@@ -202,7 +220,12 @@ the replay CLI carries no flag because a replay has no event source.
 **Residual, stated.** A position entered on a divergent rank before masking
 (or during an unmasked refresh, e.g. after a detection failure) persists at
 most 252 bars — the mask blocks entries and holds; it never forces an exit.
-FTV's two short-boundary entries (§3) are exactly this class.
+FTV's two short-boundary entries (§3) are exactly this class. A second
+residual — the mask's rename-window limitation: detection exact-matches
+record `source_symbol` against current panel symbols, so if the vendor keys
+historical records to event-time symbology, a parent renamed after an
+in-window spin-off goes unmasked (which convention Alpaca uses is
+unverified; `prism/live/spinoff_mask.py` module docstring).
 
 **M6.** The per-refresh masked-name lists (the run-dir `spinoff_mask_*.json`
 records) join the divergence ledger §4 routes: a conjunct-#4 read consults
@@ -225,8 +248,10 @@ reproduces its constant (×0.25 → −7,500 bps; ×3.0 → +19,998; ×2.0 →
 predate the window and leave no in-window signature. **FDX does not belong
 in that class**: its event is a spin-off (FDXF, ex 2026-06-01) *before* the
 cache freeze, and its panel signature is not level-stable — mean 2,174 vs
-median 2,409 bps is the arithmetic of ~104 divergent pre-event sessions and
-~9 agreeing post-event ones. FDX is the BDX/CMCSA/FTV class (spine
+median 2,409 bps is the arithmetic of 102 divergent pre-event sessions and
+11 near-zero post-event ones (2,408.69 × 102/113 = 2,174.2, the recorded
+mean; ex 2026-06-01 → window end 2026-06-15 spans 11 sessions). FDX is the
+BDX/CMCSA/FTV class (spine
 back-adjusted, Alpaca raw), auto-flagged only because a mid-window event
 this large drives the median past the 250 bps gate. Its exclusion from the
 §3 rank read cost nothing for Jan–May: a cross-vendor *score* diverges only
@@ -244,9 +269,15 @@ convention divergence.
 **New finding — the spine's spin-adjustment is not uniform.** APTV (spin-off
 VGNT ex 2026-04-01, 1/3 share per share) shows *zero* panel divergence (max
 8.4 bps) because **both** series are raw across the event: the spine's own
-2026-03-31 → 04-01 return is −1,058 bps, matching the mechanical
-distribution fraction (0.333 × VGNT's 27.77 debut close / APTV's 69.44
-pre-event close ≈ −13.3%, net of the day's market move) — the spine did not
+2026-03-31 → 04-01 return is −1,058 bps against a mechanical
+distribution fraction of −13.3% (0.333 × VGNT's 27.77 debut close / APTV's
+69.44 pre-event close). The ~275 bps residual is attributed to the ex-day
+move of the post-distribution stub and is the one uncited link in this
+chain — the directional inference does not depend on it (−10.6% is
+incompatible with a back-adjusted series, and the 8.4 bps max panel diff
+pins both vendors to the same basis), but the follow-up sweep must set its
+match tolerance to absorb ex-day moves rather than inheriting a tight fit
+from this example. The spine did not
 back-adjust this spin while it did back-adjust BDX, CMCSA, FDX, and FTV.
 Consequence: the certified price basis is not uniformly spin-adjusted, and
 every refresh whose score endpoints straddle 2026-04-01 scores APTV against
@@ -264,8 +295,13 @@ a match (and "§1" should have read §3). Per name: BDX, CMCSA, FDX diverge
 (convention class, above); DD and HON enter via pre-window spins whose panel
 shifts are post-freeze splits; APTV enters with both vendors agreeing (raw,
 above); SPGI (MBGL ex 2026-07-01, post-freeze) diverges only prospectively —
-it materializes when a post-event spine vintage is next fetched, which is
-precisely the case the mask exists for. The mask stays correct as a
+and whether it materializes at all depends on which path the next
+post-event spine vintage takes: the BDX path (back-adjusted → cross-vendor
+divergence appears) or the APTV path (raw → no divergence, and the
+certified basis silently carries another shared distribution step — the
+worse outcome, invisible to any cross-vendor read; the named sweep, not
+vendor comparison, is the instrument that catches it). Either way SPGI is
+the case the mask exists for. The mask stays correct as a
 protection — every over-flag is a conservative hold, and APTV is unrankable
 for the deeper reason that its lookback spans a raw distribution step on
 both vendors — but an M6 divergence-ledger read must not equate "masked"
