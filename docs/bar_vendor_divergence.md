@@ -92,7 +92,9 @@ every distribution, reported not silent; hence 497 distribution names
 **Adjustment-basis flags (4):** CRWD −7,500 bps (ratio ×0.25), DD +19,998
 (×3.0), HON +10,000 (×2.0), FDX +2,409 — level-stable across all 113
 sessions, i.e. corporate actions between the 2026-06-16 cache freeze and the
-fetch date, rebasings not price disagreements.
+fetch date, rebasings not price disagreements. (Corrected in §6: FDX is a
+*pre-freeze spin-off* of the genuine-divergence class, not a post-freeze
+rebasing, and its shift is not in fact level-stable across all 113 sessions.)
 
 **Close-diff distribution** (497 universe names ex-flagged, 56,059
 name-days): median |diff| **2.14 bps**, mean |diff| 4.29, p95 8.84, p99
@@ -104,6 +106,7 @@ closes: 8.4% of name-days. Tails: **17.0%** of name-days beyond 5 bps,
 corporate-action-window disagreements — the spine back-adjusts spin-offs
 while Alpaca's split-only series does not, so the two series part company for
 bars before an action date until the event clears the comparison window.
+(§6 withdraws DOW from this attribution — no action record exists for it.)
 
 **Rank impact** (5 refreshes, ~494 names, 49 per leg): **0 long-leg flips, 4
 short-leg flips** — one per refresh Jan–Apr, zero in May. Spearman
@@ -190,7 +193,9 @@ protection, not a correctness precondition. **Endpoint shape live-verified
 `source_symbol`/`ex_date` fields as coded, and the in-window flag set
 {APTV, BDX, CMCSA, DD, FDX, HON, SPGI} independently matches this
 document's §1 adjustment-flagged names — two instruments concordant; WDC/FTV
-correctly absent (their events have aged out of the trailing window). Replay: the library seam
+correctly absent (their events have aged out of the trailing window).
+(Superseded in part by §6: the set relation is superset-not-match, and "§1"
+should read §3.) Replay: the library seam
 (`replay_daily_cycles(unrankable=...)`) accepts an injected offline provider;
 the replay CLI carries no flag because a replay has no event source.
 
@@ -203,3 +208,66 @@ FTV's two short-boundary entries (§3) are exactly this class.
 records) join the divergence ledger §4 routes: a conjunct-#4 read consults
 them — alongside the §3 flip lists — before attributing a live-vs-spine book
 difference to spine mechanics.
+
+## 6. Correction record — post-publication probes complete the action taxonomy (2026-07-19)
+
+Two attributions above, and the §5 addendum's concordance sentence, do not
+survive a full-action-type probe (all corporate-action types, trailing year,
+the §5 endpoint and key; spine cache reads and Alpaca quotes inline below).
+The superseded text stands in place with pointers here — the record of the
+record is part of the record.
+
+**The §3 flag set mixes two mechanisms.** CRWD (1:4 forward split ex
+2026-07-02), DD (3:1 reverse ex 2026-06-24), HON (2:1 reverse ex 2026-06-29)
+are post-freeze split rebasings exactly as §3 frames them — each ratio
+reproduces its constant (×0.25 → −7,500 bps; ×3.0 → +19,998; ×2.0 →
++10,000), and DD's/HON's own spin-offs (Q ex 2025-11-03, SOLS ex 2025-10-30)
+predate the window and leave no in-window signature. **FDX does not belong
+in that class**: its event is a spin-off (FDXF, ex 2026-06-01) *before* the
+cache freeze, and its panel signature is not level-stable — mean 2,174 vs
+median 2,409 bps is the arithmetic of ~104 divergent pre-event sessions and
+~9 agreeing post-event ones. FDX is the BDX/CMCSA/FTV class (spine
+back-adjusted, Alpaca raw), auto-flagged only because a mid-window event
+this large drives the median past the 250 bps gate. Its exclusion from the
+§3 rank read cost nothing for Jan–May: a cross-vendor *score* diverges only
+while the ex-date sits **between** the two score endpoints (with both
+endpoints pre-event the adjustment factor cancels in the ratio), and FDX's
+divergence window opens after 2026-06-01 — the one live decision inside it
+so far is 2026-07-08, pre-mask, which is §5-residual class.
+
+**DOW is withdrawn from the §3 spin sentence.** No spin-off or split exists
+for DOW in the trailing year (cash dividends only); its single divergent day
+(149.3 bps, 2026-03-30) is quarterly-dividend-sized (0.35/share). Mechanism
+unattributed; it is one day of the 0.28% > 25 bps tail, not established
+convention divergence.
+
+**New finding — the spine's spin-adjustment is not uniform.** APTV (spin-off
+VGNT ex 2026-04-01, 1/3 share per share) shows *zero* panel divergence (max
+8.4 bps) because **both** series are raw across the event: the spine's own
+2026-03-31 → 04-01 return is −1,058 bps, matching the mechanical
+distribution fraction (0.333 × VGNT's 27.77 debut close / APTV's 69.44
+pre-event close ≈ −13.3%, net of the day's market move) — the spine did not
+back-adjust this spin while it did back-adjust BDX, CMCSA, FDX, and FTV.
+Consequence: the certified price basis is not uniformly spin-adjusted, and
+every refresh whose score endpoints straddle 2026-04-01 scores APTV against
+a raw distribution step *on both vendors* — not a live-vs-certified wedge,
+but a scoring distortion the certified side shares. Named follow-up
+(owner-sequenced): a spin-adjustment-consistency dimension for
+`research/scripts/data_integrity_sweep.py` — for each in-universe `spin_off`
+record, test the cache's cross-event return against the distribution
+fraction; this probe, mechanized.
+
+**The §5 addendum sentence is superseded.** The probe flag set
+{APTV, BDX, CMCSA, DD, FDX, HON, SPGI} is "names with a spin-off ex-date in
+the trailing window" — a **superset** of "names whose vendors diverge," not
+a match (and "§1" should have read §3). Per name: BDX, CMCSA, FDX diverge
+(convention class, above); DD and HON enter via pre-window spins whose panel
+shifts are post-freeze splits; APTV enters with both vendors agreeing (raw,
+above); SPGI (MBGL ex 2026-07-01, post-freeze) diverges only prospectively —
+it materializes when a post-event spine vintage is next fetched, which is
+precisely the case the mask exists for. The mask stays correct as a
+protection — every over-flag is a conservative hold, and APTV is unrankable
+for the deeper reason that its lookback spans a raw distribution step on
+both vendors — but an M6 divergence-ledger read must not equate "masked"
+with "vendor-divergent": the §3 flip lists carry divergence evidence; the
+mask lists carry event exposure.
