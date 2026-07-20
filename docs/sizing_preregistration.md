@@ -1,8 +1,16 @@
 # Sizing pre-registration — GO-branch deployment (crash-conditional de-gross)
 
-> **Status: PROPOSED (drafted 2026-07-19).** Ratification is the owner push of
-> the dedicated commit flipping this banner, per the repo's ratification
-> convention. This document is GO-branch precondition (a) (docs/handoff.md §8,
+> **Status: RATIFIED 2026-07-20** (this commit is the dedicated ratification
+> commit; the decision was delegated by the owner to the session in the same
+> turn — the in-repo delegation precedent — conditional on an independent
+> re-verification of every pin against its tracked artifact, performed and
+> recorded in this commit's body; drafted 2026-07-19). **One §5 defect found
+> by that re-verification is corrected at ratification, in place in §5:**
+> the draft bound the gross-scale hook's arming to this banner-flip commit;
+> arming is a separate GO-branch deployment commit made only after both
+> handoff §8 preconditions hold. No pin changes — θ, g, the hysteresis, the
+> floors, and the re-open triggers ratify exactly as drafted.
+> This document is GO-branch precondition (a) (docs/handoff.md §8,
 > the kill-criterion-fires-GO row): no real-money order sizes itself except
 > through the rules pinned here. It pins deployment arithmetic only — it
 > searches nothing, starts no counted trial, and moves no ratified statistic.
@@ -14,8 +22,8 @@
 > gated Gârleanu–Pedersen multi-signal construction design (2026-07-08),
 > which lives on a different gate (the momentum verdict) and is shelved if
 > that gate fails. Sizing must survive for a single-signal GO book, so it
-> lives here; the pointer correction lands as a dedicated commit named in the
-> same chain as this draft (owner-directed 2026-07-19).
+> lives here; the pointer correction landed as its own dedicated commit in
+> the same chain as this draft (owner-directed 2026-07-19).
 
 ## 1. Scope
 
@@ -130,10 +138,15 @@ the committed reference vector is for reproducibility only.
 
 ## 5. Execution path and seniority
 
-The term executes through the SPEC §7.7 regime step's gross-scale hook,
-armed only by the dedicated commit that also flips this banner (until then
-the hook stays `None` and the paper stream is bit-identical to the certified
-convention). Seniority: the safety halt (kill switch, drawdown bound) beats
+The term executes through the SPEC §7.7 regime step's gross-scale hook.
+Ratification of this document does NOT arm the hook: arming is its own
+dedicated commit on the GO branch, made only after both handoff §8
+preconditions hold — a paper stream that de-grossed would fork off the
+certified convention and stop being the evidence stream precondition (b)
+counts. Until that arming commit the hook stays `None` and the paper stream
+is bit-identical to the certified convention. (Corrected at ratification:
+the draft bound arming to the banner-flip commit itself, which §3.1's
+wiring note and precondition (b) both contradict.) Seniority: the safety halt (kill switch, drawdown bound) beats
 the de-gross — a halted cycle trades nothing regardless of state; the
 participation gate applies to de-gross orders like any others. Precondition
 (b) is unchanged by this document: ≥ 21 consecutive clean regime-step
