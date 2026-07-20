@@ -47,11 +47,12 @@ from prism.live import (
     AlpacaBroker,
     DailyBookConfig,
     LiveLoopContext,
+    RegimeTelemetry,
     SafetyConfig,
     StateStore,
     fetch_universe_panels,
     run_daily_cycle,
-    spinoff_unrankable,
+    spinoff_unrankable_provider,
 )
 from prism.residual.factors import ResidualStatArbConfig
 from prism.signal.ensemble_node import EnsembleNodeConfig, EnsembleSignalNode
@@ -155,6 +156,15 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "open on a divergent rank; a held name is held until the window clears the event. "
         "Momentum book only; default off. Detection is cached per decision bar in --run-dir; "
         "a detection failure warns loudly and the refresh proceeds unmasked.",
+    )
+    parser.add_argument(
+        "--regime",
+        action="store_true",
+        help="Read SPEC §7.5 regime telemetry every cycle (FRED curve / net liquidity / "
+        "inflation + VIX term structure; requires FRED_API_KEY) into {run-dir}/regime.jsonl — "
+        "the handoff §8 precondition-(b) session record (docs/regime_step.md). Telemetry only: "
+        "the de-gross action hook has no CLI path and stays unarmed until "
+        "docs/sizing_preregistration.md ratifies. Default off.",
     )
     parser.add_argument(
         "--kill-switch",
@@ -334,22 +344,24 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     # Spin-off eligibility mask (docs/bar_vendor_divergence.md §5): a name with
-    # a spin-off inside the momentum lookback is unrankable this refresh —
-    # detection covers the full fetched universe (file ∪ held) so the per-bar
-    # run-dir cache is complete, while the applied mask keeps valuation-only
-    # extras exit-only (an index-leaver's exit is a universe decision, not a
-    # rank decision). Consulted by run_daily_cycle on refresh sessions only.
-    unrankable = None
-    if args.spinoff_mask:
-        window_start = str(close.index[max(0, len(close) - 1 - args.mom_lookback)].date())
-        checked = sorted(close.columns)
-        rankable_names = set(score_universe)
+    # a spin-off inside the momentum lookback is unrankable this refresh.
+    # The window/universe/intersection decisions live in the tested factory
+    # (prism.live.spinoff_mask.spinoff_unrankable_provider) — this shell only
+    # connects it. Consulted by run_daily_cycle on refresh sessions only.
+    unrankable = (
+        spinoff_unrankable_provider(close, args.mom_lookback, score_universe, args.run_dir)
+        if args.spinoff_mask
+        else None
+    )
 
-        def _unrankable(decision_bar: str) -> list[str]:
-            flagged = spinoff_unrankable(args.run_dir, decision_bar, checked, window_start)
-            return sorted(set(flagged) & rankable_names)
-
-        unrankable = _unrankable
+    # SPEC §7.7 regime step (docs/regime_step.md): §7.5 telemetry every cycle
+    # when armed, with the real FRED client from the environment. A missing
+    # FRED_API_KEY fails loud here, before any venue call (N7) — the operator
+    # asked for the regime record, so a cycle without one must not run
+    # quietly. Telemetry only: the gross-scale ACTION hook is deliberately
+    # not constructible from the CLI; it arms in code only after
+    # docs/sizing_preregistration.md ratifies.
+    regime_provider = RegimeTelemetry.from_env() if args.regime else None
 
     # Safety rails (prism.live.safety): inert at this book's normal state, loud
     # at pathology. The notional bound is derived from the construction cap
@@ -383,13 +395,16 @@ def main(argv: list[str] | None = None) -> int:
         targets_ledger=args.run_dir / "targets.jsonl",
         unfilled_ledger=args.run_dir / "unfilled.jsonl",
         concordance_ledger=args.run_dir / "concordance.jsonl",
+        regime_ledger=args.run_dir / "regime.jsonl",
         # Namespaced client ids: two books sharing one venue account with the
         # bare {bar}:{symbol} scheme silently substitute each other's same-bar
         # orders (duplicate-id == success). Persisted pending orders keep the
         # ids they were decided with, so flipping the prefix is resume-safe.
         order_id_prefix="mom:" if args.book == "momentum" else "",
     )
-    result = run_daily_cycle(ctx, signal, close, volume, config, safety=safety, unrankable=unrankable)
+    result = run_daily_cycle(
+        ctx, signal, close, volume, config, safety=safety, unrankable=unrankable, regime=regime_provider
+    )
 
     held = result.target_weights[result.target_weights.abs() > 1e-9]
     logger.info(

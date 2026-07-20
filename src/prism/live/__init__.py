@@ -21,6 +21,11 @@ and nothing important may live only in memory:
 * ``daily``  — the one-cycle driver wiring delta-fetched panels → Signal
   → online construction (caps, stateful band, participation gate) → the
   decision protocol (``prism.scripts.paper_loop`` is its CLI shell).
+* ``regime_step`` — the SPEC §7.7 regime step: per-cycle §7.5 telemetry
+  through the ``prism.regime.fetch`` adapters, read by ``daily`` every
+  session into the regime ledger (docs/regime_step.md); the de-gross
+  action hook stays unarmed until docs/sizing_preregistration.md
+  ratifies.
 * ``replay`` — the diagnostic replay instrument: the same daily cycle over
   local historical bars with a simulated next-open venue, faster than
   realtime (``prism.scripts.replay_loop`` is its CLI shell). Modeled fills:
@@ -52,12 +57,14 @@ from prism.live.loop import (
     read_concordance_ledger,
     read_equity_ledger,
     read_fills_ledger,
+    read_regime_ledger,
     read_targets_ledger,
     settle,
     sweep_pending,
     targets_to_orders,
 )
 from prism.live.monitor import book_concordance, paper_monitor_read
+from prism.live.regime_step import ABSENT_BLOCKS, REGIME_BLOCKS, RegimeTelemetry
 from prism.live.replay import (
     ReplayBroker,
     align_replay_panels,
@@ -70,15 +77,18 @@ from prism.live.spinoff_mask import (
     fetch_spinoffs,
     spinoff_flags,
     spinoff_unrankable,
+    spinoff_unrankable_provider,
 )
 from prism.live.state import LoopState, StateStore
 
 __all__ = [
+    "ABSENT_BLOCKS",
     "CORPORATE_ACTIONS_URL",
     "DATA_BASE_URL",
     "DEFAULT_FEED",
     "LIVE_BASE_URL",
     "PAPER_BASE_URL",
+    "REGIME_BLOCKS",
     "AlpacaAPIError",
     "AlpacaBarSource",
     "AlpacaBroker",
@@ -91,6 +101,7 @@ __all__ = [
     "OrderRejected",
     "LoopState",
     "Order",
+    "RegimeTelemetry",
     "ReplayBroker",
     "SafetyConfig",
     "SafetyViolation",
@@ -107,12 +118,14 @@ __all__ = [
     "read_concordance_ledger",
     "read_equity_ledger",
     "read_fills_ledger",
+    "read_regime_ledger",
     "read_targets_ledger",
     "replay_daily_cycles",
     "run_daily_cycle",
     "settle",
     "spinoff_flags",
     "spinoff_unrankable",
+    "spinoff_unrankable_provider",
     "sweep_pending",
     "targets_to_orders",
 ]

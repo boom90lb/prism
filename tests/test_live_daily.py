@@ -9,18 +9,23 @@ participation gate on ADV, and whole-share order sizing for OPG venues.
 from __future__ import annotations
 
 import json
+import logging
+from dataclasses import fields as dataclass_fields
 
 import pandas as pd
 import pytest
 
 from prism.live import (
     DailyBookConfig,
+    DailyCycleResult,
     LiveLoopContext,
+    SafetyConfig,
     StateStore,
     book_concordance,
     fetch_universe_panels,
     read_concordance_ledger,
     read_fills_ledger,
+    read_regime_ledger,
     run_daily_cycle,
     targets_to_orders,
 )
@@ -474,3 +479,251 @@ def test_book_concordance_degenerate_sides() -> None:
     assert read["gross_held"] == 0.0
     assert read["gross_ratio"] == 0.0
     assert read["active_share"] == pytest.approx(0.05)
+
+
+# ---------------------------------------------------------------------------
+# The SPEC §7.7 regime step: every-cycle telemetry + the unarmed gross hook
+# ---------------------------------------------------------------------------
+
+
+class RecordingRegime:
+    """Deterministic provider: records the bars consulted, returns a canned
+    read (clean by default; pass ``failures`` for a dirty one)."""
+
+    def __init__(self, failures: list[dict] | None = None) -> None:
+        self.failures = failures or []
+        self.calls: list[str] = []
+
+    def __call__(self, decision_bar: str) -> dict:
+        self.calls.append(decision_bar)
+        return {
+            "decision_bar": decision_bar,
+            "blocks": {"curve": {"level": 4.0, "slope": 0.1, "curvature": -0.2, "asof": decision_bar}},
+            "failures": list(self.failures),
+        }
+
+
+class RecordingScale:
+    """Gross-scale hook that records when it fires."""
+
+    def __init__(self, value: float) -> None:
+        self.value = value
+        self.calls: list[str] = []
+
+    def __call__(self, state: dict) -> float:
+        self.calls.append(state["decision_bar"])
+        return self.value
+
+
+_DECILE_CONFIG = DailyBookConfig(
+    book="decile_neutral", decile=0.2, max_symbol_abs_weight=1.0, min_order_notional=1.0
+)
+
+
+def test_regime_read_every_cycle_including_non_refresh(ctx, tmp_path) -> None:
+    ctx.regime_ledger = tmp_path / "regime.jsonl"
+    provider = RecordingRegime()
+    config = DailyBookConfig(position_size=0.1, decision_every=5, min_order_notional=1.0)
+    signal = ConstSignal({"AAA": 1.0, "BBB": -1.0})
+    r1 = run_daily_cycle(ctx, signal, *_panels(30), config, regime=provider)
+    r2 = run_daily_cycle(ctx, signal, *_panels(31), config, regime=provider)  # cadence: a hold
+
+    assert provider.calls == [r1.decision_bar, r2.decision_bar]  # non-refresh sessions read too
+    assert r2.submitted_orders == [] and r2.regime is not None
+    assert r2.regime["blocks"]["curve"]["level"] == 4.0
+    rows = read_regime_ledger(ctx.regime_ledger)
+    assert list(rows["decision_bar"]) == [r1.decision_bar, r2.decision_bar]
+    assert list(rows["clean"]) == [True, True]
+    assert set(rows.columns) >= {"decision_bar", "clean", "gross_scale", "blocks", "failures"}
+    assert rows["gross_scale"].isna().all()  # the action hook is unarmed
+
+
+def test_regime_read_and_ledgered_on_halted_cycle(ctx, tmp_path) -> None:
+    ctx.regime_ledger = tmp_path / "regime.jsonl"
+    kill = tmp_path / "KILL_SWITCH"
+    kill.touch()
+    provider = RecordingRegime()
+    result = run_daily_cycle(
+        ctx,
+        ConstSignal({"AAA": 1.0, "BBB": -1.0}),
+        *_panels(),
+        _CONFIG,
+        safety=SafetyConfig(kill_switch=kill),
+        regime=provider,
+    )
+    assert result.halted is not None and result.submitted_orders == []
+    assert result.regime is not None and provider.calls == [result.decision_bar]
+    rows = read_regime_ledger(ctx.regime_ledger)  # the halted session still counts on the clock
+    assert list(rows["decision_bar"]) == [result.decision_bar]
+
+
+def test_raising_provider_is_contained_named_and_loud(ctx, tmp_path, caplog) -> None:
+    def broken(decision_bar: str) -> dict:
+        raise RuntimeError("transport down")
+
+    baseline_ctx = LiveLoopContext(
+        store=StateStore(tmp_path / "b" / "state.json"),
+        broker=FakeBroker(),
+        fills_ledger=tmp_path / "b" / "fills.jsonl",
+    )
+    signal = ConstSignal({"AAA": 1.0, "BBB": -1.0})
+    baseline = run_daily_cycle(baseline_ctx, signal, *_panels(), _CONFIG)
+    with caplog.at_level(logging.WARNING, logger="prism.live.daily"):
+        result = run_daily_cycle(ctx, signal, *_panels(), _CONFIG, regime=broken)
+
+    # Telemetry failure never touches the book: the cycle completes with the
+    # exact orders the unwired loop decides.
+    assert [(o.symbol, o.qty) for o in result.submitted_orders] == [
+        (o.symbol, o.qty) for o in baseline.submitted_orders
+    ]
+    assert result.regime["failures"] == [{"block": "provider", "error": "RuntimeError"}]
+    assert any("REGIME PROVIDER FAILED" in r.getMessage() for r in caplog.records)
+
+
+def test_empty_provider_result_is_a_named_provider_failure(ctx) -> None:
+    result = run_daily_cycle(
+        ctx, ConstSignal({"AAA": 1.0, "BBB": -1.0}), *_panels(), _CONFIG, regime=lambda bar: {}
+    )
+    assert result.regime["failures"] == [{"block": "provider", "error": "RuntimeError"}]
+    assert len(result.submitted_orders) == 2  # the cycle still decided
+
+
+def _full_ctx(root) -> LiveLoopContext:
+    return LiveLoopContext(
+        store=StateStore(root / "state.json"),
+        broker=FakeBroker(),
+        fills_ledger=root / "fills.jsonl",
+        equity_ledger=root / "equity.jsonl",
+        targets_ledger=root / "targets.jsonl",
+        unfilled_ledger=root / "unfilled.jsonl",
+        concordance_ledger=root / "concordance.jsonl",
+        regime_ledger=root / "regime.jsonl",
+    )
+
+
+def test_bit_identity_with_both_regime_params_none(tmp_path) -> None:
+    # The certified B1 book's behavior must be bit-identical when the feature
+    # is off: every DailyCycleResult field and every ledger byte must match a
+    # run that never heard of the seam.
+    signal = ConstSignal({"AAA": 1.0, "BBB": -1.0})
+    results: dict[str, list[DailyCycleResult]] = {}
+    for name, kwargs in (("bare", {}), ("wired_off", {"regime": None, "regime_gross_scale": None})):
+        ctx = _full_ctx(tmp_path / name)
+        results[name] = [
+            run_daily_cycle(ctx, signal, *_panels(30), _CONFIG, **kwargs),
+            run_daily_cycle(ctx, signal, *_panels(31), _CONFIG, **kwargs),
+        ]
+    for bare, off in zip(results["bare"], results["wired_off"]):
+        for field in dataclass_fields(DailyCycleResult):
+            left, right = getattr(bare, field.name), getattr(off, field.name)
+            if isinstance(left, pd.Series):
+                pd.testing.assert_series_equal(left, right)
+            else:
+                assert left == right, field.name
+    for ledger in ("state.json", "fills.jsonl", "equity.jsonl", "targets.jsonl", "concordance.jsonl"):
+        assert (tmp_path / "bare" / ledger).read_bytes() == (tmp_path / "wired_off" / ledger).read_bytes()
+    for absent in ("regime.jsonl", "unfilled.jsonl"):  # nothing regime-shaped may exist when off
+        assert not (tmp_path / "bare" / absent).exists()
+        assert not (tmp_path / "wired_off" / absent).exists()
+
+
+def test_gross_scale_applied_on_clean_refresh_and_recorded(ctx, tmp_path) -> None:
+    ctx.regime_ledger = tmp_path / "regime.jsonl"
+    hook = RecordingScale(0.5)
+    result = run_daily_cycle(
+        ctx,
+        _ranked_signal(),
+        *_decile_panels(),
+        _DECILE_CONFIG,
+        regime=RecordingRegime(),
+        regime_gross_scale=hook,
+    )
+    assert hook.calls == [result.decision_bar]
+    assert result.regime_scale == pytest.approx(0.5)
+    assert result.target_weights.abs().sum() == pytest.approx(0.5)  # max_gross 1.0 scaled to 0.5
+    rows = read_regime_ledger(ctx.regime_ledger)
+    assert rows["gross_scale"].iloc[0] == pytest.approx(0.5)
+    assert bool(rows["clean"].iloc[0]) is True
+
+
+@pytest.mark.parametrize("raw_scale, applied", [(1.7, 1.0), (-0.3, 0.0)])
+def test_gross_scale_clamped_to_the_configured_gross(ctx, raw_scale, applied) -> None:
+    result = run_daily_cycle(
+        ctx,
+        _ranked_signal(),
+        *_decile_panels(),
+        _DECILE_CONFIG,
+        regime=RecordingRegime(),
+        regime_gross_scale=RecordingScale(raw_scale),
+    )
+    assert result.regime_scale == pytest.approx(applied)
+    assert result.target_weights.abs().sum() == pytest.approx(applied * 1.0)
+    if applied == 0.0:
+        assert result.submitted_orders == []  # a fully de-grossed fresh book opens nothing
+
+
+def test_gross_scale_not_applied_on_dirty_telemetry(ctx, caplog) -> None:
+    hook = RecordingScale(0.5)
+    dirty = RecordingRegime(failures=[{"block": "curve", "error": "RegimeFetchError"}])
+    with caplog.at_level(logging.WARNING, logger="prism.live.daily"):
+        result = run_daily_cycle(
+            ctx, _ranked_signal(), *_decile_panels(), _DECILE_CONFIG, regime=dirty, regime_gross_scale=hook
+        )
+    assert hook.calls == []  # the action de-arms on a not-clean read
+    assert result.regime_scale is None
+    assert result.target_weights.abs().sum() == pytest.approx(1.0)  # configured gross, no silent de-gross
+    assert any("NOT applied" in r.getMessage() for r in caplog.records)
+
+
+def test_gross_scale_fires_only_on_refresh_sessions(ctx) -> None:
+    hook = RecordingScale(0.5)
+    provider = RecordingRegime()
+    config = DailyBookConfig(
+        book="decile_neutral",
+        decile=0.2,
+        decision_every=5,
+        max_symbol_abs_weight=1.0,
+        min_order_notional=1.0,
+    )
+    r1 = run_daily_cycle(
+        ctx, _ranked_signal(), *_decile_panels(n=26), config, regime=provider, regime_gross_scale=hook
+    )
+    r2 = run_daily_cycle(
+        ctx, _ranked_signal(), *_decile_panels(n=27), config, regime=provider, regime_gross_scale=hook
+    )
+    assert r1.regime_scale == pytest.approx(0.5)
+    assert hook.calls == [r1.decision_bar]  # the hold session reads telemetry but never re-sizes
+    assert provider.calls == [r1.decision_bar, r2.decision_bar]
+    assert r2.regime_scale is None and r2.submitted_orders == []
+
+
+def test_gross_scale_requires_the_regime_provider(ctx) -> None:
+    with pytest.raises(ValueError, match="regime_gross_scale requires"):
+        run_daily_cycle(
+            ctx,
+            ConstSignal({"AAA": 1.0, "BBB": -1.0}),
+            *_panels(),
+            _CONFIG,
+            regime_gross_scale=RecordingScale(0.5),
+        )
+
+
+def test_non_finite_gross_scale_raises(ctx) -> None:
+    with pytest.raises(ValueError, match="regime_gross_scale returned"):
+        run_daily_cycle(
+            ctx,
+            _ranked_signal(),
+            *_decile_panels(),
+            _DECILE_CONFIG,
+            regime=RecordingRegime(),
+            regime_gross_scale=RecordingScale(float("nan")),
+        )
+
+
+def test_regime_ledger_idempotent_within_a_bar(ctx, tmp_path) -> None:
+    ctx.regime_ledger = tmp_path / "regime.jsonl"
+    signal = ConstSignal({"AAA": 1.0, "BBB": -1.0})
+    close, volume = _panels()
+    run_daily_cycle(ctx, signal, close, volume, _CONFIG, regime=RecordingRegime())
+    run_daily_cycle(ctx, signal, close, volume, _CONFIG, regime=RecordingRegime())  # same-bar resume
+    assert len(read_regime_ledger(ctx.regime_ledger)) == 1  # one session, one row on the clock

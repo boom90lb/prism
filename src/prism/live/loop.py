@@ -54,8 +54,11 @@ class LiveLoopContext:
     refresh (what the instrument *should* hold — the concordance baseline and
     the sweep's audit record), ``unfilled_ledger`` records every unexecuted
     residual at settle (the orders the venue did not print — previously only a
-    truncated log line), and ``concordance_ledger`` records how faithfully the
-    held book tracks the last refresh targets. ``order_id_prefix`` namespaces
+    truncated log line), ``concordance_ledger`` records how faithfully the
+    held book tracks the last refresh targets, and ``regime_ledger`` records
+    the per-cycle SPEC §7.5 regime telemetry read — the session record the
+    handoff §8 precondition-(b) 21-session clock consults
+    (docs/regime_step.md). ``order_id_prefix`` namespaces
     client order ids per book/run-dir (``"mom:"`` for the momentum instrument):
     two books sharing one venue account with the bare ``{bar}:{symbol}`` scheme
     silently substitute each other's same-bar orders, because a venue duplicate
@@ -69,6 +72,7 @@ class LiveLoopContext:
     targets_ledger: Path | None = None
     unfilled_ledger: Path | None = None
     concordance_ledger: Path | None = None
+    regime_ledger: Path | None = None
     order_id_prefix: str = ""
 
 
@@ -512,6 +516,18 @@ def read_concordance_ledger(path: Path) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def read_regime_ledger(path: Path) -> pd.DataFrame:
+    """The per-cycle regime telemetry ledger as a frame — one row per decision
+    bar (``decision_bar``, ``clean``, ``gross_scale``, ``blocks``,
+    ``failures``, …). The handoff §8 precondition-(b) 21-session clock reads
+    ``clean`` (docs/regime_step.md)."""
+    path = Path(path)
+    if not path.exists():
+        return pd.DataFrame()
+    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
+    return pd.DataFrame(rows)
+
+
 def _reconcile(state: LoopState, broker: Broker) -> None:
     """Adopt broker truth, loudly when it disagrees with the persisted book."""
     broker_positions = {s: q for s, q in broker.positions().items() if q != 0.0}
@@ -597,6 +613,29 @@ def _append_concordance_ledger(path: Path, decision_bar: str, row: dict) -> None
         if lines and decision_bar <= json.loads(lines[-1])["decision_bar"]:
             return
     _append_jsonl(path, [{"decision_bar": decision_bar, **row}])
+
+
+def _append_regime_ledger(path: Path, decision_bar: str, state: dict, gross_scale: float | None) -> None:
+    """Append one regime telemetry read per decision bar (idempotent, monotone
+    — the equity-ledger discipline, so a same-bar restart never duplicates a
+    session on the precondition-(b) clock). ``clean`` is the session verdict:
+    True iff the read carries zero failure entries. ``gross_scale`` is the
+    clamped multiplier the §7.7 action hook applied to this refresh's
+    construction — null while the hook is unarmed
+    (docs/sizing_preregistration.md unratified) or the session did not
+    qualify (not a refresh, or a not-clean read)."""
+    path = Path(path)
+    if path.exists():
+        lines = [ln for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()]
+        if lines and decision_bar <= json.loads(lines[-1])["decision_bar"]:
+            return
+    row = {
+        "decision_bar": decision_bar,
+        "clean": not state.get("failures"),
+        "gross_scale": gross_scale,
+        **{key: value for key, value in state.items() if key != "decision_bar"},
+    }
+    _append_jsonl(path, [row])
 
 
 def _append_equity_ledger(path: Path, decision_bar: str, equity: float, cash: float) -> None:
