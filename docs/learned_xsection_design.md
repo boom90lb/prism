@@ -5,13 +5,33 @@
 > turn — the `docs/momentum_design.md` delegation precedent; drafted
 > 2026-07-18 under the owner's frontier directive). **The design is frozen
 > from this commit: the out-of-sample clock runs.** The §6 flagged values are
-> resolved as written: `rev_1` stays in F0, X4 stays in budget. The family's
-> no-concurrency posture stands as written; opting into the A4 criterion
-> (`docs/amendments_2026-07.md`) would be a banner amendment. From this
+> resolved as written: `rev_1` stays in F0, X4 stays in budget. From this
 > commit the amendment rule applies: seams may be pinned, no trial value may
 > move. **No backtest of any configuration in this family runs outside the
 > §3 counted set** — the budget-amnesia failure mode (`docs/handoff.md`
 > §7.2) stays blocked exactly as in the sibling designs.
+>
+> **A4 concurrency opt-in: RATIFIED 2026-07-22** (this commit is the
+> dedicated opt-in commit; owner-authorized on `main`; mechanism
+> `docs/amendments_2026-07.md` A4; this banner contemplated the opt-in at
+> family ratification; queue item under `docs/v040_program.md` §5).
+> **No trial value in §1–§4 moves under this seam.** Binding posture:
+>
+> 1. **Kill/fragility reads X0–X4** may run concurrently with the
+>    adjudication-slot holder under A4's three criteria: (a) this
+>    pre-registration is ratified and frozen; (b) X0–X4 cannot promote
+>    ("they can kill, they cannot promote", §3); (c) outputs are
+>    **firewalled** — barred from every cross-family adjudication
+>    (momentum M6, trend T5, aim-portfolio G4b, any other promotion) until
+>    this family holds the serial promotion slot for X5.
+> 2. **Promotion read X5 always requires the serial adjudication slot.**
+> 3. Every A4-concurrent read still appends to this family's ledger and
+>    counts against the frozen budget of 6 exactly as if it ran in the slot.
+> 4. Concurrency remains *permitted, not mandated* (operator bandwidth;
+>    equity attention ladder in `docs/v040_program.md` §7 still ranks this
+>    family after trend when bandwidth is scarce).
+>
+> Uncounted mechanics and paper were never gated by the slot.
 
 ## 0. Provenance and the honest prior
 
@@ -112,10 +132,12 @@ trials ledger; any rerun redirects `--trial_ledger` (the recorded
 unconditional-append gotcha). Prior counted programs at drafting: four —
 residual reversion (closed at 17, cert 001), momentum (in flight, holding
 the slot), `momentum_replication_v1` (≤ 3, concurrency exception granted),
-`trend_v1` (≤ 6, queued). This family queues behind the momentum verdict
-under amended SPEC §10 and **claims no concurrency exception** — a budget-6
-counted search is exactly what the replication family's budget-3/zero-dof
-grounds exclude (`docs/trend_design.md` §0 took the same position).
+`trend_v1` (≤ 6, A4 opt-in RATIFIED 2026-07-22). **A4 opt-in RATIFIED
+2026-07-22 (banner box):** X0–X4 may run A4-concurrent and firewalled; X5
+still requires the serial adjudication slot. A4 is not a replication-style
+zero-dof exception; it is the standing criterion for non-promoting reads
+from any ratified frozen family. A budget-6 counted search still counts
+every cell against this family's never-refilled budget.
 
 | id | delta vs X0 | probes |
 |----|-------------|--------|
@@ -129,7 +151,10 @@ grounds exclude (`docs/trend_design.md` §0 took the same position).
 X1–X4 are **fragility detection only** — they can kill, they cannot
 promote, and the pinned configuration remains X0's regardless of which probe
 scores best; adopting a different cell would be a new discovery event
-(`docs/trend_design.md` §3 clause, transplanted whole).
+(`docs/trend_design.md` §3 clause, transplanted whole). X0 is the primary
+read of the pinned cell; it is not a promotion read (promotion is X5 only)
+and therefore sits with X1–X4 under the A4 "cannot promote" criterion
+(banner opt-in RATIFIED 2026-07-22).
 
 ## 4. Adjudication (pre-committed)
 
@@ -181,11 +206,11 @@ trial and may happen any time. Gates:
 
 ## 6. What is deliberately left to owner decisions
 
-- **Ratification** — the dedicated commit, or an amendment first: the two
-  most contestable pinned values are flagged for the free pre-ratification
-  window: whether `rev_1` stays in F0 (it buys the X2 probe its subject but
-  raises expected turnover), and whether X4 stays in budget or defers
-  nonlinearity to a v2 family.
+- **A4 concurrency opt-in:** RATIFIED 2026-07-22 (banner box above). No
+  further owner act is required for kill-class X0–X4 concurrency under A4;
+  operator bandwidth may still choose to run nothing concurrent. The §6
+  free-window pins (`rev_1` stays; X4 stays) were already resolved at family
+  ratification and are not reopened by this seam.
 - **Paper instrument:** same posture as `docs/trend_design.md` §5 — neither
   requested nor foreclosed here; it would be its own seam amendment.
 
