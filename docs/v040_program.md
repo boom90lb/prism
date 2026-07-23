@@ -409,9 +409,11 @@ release:
 1. **Owner now (equity):** ratify this program + doc coherence (queue 1);
    fund A3 equity micro-account; equity venue checks (fractional short /
    fractionability); decide capital-mode *path* (selection before GO).
-2. **Agents parallel (uncounted, equity-first):** trend mechanics end-to-end;
+2. **Agents parallel (uncounted, equity-first):** trend mechanics end-to-end
+   (`TrendSignalNode`, `inverse_vol` book, `--book trend` paper/replay);
    A4 banner patches for T/X; factory draft; W6 schema draft; joint-crash
-   instrument design; observatory capture plumbing.
+   instrument (`prism.validation.joint_crash`, `docs/joint_crash_diagnostic.md`);
+   observatory capture plumbing (`prism.io.observatory`).
 3. **Owner ratifies equity seams:** queue items 2–3 (T/X A4), then 4–6 as
    ready.
 4. **After G0 (equity):** re-read economic narratives under micro-calibrated
