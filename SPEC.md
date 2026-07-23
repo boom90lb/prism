@@ -5,7 +5,8 @@ and roadmap defer to it; where they disagree with it, they are wrong. It
 supersedes the "ensemble of forecasters" framing of v0.1–v0.2. Amended
 2026-07-14 (per-family trial budgets, §10; bounded data budget, §1/§4;
 cost-calibration carve-out, §10 — rationale and before/after in
-`docs/amendments_2026-07.md`).
+`docs/amendments_2026-07.md`). Amended 2026-07-23 (factory pre-registration
+clause, §10 — `docs/factory_amendment.md`).
 
 **Audience:** the operator (senior quant, solo, zero external budget) and any
 agent extending the system. It assumes AFML-level familiarity with purged CV,
@@ -602,6 +603,24 @@ must not wait on expensive machinery for information that hours can buy. The
 near-term target is *the first `net_edge` claim under a calibrated cost
 model* — and the honest alternative outcome, that the signal is simply too weak net
 of realistic retail cost, is a first-class, ledgered result, not a failure to hide.
+
+**Factory pre-registration (amended 2026-07-23).** A *factory* is a ratified
+document that freezes, before any configuration in its scope is evaluated:
+(i) the feature / signal space; (ii) the search procedure (how candidates are
+generated and ordered); (iii) the selection-set identity and the never-refilled
+budget `B`; (iv) the kill and promotion rules; (v) the cost stack and
+construction pins shared by every configuration. Every configuration evaluated
+under a factory is a counted trial against that factory's ledger, including
+degenerate and NaN outcomes. A factory does not create a second adjudication
+slot: promotion reads still require the serial slot; non-promoting reads may
+use A4 only if the factory's banner opts in. Continuous hyperparameter roaming
+(unbounded search without a frozen procedure and budget) remains barred.
+Existing one-shot family pre-registrations (momentum M-series, trend T-series,
+learned-XS X-series, replication C-series) are not retroactively factories;
+they stand as written. A family may *declare* factory shape at its own
+ratification or by seam amendment; declaration does not refill budget or
+re-open closed selection sets. Contract pins and non-goals:
+`docs/factory_amendment.md`.
 
 ---
 

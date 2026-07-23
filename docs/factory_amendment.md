@@ -1,18 +1,18 @@
-# Factory amendment — pipeline-level pre-registration under SPEC §10 (DRAFT)
+# Factory amendment — pipeline-level pre-registration under SPEC §10
 
-> **Status: DRAFT — awaiting owner ratification** (`docs/v040_program.md` §5
-> queue item 4). Agents draft; owner ratifies with a **dedicated commit**
-> that (a) flips this banner and (b) patches the affected SPEC §10
-> paragraphs. **Until ratification, no family may claim "factory" status
-> and no industrial search runs under this doctrine.** This document
-> generalizes a shape the X-family already has at budget 6; it does not
-> re-open X, trend, momentum, or cert-001, and it moves no existing trial
-> value.
+> **Status: RATIFIED 2026-07-23** (owner-directed dedicated commit; SPEC §10
+> factory clause pasted same commit). `docs/v040_program.md` §5 queue item 4.
+> No family may claim "factory" status without its own factory document that
+> freezes F-space / procedure / budget B / selection set / cost stack / kill /
+> promotion / prior-program count / A4 posture **before** the first counted
+> configuration. Ratification of this amendment alone authorizes **no** counted
+> industrial run. This document generalizes a shape the X-family already has at
+> budget 6; it does not re-open X, trend, momentum, or cert-001, and it moves no
+> existing trial value.
 >
 > Product priority: equity search industrialization first. Event/news
 > *modeling* over the observatory expectations lane is a future consumer
-> of this doctrine, not a reason to ratify early. Capture remains free
-> (W5).
+> of this doctrine. Capture remains free (W5).
 
 ## 0. Problem
 
@@ -108,9 +108,10 @@ the claim is "adds over X", and a firewall clause for A4 outputs.
 
 ## 5. Ratification checklist (owner)
 
-1. Dedicated commit: this banner → RATIFIED; SPEC §10 paste of §1 clause.
+1. ~~Dedicated commit: this banner → RATIFIED; SPEC §10 paste of §1 clause.~~
+   **Done 2026-07-23.**
 2. No other files in that commit except necessary SPEC cross-links and
-   this document's status line.
+   this document's status line. **Done (this commit).**
 3. Optional follow-up (separate commit): X-family banner note "this family
    is factory-shaped under `docs/factory_amendment.md`" — label only.
 4. No counted run is authorized by ratification alone; each factory still
