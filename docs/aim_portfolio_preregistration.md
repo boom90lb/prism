@@ -37,21 +37,38 @@ only after the kill-criterion resolves (`docs/handoff.md §8`). Until the moment
 verdict opens that gate, **zero counted trials run for this item.** A blend built on
 an unpromoted signal would be spending deflation budget to combine noise.
 
-**v0.4.0 split-gate note (pending seam amendment — does not open counted
-trials).** `docs/v040_program.md` (DRAFT) proposes splitting this gate as
-**G4a / G4b** without silently replacing the counted gate above:
+**v0.4.0 split-gate seam: DRAFT — awaiting owner ratification**
+(`docs/v040_program.md` §5 queue item 5). Does **not** open counted trials
+until the owner lands a dedicated commit flipping this box to RATIFIED.
+Until then, **the counted gate in the paragraph above remains in force
+unchanged.** Uncounted engineering diagnostics were never this document's
+deflation-budget gate; they do not require an override to run. Do not treat
+DRAFT program or DRAFT seam text as a silent un-gating of counted
+aim-portfolio trials.
 
-| Gate | Opens when | Spends deflation budget? |
-|---|---|---|
-| **G4a** | ≥ 2 sleeves at `mechanics_clean` | No — uncounted joint construction / crash diagnostics and engineering only |
-| **G4b** | ≥ 1 sleeve at its *ratified* bar (or under a firewalled A4 non-promotion kill still open) | Yes — counted construction trials (netting, cadence, band counterfactuals) |
+**Proposed split (binding only after owner dedicated commit):**
 
-Until an owner-ratified seam amendment records that split on **this** banner
-(queue item under `docs/v040_program.md` §5 — aim-portfolio review + split-gate
-seam), **the counted gate in the paragraph above remains in force unchanged.**
-Uncounted engineering diagnostics were never this document's deflation-budget
-gate; they do not require an override to run. Do not treat the DRAFT program
-text as a silent un-gating of counted aim-portfolio trials.
+| Gate | Opens when | Spends deflation budget? | What it permits |
+|---|---|---|---|
+| **G4a** | ≥ 2 sleeves at `mechanics_clean` (e.g. B1 + trend_v1 both mechanics-clean) | No | Uncounted joint construction diagnostics, joint crash-window replays (W1), engineering plumbing for multi-sleeve ledgers, capital-allocation *sensitivity* (not optimized weights) |
+| **G4b** | ≥ 1 sleeve at its *ratified* bar, **or** ≥ 1 sleeve under a firewalled A4 non-promotion kill still open *and* the owner has explicitly opened G4b under that clause | Yes | Counted construction trials under this document's frozen table once also ratified: netting, cadence, band counterfactuals — all ledgered, all deflated |
+
+**Rationale (pins, not trial values):** blending unpromoted signals into
+*counted* construction spends deflation budget on noise; joint *engineering*
+diagnostics do not. G4a is the product receipt surface for risk profiles
+(W6) and for the preferred multi-sleeve GO narrative's crash evidence —
+without opening a construction search budget. G4b is the only gate that
+may spend this family's construction budget.
+
+**What this seam does not do:**
+
+- Does not promote any sleeve, move any family budget, or re-open cert-001.
+- Does not admit optimized multi-sleeve weights as free parameters before
+  G4b counted search freezes them.
+- Does not make A4 firewalled kill-class outputs admissible as G4b
+  evidence without the explicit G4b clause above (firewall stands until
+  that clause is owner-armed).
+- Does not change the as-written hard gate while this box is DRAFT.
 
 ## 1. The failure this fixes: sum-then-cap is anti-netting
 
