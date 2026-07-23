@@ -37,16 +37,15 @@ only after the kill-criterion resolves (`docs/handoff.md §8`). Until the moment
 verdict opens that gate, **zero counted trials run for this item.** A blend built on
 an unpromoted signal would be spending deflation budget to combine noise.
 
-**v0.4.0 split-gate seam: DRAFT — awaiting owner ratification**
-(`docs/v040_program.md` §5 queue item 5). Does **not** open counted trials
-until the owner lands a dedicated commit flipping this box to RATIFIED.
-Until then, **the counted gate in the paragraph above remains in force
-unchanged.** Uncounted engineering diagnostics were never this document's
-deflation-budget gate; they do not require an override to run. Do not treat
-DRAFT program or DRAFT seam text as a silent un-gating of counted
-aim-portfolio trials.
+**v0.4.0 split-gate seam: RATIFIED 2026-07-23** (owner-directed dedicated
+commit; `docs/v040_program.md` §5 queue item 5). **This box ratifies only
+the G4a/G4b split.** It does **not** open counted G4b trials, does **not**
+ratify the construction trial table below, and does **not** promote any
+sleeve. **G4b counted gate still requires ≥1 sleeve at its ratified bar**
+(or the explicit firewalled A4 clause below, owner-armed). Uncounted
+engineering diagnostics (G4a) never spent this document's deflation budget.
 
-**Proposed split (binding only after owner dedicated commit):**
+**Split (binding):**
 
 | Gate | Opens when | Spends deflation budget? | What it permits |
 |---|---|---|---|
@@ -68,7 +67,8 @@ may spend this family's construction budget.
 - Does not make A4 firewalled kill-class outputs admissible as G4b
   evidence without the explicit G4b clause above (firewall stands until
   that clause is owner-armed).
-- Does not change the as-written hard gate while this box is DRAFT.
+- Does not open G4b merely because G4a diagnostics (joint crash, fixed-weight
+  sensitivity) look favorable.
 
 ## 1. The failure this fixes: sum-then-cap is anti-netting
 
