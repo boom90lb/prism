@@ -277,11 +277,18 @@ def test_replay_tif_wires_whole_shares_at_both_book_call_sites() -> None:
     flag parse: opg = whole shares, day = fractional."""
     from prism.scripts.replay_loop import _book_config, _parse_args
 
-    for book, expected_book in (("momentum", "decile_neutral"), ("ensemble", "directional")):
+    for book, expected_book in (
+        ("momentum", "decile_neutral"),
+        ("ensemble", "directional"),
+        ("trend", "inverse_vol"),
+    ):
         for tif, whole in (("opg", True), ("day", False)):
             args = _parse_args(["--book", book, "--tif", tif])
-            config = _book_config(args, decision_every=21 if book == "momentum" else 1)
+            config = _book_config(
+                args, decision_every=21 if book in ("momentum", "trend") else 1
+            )
             assert config.book == expected_book  # the branch under test is the branch taken
             assert config.whole_shares is whole
     # And the momentum path threads the cadence it was handed.
     assert _book_config(_parse_args(["--book", "momentum"]), decision_every=21).decision_every == 21
+    assert _book_config(_parse_args(["--book", "trend"]), decision_every=21).vol_ewma_bars == 63

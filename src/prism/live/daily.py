@@ -60,6 +60,7 @@ import math
 from dataclasses import dataclass
 from typing import Any, Callable, Collection, Sequence
 
+import numpy as np
 import pandas as pd
 
 from prism.execution.participation import participation_capped_targets
@@ -80,6 +81,7 @@ from prism.live.state import LoopState
 from prism.portfolio.construct import (
     construct_decile_neutral,
     construct_directional_targets,
+    construct_inverse_vol_targets,
     step_no_trade_band,
 )
 from prism.signal.base import Signal
@@ -95,15 +97,19 @@ class DailyBookConfig:
     linearly to a weight (``position_size`` is the |score|≥1 → weight slope),
     ``"decile_neutral"`` builds the ratified B1 momentum book — equal-weight
     top/bottom ``decile`` long/short, market-neutral by balanced legs, using
-    only the cross-sectional *rank* of the scores (``position_size`` is ignored).
-    ``decision_every`` is the refresh cadence in trading sessions (1 = daily;
-    21 ≈ monthly for B1): off a refresh session the book holds its filled
-    weights and only NAV marks. Caps are down-only (a low-gross book stays
-    low-gross). ``no_trade_band`` is the *online* half-width applied against held
-    weights (the batch band stays off — replaying hysteresis from flat every day
-    is the defect the online step fixes). ``max_participation`` of None disables
-    the %ADV gate (at paper scale it never binds; enable it before any AUM
-    claim). ``whole_shares`` matches Alpaca OPG (next-open) order requirements.
+    only the cross-sectional *rank* of the scores (``position_size`` is ignored),
+    ``"inverse_vol"`` is the trend sleeve construct (docs/trend_design.md §2):
+    sign(score) × inverse EWMA-vol, L1-scaled to ``max_gross``
+    (``position_size`` / ``decile`` ignored; ``vol_ewma_bars`` pins the vol
+    window, default 63). ``decision_every`` is the refresh cadence in trading
+    sessions (1 = daily; 21 ≈ monthly for B1/trend): off a refresh session the
+    book holds its filled weights and only NAV marks. Caps are down-only (a
+    low-gross book stays low-gross). ``no_trade_band`` is the *online*
+    half-width applied against held weights (the batch band stays off —
+    replaying hysteresis from flat every day is the defect the online step
+    fixes). ``max_participation`` of None disables the %ADV gate (at paper
+    scale it never binds; enable it before any AUM claim). ``whole_shares``
+    matches Alpaca OPG (next-open) order requirements.
     """
 
     position_size: float = 0.0
@@ -116,17 +122,23 @@ class DailyBookConfig:
     whole_shares: bool = True
     book: str = "directional"
     decile: float = 0.10
+    vol_ewma_bars: int = 63
     decision_every: int = 1
 
     def __post_init__(self) -> None:
-        if self.book not in ("directional", "decile_neutral"):
+        if self.book not in ("directional", "decile_neutral", "inverse_vol"):
             raise ValueError(
-                f"unknown book {self.book!r}: expected 'directional' or 'decile_neutral'"
+                f"unknown book {self.book!r}: expected 'directional', "
+                f"'decile_neutral', or 'inverse_vol'"
             )
         if self.book == "directional" and not self.position_size > 0:
             raise ValueError("the directional book requires position_size > 0")
         if self.book == "decile_neutral" and not 0.0 < self.decile <= 0.5:
             raise ValueError(f"the decile book requires decile in (0, 0.5], got {self.decile}")
+        if self.book == "inverse_vol" and self.vol_ewma_bars < 2:
+            raise ValueError(
+                f"the inverse_vol book requires vol_ewma_bars >= 2, got {self.vol_ewma_bars}"
+            )
         if self.decision_every < 1:
             raise ValueError(f"decision_every must be >= 1, got {self.decision_every}")
 
@@ -472,12 +484,13 @@ def run_daily_cycle(
         if effective_max_gross <= 0.0:
             # A zero effective cap — regime_scale clamped to 0.0, the full
             # de-gross — admits no gross, and cap_book refuses a 0 cap, so
-            # emit each book's own flat form directly: the decile book's
-            # explicit 0.0 for every name (its NaN-score pin included), the
-            # directional book's flat-where-decided (a NaN score keeps
-            # carrying no decision, exactly as the construct would emit).
-            # The band step below then exits every held, decidable name.
-            if config.book == "decile_neutral":
+            # emit each book's own flat form directly: the decile /
+            # inverse_vol books' explicit 0.0 for every name (NaN-score pin
+            # included), the directional book's flat-where-decided (a NaN
+            # score keeps carrying no decision, exactly as the construct
+            # would emit). The band step below then exits every held,
+            # decidable name.
+            if config.book in ("decile_neutral", "inverse_vol"):
                 raw = pd.Series(0.0, index=score_row.columns, dtype=float)
             else:
                 raw = score_row.iloc[0] * 0.0
@@ -495,6 +508,22 @@ def run_daily_cycle(
                 max_gross=effective_max_gross,
                 max_symbol_abs_weight=config.max_symbol_abs_weight,
             ).iloc[0]
+        elif config.book == "inverse_vol":
+            # Trend sleeve (docs/trend_design.md §2). Vol needs trailing
+            # close history; align the one-row score onto the full panel so
+            # only the decision bar carries a sign and earlier bars stay
+            # NaN (unused by the last-row construct read).
+            scores_aligned = pd.DataFrame(
+                np.nan, index=close.index, columns=score_row.columns, dtype=float
+            )
+            scores_aligned.iloc[-1] = score_row.iloc[0].reindex(score_row.columns)
+            raw = construct_inverse_vol_targets(
+                scores_aligned,
+                close.reindex(columns=score_row.columns),
+                vol_ewma_bars=config.vol_ewma_bars,
+                max_gross=effective_max_gross,
+                max_symbol_abs_weight=config.max_symbol_abs_weight,
+            ).iloc[-1]
         else:
             raw = construct_directional_targets(
                 score_row,

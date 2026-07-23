@@ -319,6 +319,39 @@ def test_decile_neutral_book_is_balanced_long_short(ctx) -> None:
     assert shorts == {"S0", "S1"}  # bottom decile
 
 
+def test_inverse_vol_book_honors_score_signs(ctx) -> None:
+    """Trend construct path in the daily driver (docs/trend_design.md §2)."""
+    import numpy as np
+
+    n, vol_bars = 80, 20
+    idx = pd.date_range("2026-01-02", periods=n, freq="B", tz="America/New_York")
+    rng = np.random.default_rng(0)
+    close = pd.DataFrame(
+        {
+            "LOW": 100.0 * np.exp(np.cumsum(0.001 + 0.005 * rng.normal(size=n))),
+            "HIGH": 100.0 * np.exp(np.cumsum(-0.001 + 0.03 * rng.normal(size=n))),
+        },
+        index=idx,
+    )
+    volume = pd.DataFrame(1e6, index=idx, columns=close.columns)
+    config = DailyBookConfig(
+        book="inverse_vol",
+        vol_ewma_bars=vol_bars,
+        max_gross=1.0,
+        max_symbol_abs_weight=1.0,
+        min_order_notional=1.0,
+    )
+    # LOW long, HIGH short — signs from scores; LOW should get larger |w|.
+    result = run_daily_cycle(
+        ctx, ConstSignal({"LOW": 0.2, "HIGH": -0.2}, required=5), close, volume, config
+    )
+    tw = result.target_weights
+    assert tw["LOW"] > 0.0
+    assert tw["HIGH"] < 0.0
+    assert tw.abs().sum() == pytest.approx(1.0, rel=1e-5)
+    assert tw["LOW"] > abs(tw["HIGH"])  # lower vol → larger absolute weight
+
+
 @pytest.mark.parametrize(
     "kwargs, match",
     [
@@ -326,6 +359,7 @@ def test_decile_neutral_book_is_balanced_long_short(ctx) -> None:
         (dict(book="decile_neutral", decile=0.7), "decile"),
         (dict(book="directional", position_size=0.0), "position_size"),
         (dict(book="directional", position_size=0.1, decision_every=0), "decision_every"),
+        (dict(book="inverse_vol", vol_ewma_bars=1), "vol_ewma_bars"),
     ],
 )
 def test_book_config_validation(kwargs, match) -> None:

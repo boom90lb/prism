@@ -20,6 +20,10 @@ Alpaca before ~09:28 ET the next morning):
     python -m prism.scripts.paper_loop --book momentum \\
         --universe-file data/universe/sp500_current.txt --run-dir runs/paper_loop
 
+    # trend sleeve (TSMOM ETF book, inverse-vol; uncounted paper instrument)
+    python -m prism.scripts.paper_loop --book trend \\
+        --run-dir runs/paper_loop_trend
+
 Credentials: ``APCA_API_KEY_ID`` / ``APCA_API_SECRET_KEY`` (paper endpoint
 by default; ``APCA_API_BASE_URL`` overrides). Bars come from Alpaca's own IEX
 feed by default (``--bar-source``); the Twelve Data spine stays a fallback.
@@ -57,6 +61,7 @@ from prism.live import (
 from prism.residual.factors import ResidualStatArbConfig
 from prism.signal.ensemble_node import EnsembleNodeConfig, EnsembleSignalNode
 from prism.signal.momentum_node import MomentumSignalNode
+from prism.signal.trend_node import TREND_V1_UNIVERSE, TrendSignalNode
 
 logger = logging.getLogger(__name__)
 
@@ -80,29 +85,38 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--book",
-        choices=("ensemble", "momentum"),
+        choices=("ensemble", "momentum", "trend"),
         default="ensemble",
         help="Which book to trade. 'ensemble' (default) is the XGBoost+ARIMA directional cost "
         "instrument; 'momentum' is the ratified B1 candidate (12-1 cross-sectional momentum, "
-        "decile long/short, neutral by balanced legs, monthly cadence — docs/momentum_design.md). "
-        "The live-monitor read is a B1 concordance read only under 'momentum'.",
+        "decile long/short, neutral by balanced legs, monthly cadence — docs/momentum_design.md); "
+        "'trend' is the trend sleeve (per-name 12−1 TSMOM on the pinned 10-ETF universe, "
+        "inverse-vol construct, monthly cadence — docs/trend_design.md; uncounted paper "
+        "instrument — not a counted trial). The live-monitor concordance read is B1-shaped "
+        "only under 'momentum'.",
     )
-    parser.add_argument("--mom-lookback", type=int, default=252, help="Momentum lookback bars (B1: 252).")
-    parser.add_argument("--mom-skip", type=int, default=21, help="Momentum skip bars (B1: 21).")
+    parser.add_argument("--mom-lookback", type=int, default=252, help="Momentum/trend lookback bars (B1/T0: 252).")
+    parser.add_argument("--mom-skip", type=int, default=21, help="Momentum/trend skip bars (B1/T0: 21).")
     parser.add_argument("--decile", type=float, default=0.10, help="Decile fraction per leg (B1: 0.10).")
+    parser.add_argument(
+        "--vol-ewma-bars",
+        type=int,
+        default=63,
+        help="Trend inverse-vol EWMA window in bars (docs/trend_design.md §2: 63).",
+    )
     parser.add_argument(
         "--decision-every",
         type=int,
         default=None,
         help="Refresh cadence in trading sessions; default 1 (daily) for ensemble, 21 "
-        "(≈monthly) for momentum — B1's cadence.",
+        "(≈monthly) for momentum/trend — B1/T0 cadence.",
     )
     parser.add_argument(
         "--max-missing",
         type=float,
         default=None,
         help="Fraction of the universe allowed to return no bars before failing loud; "
-        "default 0.0 (ensemble, strict) or 0.10 (momentum, tolerates a few stale/renamed "
+        "default 0.0 (ensemble, strict) or 0.10 (momentum/trend, tolerates a few stale "
         "tickers the venue no longer serves — they are dropped with a warning naming them).",
     )
     parser.add_argument(
@@ -233,6 +247,9 @@ def main(argv: list[str] | None = None) -> int:
         symbols = _load_universe_file(args.universe_file)
     elif args.symbols:
         symbols = [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
+    elif args.book == "trend":
+        # Pinned trend_v1 universe (docs/trend_design.md §1); no free choice.
+        symbols = list(TREND_V1_UNIVERSE)
     else:
         raise SystemExit("provide --symbols or --universe-file")
     if args.spinoff_mask and args.book != "momentum":
@@ -256,11 +273,15 @@ def main(argv: list[str] | None = None) -> int:
     # fallback. Both satisfy the duck-typed fetch_incremental read path.
     loader: Any = AlpacaBarSource.from_env() if args.bar_source == "alpaca" else DataLoader()
     start_date = args.start_date
-    if start_date is None and args.book == "momentum":
-        # ~3y is ample for the 252-bar lookback + eligibility window and keeps the
-        # universe-scale batch fetch to a handful of pages.
+    if start_date is None and args.book in ("momentum", "trend"):
+        # ~3y is ample for the 252-bar lookback (+ vol warmup for trend) and
+        # keeps the universe-scale batch fetch to a handful of pages.
         start_date = (pd.Timestamp.now() - pd.DateOffset(years=3)).strftime("%Y-%m-%d")
-    max_missing = args.max_missing if args.max_missing is not None else (0.10 if args.book == "momentum" else 0.0)
+    max_missing = (
+        args.max_missing
+        if args.max_missing is not None
+        else (0.10 if args.book in ("momentum", "trend") else 0.0)
+    )
     close, volume = fetch_universe_panels(loader, symbols, start_date=start_date, max_missing=max_missing)
     logger.info(
         "panels: %d bars x %d symbols through %s (source=%s)",
@@ -288,7 +309,7 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     decision_every = args.decision_every if args.decision_every is not None else (
-        21 if args.book == "momentum" else 1
+        21 if args.book in ("momentum", "trend") else 1
     )
     if args.book == "momentum":
         # Valuation-only extras are masked ineligible: NaN-scored names get an
@@ -322,6 +343,36 @@ def main(argv: list[str] | None = None) -> int:
             args.mom_lookback,
             args.mom_skip,
             args.decile,
+            decision_every,
+            len(symbols),
+        )
+    elif args.book == "trend":
+        # Uncounted paper instrument for trend_v1 mechanics (docs/trend_design.md).
+        # Default max_symbol_weight 0.10 is tight for a 10-name inv-vol book;
+        # operator may raise via flag. Order ids namespaced "trd:" so a shared
+        # venue account cannot collide with the momentum book's "mom:" prefix.
+        signal = TrendSignalNode(
+            lookback_bars=args.mom_lookback,
+            skip_bars=args.mom_skip,
+            horizon_bars=decision_every,
+        )
+        signal.fit(close, volume)
+        config = DailyBookConfig(
+            book="inverse_vol",
+            vol_ewma_bars=args.vol_ewma_bars,
+            decision_every=decision_every,
+            max_gross=args.max_gross,
+            max_symbol_abs_weight=args.max_symbol_weight,
+            no_trade_band=args.band,
+            max_participation=args.max_participation if args.max_participation is not None else 0.05,
+            min_order_notional=args.min_notional,
+            whole_shares=(args.tif == "opg"),
+        )
+        logger.info(
+            "book=trend: 12-1 TSMOM inv-vol, lookback=%d skip=%d vol_ewma=%d cadence=%d, %d symbols",
+            args.mom_lookback,
+            args.mom_skip,
+            args.vol_ewma_bars,
             decision_every,
             len(symbols),
         )
@@ -400,7 +451,9 @@ def main(argv: list[str] | None = None) -> int:
         # bare {bar}:{symbol} scheme silently substitute each other's same-bar
         # orders (duplicate-id == success). Persisted pending orders keep the
         # ids they were decided with, so flipping the prefix is resume-safe.
-        order_id_prefix="mom:" if args.book == "momentum" else "",
+        order_id_prefix=(
+            "mom:" if args.book == "momentum" else "trd:" if args.book == "trend" else ""
+        ),
     )
     result = run_daily_cycle(
         ctx, signal, close, volume, config, safety=safety, unrankable=unrankable, regime=regime_provider
