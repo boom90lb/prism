@@ -140,3 +140,18 @@ a legitimate reason to run nothing concurrently. One promotion adjudication
 at a time stands absolutely. A read run under A4 still appends to its
 family's ledger and counts against its family's budget exactly as if it had
 run in the slot.
+
+### A4 family opt-ins (registry)
+
+A4 itself is ratified. Per-family opt-in is a **banner amendment on that
+family's pre-registration**, not a re-opening of A4. Status of each opt-in:
+
+| Family | Banner | Opt-in status | Eligible concurrent reads | Promotion still serial |
+|---|---|---|---|---|
+| momentum | `docs/momentum_design.md` | **not requested** (holds / is the default slot) | — | M6 |
+| momentum_replication_v1 | `docs/replication_preregistration.md` | **GRANTED** at ratification via §6 (pre-A4 ad-hoc; stands) | C-cells per §6 | none (zero-dof) |
+| trend_v1 | `docs/trend_design.md` | **RATIFIED 2026-07-22** | T0–T4 | T5 |
+| learned_xsection_v1 | `docs/learned_xsection_design.md` | **pending** (queue item 3) | X0–X4 | X5 |
+
+Absent a RATIFIED opt-in row, that family's as-ratified no-concurrency /
+serial posture stands.

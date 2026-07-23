@@ -6,19 +6,33 @@ turn — the `docs/momentum_design.md` delegation precedent; drafted
 2026-07-17 under the owner's scope-expansion directive; in-repo convention:
 `docs/handoff.md` §7). The §1 universe is resolved and recorded below per
 the ADV rule, exactly as this document requires at ratification. **The
-design is frozen from this commit: the out-of-sample clock runs.** The
-replication family's concurrency exception (granted the same day at its own
-ratification) rests on budget-3/zero-dof grounds this program — a full
-counted search — does not share; it claims no exception and queues as
-designed. From this commit the amendment rule applies: seams may be pinned,
-no trial value may move.
-No counted trial runs until the counted-program
-slot opens — amended SPEC §10 pins one counted program at a time, and the
-momentum program holds the slot until its `docs/momentum_design.md` §3
-verdict. **The binding act is ratification, not the first run: ratification
-freezes this design, and every bar after it accrues as out-of-sample by
-construction while the program waits in the queue.** The queue is converted
-into quarantine, not spent as delay. This document spends nothing now.
+design is frozen from this commit: the out-of-sample clock runs.** From this
+commit the amendment rule applies: seams may be pinned, no trial value may
+move. **The binding act is family ratification, not the first run:
+ratification freezes this design, and every bar after it accrues as
+out-of-sample by construction.**
+
+> **A4 concurrency opt-in: RATIFIED 2026-07-22** (this commit is the
+> dedicated opt-in commit; owner-authorized on `main`; mechanism
+> `docs/amendments_2026-07.md` A4; queue item under
+> `docs/v040_program.md` §5). **No trial value in §1–§4 moves under this
+> seam.** Binding posture:
+>
+> 1. **Kill/fragility reads T0–T4** may run concurrently with the
+>    adjudication-slot holder under A4's three criteria: (a) this
+>    pre-registration is ratified and frozen; (b) T0–T4 cannot promote
+>    ("they can kill, they cannot promote", §3); (c) outputs are
+>    **firewalled** — barred from every cross-family adjudication
+>    (momentum M6, aim-portfolio G4b, any other promotion) until this
+>    family holds the serial promotion slot for T5.
+> 2. **Promotion read T5 always requires the serial adjudication slot** —
+>    A4 never grants concurrent promotion.
+> 3. Every A4-concurrent read still appends to this family's ledger and
+>    counts against the frozen budget of 6 exactly as if it ran in the slot.
+> 4. Concurrency remains *permitted, not mandated* (operator bandwidth).
+>
+> Uncounted mechanics and paper were never gated by the slot and remain
+> free to build. This document spends nothing until a counted run under §3.
 
 ## 0. Provenance and the honest prior
 
@@ -155,11 +169,15 @@ granted concurrency exception).
 T1–T4 are **fragility detection only** — they can kill, they cannot promote,
 and the pinned configuration remains T0's regardless of which probe scores
 best (adopting a different cell would be a new discovery event; the §1/§2
-logic of `docs/momentum_design.md` transplants whole). Because the queue
-holds all six behind the momentum verdict, T5's ≥ 1-year OOS requirement is
-expected to be satisfied by construction on the day the slot opens: a
-2026-07 ratification plus a mid-2027 verdict leaves the frozen design ~a
-year of untouched forward data before its first counted run.
+logic of `docs/momentum_design.md` transplants whole). T0 is the primary
+read of the pinned cell; it is not a promotion read (promotion is T5 only)
+and therefore sits with T1–T4 under the A4 "cannot promote" criterion
+(banner opt-in RATIFIED 2026-07-22). T5 still requires the serial
+adjudication slot. **OOS accrual is independent of concurrency:** a
+2026-07-18 family ratification means every subsequent bar is out-of-sample
+for the frozen design whether the first counted run is serial or
+A4-concurrent; T5's ≥ 1-year OOS segment is defined against family
+ratification, not against the first kill-class print.
 
 ## 4. Adjudication (pre-committed)
 
@@ -190,15 +208,17 @@ year of untouched forward data before its first counted run.
 
 ## 5. What is deliberately left to owner decisions
 
+- **A4 concurrency opt-in:** RATIFIED 2026-07-22 (banner box above). No
+  further owner act is required for kill-class T0–T4 concurrency under A4;
+  operator bandwidth may still choose to run nothing concurrent.
 - **Paper instrument:** whether the trend book joins the paper loop before
   its counted trials (a second I-9 instrument at trivial size, order-ids
   under their own book prefix — the namespacing seam already supports it,
   `docs/momentum_design.md` §5.4) is an owner decision requiring its own
   seam amendment; this document neither requests nor forecloses it.
-- **Sequencing:** if the owner judges the one-program queue to bind
-  differently than §3 assumes (e.g., the momentum verdict slips), the
-  free-window amendment rule applies: seams may be pinned, trial values may
-  not move.
+  (Mechanics and a default-off paper path may exist on the execution branch
+  without that seam; the seam gates *joining the certified I-9 instrument*,
+  not building.)
 
 ## 6. What this document does not do
 
