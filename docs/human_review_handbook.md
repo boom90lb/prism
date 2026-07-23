@@ -48,35 +48,17 @@
 | Learned-XS family + A4 X0–X4 | `docs/learned_xsection_design.md` | X5 still serial |
 | Sizing pins (θ, g, hysteresis, floors) | `docs/sizing_preregistration.md` | **Arming ≠ ratification** (§5) |
 | Program ranking + equity-first | `docs/v040_program.md` | Queue 1 done |
+| Factory pre-registration (SPEC §10) | `docs/factory_amendment.md` | **J4 RATIFIED 2026-07-23** |
+| Aim-portfolio G4a/G4b split | `docs/aim_portfolio_preregistration.md` (split box) | **J5 RATIFIED 2026-07-23**; G4b table still gated |
 | Intraday anything | SPEC §8 | Closed |
 
 ---
 
-## 2. Open law junctures (do these before “implement the account”)
+## 2. Open law junctures (before full product freeze / account GO)
 
-These three are queue items 4–6. They are *not* the micro-account itself.
-They are the last constitutional/product freezes on the equity path that
-the program still marks DRAFT.
-
-### J4 — Factory amendment (SPEC §10)
-
-| | |
-|---|---|
-| **Decision** | May industrial search exist as a first-class *procedure* with a frozen budget, without inventing a new family doc per knob? |
-| **Read** | `docs/factory_amendment.md` end-to-end (short). Focus §1 clause + §2 pin table + §4 “what it is not” |
-| **Verify** | (1) Clause freezes F-space, procedure, budget B, selection set, cost/construct stack, kill, promotion, prior-program count. (2) **No second promotion slot.** (3) Existing families are **not** retroactively factories. (4) Closed sets (cert-001) stay closed. (5) Observatory *capture* remains free; event *modeling* still needs its own pre-reg later |
-| **Commit shape** | **Only:** banner → RATIFIED on `docs/factory_amendment.md` **and** paste §1 clause into `SPEC.md` §10. Optional later commit: X-family “factory-shaped” *label* only |
-| **Do not** | Authorize a counted factory run in the same commit; soft-bar; re-open residual; mix feature code |
-
-### J5 — Aim-portfolio G4a / G4b split
-
-| | |
-|---|---|
-| **Decision** | Separate *uncounted multi-sleeve engineering* (G4a) from *counted construction search* (G4b)? |
-| **Read** | `docs/aim_portfolio_preregistration.md` banner through the split table (~§0 box). Full G-P design only if you will open G4b soon |
-| **Verify** | (1) While DRAFT, **hard gate unchanged** — zero counted aim-portfolio trials. (2) G4a opens on ≥2 sleeves at `mechanics_clean`; spends **no** deflation budget; joint crash / fixed-weight sensitivity only. (3) G4b opens only on ≥1 sleeve at its **ratified bar** (or your explicit narrower A4 clause). (4) Optimized multi-sleeve weights are **not** free parameters before G4b freezes them. (5) A4 firewalled kill outputs do not silently become G4b evidence |
-| **Commit shape** | Dedicated banner flip DRAFT → RATIFIED for the **split box only**. Do not “accidentally” ratify the whole construction trial table unless you intend G4b law now |
-| **Do not** | Treat joint-crash receipts as promotion; treat DRAFT as un-gating; open G4b because 2022 sensitivity looked nice |
+Queue items 4–5 are closed. Remaining constitutional/product freeze on the
+equity path before shipping profile-aware deploy: **J6**. Account junctures
+(§3) can prep in parallel where noted; they still need owner acts.
 
 ### J6 — Risk-profile schema freeze (W6)
 
@@ -88,11 +70,13 @@ the program still marks DRAFT.
 | **Commit shape** | Banner DRAFT → FROZEN (or RATIFIED). Prefer **no code** in the freeze commit unless a bit-identity test is the freeze receipt |
 | **Do not** | Ship profile-aware live deploy before freeze; invent “assertive = more leverage than certified”; arm de-gross via profile |
 
-**Suggested order:** J4 (constitution) → J5 (construction accounting) → J6 (product surface). You may freeze J6 alone if you want operator language before industrial search law; do not open G4b without J5.
+**Status:** J4 and J5 closed 2026-07-23. Freeze J6 when G6 soft gate
+(`research_paper` bit-identity) has a test receipt. Do not open G4b without
+a sleeve at bar.
 
 ---
 
-## 3. Account junctures (after J4–J6, or in parallel only where noted)
+## 3. Account junctures (after J6 freeze for profile-named GO; prep earlier)
 
 These are **owner acts**. Agents may draft checklists and code; they do not
 fund, point live URLs, or arm de-gross.

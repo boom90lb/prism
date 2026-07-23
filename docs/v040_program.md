@@ -376,15 +376,16 @@ tag at ratification; never deleted):
    `main`** (`docs/learned_xsection_design.md` banner). X0–X4 A4-concurrent
    firewalled; X5 serial.
 4. **Factory amendment to SPEC §10** (substantive — pipeline-level
-   pre-registration semantics under N5; draft may parallel items 2–3). Serves
-   equity search industrialization first. **Draft text landed** at
-   `docs/factory_amendment.md` (DRAFT; SPEC paste deferred to owner
-   ratification commit).
-5. **Aim-portfolio pre-registration review + split-gate seam** — triggered
-   at G4a for engineering; counted G4b only when ≥1 sleeve at bar. Equity
-   multi-sleeve. **Draft G4a/G4b seam text landed** on
-   `docs/aim_portfolio_preregistration.md` (box still DRAFT; counted hard
-   gate unchanged).
+   pre-registration semantics under N5). Serves equity search
+   industrialization first. **RATIFIED 2026-07-23** (`docs/factory_amendment.md`
+   + SPEC §10 factory clause). No counted industrial run authorized by the
+   amendment alone; each factory still freezes its own budget before first
+   config.
+5. **Aim-portfolio pre-registration review + split-gate seam** — G4a for
+   engineering at ≥2 `mechanics_clean` sleeves; counted G4b only when ≥1
+   sleeve at bar. Equity multi-sleeve. **G4a/G4b split RATIFIED 2026-07-23**
+   on `docs/aim_portfolio_preregistration.md` (split box only; construction
+   trial table and G4b still gated; counted hard gate unchanged).
 6. **Risk-profile schema (W6)** — may draft with item 1; freeze when the
    paper path honors `research_paper` bit-identity. Equity operator surface.
    **Draft schema landed** at `docs/risk_profile_schema.md` (DRAFT; freeze
@@ -413,19 +414,20 @@ release:
 1. **Owner now (equity):** program + doc coherence **done** (queue 1
    RATIFIED 2026-07-22); fund A3 equity micro-account; equity venue checks
    (fractional short / fractionability); decide capital-mode *path*
-   (selection before GO).
+   (selection before GO); freeze W6 when G6 bit-identity receipt is ready
+   (queue 6).
 2. **Agents parallel (uncounted, equity-first):** trend mechanics end-to-end
-   (`TrendSignalNode`, `inverse_vol` book, `--book trend` paper/replay);
-   joint-crash instrument + longer ETF panels for 2020/2022 stress windows;
-   observatory capture plumbing (`prism.io.observatory`) and capture-only
-   fetchers; factory / W6 drafts ready for owner freeze (queue 4, 6).
-3. **Owner ratifies remaining equity seams:** queue items 2–3 (T/X A4)
-   **done** 2026-07-22; then 4–6 as ready (factory SPEC paste, G4 seam, W6
-   freeze).
+   **done**; joint-crash instrument + deep-history ETF panels **done**;
+   observatory capture + fetchers **done**; G4a fixed-weight capital
+   sensitivity and multi-sleeve engineering; W6 profile code draft under
+   provisional names (no freeze).
+3. **Owner ratifies remaining equity seams:** queue items 2–5 **done**
+   (T/X A4 2026-07-22; factory + G4 split 2026-07-23); remaining: **queue 6
+   W6 freeze** after G6 soft gate.
 4. **After G0 (equity):** re-read economic narratives under micro-calibrated
    spreads before any GO story.
-5. **After G4a:** uncounted joint equity construction + B1+trend crash
-   receipts; G4b only with ≥1 sleeve at bar.
+5. **G4a open (split RATIFIED):** uncounted joint equity construction +
+   B1+trend crash receipts; G4b only with ≥1 sleeve at bar.
 6. **Crypto (optional, bandwidth-gated):** pre-reg + paper/shadow only when
    steps 1–2 are not starved. Validation convenience does not reorder product
    priority.
