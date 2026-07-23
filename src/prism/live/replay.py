@@ -32,7 +32,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Callable, Sequence
+from typing import Callable, Collection, Sequence
 
 import numpy as np
 import pandas as pd
@@ -228,8 +228,16 @@ def replay_daily_cycles(
     end_bar: str | None = None,
     initial_cash: float = 100_000.0,
     initial_positions: dict[str, float] | None = None,
+    unrankable: Callable[[str], Collection[str]] | None = None,
 ) -> tuple[list[DailyCycleResult], ReplayBroker]:
     """Run the real daily cycle over every bar in ``[start_bar, end_bar]``.
+
+    ``unrankable`` threads the live driver's unrankable-mask seam
+    (docs/bar_vendor_divergence.md §5) through every replayed cycle: a
+    bar → symbols callable, consulted on refresh sessions only. A replay has
+    no network, so callers inject a canned mapping (there is no offline event
+    source to wire a CLI flag to); the default ``None`` is off — parity with
+    every prior replay.
 
     Each cycle *t*: arm bar *t*'s opens on the broker (the prior decision's
     N2 next-open fills), fit a fresh ``signal_factory()`` on the trailing
@@ -296,5 +304,9 @@ def replay_daily_cycles(
         sub_volume = volume.iloc[: i + 1] if volume is not None else None
         broker.set_fill(open_.loc[t], dates[i])
         signal = signal_factory().fit(sub_close, sub_volume)
-        results.append(run_daily_cycle(ctx, signal, sub_close, sub_volume, config, decision_bar=dates[i]))
+        results.append(
+            run_daily_cycle(
+                ctx, signal, sub_close, sub_volume, config, decision_bar=dates[i], unrankable=unrankable
+            )
+        )
     return results, broker

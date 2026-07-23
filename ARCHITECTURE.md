@@ -1,261 +1,130 @@
 # Architecture
 
-How the pieces connect, end to end. The README covers *why* (methodology) and
-*how to run* (usage); this is the *what calls what* map. `docs/operations.md`
-covers operational gotchas.
+What calls what, end to end. The README covers status and method;
+`docs/operations.md` covers operational sharp edges; `SPEC.md` defines the
+contracts this wiring implements.
 
-> **v0.3.x architecture (current through v0.3.3) — see [`SPEC.md`](SPEC.md).** The organizing
-> abstraction is now a cross-sectional engine, not a per-symbol ensemble:
->
-> ```
-> DATA → SIGNAL → RESIDUALIZE → CONSTRUCT → EXECUTE → LEDGER
->              (ensemble = ONE node)   (breadth/cost-aware)   (t+1, sqrt-ADV,
->                                                              participation gate)
->        conditioned throughout by a REGIME layer (curve · vol · liquidity),
->        gated by the HARNESS (purged WFO · DSR/PBO · N_eff · capacity · claim tiers).
-> ```
->
-> **Production / research boundary (`SPEC.md §9`):** KEEP `validation/`,
-> `execution/`, `portfolio/construct.py`, `conformal/`, `io/universe_sp500.py`,
-> `logging_utils.py`. ADAPT `io/loader.py` (the folded data loader), the
-> forecast members. QUARANTINED
-> (done, post-v0.3.0): the RL trio, the batch WFO layer, the net-negative
-> stat-arb CLIs, baselines, and `mlflow` live in top-level `research/`
-> (outside the wheel; `research` imports `prism`, never the reverse), and the
-> stat-arb signal core promoted to `src/prism/residual/`. New v0.3.0 modules:
-> `validation/{metrics breadth diagnostics, capacity}`, `execution/participation`,
-> `portfolio.step_no_trade_band`, `regime/`. R1 added `signal/` — the typed
-> Signal contract (`SPEC.md §7.1`) with the JAX-free forecast ensemble node
-> (`EnsembleSignalNode`: XGBoost + per-bar-causal ARIMA, standardized
-> `E[r_h]/(σ√h)` scores, conformal score band), the residual-reversion node,
-> and the 12−1 cross-sectional momentum node (`momentum_node.py`:
-> strictly-trailing `close[t−skip]/close[t−lookback] − 1`,
-> residual-eligibility screened, feeding the decile long/short construct —
-> the production book's alpha node since v0.3.2) — and then completed the
-> vocabulary convergence: the whole legacy v0.2
-> stack (`trading.py`, `models/`, `features.py`, `sentiment_analysis.py`, the
-> ensemble-side config) moved from `src/prism/` into `research/`, where its
-> only consumers (the batch WFO CLIs) live. The production import closure is
-> prophet/matplotlib-free (`tests/test_import_hygiene.py`). v0.3.1–v0.3.3
-> then added the 12−1 momentum signal node, the `src/prism/live/` nightly
-> loop with durable order state and replay, and the R2 cost-measurement
-> instruments (`execution/spread.py`, `execution/edge.py`) — all described
-> below. The map below describes this wiring.
-
-## Data flow
-
-Two batch WFO paths and one nightly live path exercise the engine end to
-end. The batch paths are driven from `research/scripts/`; the live path
-(§8 below) runs the production spine every trading night. The directional ensemble path below runs the *demoted*
-signal node (`SPEC.md §7.1`); the residual/stat-arb path further down is the
-one that exercises the production spine.
+The organizing abstraction is a cross-sectional engine, not a per-symbol
+ensemble:
 
 ```
-Twelvedata API ──► DataLoader ──► FeatureEngineer ──► PurgedWalkForward ──► EnsembleModel ──► TradingStrategy ──► target-weight engine ──► claim packet
-   (1day bars,      (range-keyed     (technical         (AFML §7.4          (forecast +        (close-time        (next-open fills,
-    adjust=splits)   parquet cache)   indicators,        purge+embargo)      policy members,    target weights)    costs, borrow)
-                                      train-only clip)                       vol-sized blend)
+DATA → SIGNAL → RESIDUALIZE → CONSTRUCT → EXECUTE → LEDGER
+         (ensemble = one node)  (breadth/cost-aware)  (next-open fills,
+                                                       participation gate)
+     conditioned throughout by a REGIME layer (curve · vol · liquidity),
+     gated by the HARNESS (purged WFO · deflated metrics · claim tiers).
 ```
 
-The default directional WFO backtest uses `TradingStrategy` only to generate
-continuous close-time target weights from per-fold ensemble models. Portfolio
-accounting then happens once across all symbols in `src/prism/execution/target_weights.py`.
-The legacy `--legacy_orders` path still uses `TradingStrategy.run_segment` and
-`ExecutionModel` directly for per-symbol LONG/SHORT/FLAT order accounting.
+The production/research boundary (`SPEC.md` §9): everything importable from
+`prism` is the production spine and is free of JAX, torch, prophet, mlflow,
+and matplotlib (enforced by `tests/test_import_hygiene.py`). Everything
+heavier — the legacy forecaster stack, RL policy members, batch walk-forward
+CLIs, baselines — lives under `research/`, which imports `prism` and never
+the reverse.
 
-The statistical-arbitrage / residual path is intentionally separate — and it
-is the production spine's end-to-end exercise (`src/prism/residual/` plus the
-shared construction/execution modules, `SPEC.md §2`):
+## Three paths through the engine
 
-```
-close/open matrix ──► rolling formation/test folds ──► train-only pair scan ──► causal spread targets ──► capped pair portfolio ──► next-open accounting
-                    (fixed candidates per fold)       (coint + ADF + FDR)      (z-score state machine)    (gross/symbol limits)     (costs + borrow)
-```
-
-### 1. Ingestion — `src/prism/io/` (`loader.py`, `store.py`, `rate_limit.py`)
-- `DataLoader.fetch_historical_data` pulls split-adjusted daily bars, caches to
-  `data/{symbol}_{interval}_{start}_{end}.parquet`, returns a tz-aware
-  (America/New_York) OHLCV frame. Interval is normalized to the vendor's
-  `1day`/`1week`/`1month` only at the request boundary.
-- `fetch_dividends` pulls ex-date→amount cash dividends (credited in the
-  backtest, not back-adjusted into prices).
-
-### 2. Features (legacy stack) — `research/features.py`
-- `create_features` (causal technical indicators) → `create_lagged_features` →
-  `create_target_variable` (forward return `target_{h}`). Computed once on the
-  full series (rolling/ewm/pct_change are causal).
-- `fit_scalers` / `transform_features` apply **train-only** clip bounds —
-  refit per WFO fold so test-fold outliers never leak into the scaler.
-
-### 3. Splitting — `src/prism/validation/walk_forward.py`
-- `PurgedWalkForward` yields expanding (or rolling) train/test index pairs with
-  a **purge** (drop train rows whose label window overlaps test) and an
-  **embargo** (skip a buffer after each test). One splitter drives both the
-  outer training loop and the meta-learner's OOF.
-
-### 4. Models — `research/models/` (legacy; production signals live in `src/prism/signal/`)
-- `registry.py` partitions members into **forecast** (`arima`, `prophet`,
-  `xgboost` — emit expected h-bar returns) and **policy** (`lstm_ppo`,
-  `xlstm_ppo`, `xlstm_grpo` — emit positions). `base.py` is the shared
-  interface;
-  `required_history` tells the backtest how many trailing bars each member needs.
-- `mapping.py` bridges the two: `forecast_to_position` vol-sizes a price
-  forecast into a position ∈ [−1, 1]; `ideal_position` is the perfect-foresight
-  target the meta-learner regresses against.
-- `ensemble.py` is the orchestrator:
-  - `fit` fits each member, then `_fit_meta_learner_weights` solves a
-    constrained NNLS (SLSQP, w≥0, Σw=1) over **OOF** positions vs. the ideal
-    target, and fits the conformal calibrator on the same residuals.
-  - `predict` routes each member through the forecast→position or clip path and
-    returns the weighted blend in position space.
-  - `save`/`load` persist ensemble metadata **and delegate to each member's own
-    save/load** (forecast members write per-member subdirs; RL members store a
-    path). A loaded ensemble must come back with every member `is_fitted`.
-  - `predict_band` / `update_aci` provide EnbPI+ACI conformal bands.
-
-### 5. Execution + accounting — `src/prism/execution/`, `research/trading.py`
-- `target_weights.py` is the default portfolio accounting path. It accepts
-  close-time target weights, fills them at the next open, suppresses small
-  rebalances by weight band, drops fold-last pending targets, carries existing
-  filled weights across folds, row-scales gross exposure, applies spread,
-  commission, impact, borrow, and dividend return contribution, and emits
-  `target_weights`, `fill_weights`, `costs`, returns, equity, and metrics.
-- `TradingStrategy.generate_target_weight_segment` is the default WFO signal
-  surface: it replays each fold's saved feature state, feeds forecast members
-  fold-scaled features and policy members raw OHLCV windows, and converts the
-  ensemble position to `position_size * position`.
-- `ExecutionModel` remains the legacy order engine. It queues `Order`s and fills
-  them at **t+1** (MOO at open, MOC at close — never same-bar), applying
-  half-spread + linear impact slippage, bps commission, and daily borrow on
-  shorts (`costs.py`).
-- `spread.py` calibrates per-liquidity-bucket effective spreads from the
-  paper loop's fills ledger, refusing under-sampled buckets (I-9);
-  `edge.py` estimates effective spreads from OHLC bars alone (EDGE —
-  pre-registered as a bracketing diagnostic against
-  `SPREAD_BUCKET_SCHEDULE_V1`, never a calibration authority);
-  `participation.py` hard-gates order size by ADV participation.
-- `TradingStrategy.run_segment` is the legacy per-bar loop: predict →
-  `calculate_signal` (position sign → LONG/SHORT/FLAT; magnitude +
-  inter-model agreement + conformal band width → confidence) →
-  `submit_signal_order` → next-bar fill → mark-to-market → borrow → record.
-  `backtest` = `_reset_state → run_segment → drop_pending → _finalize_results`.
-
-### 6. Evaluation — `src/prism/validation/metrics.py`, `research/baselines/`
-- `metrics.py`: PSR, PBO (CSCV), DSR (False Strategy Theorem), Calmar.
-- `validation/trials.py`: canonical research claim packets with config hash,
-  code commit, data convention, artifact manifest, gross/net/cost metrics,
-  DSR/trial count when available, and claim tier.
-- `baselines/`: BuyAndHold, MACrossover, TSMOM — used by the legacy order-mode
-  comparison path so PBO is computed across a fold-aligned strategy set.
-- `conformal/`: EnbPI block-cross-conformal + ACI online α-adaptation.
-
-### 7. Statistical arbitrage — `src/prism/residual/` (signal core), `research/arbitrage/` (WFO), `research/scripts/stat_arb*.py`
-
-The signal core (`factors.py`, `residual.py`) is production-side under
-`src/prism/residual/`; the pair scan and the walk-forward/ledger machinery
-(`pairs.py`, `walk_forward.py`, `residual_walk_forward.py`) are quarantined
-under `research/arbitrage/`.
-- `pairs.py`: train-only Engle-Granger pair scan, residual ADF check,
-  Benjamini-Hochberg FDR control, half-life and beta-drift filters, and causal
-  spread-z target generation. The report variant also records raw candidates,
-  the FDR cutoff, and rejection counts.
-- `walk_forward.py`: rolls formation/test windows, freezes selected pairs per
-  fold, forces fold-end targets flat, records pair turnover and fold metrics,
-  and reports `pair_set_dsr` from selected pair-book trial Sharpes.
-- `factors.py` (residual mode): causal eligibility (history/price/dollar-volume
-  floors), weekly standardized-return PCA eigenportfolios (`Q = v/sigma`,
-  sign-fixed), and per-day batched OLS of stock returns on factor returns.
-- `residual.py`: AR(1)/OU fits on cumulative residuals, drift-adjusted A-L
-  s-scores (invalid/slow fits are counted, never traded), the threshold state
-  machine, and per-symbol netting of stock + eigenportfolio hedge legs into
-  close-time targets.
-- `residual_walk_forward.py`: same fold geometry and flattening as pairs, but
-  estimators re-roll causally through test bars (nothing is frozen per fold);
-  reports per-fold names traded, gross, cost share, and invalid-OU rates.
-  The residual overfit control is the cross-run trial ledger
-  (`results/stat_arb_residual_trials.jsonl`, written by the CLI), which feeds
-  `residual_set_dsr`.
-- This is the market-neutral research path. It does not use the single-symbol
-  ensemble, because independent ticker forecasts are not an arbitrage book.
-
-### 8. Live loop — `src/prism/live/` (the nightly production path)
+**The nightly live path** (`src/prism/live/`) runs the production spine every
+trading session — this is the path that matters:
 
 ```
-Alpaca IEX bars ──► universe panels ──► MomentumSignalNode ──► construct ──► AlpacaBroker (OPG) ──► settle + ledgers
- (alpaca_data.py,   (file ∪ held book,   (12−1 scores over      (caps → online   (whole shares,        (fills.jsonl beside
-  free feed)         extras exit-only)    eligibility screen)    band → gate)     write-ahead submit)   decision-close refs)
+Alpaca IEX bars ─► universe panels ─► signal node ─► construct ─► safety ─► broker ─► settle + ledgers
 ```
 
-- `daily.py` runs one decide-at-close / fill-at-next-open cycle (SPEC §7.7):
-  settle the prior decision first, then decide once — wiring the spine end
-  to end for the ratified B1 momentum book at trivial size.
-- `loop.py` implements the write-ahead protocol: reconcile to broker truth
-  → decide once → persist pending *before* first submit; a restart resumes
-  the persisted decision and never re-decides. `state.py` is the atomic
-  durable store — corrupt or wrong-schema state refuses to start flat (N7).
-- `broker.py`/`alpaca.py`: idempotent submission keyed by per-book client
-  order ids, OPG next-open auction default, whole shares enforced loudly.
-  `alpaca_data.py` is the IEX-feed bar source (a measured ~5% volume sample
-  — see `MARKETS.md`).
-- `monitor.py`: anytime-valid rolling PSR/DSR over the equity ledger plus
-  the per-cycle book-concordance stream (active share, weight correlation).
-- `replay.py` + `prism.scripts.replay_loop` drive the same cycle from local
-  bars with modeled fills — diagnostic-only, never calibration or
-  concordance evidence.
-- The fills ledger feeds `execution/spread.py` (per-bucket spread
-  calibration, I-9); unfilled auction orders are completed next morning by
-  `prism.scripts.paper_sweep`.
+**The residual/stat-arb batch path** exercises the same spine offline:
+`src/prism/residual/` (factor model, causal s-scores) plus the shared
+construction and execution modules, driven by
+`research/scripts/stat_arb_residual_wfo.py` — the momentum evidence path.
 
-## Scripts (`research/scripts/`) — the batch entry points (quarantined)
+**The legacy directional path** (`research/scripts/training.py` →
+`backtest.py`) runs the demoted per-symbol forecaster ensemble through the
+same fold structure and accounting. It survives as a diagnostic surface, not
+the production book.
 
-Run as modules from the repo root, e.g. `python -m research.scripts.training`;
-no console entry points ship. The production-side scripts live under
-`src/prism/scripts/`: the periodic universe builder
-(`build_sp500_universe.py`, the one console entry point), the nightly
-Alpaca paper-loop cycle (`paper_loop.py`) with its morning completion
-sweep (`paper_sweep.py`) and anytime monitor read (`paper_monitor.py`),
-the local-bars replay of the same cycle (`replay_loop.py`), and the EDGE
-spread-bracketing diagnostic (`edge_diagnostic.py`).
+## Modules
 
-| Script | Role | Key output |
-|---|---|---|
-| `training.py` | per-symbol purged-WFO fit | `runs/{run}/{symbol}/fold_*/ensemble_model/` + `split_idx.npz` |
-| `backtest.py` | default shared-capital target-weight WFO; optional legacy order-mode baselines + PBO/DSR | root `claim_packet.json`, target/fill/cost/equity CSVs, `summary.json` |
-| `sweep.py` | ensemble-layer grid → honest DSR (forecast-only) | `trial_sharpes.json`, `selected_config.json` |
-| `rl_seed_eval.py` | multi-seed RL overfitting study | `rl_seed_eval.json` |
-| `stat_arb_wfo.py` | rolling formation/test stat-arb WFO with fold-selection ledgers | `folds.json`, `pairs.json`, `summary.json`, weights/costs CSVs |
-| `stat_arb_residual_wfo.py` | residual (Avellaneda-Lee) and/or 12−1 momentum-sleeve WFO (`--sleeve_mode momentum_only \| two_speed` — the B1 evidence path) over a universe file + cross-run trial ledger | `folds.json`, `summary.json`, `config.json`, weights/costs CSVs, `stat_arb_residual_trials.jsonl` |
-| `data_integrity_sweep.py` | vendor symbol-collision + cache-hygiene sweep over the bar caches (M6 pre-flight) | suspect table + per-cache evidence JSON |
-| `dividend_wedge.py` | dividend wedge between a run's price-return ledger and a total-return book | `results/dividend_wedge_*.json` |
-| `breadth_diagnostic.py` | FLAM/N6 breadth + viability accounting over a finished run dir | breadth diagnostic JSON |
-| `carry_flatten_diagnostic.py` | carry-mode fold-flatten counterfactual replay of a finished WFO run (validation-gated) | counterfactual JSON + per-boundary table |
-| `iex_eligibility_check.py` | IEX-vs-consolidated volume eligibility measurement (M6 pre-flight) | `results/iex_eligibility_*.json` |
+### Ingestion — `src/prism/io/`
+`DataLoader` pulls split-adjusted daily bars from Twelve Data into a
+range-keyed parquet cache and returns tz-aware (America/New_York) frames;
+dividends are fetched separately and credited as cash in the backtest, never
+back-adjusted into prices. Credential-bearing URLs pass through a redactor
+before any log line (`docs/security.md` §2.4). `observatory.py` is the
+append-only capture store for point-in-time membership and expectation data:
+compressed JSONL with capture timestamps and verbatim payloads. Capture runs
+unconditionally; modeling over captured data is separately gated
+(`docs/v040_program.md` W5).
 
-(`prediction.py` was dropped per SPEC §9 — train/serve feature skew and a dead
-pickle path.)
+### Validation — `src/prism/validation/`
+`PurgedWalkForward` yields train/test index pairs with purge and embargo; one
+splitter drives both training and the meta-learner's out-of-fold predictions.
+`metrics.py` implements the deflation-adjusted metrics and effective-breadth
+diagnostics; `capacity.py` the capacity curve and cost-toll lens; `trials.py`
+the canonical claim packet; `joint_crash.py` the uncounted B1-plus-trend
+stress diagnostic.
 
-Config is split at the §9 boundary: `src/prism/config.py` holds production
-config (directories, the Twelve Data key, `ExecutionConfig`/`TradingConfig`),
-and `research/config.py` holds the ensemble side (`ModelConfig`/
-`EnsembleConfig`/`TrainingConfig`, `DEFAULT_MODEL_WEIGHTS`, the MLflow URI,
-the Polygon key). `research/tracking/mlflow_utils.py` wraps MLflow logging.
-`logging_utils.py` installs console+rotating-file logging.
+### Signals — `src/prism/signal/`
+The typed Signal contract (`SPEC.md` §7.1) and its nodes: `momentum_node.py`
+(the production book's alpha since v0.3.2 — strictly trailing 12−1 momentum
+feeding a decile long/short construct), `trend_node.py` (default-off ETF
+trend), `ensemble_node.py` (the JAX-free XGBoost + ARIMA blend, one node
+among several), and the residual-reversion node (archived sleeve; its
+machinery remains as the live book's eligibility screen).
 
-## Cross-cutting invariants worth knowing
+### Construction and execution — `src/prism/portfolio/`, `src/prism/execution/`
+`portfolio/` builds books: caps, the single-step online no-trade band, and
+the inverse-vol construct for the trend sleeve. `execution/target_weights.py`
+is the accounting path: close-time targets fill at the next open, small
+rebalances are suppressed by band, fold-last pending targets are dropped,
+and spread, commission, impact, borrow, and dividend contributions are
+charged on a fold-aligned equity curve. `spread.py` calibrates per-liquidity-
+bucket effective spreads from the paper loop's fills ledger and refuses
+under-sampled buckets; `edge.py` estimates spreads from bars alone
+(a bracketing diagnostic, never a calibration authority); `participation.py`
+hard-caps order size by ADV participation.
 
-- **Bars are tz-aware (ET)** from ingestion onward; `clean_data_for_training`
-  asserts it. Prophet strips the zone internally because it requires tz-naive `ds`.
-- **Label columns (`target_`/`direction_`) are dropped before fit AND before
-  predict.** The training loop and `run_segment` must agree on the column set or
-  XGBoost raises a feature-name mismatch.
-- **The ensemble output is a position, not a price** — forecast members are
-  mapped before blending (the B8 fix); never average ŷ with positions.
-- **Members can be silently dropped from the blend** if `predict` returns a
-  length ≠ `len(X)` — historically the forecast `lstm`, since removed
-  entirely. See `docs/operations.md`.
-- **Directional WFO is now portfolio-level by default.** A strategy claiming a
-  directional ensemble result should point to the root target/fill/cost/equity
-  artifacts and `claim_packet.json`, not only per-symbol logs.
-- **Arbitrage logic lives in `src/prism/residual/` + `research/arbitrage/`**, not
-  in the directional ensemble. A strategy claiming arbitrage should produce cross-asset hedged
-  target weights and portfolio-level PnL, not independent symbol signals.
+### Regime — `src/prism/regime/`
+Curve, volatility, inflation, and net-liquidity state from free sources
+(FRED, Treasury, CBOE), consumed as conditioning and de-gross triggers —
+never a traded book.
+
+### Live loop — `src/prism/live/`
+`daily.py` runs one decide-at-close / fill-at-next-open cycle: settle the
+prior decision first, then decide once. `loop.py` implements the write-ahead
+protocol — reconcile to broker truth, decide, persist the pending decision
+*before* the first submission; a restart resumes the persisted decision and
+never re-decides. `state.py` is the atomic durable store; corrupt state
+refuses to start rather than starting flat. `alpaca.py` submits idempotently
+(per-book client order ids, next-open auction orders, whole shares enforced
+loudly). `regime_step.py` writes regime telemetry each cycle; its de-gross
+action hook stays unarmed until a dedicated arming commit.
+`risk_profile.py` is the frozen operator surface
+(`docs/risk_profile_schema.md`); profiles only tighten ratified pins.
+`safety.py` (halt / size / exposure rails), `monitor.py` (rolling
+deflation-adjusted metrics over the equity ledger), and `replay.py`
+(diagnostic replay from local bars — never calibration evidence) complete
+the loop. Unfilled auction orders are completed next morning by
+`prism.scripts.paper_sweep`, and the fills ledger feeds spread calibration.
+
+## Entry points
+
+Production console scripts (`src/prism/scripts/`): `prism-doctor`
+(preflight), `prism-build-universe`, plus the module-run paper loop, sweep,
+monitor, replay, and spread diagnostic.
+
+Research CLIs run as `python -m research.scripts.<name>` from the repo root —
+training, backtest, sweep, the stat-arb walk-forwards, and a set of one-shot
+diagnostics (data integrity, dividend wedge, breadth, cost frontier, tax
+wedge, and others; each writes its receipt under `results/`). Flags and
+outputs are documented by each script's `--help`.
+
+## Invariants worth knowing before editing
+
+- Bars are tz-aware (ET) from ingestion onward.
+- The ensemble output is a position, not a price; forecast members are mapped
+  to positions before blending.
+- Directional results are portfolio-level by default: cite the root claim
+  packet and cost/equity artifacts, not per-symbol logs.
+- Arbitrage-style claims require cross-asset hedged target weights and
+  portfolio-level PnL — independent per-symbol signals do not qualify.
+- The full invariant set (causality, next-open fills, fail-loud, import
+  hygiene, and the rest) is `SPEC.md` §1 and §6; cite invariants by tag.

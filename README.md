@@ -1,475 +1,165 @@
 # Prism
 
-> **v0.3.0 re-founds this project.** The authoritative documents are now
-> [`SPEC.md`](SPEC.md) (the constitution — the cross-sectional
-> score → residualize → construct → execute engine, the invariants, the claim
-> tiers, and the kill-criterion) and [`MARKETS.md`](MARKETS.md) (the zero-budget
-> market-structure analysis: which markets are core execution vs regime signal).
-> The "ensemble of models" is no longer the organizing abstraction — it is
-> demoted to *one* plug-in signal node. Package, distribution, and repository
-> are all named `prism` (formerly `trading-ensemble`; old GitHub URLs
-> redirect). **Read `SPEC.md` first.** The sections below describe the honest
-> evaluation harness, which v0.3.0 keeps almost intact and builds on.
->
-> Status of the alpha, stated plainly: **the `SPEC.md §10` kill-criterion fired
-> on 2026-07-06** — across a pre-registered, fully counted 17-trial budget, no
-> residual-reversion configuration achieved a deflated net Sharpe above zero
-> under calibrated per-bucket costs, and the sleeve is archived. The negative
-> result is the harness's first certification:
-> [`docs/certifications/001-residual-reversion-daily-negative.md`](docs/certifications/001-residual-reversion-daily-negative.md).
-> The current candidate (monthly cross-sectional momentum, the demotion
-> budget's side discovery) is in flight under its own ratified pre-registered
-> budget ([`docs/momentum_design.md`](docs/momentum_design.md), ratified
-> 2026-07-06): entered at `mechanics_clean`, paper-trading nightly since
-> 2026-07-13, promotion readable only at the M6 extension window (≥ 2027-06
-> data). Two successor pre-registrations are drafted, not ratified
-> ([`docs/replication_preregistration.md`](docs/replication_preregistration.md),
-> [`docs/trend_design.md`](docs/trend_design.md)). No
-> configuration has ever cleared the deflated evidence bar; nothing is
-> deployable today.
+Prism is a cross-sectional systematic trading engine for US equities at a
+daily-to-weekly horizon: **score → residualize → construct → execute**,
+conditioned by a regime layer, and gated by an evaluation harness built to
+produce honest out-of-sample numbers. The harness — purged walk-forward
+validation, next-open fills with realistic costs, deflation-adjusted metrics,
+append-only trial ledgers, and a tiered claim vocabulary — is the point of the
+project. Capital is risked only on results that clear an explicit evidence
+bar, and no result has cleared it yet.
 
-Prism is a cross-sectional systematic trading engine — **score → residualize
-→ construct → execute**, conditioned by a regime layer — gated by an
-evaluation harness built to produce **honest out-of-sample numbers**: purged
-walk-forward CV, next-open fills with realistic costs, shared-capital
-target-weight accounting, breadth / capacity / cost-toll diagnostics, and
-overfitting-adjusted metrics (DSR, PBO). The production spine is the
-construction, execution, and regime machinery shipped in v0.3.0
-(`validation/{metrics,capacity}`, `execution/participation`,
-`portfolio.step_no_trade_band`, `regime/`), driven since the v0.3.2 cutover
-by the ratified B1 momentum book on the nightly paper loop
-(`src/prism/signal/momentum_node.py` → `src/prism/live/daily.py`); the
-survivorship-counted S&P residual path (`src/prism/residual/`) remains on
-the production import path as the archived first sleeve's machinery and
-the live book's eligibility screen. The classical forecaster ensemble
-survives as *one* plug-in signal node (`prism.signal.EnsembleSignalNode`, an
-XGBoost + ARIMA blend under the same harness); its heavier legacy members —
-Prophet and the three reinforcement-learning policies (LSTM-PPO, xLSTM-PPO,
-xLSTM-GRPO) — are quarantined research members under `research/`, off the
-production import path (N8).
+The governing documents, in order of authority:
 
-It also includes a separate statistical-arbitrage path for market-neutral pair
-research: train-only cointegration discovery, residual stationarity and
-multiple-testing filters, causal spread targets, capped portfolio weights, and
-next-open costed accounting. See [`docs/stat_arb.md`](docs/stat_arb.md).
+| Document | Role |
+|---|---|
+| [`SPEC.md`](SPEC.md) | The constitution: invariants, component contracts, claim tiers, kill-criterion. Read first. |
+| [`docs/v040_program.md`](docs/v040_program.md) | The v0.4.0 program: objective ranking, workstreams, deployment gates (RATIFIED 2026-07-22). |
+| [`docs/handoff.md`](docs/handoff.md) | Standing doctrine: why the rules are what they are. |
+| [`MARKETS.md`](MARKETS.md) | Market-structure analysis: which markets execute, which only supply signals. |
+| [`AGENTS.md`](AGENTS.md) | Agent conduct and tooling. |
 
-The mandate (`SPEC.md §1`) is a production-grade, bounded-data-budget
-systematic trading bot (free data tiers by default; named, ratified purchases
-only — amended 2026-07-14, [`docs/amendments_2026-07.md`](docs/amendments_2026-07.md)). Deployment is the goal and it is gated hard: capital is risked
-only on edges that clear the claim-tier evidence bar (`SPEC.md §10`). The
-harness is the bar — and it has produced its first verdict: the residual
-sleeve was certified uneconomic at retail cost and archived after its
-pre-registered trial budget was exhausted
-([certification 001](docs/certifications/001-residual-reversion-daily-negative.md)).
-The current candidate under the bar is the momentum program
-([`docs/momentum_design.md`](docs/momentum_design.md)), held to exactly the
-tier its evidence supports.
+## Status (v0.3.4, 2026-07)
 
-See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the end-to-end data flow (what
-calls what), [`docs/operations.md`](docs/operations.md) for operational
-gotchas (vendor tier, interval mapping, member contribution, per-bar cost),
-[`docs/handoff.md`](docs/handoff.md) for the long-horizon doctrine
-behind the roadmap, and [`formal/`](formal/README.md) for the Lean 4
-machine-checked kernel invariants.
+v0.3.4 is a **direction freeze, not a deployable product**. The law, the
+program ranking, and most of the equity product surface are ratified; what
+remains before an honest v0.4.0 is owner capital, operational reality, and
+clocks — not more design documents.
 
-> **Note on the RL members (research-side only).** The three RL policies are
-> quarantined under `research/` and are not production signals (`SPEC.md §8`).
-> They were stub implementations in the original codebase (hardcoded losses,
-> random-action `predict`); they now have real gradient updates and
-> end-to-end fit/predict. If you extend them,
-> check that the policy actually takes gradient steps and that a windowed
-> member produces non-flat positions before trusting any RL-attributed Sharpe
-> — under a small training budget an undertrained policy legitimately produces
-> ~zero positions and a NaN Sharpe. See `research/scripts/rl_seed_eval.py` for the
-> multi-seed overfitting study.
+**Closed:**
 
----
+- The first alpha candidate — daily residual reversion — exhausted its
+  pre-registered 17-trial budget without a positive deflated net Sharpe. The
+  kill-criterion fired 2026-07-06 and the sleeve is archived; the negative
+  verdict is the harness's first certification
+  ([cert 001](docs/certifications/001-residual-reversion-daily-negative.md)).
+- The live candidate is monthly cross-sectional momentum
+  ([design](docs/momentum_design.md), ratified 2026-07-06), paper-trading
+  nightly since 2026-07-13. Its promotion verdict is unreadable before the
+  pre-registered window (≥ 2027-06 data).
+- Successor pre-registrations ratified: replication, trend, learned
+  cross-section, and sizing with crash-conditional de-grossing (2026-07-18
+  through 2026-07-20). The v0.4.0 program, its amendment set, and the operator
+  risk-profile schema are ratified or frozen. Trend mechanics, regime
+  telemetry, and the joint-crash diagnostic are built but uncounted.
+- Test suite at tag: 976 passed, 1 skipped.
 
-## Methodology
+**Open — what actually blocks v0.4.0:**
 
-Every choice below exists because the naive alternative makes a backtest look
-better than the strategy is. Read these before interpreting any number.
+- **Real fills.** The cost-calibration micro-account (amendment A3) is
+  unfunded; per-bucket spread tables are still calibrated from paper fills,
+  which the venue simulates. First gate: one full rebalance cycle of real
+  fills (G0).
+- **Capital mode.** Whole-share auction orders at ≥ $100k, or fractional
+  day orders if both venue checks pass — neither selected yet.
+- **The regime clock.** Deployment requires ≥ 21 consecutive clean paper
+  sessions with regime telemetry recorded; the streak has not started (the
+  active run is a handful of sessions with one fail-loud event on 2026-07-15).
+- **Operations.** Boot-resilient nightly scheduling, a filesystem health
+  check, and a one-page deploy runbook.
 
-### Purged, embargoed walk-forward CV (López de Prado, AFML §7.4)
-`src/prism/validation/walk_forward.py:PurgedWalkForward` drives both training and
-backtest. Two distinct leakage controls:
+**Nothing is authorized for real-money deployment today.** No sleeve has
+cleared its evidence bar; the crash de-gross hook is wired but deliberately
+unarmed. That statement is doctrine, not modesty: shipping "deploy-first"
+without real fill data and a cleared bar would violate the project's own
+rules.
 
-- **Purge** — training rows whose forward-label window overlaps the test slice
-  are dropped (`purge_horizon`, defaulting to the prediction horizon, since the
-  label is a horizon-bar forward return).
-- **Embargo** — a buffer after each test slice is excluded from *subsequent*
-  folds (`embargo_pct`).
+## Method
 
-Both `research/scripts/training.py` and `research/scripts/backtest.py` iterate the **same** fold
-structure: training writes `split_idx.npz` per fold; the backtest replays the
-identical test-date ranges. There is no 80/20 split anywhere.
+Every methodological choice exists because the naive alternative makes a
+backtest look better than the strategy is. The short version — details in
+`SPEC.md` §6–§7 and the cited modules:
 
-### Execution model: target on close, fill at next open
-The default `research/scripts/backtest.py` path uses
-`src/prism/execution/target_weights.py`: each model emits a continuous target weight
-at bar *t*'s close, the target fills at the next bar's open, and PnL accrues
-only after that fill. Fold-last targets are dropped so a pending order cannot
-leak across folds; already-filled weights continue into the next fold. Small
-same-side changes can be suppressed with `--rebalance_band_weight`, and rows are
-scaled to `--max_gross_exposure`.
+- **Purged, embargoed walk-forward validation**
+  (`src/prism/validation/walk_forward.py`). Training rows whose label windows
+  overlap a test slice are dropped; a buffer after each test slice is excluded
+  from later folds. Training and backtest iterate the same fold structure.
+  There is no 80/20 split anywhere.
+- **Decide at close, fill at next open**
+  (`src/prism/execution/target_weights.py`). Nothing fills same-bar, in
+  backtest or live. Reported PnL is net of half-spread, impact, commission,
+  and short borrow.
+- **Overfitting-adjusted metrics** (`src/prism/validation/metrics.py`).
+  Probabilistic and Deflated Sharpe Ratios, and the probability of backtest
+  overfitting across the real selection set. When a grid was searched, the
+  deflated number is the one to read — never the raw Sharpe.
+- **Claim packets** (`src/prism/validation/trials.py`). Every result artifact
+  records its config hash, code commit, data convention, trial count, and a
+  claim tier (`mechanics_clean` → `gross_edge` → `net_edge` → `robust_edge`).
+  No result is described above the tier its metrics support, and no capital
+  moves below `net_edge`.
+- **Dividends as cash, prices split-adjusted only.** The close is a faithful
+  tradeable price; dividend credits make positions total-return correct
+  without rewriting price history.
+- **Survivorship is counted, not hidden.** The point-in-time universe is
+  best-effort on included names and does not recover delisted tickers; every
+  claim carries that caveat. The forward fix is prospective in-house
+  accumulation ([evaluation](docs/data_purchase_evaluation.md)).
 
-The legacy order path remains available with `--legacy_orders`. It uses
-`src/prism/execution/execution_model.py`: a signal computed on bar *t*'s close is
-translated to LONG/SHORT/FLAT orders and filled at bar *t+1* (market-on-open by
-default, `--order_type MOC` for market-on-close). Nothing fills same-bar.
+## Running it
 
-Costs applied in both paths:
+To go from a clone to a nightly paper loop on a free Alpaca paper account,
+see [`docs/quickstart.md`](docs/quickstart.md). Credential rules:
+[`docs/security.md`](docs/security.md). What a $0 setup does and does not
+reproduce: [`docs/free_tier_profile.md`](docs/free_tier_profile.md).
 
-- half-spread (`--spread_bps`) + linear notional impact (`--slippage_coeff`),
-- optional ADV participation impact (`--adv_impact_coeff`,
-  `--adv_floor_dollars`) when dollar-volume panels are available,
-- commission in bps (`--commission_bps`),
-- daily **borrow** on open short notional (`--borrow_bps_annual`) — shorts are
-  not free.
-
-Reported PnL is **net** of all of the above on a fold-aligned equity curve.
-
-### Baselines and legacy comparisons
-`research/baselines/`: Buy-and-Hold, MA-crossover (`--ma_fast`/`--ma_slow`), and
-time-series momentum (`--tsmom_lookback`). In `--legacy_orders` mode they
-traverse the *same* fold structure with the same costs, so the comparison is
-fair and the cross-strategy PBO is well-defined. The default target-weight mode
-emits one shared portfolio packet rather than per-symbol baseline tables.
-
-### Overfitting-adjusted metrics
-`src/prism/validation/metrics.py`:
-
-- **PSR** (Probabilistic Sharpe Ratio) — skew/kurtosis-adjusted probability the
-  true Sharpe exceeds 0.
-- **PBO** (Probability of Backtest Overfitting) via CSCV — across the
-  {ensemble + baselines} strategy set, the fraction of IS/OOS splits where the
-  IS-best strategy underperforms OOS. High PBO ⇒ the selection is overfit.
-- **DSR** (Deflated Sharpe Ratio) — PSR with the benchmark set to the *expected
-  maximum* Sharpe under the False Strategy Theorem given the number of trials.
-  Computed by `research/scripts/sweep.py` over a real hyperparameter grid; the default
-  target-weight backtest records it in the root claim packet when you pass
-  `--trial_sharpes_json`.
-
-### Research claim packets
-`src/prism/validation/trials.py` defines the canonical research-trial packet used to
-turn script outputs into a publishable claim surface. A packet records the
-strategy, config hash, code commit, data convention, artifact manifest,
-gross/net/cost metrics, trial count/DSR when available, and a claim tier:
-`mechanics_clean`, `gross_edge`, `net_edge`, or `robust_edge`.
-`research/scripts/backtest.py`, `research/scripts/sweep.py`, `research/scripts/rl_seed_eval.py`, and the
-stat-arb CLIs write `claim_packet.json`; new strategy surfaces should do the
-same before any result is described as more than a mechanics smoke.
-
-### Conformal prediction bands (EnbPI + ACI)
-`src/prism/conformal/`. The ensemble emits a position band, not just a point. EnbPI
-reuses the meta-learner's out-of-fold residuals for finite-sample-valid
-intervals (block-cross-conformal, **not** split conformal — the latter assumes
-exchangeability that time series violate). ACI (Gibbs & Candès) adapts the
-miscoverage level α online as outcomes realize. Wide (uncertain) bands dampen
-position size in `trading.calculate_signal`.
-
-### Leakage audit
-Done before relying on any WFO number (a WFO over leaky features is a
-well-organized lie). Closed leaks: point-in-time UTC sentiment bucketing
-(`searchsorted` against bar-close times, no across-bar ffill), train-only
-feature clipping bounds, per-fold scaler refits. See `research/sentiment_analysis.py`
-and `research/features.py` plus `tests/test_sentiment_leakage.py` /
-`tests/test_feature_engineer_leakage.py`.
-
----
-
-## How to read the backtest output
-
-By default, `research/scripts/backtest.py` writes one shared-capital portfolio under
-`results/wfo_backtest_*`:
-
-- `target_weights.csv` — close-time portfolio targets.
-- `fill_weights.csv` — weights actually filled at next opens.
-- `costs.csv` — turnover, gross/net exposure, borrow, execution costs, and
-  dividend return contribution.
-- `equity_curve.csv` — portfolio value and net returns.
-- `claim_packet.json` — canonical result packet with config/data/artifact
-  identity and claim tier.
-
-With `--legacy_orders`, the script preserves the older per-symbol report and
-prints a per-strategy comparison block:
-
-```
-Strategy        TotRet    AnnRet   Sharpe  PSR(>0)    MaxDD   Calmar
-```
-
-- **TotRet / AnnRet** — total / annualized return, net of costs.
-- **Sharpe** — annualized; a headline number, *not* the one to trust alone.
-- **PSR(>0)** — probability the true Sharpe is positive after skew/kurtosis
-  adjustment. Treat a Sharpe with low PSR as noise.
-- **MaxDD** — maximum drawdown (positive-magnitude convention).
-- **Calmar** — annualized return / max drawdown; `n/a` when undefined.
-
-Legacy footers (one per backtest, not per strategy):
-
-- **PBO** — across all strategies in the table. The single most important line:
-  a strong ensemble Sharpe with PBO near or above 0.5 means the result is
-  likely selection-overfit.
-- **Deflated Sharpe Ratio** — shown when `--trial_sharpes_json` from a sweep is
-  supplied; the ensemble Sharpe deflated by the trial count. **Read DSR, not
-  raw Sharpe, when a grid was searched.**
-
-Per-strategy returns are inner-joined by date before PBO so the matrix is
-fold-aligned. In default target-weight mode, read the root `claim_packet.json`
-and `metrics.json` first.
-
----
-
-## Usage
-
-Environment (Python 3.12+, [uv](https://github.com/astral-sh/uv)):
+For the research side (Python ≥ 3.12, [uv](https://github.com/astral-sh/uv)):
 
 ```bash
 git clone https://github.com/boom90lb/prism.git
 cd prism
-uv sync --extra research   # full research env: core + jax/torch/mlflow + dev tools
+uv sync --extra research   # Linux only; bare `uv sync` elsewhere (core + dev)
+uv run pytest -q -m "not research"
 ```
 
-The core `prism` package itself installs slim (`uv pip install -e .` — no
-JAX/torch/mlflow, SPEC N8). Every `research/scripts` CLI below needs the
-`[research]` extra, so use the `uv sync --extra research` form to run them.
-Note: the `[research]` extra pins CUDA-12 JAX wheels and installs on
-**Linux (x86_64/aarch64) only**; on macOS/Windows use bare `uv sync`
-(core + dev tools). Run the suite with
-`uv run pytest -q -m "not research"` (the offline core subset CI runs;
-drop the `-m` filter after `--extra research`).
-
-API keys in a `.env` (Twelvedata for bars/dividends — note the free tier's
-`/dividends` endpoint is 403 for most symbols, so dividend credits come
-back empty there (`docs/operations.md`); Polygon for sentiment; Alpaca and
-FRED only for the live loop and regime fetch):
-
-```
-TWELVEDATA_API_KEY=...
-POLYGON_API_KEY=...
-# live/paper loop + regime fetch only:
-APCA_API_KEY_ID=...
-APCA_API_SECRET_KEY=...
-FRED_API_KEY=...
-```
-
-### 1. Train (produces a run directory the backtest replays)
+API keys go in a gitignored `.env` (Twelve Data for research bars, Alpaca and
+FRED for the live loop and regime fetch; see `docs/security.md` §1 for the
+inventory). Research entry points run as modules from the repo root:
 
 ```bash
-# Per-symbol purged WFO; writes runs/{run_name}/{symbol}/fold_*/.
-python -m research.scripts.training --symbols AAPL,MSFT,GOOG --start_date 2018-01-01 \
-    --horizon 5 --n_splits 5
-
-# Universe file + as-of point-in-time inclusion guard.
-python -m research.scripts.training --universe data/universe/2026-05-30.txt \
-    --universe_asof 2018-01-01
-
-# RL members at a real training budget (the default 100k is heavy).
-python -m research.scripts.training --symbols AAPL --models xgboost,lstm_ppo \
-    --rl_timesteps 200000
-```
-
-### 2. Backtest (requires a training run; never a bare symbol list)
-
-```bash
+# Train per-symbol purged-WFO models, then backtest the run
+python -m research.scripts.training --symbols AAPL,MSFT,GOOG --start_date 2018-01-01
 python -m research.scripts.backtest --training_run runs/{run_name}
 
-# With a sweep's trial Sharpes so the report shows DSR:
-python -m research.scripts.backtest --training_run runs/{run_name} \
-    --trial_sharpes_json results/{sweep}/trial_sharpes.json
-
-# Preserve the old per-symbol order/backtest table path:
-python -m research.scripts.backtest --training_run runs/{run_name} --legacy_orders
-```
-
-### 3. Hyperparameter sweep → honest DSR (forecast-only)
-
-```bash
+# Hyperparameter sweep → trial Sharpes for honest deflation
 python -m research.scripts.sweep --symbols AAPL,MSFT
-# writes selected_config.json + trial_sharpes.json (feed the latter to backtest)
+
+# The B1 evidence path: momentum-sleeve walk-forward over a universe file
+python -m research.scripts.stat_arb_residual_wfo --help
 ```
 
-### 4. Multi-seed RL overfitting study
+Each script's `--help` is authoritative for flags; the backtest writes a
+`claim_packet.json` plus target/fill/cost/equity artifacts under `results/`,
+and the packet is what to read first. Operational sharp edges (vendor tiers,
+interval strings, which ensemble members actually contribute, per-bar compute
+cost) are collected in [`docs/operations.md`](docs/operations.md).
 
-```bash
-# EXPENSIVE: |members| x |symbols| x |folds| x |seeds| bare RL fits.
-python -m research.scripts.rl_seed_eval --training_run runs/{run_name} \
-    --members lstm_ppo --seeds 0,1,2 --rl_timesteps 50000
-```
-
-### 5. Statistical arbitrage pair research
-
-```bash
-# Rolling formation/test walk-forward. This is the credible research path.
-python -m research.scripts.stat_arb_wfo --symbols AAPL,MSFT,GOOG,AMZN,META,NVDA \
-    --start_date 2020-01-01 --formation_bars 504 --test_bars 63 --max_pairs 5
+## Layout
 
 ```
-
-This is the only path in the repo that should currently be called
-"arbitrage-like": it forms cross-asset hedge-ratio books rather than independent
-single-symbol bets. The WFO command writes fold-level pair selection ledgers,
-target weights, returns, costs, pair-trial Sharpes, and a `pair_set_dsr` field
-so pair-search bias is visible rather than hidden behind a raw Sharpe.
-
-Add `--verbose` to any script for console DEBUG output (the per-run log file is
-always DEBUG regardless — see **Logging**).
-
----
-
-## Logging
-
-`src/prism/logging_utils.configure_logging` (called by every script's `main`)
-installs:
-
-- a **console** handler at INFO (DEBUG with `--verbose`), and
-- a **rotating file** handler at `logs/run_{ts}.log` that always captures DEBUG
-  (50 MB cap, 5 backups) — the file is the complete record even when the
-  console is quiet.
-
-Per-symbol log records carry `extra={"symbol": ...}` (via `get_symbol_logger`),
-so the file is greppable by ticker and aligns with the per-symbol MLflow runs.
-`logs/` is gitignored.
-
-MLflow tracks a parent run per invocation, nested per symbol, with per-fold
-metrics at `step=fold_idx`. `MLFLOW_TRACKING_URI` defaults to a local
-`file://.../mlruns` store; `sqlite:///mlflow.db` is the documented migration
-target (the file backend is deprecated).
-
----
-
-## Data quality
-
-**Corporate actions.** Prices are fetched `adjust=splits` — split-adjusted but
-**not** dividend-adjusted, so the close is a faithful tradeable price.
-Dividends are credited explicitly in the backtest (`DataLoader.fetch_dividends`
-→ `target_weights.py` dividend-return contribution, or
-`TradingStrategy.apply_dividends` in legacy order mode): a long held over an
-ex-date takes a mark-to-market markdown that the dividend credit offsets (a
-short is debited), making the position total-return correct without
-back-adjusting prices. Trade-off: ex-dividend gaps remain in the return/volatility
-*features*. `--no_dividends` disables the credit.
-
-**Cache integrity.** Cached bars are keyed by requested range
-(`{symbol}_{interval}_{start}_{end}.parquet`) and reused only when the cached
-range *contains* the request, so a narrow cache can't silently satisfy a wider
-query with a too-short slice.
-
-**Operational gotchas** (vendor tier limits, the `1d`→`1day` interval mapping,
-which ensemble members actually feed the backtest, and the per-bar JAX cost)
-are documented in [`docs/operations.md`](docs/operations.md).
-
-**Universe & survivorship.** `--universe <file>` (one symbol per line, `#`
-comments) and `--universe_asof YYYY-MM-DD` (drop names with no data
-at/before the date) give a **best-effort** point-in-time universe on the
-*included* names. It does **not** recover delisted/acquired tickers. A
-survivorship-complete commercial history is purchasable under the amended
-bounded data budget (A2, [`docs/amendments_2026-07.md`](docs/amendments_2026-07.md));
-the standing candidate was evaluated and the purchase reversed 2026-07-17
-in favor of in-house prospective accumulation
-([`docs/data_purchase_evaluation.md`](docs/data_purchase_evaluation.md) §6).
-Until that accumulation matures, read results with the residual
-survivorship bias in mind.
-
----
-
-## Out of scope
-
-- Retroactive delisting recovery (CRSP-class history) — purchase evaluated
-  and reversed 2026-07-17 in favor of in-house prospective accumulation; see
-  `docs/data_purchase_evaluation.md`.
-- Sentiment distillation. The pipeline ships keyword `SentimentAnalyzer` and an
-  interim FinBERT `TransformerSentimentAnalyzer`; the white-box distillation
-  plan is documented in `docs/sentiment_roadmap.md` but not implemented.
-- A market simulator for multi-step synthetic OHLCV; positions are held flat
-  across the prediction horizon rather than iteratively re-forecast.
-
----
-
-## Project layout
-
-```
-src/prism/             (the distribution — production import path)
-  config.py            production config: directories, spine API key,
-                       ExecutionConfig / TradingConfig cost dataclasses
-  io/                  loader (Twelvedata bars + dividends, range-keyed cache +
-                       incremental store), PIT universe, token-bucket rate limit
-  signal/              the Signal contract + nodes: EnsembleSignalNode
-                       (JAX-free XGBoost/ARIMA blend), ResidualSignalNode
-  residual/            factor model + causal OU s-scores + hedged book builder
-  portfolio/           book construction: caps, no-trade bands (batch + online step)
-  execution/           target-weight accounting, ExecutionModel + cost functions,
-                       participation gate, per-bucket spread estimator
-  regime/              curve / vol / inflation / net-liquidity regime state
-                       ($0 sources) + FRED/DefiLlama fetch adapters
-  live/                durable order state, write-ahead daily loop,
-                       Alpaca paper/live broker adapter
-  validation/          PurgedWalkForward, metrics (PSR/PBO/DSR/Calmar + FLAM breadth),
-                       capacity / cost-toll, research claim packets
-  conformal/           EnbPI + ACI
-  logging_utils.py     configure_logging + per-symbol adapter
-  scripts/             build_sp500_universe (periodic PIT universe build),
-                       paper_loop (nightly Alpaca paper cycle) + paper_sweep
-                       (morning completion sweep) + paper_monitor,
-                       replay_loop (diagnostic replay), edge_diagnostic
-research/              (quarantined per SPEC §9 — not in the wheel; may import
-                        prism, never the reverse)
-  config.py            ensemble-side config: member/ensemble/training dataclasses
-  trading.py           the legacy v0.2 per-symbol engine (TradingStrategy)
-  features.py          legacy technical indicators, train-only clip bounds
-  sentiment_analysis.py keyword + FinBERT analyzers, PIT bucketing
-  models/              legacy forecast members (arima, prophet, xgboost) +
-                       EnsembleModel, registry, vol-sizing mapping;
-                       RL policy members: lstm_ppo, xlstm_ppo, xlstm_grpo (JAX)
-  baselines/           buy-and-hold, MA-crossover, TSMOM
-  arbitrage/           cointegration pair scan + stat-arb WFO fold ledgers
-  tracking/            MLflow wrappers
-  scripts/             batch CLIs, run as `python -m research.scripts.<name>`:
-    training.py          per-symbol purged-WFO training → runs/{run_name}/
-    backtest.py          target-weight WFO, legacy order WFO + baselines/PBO
-    sweep.py             ensemble-layer grid → DSR
-    rl_seed_eval.py      multi-seed RL overfitting study
-    stat_arb_wfo.py      rolling formation/test pairs stat-arb WFO
-    stat_arb_residual_wfo.py  residual + 12−1 momentum-sleeve WFO (the B1
-                         evidence path; see docs/stat_arb.md)
-    + diagnostics: data_integrity_sweep, dividend_wedge, breadth_diagnostic,
-                   carry_flatten_diagnostic, iex_eligibility_check
-formal/                Lean 4 machine-checked kernel invariants (N4 ledger
-                       conservation, no-trade-band hysteresis + batch-replay
-                       divergence, purge/embargo geometry, participation gate)
-tests/                 783 offline tests, 781 passed / 2 skipped at v0.3.3
-                       (validation, leakage, execution, conformal, live
-                       loop, logging); the slim subset runs without the
-                       [research] extra in CI
+src/prism/     the shipped package — production import path (JAX/torch-free, SPEC N8)
+  io/          bars + dividends loader, caching, point-in-time universe, capture store
+  signal/      the Signal contract and its nodes (momentum, trend, ensemble, residual)
+  residual/    factor model, causal s-scores, hedged book construction
+  portfolio/   book construction: caps, no-trade bands, inverse-vol
+  execution/   target-weight accounting, costs, participation gate, spread calibration
+  regime/      curve / vol / liquidity regime state from free sources
+  live/        nightly loop: durable order state, broker adapter, safety rails
+  validation/  purged WFO, metrics, capacity, claim packets, joint-crash diagnostic
+  conformal/   EnbPI + ACI prediction bands
+  scripts/     prism-doctor, paper_loop / paper_sweep / paper_monitor, replay
+research/      quarantined research tree (imports prism; never the reverse — SPEC §9)
+formal/        Lean 4 machine-checked kernel invariants (see formal/README.md)
+tests/         offline suite; the slim subset runs without the [research] extra
 ```
 
-## Configuration
-
-Configuration is split at the production/research boundary (SPEC §9):
-
-- `src/prism/config.py` — production: project directories, the Twelve Data
-  key, and the `ExecutionConfig`/`TradingConfig` cost dataclasses consumed by
-  the execution/accounting path.
-- `research/config.py` — the legacy ensemble side: `ModelConfig`/
-  `EnsembleConfig`/`TrainingConfig`, `DEFAULT_MODEL_WEIGHTS` (the default
-  forecast members; the quarantined RL members are opt-in via research CLIs
-  and fall back to weight 1.0), the MLflow tracking URI, and the Polygon
-  news key.
-
-Both halves validate fields in `__post_init__` (e.g. `n_splits >= 2`,
-`0 <= embargo_pct < 1`, `0 < position_size <= 1`,
-`borrow_rate_bps_annual >= 0`); invalid CLI arguments fail fast at config
-construction.
-
----
-
-## Dependencies
-
-Core (the production import path, SPEC N8): Python 3.12+ · numpy, pandas,
-scikit-learn · statsmodels, XGBoost · pyarrow · the Twelvedata API.
-`[research]` extra: Prophet, Flax/JAX, PyTorch, transformers (FinBERT),
-Gymnasium, MLflow, matplotlib, and the Polygon.io news API.
+Configuration is split at the production/research boundary:
+`src/prism/config.py` (directories, keys, cost dataclasses) and
+`research/config.py` (ensemble members, training, MLflow). Both fail fast on
+invalid values at construction.
 
 ## License
 
-MIT License, Copyright (c) 2025 Brendon Reperttang
+MIT License, Copyright (c) 2025 Brendon Reperttang. Nothing in this
+repository is investment advice, and the project's own evidence bar has never
+been cleared by any configuration.

@@ -245,6 +245,71 @@ def _decile_row(scores_t: np.ndarray, decile: float) -> np.ndarray:
     return row
 
 
+def construct_inverse_vol_targets(
+    scores: pd.DataFrame,
+    close: pd.DataFrame,
+    *,
+    vol_ewma_bars: int = 63,
+    max_gross: float = 1.0,
+    max_symbol_abs_weight: float = 1.0,
+    annualization_bars: int = 252,
+) -> pd.DataFrame:
+    """Sign(score) × inverse-EWMA-vol weights, scaled to book gross cap.
+
+    Trend-sleeve construction (`docs/trend_design.md` §2): every name with a
+    finite score holds its own sign; risk is equalized via inverse annualized
+    EWMA volatility of daily simple returns (``vol_ewma_bars`` span, default
+    63). Names with non-finite scores, non-positive vol, or insufficient
+    close history for the vol window are flat (weight 0.0, not NaN) so the
+    book fully exits rather than leaving a stale position — same explicit-flat
+    posture as ``construct_decile_neutral``.
+
+    Weights before the gross cap: ``w_i ∝ sign(score_i) / σ_i`` on the finite
+    set, L1-normalized to ``max_gross``, then per-symbol clip. Rows where no
+    name is tradable stay all-zero.
+    """
+    if vol_ewma_bars < 2:
+        raise ValueError(f"vol_ewma_bars must be >= 2, got {vol_ewma_bars}")
+    if annualization_bars < 1:
+        raise ValueError(f"annualization_bars must be >= 1, got {annualization_bars}")
+    if not scores.columns.equals(close.columns):
+        raise ValueError("scores and close must share columns")
+    if not scores.index.equals(close.index):
+        raise ValueError("scores and close must share index")
+
+    close_num = close.apply(pd.to_numeric, errors="coerce")
+    rets = close_num.pct_change()
+    # pandas ewm span≈N: α = 2/(span+1). Design pins "63-bar EWMA"; span=63.
+    # Vol = EWMA std of daily simple returns, annualized by √bars (pinned).
+    sigma = rets.ewm(
+        span=vol_ewma_bars, min_periods=vol_ewma_bars, adjust=False
+    ).std() * np.sqrt(float(annualization_bars))
+
+    score_num = (
+        scores.apply(pd.to_numeric, errors="coerce")
+        .replace([np.inf, -np.inf], np.nan)
+    )
+    signs = np.sign(score_num.to_numpy(dtype=float))
+    # Zero score → no opinion for trend (sign 0); treat as flat with NaN path.
+    signs = np.where(np.isfinite(score_num.to_numpy(dtype=float)) & (signs != 0.0), signs, np.nan)
+    inv_vol = 1.0 / sigma.to_numpy(dtype=float)
+    inv_vol = np.where(np.isfinite(inv_vol) & (inv_vol > 0.0), inv_vol, np.nan)
+
+    raw = signs * inv_vol
+    # L1-normalize each row to max_gross on the finite support.
+    finite = np.isfinite(raw)
+    abs_sum = np.where(finite, np.abs(raw), 0.0).sum(axis=1, keepdims=True)
+    scale = np.divide(
+        max_gross,
+        abs_sum,
+        out=np.zeros_like(abs_sum),
+        where=abs_sum > 0.0,
+    )
+    weighted = np.where(finite, raw * scale, 0.0)
+    targets = pd.DataFrame(weighted, index=scores.index, columns=scores.columns)
+    return cap_book(targets, max_gross=max_gross, max_symbol_abs_weight=max_symbol_abs_weight)
+
+
 def construct_decile_neutral(
     scores: pd.DataFrame,
     *,

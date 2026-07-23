@@ -1,0 +1,222 @@
+{
+  "meta": {
+    "generated": "2026-07-19",
+    "script": "research/scripts/tax_wedge.py",
+    "spec": "docs/tax_wedge_spec.md (ratified 2026-07-19)",
+    "status": "uncounted diagnostic: searches nothing, changes no trial code path, appends nothing to the trials ledger, moves no ratified statistic",
+    "parameters": {
+      "federal_rate": 0.37,
+      "state_rate": 0.093,
+      "combined_tau": 0.46299999999999997,
+      "loss_cap_usd": 3000.0,
+      "book_equity_usd": 1000000.0,
+      "wash_window_days": 30,
+      "note": "REFERENCE parameter vector for the record's reproducibility, not the operator's rates - the certified numbers stay pre-tax and this overlay is re-runnable under any vector (spec sections 1 and 4)"
+    },
+    "sign_convention": "negative bps/yr = after-tax drag vs the symmetric-tau baseline",
+    "hurdle": {
+      "annual_pct": 3.71,
+      "basis": "tbill_nominal",
+      "periodic_sharpe_hurdle": 0.02030840406535933
+    },
+    "pnl_convention": "per-year P&L = book_equity x calendar-year compounded return of the normalized certified ledger (constant-base); actual and baseline codes consume the same series, so the wedge is first-order insensitive to the convention",
+    "ledger_map": {
+      "wash_sale_deferral": {
+        "ledger": "runs/replay_floor_1000000/fills.jsonl",
+        "span": [
+          "2026-01-02",
+          "2026-06-15"
+        ],
+        "note": "the certified run directory records weight-space accounting only - no per-lot fills - so it CANNOT support the wash-sale replay; measured instead on the 112-session replay fills ledger (modeled fills through live-loop mechanics), the only per-lot ledger in-tree. Recorded here, not silently substituted."
+      },
+      "payments_in_lieu": {
+        "ledger": "results/demotion_b1/target_weights.csv",
+        "records": "results/alpaca_cash_dividends_2021-03-30_2026-06-12.json",
+        "span": [
+          "2021-03-30",
+          "2026-06-12"
+        ]
+      },
+      "loss_cap": {
+        "ledger": "results/demotion_b1/returns.csv",
+        "span": [
+          "2021-03-30",
+          "2026-06-12"
+        ]
+      },
+      "state_exemption": {
+        "ledger": "results/demotion_b1/summary.json",
+        "field": "after_cost_hurdle"
+      }
+    },
+    "certified_ledger_cannot_support": "per-lot wash-sale replay (no fills ledger) and lot holding periods for the qualified-dividend test; both recorded above and in docs/tax_wedge.md",
+    "entity_and_elections": "trader-status mark-to-market under 475(f) would change the wash-sale treatment and a monthly-cadence book very likely does not qualify; CPA territory - recorded, not answered (spec section 4)"
+  },
+  "book": {
+    "run_dir": "results/demotion_b1",
+    "span": [
+      "2021-03-30",
+      "2026-06-12"
+    ],
+    "window_years": 5.201916495550993,
+    "pnl_by_year_usd": {
+      "2021": 3386.3605980530842,
+      "2022": 29265.45233150635,
+      "2023": -69554.31676972346,
+      "2024": 104817.73535693239,
+      "2025": 5789.472472034873,
+      "2026": 194807.46806747274
+    }
+  },
+  "dividend_flows": {
+    "n_records": 7519,
+    "n_records_in_universe": 7519,
+    "n_special": 51,
+    "n_foreign": 435,
+    "n_ex_dates_off_calendar": 87,
+    "n_ever_held": 491,
+    "missing_close_caches": [
+      "SATS"
+    ],
+    "short_flow_annualized_bps": -99.98841868939076,
+    "long_flow_annualized_bps": 63.92805653073668,
+    "validation_vs_committed_artifact": {
+      "artifact": "results/dividend_wedge_2026-07-13.json",
+      "max_abs_diff_bps_tolerance": 1.0,
+      "passed": true
+    }
+  },
+  "asymmetries": {
+    "wash_sale_deferral": {
+      "replay": {
+        "naive_realized_by_year": {
+          "2026": 27616.550174399967
+        },
+        "taxable_realized_by_year": {
+          "2026": 27858.16033039996
+        },
+        "n_close_events": 311,
+        "n_loss_events": 127,
+        "n_wash_events": 30,
+        "n_replacement_lots_already_closed": 0,
+        "total_disallowed": 5394.870276000001,
+        "recognized_deferral_in_sample": 5153.260120000001,
+        "deferred_open_at_end": 241.61015599999973
+      },
+      "wedge": {
+        "prepaid_tax_usd": 111.86550222799987,
+        "prepaid_one_time_bps": -1.0127666965801503,
+        "carry_cost_usd_per_year": 4.1502101326587955,
+        "wedge_bps_per_year": -0.03757364444312358,
+        "ledger_years": 0.4490075290896646
+      },
+      "avg_equity_usd": 1104553.5226004228
+    },
+    "payments_in_lieu": {
+      "treatment": "short PIL capitalized into the short's capital result (IRC 263(h), sub-46-day shorts at monthly cadence); long dividends ordinary at tau (61-day qualified window fails), which matches the baseline exactly",
+      "wedge_bps_per_year": -0.583709788374747,
+      "bound_no_relief_bps_per_year": -46.29463785318792,
+      "bound_full_relief_bps_per_year": 0.0,
+      "long_leg_qualified_wedge_bps_per_year": 0.0,
+      "long_leg_note": "zero vs the symmetric-tau baseline BY DERIVATION, not by omission: both tax long dividends as ordinary income at tau; the foregone qualified-rate benefit relative to a qualified-eligible holder needs a qualified-rate parameter and lot holding periods outside the ratified parameter set (spec section 4) - recorded, not answered",
+      "pil_paid_annualized_usd": 9998.841868939076,
+      "long_dividends_annualized_usd": 6392.805653073671
+    },
+    "loss_cap": {
+      "terminal_unrelieved_tax_usd": 0.0,
+      "timing_cost_usd": 1143.2234654485708,
+      "wedge_bps_per_year": -2.1976966881846867,
+      "per_year": [
+        {
+          "year": 2021,
+          "net_pnl": 3386.3605980530842,
+          "baseline_tax": 1567.884956898578,
+          "actual_tax": 1567.884956898578,
+          "after_tax_delta": 0.0,
+          "carryforward_end": 0.0,
+          "timing_cost": 0.0
+        },
+        {
+          "year": 2022,
+          "net_pnl": 29265.45233150635,
+          "baseline_tax": 13549.904429487438,
+          "actual_tax": 13549.904429487438,
+          "after_tax_delta": 0.0,
+          "carryforward_end": 0.0,
+          "timing_cost": 0.0
+        },
+        {
+          "year": 2023,
+          "net_pnl": -69554.31676972346,
+          "baseline_tax": -32203.64866438196,
+          "actual_tax": -1389.0,
+          "after_tax_delta": -30814.64866438196,
+          "carryforward_end": 66554.31676972346,
+          "timing_cost": 1143.2234654485708
+        },
+        {
+          "year": 2024,
+          "net_pnl": 104817.73535693239,
+          "baseline_tax": 48530.61147025969,
+          "actual_tax": 17715.962805877734,
+          "after_tax_delta": 30814.648664381955,
+          "carryforward_end": 0.0,
+          "timing_cost": 0.0
+        },
+        {
+          "year": 2025,
+          "net_pnl": 5789.472472034873,
+          "baseline_tax": 2680.5257545521463,
+          "actual_tax": 2680.5257545521463,
+          "after_tax_delta": 0.0,
+          "carryforward_end": 0.0,
+          "timing_cost": 0.0
+        },
+        {
+          "year": 2026,
+          "net_pnl": 194807.46806747274,
+          "baseline_tax": 90195.85771523988,
+          "actual_tax": 90195.85771523988,
+          "after_tax_delta": 0.0,
+          "carryforward_end": 0.0,
+          "timing_cost": 0.0
+        }
+      ]
+    },
+    "state_exemption": {
+      "hurdle_annual_pct": 3.71,
+      "wedge_bps_per_year": -34.503
+    }
+  },
+  "outputs": {
+    "steady_state_wedge_bps_per_year": -37.321980121002554,
+    "steady_state_components_bps": {
+      "wash_sale_deferral": -0.03757364444312358,
+      "payments_in_lieu": -0.583709788374747,
+      "loss_cap": -2.1976966881846867,
+      "state_exemption": -34.503
+    },
+    "crash_year_conditional": {
+      "worst_sample_year": {
+        "year": 2023,
+        "net_pnl_usd": -82429.12355346481,
+        "capital_cell_bps": -367.756842052542,
+        "state_bps": -34.503,
+        "wash_bps": null,
+        "wash_note": "unsupported for this cell: the only per-lot fills ledger in-tree covers 2026 sessions, not the worst sample year - reported null, never zero (N7)",
+        "conditional_wedge_bps": -402.259842052542,
+        "carryforward_relieved_later_in_sample": true
+      },
+      "synthetic_minus_30pct_year": {
+        "book_return": -0.3,
+        "net_pnl_usd": -309998.84186893905,
+        "capital_cell_bps": -1421.4046378531878,
+        "state_bps": -34.503,
+        "wash_bps": null,
+        "wash_note": "no lot ledger exists for a synthetic year - reported null, never zero (N7)",
+        "conditional_wedge_bps": -1455.9076378531877
+      },
+      "constant_note": "the -30% book-return year is the spec section 3 pinned constant"
+    }
+  }
+}

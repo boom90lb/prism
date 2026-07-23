@@ -5,14 +5,17 @@ fetch (``io``/loader), a fitted :class:`~prism.signal.base.Signal`, online
 construction (down-only caps → the stateful no-trade band against *held*
 weights → the participation gate), and the write-ahead decision protocol
 (``prism.live.loop``), with last session's fills settled into the I-9 ledger
-first. The driver constructs one of two books per ``DailyBookConfig.book``: an
-unhedged directional book (linear score → weight) or the market-neutral decile
-long/short book the ratified B1 momentum candidate trades. The §7.2 factor-
-residualize stage is unwired for either — the directional book is a
-cost-measurement instrument (SPEC §13 R2, which needs turnover, not edge), and
-B1 is eligibility-screened momentum that is market-neutral by balanced decile
-legs, not by factor neutralization (adding a residualize stage would change its
-ratified config — a discovery event, docs/momentum_design.md §2).
+first. The driver constructs one of three books per ``DailyBookConfig.book``:
+an unhedged directional book (linear score → weight), the market-neutral
+decile long/short book the ratified B1 momentum candidate trades, or the
+trend sleeve's inverse-vol construct (``inverse_vol``; docs/trend_design.md
+§2, default-off paper instrument). The §7.2 factor-residualize stage is
+unwired for all three — the directional book is a cost-measurement
+instrument (SPEC §13 R2, which needs turnover, not edge), B1 is
+eligibility-screened momentum that is market-neutral by balanced decile
+legs, not by factor neutralization (adding a residualize stage would change
+its ratified config — a discovery event, docs/momentum_design.md §2), and
+trend is per-name TSMOM on a fixed ETF list with no residualize stage.
 
 Cadence and ordering (one call per session, after the close):
 
@@ -24,7 +27,14 @@ Cadence and ordering (one call per session, after the close):
 2. **Mark.** Broker-truth positions and cash are marked at today's closes
    into held weights and equity — the same marks ``decide_and_submit``
    sizes with.
-3. **Cadence → score → construct.** On a refresh session (the decision
+3. **Regime.** When a ``regime`` provider is wired (SPEC §7.5 through the
+   §7.7 step, ``prism.live.regime_step``), its telemetry is read for the
+   decision bar on every session — refresh or not, halted or not, because
+   the handoff §8 precondition-(b) clock counts sessions — and appended to
+   the regime ledger. Telemetry only: the de-gross ACTION hook
+   (``regime_gross_scale``) stays unarmed until
+   docs/sizing_preregistration.md ratifies.
+4. **Cadence → score → construct.** On a refresh session (the decision
    cadence has elapsed — daily by default, ≈monthly for B1) the signal
    scores the panel's last row and construction maps scores to capped
    weights (linear for the directional book, top/bottom-decile long/short
@@ -32,9 +42,9 @@ Cadence and ordering (one call per session, after the close):
    whose target moved less than the band from what is held, and the
    participation gate shrinks trades over the %ADV cap (§7.4). Off a refresh
    session the book holds its filled weights while NAV still marks daily.
-4. **Decide/submit.** ``decide_and_submit`` persists the decision before
+5. **Decide/submit.** ``decide_and_submit`` persists the decision before
    the first submit and submits idempotently (N2 crash window).
-5. **Monitor.** After the mark-to-market NAV is appended to the equity
+6. **Monitor.** After the mark-to-market NAV is appended to the equity
    ledger, the anytime-valid confidence sequence reads the accruing stream
    (:mod:`prism.live.monitor`) as *additive telemetry* beside the ratified
    rolling-PSR promotion read (docs/momentum_design.md). Time-uniform
@@ -49,9 +59,11 @@ policy (§7.7), not a hidden side effect of the driver.
 from __future__ import annotations
 
 import logging
+import math
 from dataclasses import dataclass
-from typing import Any, Sequence
+from typing import Any, Callable, Collection, Sequence
 
+import numpy as np
 import pandas as pd
 
 from prism.execution.participation import participation_capped_targets
@@ -60,16 +72,19 @@ from prism.live.loop import (
     LiveLoopContext,
     _append_concordance_ledger,
     _append_equity_ledger,
+    _append_regime_ledger,
     _require_price,
     decide_and_submit,
     read_targets_ledger,
     settle,
 )
 from prism.live.monitor import book_concordance, paper_monitor_read
+from prism.live.safety import SafetyConfig, check_orders, halt_reason
 from prism.live.state import LoopState
 from prism.portfolio.construct import (
     construct_decile_neutral,
     construct_directional_targets,
+    construct_inverse_vol_targets,
     step_no_trade_band,
 )
 from prism.signal.base import Signal
@@ -85,15 +100,19 @@ class DailyBookConfig:
     linearly to a weight (``position_size`` is the |score|≥1 → weight slope),
     ``"decile_neutral"`` builds the ratified B1 momentum book — equal-weight
     top/bottom ``decile`` long/short, market-neutral by balanced legs, using
-    only the cross-sectional *rank* of the scores (``position_size`` is ignored).
-    ``decision_every`` is the refresh cadence in trading sessions (1 = daily;
-    21 ≈ monthly for B1): off a refresh session the book holds its filled
-    weights and only NAV marks. Caps are down-only (a low-gross book stays
-    low-gross). ``no_trade_band`` is the *online* half-width applied against held
-    weights (the batch band stays off — replaying hysteresis from flat every day
-    is the defect the online step fixes). ``max_participation`` of None disables
-    the %ADV gate (at paper scale it never binds; enable it before any AUM
-    claim). ``whole_shares`` matches Alpaca OPG (next-open) order requirements.
+    only the cross-sectional *rank* of the scores (``position_size`` is ignored),
+    ``"inverse_vol"`` is the trend sleeve construct (docs/trend_design.md §2):
+    sign(score) × inverse EWMA-vol, L1-scaled to ``max_gross``
+    (``position_size`` / ``decile`` ignored; ``vol_ewma_bars`` pins the vol
+    window, default 63). ``decision_every`` is the refresh cadence in trading
+    sessions (1 = daily; 21 ≈ monthly for B1/trend): off a refresh session the
+    book holds its filled weights and only NAV marks. Caps are down-only (a
+    low-gross book stays low-gross). ``no_trade_band`` is the *online*
+    half-width applied against held weights (the batch band stays off —
+    replaying hysteresis from flat every day is the defect the online step
+    fixes). ``max_participation`` of None disables the %ADV gate (at paper
+    scale it never binds; enable it before any AUM claim). ``whole_shares``
+    matches Alpaca OPG (next-open) order requirements.
     """
 
     position_size: float = 0.0
@@ -106,17 +125,23 @@ class DailyBookConfig:
     whole_shares: bool = True
     book: str = "directional"
     decile: float = 0.10
+    vol_ewma_bars: int = 63
     decision_every: int = 1
 
     def __post_init__(self) -> None:
-        if self.book not in ("directional", "decile_neutral"):
+        if self.book not in ("directional", "decile_neutral", "inverse_vol"):
             raise ValueError(
-                f"unknown book {self.book!r}: expected 'directional' or 'decile_neutral'"
+                f"unknown book {self.book!r}: expected 'directional', "
+                f"'decile_neutral', or 'inverse_vol'"
             )
         if self.book == "directional" and not self.position_size > 0:
             raise ValueError("the directional book requires position_size > 0")
         if self.book == "decile_neutral" and not 0.0 < self.decile <= 0.5:
             raise ValueError(f"the decile book requires decile in (0, 0.5], got {self.decile}")
+        if self.book == "inverse_vol" and self.vol_ewma_bars < 2:
+            raise ValueError(
+                f"the inverse_vol book requires vol_ewma_bars >= 2, got {self.vol_ewma_bars}"
+            )
         if self.decision_every < 1:
             raise ValueError(f"decision_every must be >= 1, got {self.decision_every}")
 
@@ -137,6 +162,17 @@ class DailyCycleResult:
     target_weights: pd.Series
     monitor_read: dict | None = None
     concordance: dict | None = None
+    halted: str | None = None
+    # Symbols the ``unrankable`` provider masked at this refresh (empty = the
+    # provider ran and flagged nothing; None = no provider, or not a refresh
+    # session so nothing was scored).
+    masked: list[str] | None = None
+    # The SPEC §7.5 regime telemetry read this cycle (None = no provider
+    # wired), and the clamped gross multiplier the §7.7 action hook applied
+    # to this refresh's construction (None = hook unarmed, not a refresh
+    # session, or the regime read carried failure entries).
+    regime: dict | None = None
+    regime_scale: float | None = None
 
 
 def fetch_universe_panels(
@@ -224,6 +260,10 @@ def run_daily_cycle(
     volume: pd.DataFrame | None,
     config: DailyBookConfig,
     decision_bar: str | None = None,
+    safety: SafetyConfig | None = None,
+    unrankable: Callable[[str], Collection[str]] | None = None,
+    regime: Callable[[str], dict] | None = None,
+    regime_gross_scale: Callable[[dict], float] | None = None,
 ) -> DailyCycleResult:
     """Run one settle → mark → score → construct → decide/submit cycle.
 
@@ -231,7 +271,54 @@ def run_daily_cycle(
     decision bar *t* (N1); ``decision_bar`` defaults to that row's date.
     Re-running within the same bar resumes the persisted decision without
     settling or re-deciding (the write-ahead protocol's restart semantics).
+
+    ``safety`` (``prism.live.safety``, ``None`` = no rails) adds two vetoes:
+    a *halt* (kill-switch file, drawdown bound) checked after the mark step —
+    the cycle still settles and marks NAV so the ledger stays continuous, but
+    skips score → construct → submit and reports ``halted`` — and an *order
+    guard* (per-order notional, order count) enforced inside the write-ahead
+    protocol before anything is persisted or submitted.
+
+    ``unrankable`` (``None`` = off, bit-identical to the unmasked loop) is
+    consulted only on refresh sessions with the decision bar and returns
+    symbols that may not be ranked this refresh — e.g. names with a spin-off
+    inside the momentum lookback, where the live vendor's split-only bars
+    diverge from the spine's back-adjusted basis
+    (docs/bar_vendor_divergence.md §5, ``prism.live.spinoff_mask``). A masked
+    name is scored NaN (it cannot distort decile membership) and its target
+    carries NO decision (NaN): no new position opens on a divergent rank, a
+    held position is held until the window clears the event. The provider owns
+    its failure policy (fetch failure = loud warning, empty mask).
+
+    ``regime`` (``None`` = off, bit-identical to the unwired loop) is the
+    SPEC §7.5 telemetry provider (``prism.live.regime_step``), consulted with
+    the decision bar on EVERY cycle — non-refresh and halted sessions
+    included, because the handoff §8 precondition-(b) clock counts sessions
+    and a halted cycle must still record regime state. The provider owns its
+    failure policy (named per-block failure entries, never a raise, never a
+    silently-empty dict); a provider that violates that contract anyway is
+    caught here and recorded as a named ``provider`` failure entry with a
+    loud warning, so telemetry can never take down the certified book's
+    cycle. The read lands in ``DailyCycleResult.regime`` and the regime
+    ledger; ANY failure entry marks the session not clean for the
+    precondition-(b) 21-session clock (docs/regime_step.md).
+
+    ``regime_gross_scale`` is the §7.5 de-gross ACTION hook and stays
+    unarmed (``None``) until docs/sizing_preregistration.md is
+    ratified — it has deliberately no CLI path. When armed it fires only on
+    a refresh session whose regime read carries ZERO failure entries: its
+    return value multiplies ``config.max_gross`` for this refresh's
+    construction, clamped to ``[0, config.max_gross]``, and the applied
+    multiplier is recorded (``regime_scale``; regime ledger). On a dirty
+    read the refresh constructs at the configured gross with a loud
+    warning — a telemetry failure de-arms the action, it never silently
+    de-grosses. Requires ``regime``; a non-finite scale raises (N7).
     """
+    if regime_gross_scale is not None and regime is None:
+        raise ValueError(
+            "regime_gross_scale requires the regime telemetry provider: the hook fires only on "
+            "a clean regime read, so without one it could never legally apply (a dead switch, N7)"
+        )
     if close.empty:
         raise ValueError("empty close panel — nothing to decide on")
     if len(close) < signal.required_history:
@@ -302,14 +389,115 @@ def run_daily_cycle(
                 None if concordance["weight_corr"] is None else round(concordance["weight_corr"], 4),
             )
 
+    # 2c. Halt rails (kill switch, drawdown) — decided on the marked equity
+    # before any decision is constructed or persisted. A halted cycle still
+    # settles and marks NAV (the ledger stays continuous through a halt) but
+    # initiates nothing, and it does NOT resume a pending submission either:
+    # the kill switch must gate every path to the venue.
+    halted: str | None = None
+    if safety is not None:
+        halted = halt_reason(safety, equity, ctx.equity_ledger)
+        if halted is not None:
+            logger.error(
+                "SAFETY HALT (%s): settling and marking NAV only — no decision, no orders "
+                "this cycle",
+                halted,
+            )
+
+    # 2d. Regime telemetry (SPEC §7.5 through the §7.7 step) — read EVERY
+    # cycle, refresh or not, halted or not: the handoff §8 precondition-(b)
+    # clock counts sessions, and a halted cycle still records regime state.
+    # The provider owns its failure policy; a raise or a silently-empty
+    # result here is a contract violation, converted to a named ``provider``
+    # failure entry so telemetry can never take down the certified book's
+    # cycle (N7: loud and named — not fatal, not silent).
+    regime_state: dict | None = None
+    if regime is not None:
+        try:
+            regime_state = regime(decision_bar)
+            if not isinstance(regime_state, dict) or not (
+                regime_state.get("blocks") or regime_state.get("failures")
+            ):
+                raise RuntimeError("regime provider returned a silently-empty result")
+        except Exception as exc:  # noqa: BLE001 — telemetry, never a cycle precondition
+            logger.warning(
+                "REGIME PROVIDER FAILED for %s (%s) — recording a named provider failure; this "
+                "session is NOT clean for the handoff §8 precondition-(b) clock (N7)",
+                decision_bar,
+                type(exc).__name__,
+            )
+            regime_state = {
+                "decision_bar": decision_bar,
+                "blocks": {},
+                "failures": [{"block": "provider", "error": type(exc).__name__}],
+            }
+
     # 3. Cadence gate, then score → construct against held weights. Off a refresh
     # session (the decision cadence has not elapsed) the book holds its filled
     # weights — no re-score, no trades — so a monthly book rebalances monthly
     # while NAV still marks daily.
-    refresh = _is_refresh_session(state, decision_bar, close.index, config.decision_every)
+    refresh = halted is None and _is_refresh_session(
+        state, decision_bar, close.index, config.decision_every
+    )
+
+    # The §7.5 de-gross ACTION hook: only on a refresh, only on a regime read
+    # with zero failure entries, clamped to [0, config.max_gross]. A dirty
+    # read de-arms the action loudly — construction proceeds at the
+    # configured gross, never a silent de-gross on broken telemetry.
+    effective_max_gross = config.max_gross
+    regime_scale: float | None = None
+    if refresh and regime_gross_scale is not None:
+        if regime_state is not None and not regime_state.get("failures"):
+            scale = float(regime_gross_scale(regime_state))
+            if not math.isfinite(scale):
+                raise ValueError(f"regime_gross_scale returned {scale}; refusing to size a book on it (N7)")
+            regime_scale = min(max(scale, 0.0), 1.0)
+            effective_max_gross = regime_scale * config.max_gross
+            logger.info(
+                "regime gross scale %.4f applied at refresh %s: effective max_gross %.4f (configured %.4f)",
+                regime_scale,
+                decision_bar,
+                effective_max_gross,
+                config.max_gross,
+            )
+        else:
+            logger.warning(
+                "regime gross-scale hook NOT applied at refresh %s: the regime read is not clean; "
+                "constructing at the configured max_gross %.4f (a telemetry failure de-arms the "
+                "action, it never silently de-grosses)",
+                decision_bar,
+                config.max_gross,
+            )
+
+    masked: list[str] | None = None
     if refresh:
         score_row = pd.DataFrame([signal.score(close, volume)], index=close.index[-1:])
-        if config.book == "decile_neutral":
+        if unrankable is not None:
+            # Unrankable names (spin-off inside the lookback — see the
+            # docstring) leave the scored cross-section entirely, so decile
+            # membership is decided over rankable names only.
+            masked = sorted(set(unrankable(decision_bar)) & set(score_row.columns))
+            if masked:
+                score_row.loc[:, masked] = float("nan")
+                logger.info(
+                    "unrankable mask: %d name(s) held out of ranking this refresh: %s",
+                    len(masked),
+                    masked,
+                )
+        if effective_max_gross <= 0.0:
+            # A zero effective cap — regime_scale clamped to 0.0, the full
+            # de-gross — admits no gross, and cap_book refuses a 0 cap, so
+            # emit each book's own flat form directly: the decile /
+            # inverse_vol books' explicit 0.0 for every name (NaN-score pin
+            # included), the directional book's flat-where-decided (a NaN
+            # score keeps carrying no decision, exactly as the construct
+            # would emit). The band step below then exits every held,
+            # decidable name.
+            if config.book in ("decile_neutral", "inverse_vol"):
+                raw = pd.Series(0.0, index=score_row.columns, dtype=float)
+            else:
+                raw = score_row.iloc[0] * 0.0
+        elif config.book == "decile_neutral":
             # The decile construct emits an explicit weight (0.0 outside the
             # decile) for every scored name, so a held name that falls out of the
             # decile — including a book inherited at cutover, as long as it is in
@@ -320,17 +508,40 @@ def run_daily_cycle(
             raw = construct_decile_neutral(
                 score_row,
                 decile=config.decile,
-                max_gross=config.max_gross,
+                max_gross=effective_max_gross,
                 max_symbol_abs_weight=config.max_symbol_abs_weight,
             ).iloc[0]
+        elif config.book == "inverse_vol":
+            # Trend sleeve (docs/trend_design.md §2). Vol needs trailing
+            # close history; align the one-row score onto the full panel so
+            # only the decision bar carries a sign and earlier bars stay
+            # NaN (unused by the last-row construct read).
+            scores_aligned = pd.DataFrame(
+                np.nan, index=close.index, columns=score_row.columns, dtype=float
+            )
+            scores_aligned.iloc[-1] = score_row.iloc[0].reindex(score_row.columns)
+            raw = construct_inverse_vol_targets(
+                scores_aligned,
+                close.reindex(columns=score_row.columns),
+                vol_ewma_bars=config.vol_ewma_bars,
+                max_gross=effective_max_gross,
+                max_symbol_abs_weight=config.max_symbol_abs_weight,
+            ).iloc[-1]
         else:
             raw = construct_directional_targets(
                 score_row,
                 position_size=config.position_size,
-                max_gross=config.max_gross,
+                max_gross=effective_max_gross,
                 max_symbol_abs_weight=config.max_symbol_abs_weight,
                 no_trade_band=0.0,  # the online step below owns hysteresis (never the flat replay)
             ).iloc[0]
+        if masked:
+            # Hold, don't flatten: the decile construct pins a NaN score to an
+            # explicit 0.0 (exit), but an unrankable name carries NO decision.
+            # A NaN target resolves to the held weight in step_no_trade_band
+            # (0.0 for an unheld name), so no new position opens on a divergent
+            # rank and a held name is held until the event clears the lookback.
+            raw.loc[masked] = float("nan")
         targets = step_no_trade_band(prev_weights, raw, config.no_trade_band)
         if config.max_participation is not None:
             if volume is None:
@@ -346,23 +557,36 @@ def run_daily_cycle(
     else:
         targets = prev_weights  # hold the filled book: no decision this session
 
-    # 4. Write-ahead decide and idempotent submit.
-    orders = decide_and_submit(
-        ctx,
-        decision_bar,
-        targets,
-        prices,
-        min_order_notional=config.min_order_notional,
-        whole_shares=config.whole_shares,
-        refresh_bar=decision_bar if refresh else None,
-    )
-    logger.info(
-        "decision %s: %d orders submitted, equity %.2f, gross %.4f",
-        decision_bar,
-        len(orders),
-        equity,
-        float(targets.abs().sum()),
-    )
+    # 4. Write-ahead decide and idempotent submit. Skipped entirely under a
+    # halt — a persisted-but-unsubmitted decision would resume trading on the
+    # next non-halted run, which is not what a kill switch means.
+    orders: list[Order] = []
+    if halted is None:
+        orders = decide_and_submit(
+            ctx,
+            decision_bar,
+            targets,
+            prices,
+            min_order_notional=config.min_order_notional,
+            whole_shares=config.whole_shares,
+            refresh_bar=decision_bar if refresh else None,
+            order_guard=(
+                None if safety is None else (lambda order_list: check_orders(order_list, equity, safety))
+            ),
+        )
+        logger.info(
+            "decision %s: %d orders submitted, equity %.2f, gross %.4f",
+            decision_bar,
+            len(orders),
+            equity,
+            float(targets.abs().sum()),
+        )
+    # Record the regime read durably beside the NAV mark — on halted and
+    # non-refresh cycles too, because the precondition-(b) clock reads this
+    # ledger. Idempotent per decision bar (the equity-ledger discipline).
+    if ctx.regime_ledger is not None and regime_state is not None:
+        _append_regime_ledger(ctx.regime_ledger, decision_bar, regime_state, regime_scale)
+
     # Record the post-settle mark-to-market NAV for this bar (the anytime-valid
     # monitor's return-series source). Idempotent per bar, so same-bar restarts
     # never double-count. Written last so a crash mid-cycle logs no equity for
@@ -393,6 +617,10 @@ def run_daily_cycle(
         target_weights=targets,
         monitor_read=monitor_read,
         concordance=concordance,
+        halted=halted,
+        masked=masked,
+        regime=regime_state,
+        regime_scale=regime_scale,
     )
 
 

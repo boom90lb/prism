@@ -1,11 +1,14 @@
 # tests/test_data_loader.py
-"""Data-loader tests: tz-awareness, range-encoded cache coverage, dividends."""
+"""Data-loader tests: tz-awareness, range-encoded cache coverage, dividends,
+credential hygiene, bounded 429 backoff."""
 
+import logging
 import os
 import time
 
 import pandas as pd
 import pytest
+import requests
 
 from prism.io.loader import (
     BAR_TZ,
@@ -331,6 +334,98 @@ def test_empty_dividend_answer_cached_with_ttl(tmp_path, monkeypatch):
     os.utime(cache_files[0], (stale, stale))
     assert loader.fetch_dividends("BRK.A", "2021-01-01", "2021-12-31").empty
     assert calls["n"] == 2
+
+
+# --------------------------------------------------------------------------- #
+# Credential hygiene + bounded 429 backoff (docs/security.md)
+# --------------------------------------------------------------------------- #
+_SECRET = "sk-test-SECRET-0123"
+
+
+class _StatusResp:
+    """requests-compatible double whose error text embeds the request URL,
+    exactly as ``requests.HTTPError`` does (the leak vector under test)."""
+
+    def __init__(self, status_code, payload=None):
+        self.status_code = status_code
+        self._payload = payload or {}
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise requests.HTTPError(
+                f"{self.status_code} Error for url: "
+                f"https://api.twelvedata.com/time_series?symbol=AAPL&apikey={_SECRET}"
+            )
+
+    def json(self):
+        return self._payload
+
+
+def test_fetch_error_logs_never_contain_the_api_key(tmp_path, monkeypatch, caplog):
+    monkeypatch.setattr("prism.io.loader.requests.get", lambda *a, **k: _StatusResp(500))
+    loader = DataLoader(api_key=_SECRET, cache_dir=tmp_path, retry_429_delays=())
+
+    with caplog.at_level(logging.ERROR, logger="prism.io.loader"):
+        assert loader.fetch_historical_data("AAPL", "1d", "2021-01-01", "2021-12-31").empty
+        assert loader.fetch_dividends("AAPL", "2021-01-01", "2021-12-31").empty
+
+    assert caplog.text  # the failures WERE logged…
+    assert _SECRET not in caplog.text  # …but the key never was
+    assert "***" in caplog.text
+
+
+def test_429_backoff_retries_then_succeeds(tmp_path, monkeypatch):
+    responses = [
+        _StatusResp(429),
+        _StatusResp(429),
+        _FakeResp(_ts_payload("2021-01-01", "2021-03-01")),
+    ]
+    calls = {"n": 0}
+
+    def fake_get(url, params=None, timeout=None):
+        resp = responses[calls["n"]]
+        calls["n"] += 1
+        return resp
+
+    monkeypatch.setattr("prism.io.loader.requests.get", fake_get)
+    sleeps = []
+    loader = DataLoader(
+        api_key="test",
+        cache_dir=tmp_path,
+        retry_429_delays=(1.0, 2.0, 3.0),
+        sleep=sleeps.append,
+    )
+    df = loader.fetch_historical_data("AAPL", "1d", "2021-01-01", "2021-03-01")
+    assert not df.empty
+    assert calls["n"] == 3
+    # Slept the first two scheduled delays; the third attempt succeeded.
+    assert sleeps == [1.0, 2.0]
+
+
+def test_429_exhausted_retries_fail_redacted_and_metered(tmp_path, monkeypatch, caplog):
+    calls = {"n": 0}
+
+    def fake_get(url, params=None, timeout=None):
+        calls["n"] += 1
+        return _StatusResp(429)
+
+    monkeypatch.setattr("prism.io.loader.requests.get", fake_get)
+    from prism.io.rate_limit import TokenBucket
+
+    bucket = TokenBucket(per_minute=1000, per_day=1000)
+    loader = DataLoader(
+        api_key=_SECRET,
+        cache_dir=tmp_path,
+        rate_limiter=bucket,
+        retry_429_delays=(0.0,),
+        sleep=lambda _d: None,
+    )
+    with caplog.at_level(logging.WARNING, logger="prism.io.loader"):
+        df = loader.fetch_historical_data("AAPL", "1d", "2021-01-01", "2021-12-31")
+    assert df.empty
+    assert calls["n"] == 2  # one retry, then the terminal 429 raised
+    assert bucket.used_today == 2  # every attempt was metered (a retry is a real request)
+    assert _SECRET not in caplog.text  # 429 warning + final error both redacted
 
 
 # --------------------------------------------------------------------------- #

@@ -1,4 +1,4 @@
-# Aim-portfolio pre-registration — the multi-signal Gârleanu–Pedersen implementable frontier (DRAFTED, GATED)
+# Aim-portfolio pre-registration — multi-signal Gârleanu–Pedersen frontier (G4 split RATIFIED; construction DRAFTED/GATED)
 
 **Status: drafted 2026-07-08, GATED on the momentum verdict — no counted trial
 until the gate opens.** This document registers the design and the trial-accounting
@@ -29,13 +29,46 @@ slow-signal candidate is 12−1 cross-sectional momentum, and its status is
 through ≥ 2027-06, DSR > 0.5 against the momentum ledger, periodic net Sharpe above
 the then-current cash hurdle, and a live-monitor read not in contradiction
 (`docs/momentum_design.md §3`). This aim-portfolio sits at Phase B of the
-sequencing — "the two-speed book (+2 → +6 months)… G-P multi-signal band with
-heterogeneous decay rates (its native case)" (`docs/handoff.md §5`) — which is
+sequencing — "the two-speed book… G-P multi-signal band with
+heterogeneous decay rates (its native case)" (`docs/handoff.md §6`) — which is
 gated behind Phase A's trustworthy verdict and, per the pre-registered decision
 table, is the "slow-sleeve netting book [that] gets *one* pre-registered budget"
 only after the kill-criterion resolves (`docs/handoff.md §8`). Until the momentum
 verdict opens that gate, **zero counted trials run for this item.** A blend built on
 an unpromoted signal would be spending deflation budget to combine noise.
+
+**v0.4.0 split-gate seam: RATIFIED 2026-07-23** (owner-directed dedicated
+commit; `docs/v040_program.md` §5 queue item 5). **This box ratifies only
+the G4a/G4b split.** It does **not** open counted G4b trials, does **not**
+ratify the construction trial table below, and does **not** promote any
+sleeve. **G4b counted gate still requires ≥1 sleeve at its ratified bar**
+(or the explicit firewalled A4 clause below, owner-armed). Uncounted
+engineering diagnostics (G4a) never spent this document's deflation budget.
+
+**Split (binding):**
+
+| Gate | Opens when | Spends deflation budget? | What it permits |
+|---|---|---|---|
+| **G4a** | ≥ 2 sleeves at `mechanics_clean` (e.g. B1 + trend_v1 both mechanics-clean) | No | Uncounted joint construction diagnostics, joint crash-window replays (W1), engineering plumbing for multi-sleeve ledgers, capital-allocation *sensitivity* (not optimized weights) |
+| **G4b** | ≥ 1 sleeve at its *ratified* bar, **or** ≥ 1 sleeve under a firewalled A4 non-promotion kill still open *and* the owner has explicitly opened G4b under that clause | Yes | Counted construction trials under this document's frozen table once also ratified: netting, cadence, band counterfactuals — all ledgered, all deflated |
+
+**Rationale (pins, not trial values):** blending unpromoted signals into
+*counted* construction spends deflation budget on noise; joint *engineering*
+diagnostics do not. G4a is the product receipt surface for risk profiles
+(W6) and for the preferred multi-sleeve GO narrative's crash evidence —
+without opening a construction search budget. G4b is the only gate that
+may spend this family's construction budget.
+
+**What this seam does not do:**
+
+- Does not promote any sleeve, move any family budget, or re-open cert-001.
+- Does not admit optimized multi-sleeve weights as free parameters before
+  G4b counted search freezes them.
+- Does not make A4 firewalled kill-class outputs admissible as G4b
+  evidence without the explicit G4b clause above (firewall stands until
+  that clause is owner-armed).
+- Does not open G4b merely because G4a diagnostics (joint crash, fixed-weight
+  sensitivity) look favorable.
 
 ## 1. The failure this fixes: sum-then-cap is anti-netting
 

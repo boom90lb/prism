@@ -121,7 +121,8 @@ and WLTW for 61–235 days at ±10 bps total contribution against −0.35 to −
 annualized certified results: no verdict moves. FB (retired ticker) sits in
 the live universe file; the sweep becomes an M6 pre-flight; remediation
 (cache quarantine, `RENAME_TABLE` seeding, membership-interval closure,
-`sp500_current.txt` regeneration) awaits owner decision.
+`sp500_current.txt` regeneration) was decided and executed 2026-07-14/15
+(`docs/data_integrity_diagnostic.md` §7; ECHO follow-up §11).
 
 ## 4. Upgrade 2, executed: the dividend wedge, measured
 
