@@ -1,24 +1,25 @@
 # Prism
 
-> **v0.3.0 re-founds this project; v0.4.0 is the deploy-first program (DRAFT).**
-> The authoritative documents are [`SPEC.md`](SPEC.md) (the constitution —
-> score → residualize → construct → execute, invariants, claim tiers, kill-
-> criterion) and [`MARKETS.md`](MARKETS.md) (market-structure: which markets
-> are core execution vs regime signal). Standing jurisprudence:
+> **v0.3.0 re-founds this project; v0.4.0 is the deploy-first program
+> (RATIFIED 2026-07-22).** The authoritative documents are
+> [`SPEC.md`](SPEC.md) (the constitution — score → residualize → construct →
+> execute, invariants, claim tiers, kill-criterion) and
+> [`MARKETS.md`](MARKETS.md) (market-structure: which markets are core
+> execution vs regime signal). Standing jurisprudence:
 > [`docs/handoff.md`](docs/handoff.md). The v0.4.0 objective ranking lives in
-> [`docs/v040_program.md`](docs/v040_program.md) — **DRAFT pending owner
-> ratification**; until that dedicated commit lands, it does not outrank
-> handoff. Package, distribution, and repository are all named `prism`
-> (formerly `trading-ensemble`). **Read `SPEC.md` first.**
+> [`docs/v040_program.md`](docs/v040_program.md) (**RATIFIED** — program ranking
+> law under SPEC; handoff remains jurisprudence). Package, distribution, and
+> repository are all named `prism` (formerly `trading-ensemble`). **Read
+> `SPEC.md` first.**
 >
 > **Product priority: US equity and liquid-ETF markets first** (B1 momentum /
 > learned-XS, trend ETFs, multi-sleeve construction). Crypto is a second-
 > market validation lane when bandwidth allows — not the ranking prize or
-> preferred GO. Preferred GO shape (program DRAFT): equity sleeve + trend
-> convexity (`multi-premium, convexity-complemented`); single-sleeve B1 GO,
-> if ever, must be labeled `single-premium, de-gross-only`. Dual ranking:
-> objective = multi-sleeve net after-cost IR in an operator risk envelope;
-> integrity (N1–N8, trial accounting) is a hard filter that never moves.
+> preferred GO. Preferred GO shape: equity sleeve + trend convexity
+> (`multi-premium, convexity-complemented`); single-sleeve B1 GO, if ever,
+> must be labeled `single-premium, de-gross-only`. Dual ranking: objective =
+> multi-sleeve net after-cost IR in an operator risk envelope; integrity
+> (N1–N8, trial accounting) is a hard filter that never moves.
 >
 > Status of the alpha, stated plainly: **the `SPEC.md §10` kill-criterion fired
 > on 2026-07-06** — across a pre-registered, fully counted 17-trial budget, no

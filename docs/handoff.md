@@ -18,9 +18,8 @@ on.
 
 ## 1. The asset ledger
 
-Two rankings, never conflated (program text: `docs/v040_program.md` — **DRAFT
-pending owner ratification**; this section is the standing rewrite that queue
-item 1 lands):
+Two rankings, never conflated (program text: `docs/v040_program.md` —
+**RATIFIED 2026-07-22**):
 
 | Ranking | Prize | Role |
 |---|---|---|
@@ -92,8 +91,8 @@ attention sink.
 
 Operating sentence: the harness is a hard filter that never moves; the
 objective is multi-sleeve net after-cost IR inside an operator-declared risk
-envelope, deployed at the operator's real capital mode (`docs/v040_program.md`
-DRAFT). Preferred GO shape is equity multi-sleeve + trend convexity (label
+envelope, deployed at the operator's real capital mode (`docs/v040_program.md`,
+RATIFIED 2026-07-22). Preferred GO shape is equity multi-sleeve + trend convexity (label
 `multi-premium, convexity-complemented`); single-sleeve B1 GO remains legal
 under its own docs but must be labeled `single-premium, de-gross-only`
 (de-gross is risk reduction, not CTA convexity). Certification 001 stands —
@@ -321,7 +320,7 @@ So they are not relitigated under pressure:
 | Kill-criterion fires STOP | Weekly-cadence demotion + slow-sleeve netting book gets *one* pre-registered budget; else archive the sleeve, publish the negative packet |
 | Kill-criterion fires GO | Deploy at minimum viable size; scale only along the capacity curve; live monitor armed from day one. **Preconditions (amended 2026-07-19, owner-ratified): no real-money order until (a) the sizing pre-registration (`docs/sizing_preregistration.md`) is finished and ratified with its crash-conditional de-gross term, and (b) the SPEC §7.7 regime step is wired into the live cycle and has run in the paper loop for ≥ 21 consecutive sessions (one full decision cycle) without an N7 event. A GO read with these unmet deploys nothing — it starts the wiring, not the account.** |
 | Paper fills contradict the 1bp assumption | Recompute the entire historical verdict under calibrated buckets before any new work — the past numbers change meaning |
-| Crypto lane / second market | **Equity owns product priority** (B1, trend ETFs, learned-XS, G0 equity costs, multi-sleeve preferred GO). Crypto may run as **independent validation when bandwidth allows** (own family pre-reg, venue-true fees, residualize-bypassed TS lane) — not a hard ban before the equity promotion verdict, not a re-rank to crypto-first. One *promotion adjudication* at a time still stands (A4); independent family ≠ concurrent promotion. Program text: `docs/v040_program.md` DRAFT W3 / §7. |
+| Crypto lane / second market | **Equity owns product priority** (B1, trend ETFs, learned-XS, G0 equity costs, multi-sleeve preferred GO). Crypto may run as **independent validation when bandwidth allows** (own family pre-reg, venue-true fees, residualize-bypassed TS lane) — not a hard ban before the equity promotion verdict, not a re-rank to crypto-first. One *promotion adjudication* at a time still stands (A4); independent family ≠ concurrent promotion. Program text: `docs/v040_program.md` (RATIFIED) W3 / §7. |
 | PyPI name collision on `prism` | Qualify the distribution name only; the import package stays `prism` (`SPEC §12`, already decided) |
 | Anyone proposes intraday anything | `SPEC §8`. Structural, not empirical. Closed. |
 

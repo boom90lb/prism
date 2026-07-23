@@ -1,11 +1,11 @@
 # Prism v0.4.0 — the deploy-first program
 
-> **Status: DRAFT — awaiting owner ratification (= owner push of the dedicated
-> commit).** This document re-founds the *objective ranking* of the project for
-> v0.4.0 and the *product surface* required to run it. It does **not** re-open
-> any frozen mid-flight design: the momentum M-series (`docs/momentum_design.md`),
-> trend T-series (`docs/trend_design.md`), learned-XS X-series
-> (`docs/learned_xsection_design.md`), replication C-series
+> **Status: RATIFIED 2026-07-22** (owner-directed dedicated commit; this document
+> is program ranking law under SPEC.md). This document re-founds the *objective
+> ranking* of the project for v0.4.0 and the *product surface* required to run
+> it. It does **not** re-open any frozen mid-flight design: the momentum
+> M-series (`docs/momentum_design.md`), trend T-series (`docs/trend_design.md`),
+> learned-XS X-series (`docs/learned_xsection_design.md`), replication C-series
 > (`docs/replication_preregistration.md`), and the ratified sizing
 > pre-registration (`docs/sizing_preregistration.md`) stand exactly as ratified.
 > What changes is what the program *optimizes*, what runs in parallel, which
@@ -361,8 +361,8 @@ tag at ratification; never deleted):
    handoff §8 crypto row rewritten to **"equity owns product priority; crypto
    may run as independent validation when bandwidth allows"** (not a hard ban,
    not a re-rank to crypto-first); README status banner pointed at this program
-   once ratified (honest "no cleared bar" kept); aim-portfolio banner note that
-   G4 is split pending its seam amendment.
+   (honest "no cleared bar" kept); aim-portfolio banner note that G4 is split
+   pending its seam amendment. **RATIFIED 2026-07-22** (this commit).
 2. **Trend A4 seam amendment** (small — banner amendment via the PI-2
    mechanism). Equity path. **RATIFIED 2026-07-22 on `main`**
    (`docs/trend_design.md` banner; registry under
@@ -406,16 +406,18 @@ risk envelope an operator can actually configure.
 Legality is parallel; attention is not. Standing owner protocol for this
 release:
 
-1. **Owner now (equity):** ratify this program + doc coherence (queue 1);
-   fund A3 equity micro-account; equity venue checks (fractional short /
-   fractionability); decide capital-mode *path* (selection before GO).
+1. **Owner now (equity):** program + doc coherence **done** (queue 1
+   RATIFIED 2026-07-22); fund A3 equity micro-account; equity venue checks
+   (fractional short / fractionability); decide capital-mode *path*
+   (selection before GO).
 2. **Agents parallel (uncounted, equity-first):** trend mechanics end-to-end
    (`TrendSignalNode`, `inverse_vol` book, `--book trend` paper/replay);
-   A4 banner patches for T/X; factory draft; W6 schema draft; joint-crash
-   instrument (`prism.validation.joint_crash`, `docs/joint_crash_diagnostic.md`);
-   observatory capture plumbing (`prism.io.observatory`).
-3. **Owner ratifies equity seams:** queue items 2–3 (T/X A4), then 4–6 as
-   ready.
+   joint-crash instrument + longer ETF panels for 2020/2022 stress windows;
+   observatory capture plumbing (`prism.io.observatory`) and capture-only
+   fetchers; factory / W6 drafts ready for owner freeze (queue 4, 6).
+3. **Owner ratifies remaining equity seams:** queue items 2–3 (T/X A4)
+   **done** 2026-07-22; then 4–6 as ready (factory SPEC paste, G4 seam, W6
+   freeze).
 4. **After G0 (equity):** re-read economic narratives under micro-calibrated
    spreads before any GO story.
 5. **After G4a:** uncounted joint equity construction + B1+trend crash
