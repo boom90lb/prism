@@ -103,11 +103,11 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--profile",
         choices=sorted(PROFILE_IDS),
         default=None,
-        help="Optional W6 risk profile id (docs/risk_profile_schema.md, DRAFT until freeze). "
+        help="Optional W6 risk profile id (docs/risk_profile_schema.md, FROZEN). "
         "research_paper forces the certified B1 paper path (book=momentum + pinned "
         "DailyBookConfig) and refuses construction flag overrides that would fork it. "
-        "Other profiles are resolved for run-dir metadata only until schema freeze; "
-        "they do not enable live deploy.",
+        "Other profiles write run-dir metadata + tighten-only construction; they are "
+        "not a GO authorization (handoff §8 still binds).",
     )
     parser.add_argument("--mom-lookback", type=int, default=252, help="Momentum/trend lookback bars (B1/T0: 252).")
     parser.add_argument("--mom-skip", type=int, default=21, help="Momentum/trend skip bars (B1/T0: 21).")
@@ -258,10 +258,10 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     args = _parse_args(argv)
 
-    # W6 draft: optional named profile. research_paper is the G6 instrument —
+    # W6 frozen: optional named profile. research_paper is the G6 instrument —
     # pin construction to CERTIFIED_B1_PAPER_CONFIG and refuse silent forks.
-    # Schema is DRAFT; non-paper profiles are metadata + tighten-only book
-    # config only (no multi-sleeve live routing yet).
+    # Non-paper profiles: metadata + tighten-only book config; multi-sleeve
+    # live routing and GO still require handoff §8 + sleeve admission.
     resolved_profile = None
     if args.profile is not None:
         resolved_profile = resolve_risk_profile(args.profile)
@@ -287,11 +287,11 @@ def main(argv: list[str] | None = None) -> int:
                 )
             logger.info(
                 "profile=research_paper: pinned to certified B1 paper DailyBookConfig "
-                "(G6; docs/risk_profile_schema.md DRAFT until freeze)"
+                "(G6; docs/risk_profile_schema.md FROZEN)"
             )
         else:
             logger.info(
-                "profile=%s resolved (schema DRAFT); book=%s max_gross=%.3f "
+                "profile=%s resolved (schema FROZEN); book=%s max_gross=%.3f "
                 "de_gross_armed=%s — not a GO authorization",
                 args.profile,
                 args.book,

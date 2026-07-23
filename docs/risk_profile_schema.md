@@ -1,15 +1,15 @@
-# Risk-profile schema — operator surface (W6) (DRAFT)
+# Risk-profile schema — operator surface (W6)
 
-> **Status: DRAFT — schema may land early; freeze lags code**
-> (`docs/v040_program.md` §5 queue item 6 / W6; handbook J6). Profiles are
+> **Status: FROZEN 2026-07-23** (owner-directed dedicated commit;
+> `docs/v040_program.md` §5 queue item 6 / W6; handbook J6). Profiles are
 > **product**; ratified pins are **constitution**. No profile may loosen a
-> pin. Code draft lives at `prism.live.risk_profile` (provisional names) with
-> G6 soft-gate tests in `tests/test_risk_profile.py`: `research_paper`
-> resolves to `CERTIFIED_B1_PAPER_CONFIG` and fails loud on divergence.
-> Paper CLI: `--profile research_paper` pins construction and writes
-> `profile.json` under the run dir. Freeze of this schema is the owner act
-> that stops free renaming of profile fields; until freeze, field names
-> below are provisional and non-paper profiles are not a live-deploy path.
+> pin. Field names in §1–§2 are frozen; renames require a new dedicated
+> commit. Code surface: `prism.live.risk_profile`. G6 receipt:
+> `tests/test_risk_profile.py` (`research_paper` → `CERTIFIED_B1_PAPER_CONFIG`,
+> fail-loud on divergence). Paper CLI: `--profile research_paper` pins
+> construction and writes `profile.json` under the run dir. Freeze does
+> **not** arm de-gross, fund A3, or authorize GO; non-paper profiles still
+> require sleeve admission + GO preconditions before real-money use.
 
 ## 0. Product law
 
@@ -22,10 +22,10 @@ exist.
 | Ranking | Who wins conflict |
 |---|---|
 | SPEC / ratified family pins | always |
-| This schema (once frozen) | product surface only |
+| This schema (frozen) | product surface only |
 | Operator day-discretion | never (no ad-hoc hedge ratios) |
 
-## 1. Profile enum (provisional)
+## 1. Profile enum (frozen)
 
 | Profile id | Intent | Gross / participation | Crash term (de-gross) | Sleeve mix default | Who |
 |---|---|---|---|---|---|
@@ -83,36 +83,30 @@ Composition instruments (doctrine table — `docs/v040_program.md` §8):
 | Trend sleeve | `trend_sleeve.*` | Standalone Sharpe knob |
 | Construction netting | G4b / aim-portfolio when open | Sum-then-cap |
 
-## 3. Mapping to code surfaces (implementation sketch; not yet authorized)
-
-Provisional target (code lands only after schema freeze + G6 work):
+## 3. Mapping to code surfaces
 
 | Concern | Surface | Profile effect |
 |---|---|---|
-| Paper / live loop config | run dir / profile yaml | selects pins + policy |
+| Paper / live loop config | `prism.live.risk_profile`, run-dir `profile.json` | selects pins + policy |
 | Construction | `max_gross`, symbol cap, band | tighten-only overrides |
 | Participation | gate %ADV | tighten-only |
 | Regime gross scale | hook arm + g | arm only when allowed; g never freer |
 | Multi-book routing | book prefixes | enable flags from policy |
 | Claim packets | profile id recorded | every GO/deploy claim names profile |
 
-**G6 soft gate (from program):** documented schema (this file) + paper loop
-honors a profile without bit-breaking certified B1 under `research_paper`.
+**G6 soft gate (met):** this schema + `tests/test_risk_profile.py` + paper
+loop `--profile research_paper` pin without bit-breaking certified B1.
 No counted trial spent.
 
 ## 4. Freeze criteria
 
 This schema freezes when all hold:
 
-1. Owner dedicated commit flips banner DRAFT → FROZEN (or RATIFIED if
-   treated as a design doc).
-2. `research_paper` paper path is demonstrated bit-identical to the
-   certified B1 instrument on a fixed fixture (test receipt).
+1. ~~Owner dedicated commit flips banner DRAFT → FROZEN.~~ **Done 2026-07-23.**
+2. ~~`research_paper` paper path bit-identical to certified B1 instrument
+   (test receipt).~~ **Done** (`tests/test_risk_profile.py`).
 3. Field names in §1–§2 stop drifting; further renames need a new
-   dedicated commit.
-
-Code may draft against provisional names on the execution branch; shipping
-profile-aware deploy without freeze is not "deserved" v0.4.0 product.
+   dedicated commit. **In force as of this freeze.**
 
 ## 5. Explicit non-goals
 

@@ -19,13 +19,13 @@ arm de-gross.
 | **Capital mode** | Whole-share OPG ≥ $100k **or** fractional-DAY if both venue checks pass | Chosen mode written down |
 | **GO (a)** | Sizing pre-reg (already RATIFIED); de-gross still unarmed | Banner + no arming commit yet |
 | **GO (b)** | ≥ 21 consecutive clean paper sessions (`regime.jsonl`, zero N7) | Session count + last N7 date |
-| **W6 profile** | Freeze schema (J6) before naming a live profile | `docs/risk_profile_schema.md` FROZEN |
+| **W6 profile** | Schema FROZEN 2026-07-23; name profile at GO | `docs/risk_profile_schema.md` |
 | **De-gross arm** | Dedicated GO-branch commit only after (a)+(b) | Commit SHA |
 | **First GO order** | Named profile + sleeve at bar + live URL intentional | Claim packet profile_id |
 
 Paper default: unset `APCA_API_BASE_URL` (`docs/security.md` §2.5). Live is
 explicit. Risk profiles: `python -m prism.scripts.paper_loop --profile research_paper ...`
-(G6 pin; schema still DRAFT).
+(G6 pin; schema FROZEN).
 
 ## Data vendor (Twelvedata)
 

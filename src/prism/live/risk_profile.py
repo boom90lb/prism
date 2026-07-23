@@ -1,18 +1,15 @@
-"""Operator risk-profile surface (W6 draft — schema freeze lags).
+"""Operator risk-profile surface (W6 — schema FROZEN 2026-07-23).
 
-Provisional product mapping from named profiles onto already-ratified pins
-or *stricter* subsets. See ``docs/risk_profile_schema.md`` (DRAFT until
-owner freeze / J6).
+Named profiles map onto already-ratified pins or *stricter* subsets. See
+``docs/risk_profile_schema.md``. Field names are frozen; renames need a
+dedicated commit.
 
-**G6 soft gate:** ``research_paper`` resolves to the certified B1 *paper*
+**G6:** ``research_paper`` resolves to the certified B1 *paper*
 ``DailyBookConfig`` defaults (momentum book, decile_neutral, monthly cadence).
 A profile-aware path under that id must remain bit-identical to a bare
 certified config. Unknown profile ids fail loud (N7). Profiles never loosen
-pins. De-gross arming is **not** a profile field action — sizing GO commit.
-
-This module is legal under a DRAFT schema (code may draft against provisional
-names). Shipping profile-aware *live deploy* before schema freeze is not
-deserved v0.4.0 product.
+pins. De-gross arming is **not** a profile field action — sizing GO commit
+after handoff §8 (a)+(b). Freeze of the schema is not a GO authorization.
 """
 
 from __future__ import annotations
@@ -22,7 +19,7 @@ from typing import Mapping
 
 from prism.live.daily import DailyBookConfig
 
-# Product enum — provisional until docs/risk_profile_schema.md freezes.
+# Product enum — frozen with docs/risk_profile_schema.md (2026-07-23).
 PROFILE_IDS: frozenset[str] = frozenset(
     {"research_paper", "conservative", "balanced", "assertive"}
 )
@@ -114,7 +111,7 @@ class RiskProfile:
                 "de_gross_armed": self.hedge.de_gross_armed,
             },
             "de_gross_g_ceiling": self.de_gross_g_ceiling,
-            "schema_status": "DRAFT",
+            "schema_status": "FROZEN",
         }
 
 

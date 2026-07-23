@@ -50,33 +50,20 @@
 | Program ranking + equity-first | `docs/v040_program.md` | Queue 1 done |
 | Factory pre-registration (SPEC §10) | `docs/factory_amendment.md` | **J4 RATIFIED 2026-07-23** |
 | Aim-portfolio G4a/G4b split | `docs/aim_portfolio_preregistration.md` (split box) | **J5 RATIFIED 2026-07-23**; G4b table still gated |
+| Risk-profile schema (W6) | `docs/risk_profile_schema.md` | **J6 FROZEN 2026-07-23**; field renames need new commit |
 | Intraday anything | SPEC §8 | Closed |
 
 ---
 
-## 2. Open law junctures (before full product freeze / account GO)
+## 2. Open law junctures
 
-Queue items 4–5 are closed. Remaining constitutional/product freeze on the
-equity path before shipping profile-aware deploy: **J6**. Account junctures
-(§3) can prep in parallel where noted; they still need owner acts.
-
-### J6 — Risk-profile schema freeze (W6)
-
-| | |
-|---|---|
-| **Decision** | Freeze the operator surface: named profiles + hedge composition that may only **tighten** pins |
-| **Read** | `docs/risk_profile_schema.md` §0–§2 and §4 freeze criteria |
-| **Verify** | (1) Profiles: `research_paper` / `conservative` / `balanced` / `assertive` — intent table acceptable. (2) **Tighten-only** vs ratified pins (no g freer than sizing; no gross above certified construction pin). (3) `research_paper` must remain bit-identical to certified B1 paper path (G6). (4) Crypto default **off**. (5) De-gross `armed` is **not** a profile toggle — separate GO arming commit after handoff §8 preconditions. (6) Unknown profile id fails loud |
-| **Commit shape** | Banner DRAFT → FROZEN (or RATIFIED). Prefer **no code** in the freeze commit unless a bit-identity test is the freeze receipt |
-| **Do not** | Ship profile-aware live deploy before freeze; invent “assertive = more leverage than certified”; arm de-gross via profile |
-
-**Status:** J4 and J5 closed 2026-07-23. Freeze J6 when G6 soft gate
-(`research_paper` bit-identity) has a test receipt. Do not open G4b without
-a sleeve at bar.
+Queue items 4–6 (J4–J6) are **closed**. No further constitutional freezes
+on the equity operator path for v0.4.0 product surface. Account junctures
+(§3) are owner acts. Do not open G4b without a sleeve at bar.
 
 ---
 
-## 3. Account junctures (after J6 freeze for profile-named GO; prep earlier)
+## 3. Account junctures (profile-named GO now legal *as product label*; capital still owner)
 
 These are **owner acts**. Agents may draft checklists and code; they do not
 fund, point live URLs, or arm de-gross.
@@ -144,7 +131,7 @@ eyes even when “just a refactor.”
 | Claim packets / certs | `results/**/claim_packet.json`, `docs/certifications/` | Public honesty surface |
 | Regime seam | `docs/regime_step.md`, live regime ledger | GO precondition (b) |
 | Construction combine | aim-portfolio docs + any sum-then-cap remnant | Anti-netting failure mode (cert-001 §8) |
-| Risk profiles (W6) | `src/prism/live/risk_profile.py`, run-dir `profile.json` | Product surface; may only tighten pins; freeze = J6 |
+| Risk profiles (W6) | `src/prism/live/risk_profile.py`, run-dir `profile.json` | Product surface FROZEN; may only tighten pins |
 
 **Agent-safe (usually no owner commit):** uncounted diagnostics, capture-only
 observatory, trend/paper mechanics default-off, joint-crash arithmetic,
@@ -175,7 +162,7 @@ docs drafts under DRAFT banners.
 | GO preconditions | `docs/handoff.md` §8 |
 | Factory draft | `docs/factory_amendment.md` |
 | G4 split draft | `docs/aim_portfolio_preregistration.md` (banner box) |
-| Profiles draft | `docs/risk_profile_schema.md` |
+| Profiles (frozen) | `docs/risk_profile_schema.md` |
 | Sizing + arming | `docs/sizing_preregistration.md` |
 | A3 micro-account | `docs/amendments_2026-07.md` A3 |
 | Regime / 21 sessions | `docs/regime_step.md` |

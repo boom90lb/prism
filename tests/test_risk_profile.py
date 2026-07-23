@@ -65,7 +65,7 @@ def test_all_profile_ids_resolve_and_public_dict_is_draft():
         assert p.profile_id == pid
         assert p.de_gross_g_ceiling == pytest.approx(0.5)
         public = p.to_public_dict()
-        assert public["schema_status"] == "DRAFT"
+        assert public["schema_status"] == "FROZEN"
         assert validate_profile_payload(public) == pid
 
 

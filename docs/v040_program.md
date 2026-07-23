@@ -293,7 +293,7 @@ free-knob a counted statistic. They choose a **named risk profile** that maps
 onto already-ratified pins (or explicitly *stricter* subsets). Profiles are
 product; pins are constitution.
 
-| Profile (provisional) | Gross / participation | Crash term | Sleeve mix | Who |
+| Profile (frozen) | Gross / participation | Crash term | Sleeve mix | Who |
 |---|---|---|---|---|
 | `research_paper` | as certified | telemetry only | B1 only | free tier; learn the loop |
 | `conservative` | tightened max_gross allowed | g=0.5 (pin) when GO-armed | B1 + trend weight floor if available | first real money default |
@@ -310,9 +310,9 @@ Rules:
 3. Paper path with `research_paper` is bit-identical to today's certified B1
    loop (no silent fork of the promotion instrument).
 
-**Gate G6 (soft):** documented risk-profile schema + paper loop honors a
-profile without bit-breaking certified B1 under `research_paper`. No counted
-trial spent. Schema may draft with queue item 1; freeze can lag.
+**Gate G6 (soft, met):** frozen risk-profile schema + paper loop honors a
+profile without bit-breaking certified B1 under `research_paper`
+(`tests/test_risk_profile.py`). No counted trial spent.
 
 ## 3. GO doctrine for v0.4.0
 
@@ -386,10 +386,11 @@ tag at ratification; never deleted):
    sleeve at bar. Equity multi-sleeve. **G4a/G4b split RATIFIED 2026-07-23**
    on `docs/aim_portfolio_preregistration.md` (split box only; construction
    trial table and G4b still gated; counted hard gate unchanged).
-6. **Risk-profile schema (W6)** — may draft with item 1; freeze when the
-   paper path honors `research_paper` bit-identity. Equity operator surface.
-   **Draft schema landed** at `docs/risk_profile_schema.md` (DRAFT; freeze
-   lags code).
+6. **Risk-profile schema (W6)** — freeze when the paper path honors
+   `research_paper` bit-identity. Equity operator surface. **FROZEN
+   2026-07-23** at `docs/risk_profile_schema.md` (G6 receipt:
+   `tests/test_risk_profile.py`; code `prism.live.risk_profile`). Does not
+   arm de-gross or authorize GO.
 7. **Crypto family pre-registration** (substantive — venue, fee, family,
    budget frozen). **Queued after equity A4 seams** unless owner explicitly
    pulls validation-lane work forward; never steals serial promotion slot from
@@ -412,18 +413,17 @@ Legality is parallel; attention is not. Standing owner protocol for this
 release:
 
 1. **Owner now (equity):** program + doc coherence **done** (queue 1
-   RATIFIED 2026-07-22); fund A3 equity micro-account; equity venue checks
-   (fractional short / fractionability); decide capital-mode *path*
-   (selection before GO); freeze W6 when G6 bit-identity receipt is ready
-   (queue 6).
+   RATIFIED 2026-07-22); W6 schema **FROZEN** (queue 6, 2026-07-23); fund
+   A3 equity micro-account; equity venue checks (fractional short /
+   fractionability); decide capital-mode *path* (selection before GO).
 2. **Agents parallel (uncounted, equity-first):** trend mechanics end-to-end
    **done**; joint-crash instrument + deep-history ETF panels **done**;
    observatory capture + fetchers **done**; G4a fixed-weight capital
-   sensitivity and multi-sleeve engineering; W6 profile code draft under
-   provisional names (no freeze).
-3. **Owner ratifies remaining equity seams:** queue items 2–5 **done**
-   (T/X A4 2026-07-22; factory + G4 split 2026-07-23); remaining: **queue 6
-   W6 freeze** after G6 soft gate.
+   sensitivity and multi-sleeve engineering; W6 profile code under frozen
+   names.
+3. **Owner equity seams 2–6:** queue items 2–6 **done** (T/X A4 2026-07-22;
+   factory + G4 split + W6 freeze 2026-07-23). Remaining owner path: A3 /
+   venue / capital mode / GO (b) clock / de-gross arm.
 4. **After G0 (equity):** re-read economic narratives under micro-calibrated
    spreads before any GO story.
 5. **G4a open (split RATIFIED):** uncounted joint equity construction +
