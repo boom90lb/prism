@@ -352,6 +352,10 @@ docs.
 
 ## 5. Ratification queue
 
+Owner review procedure for open items and account/GO acts:
+`docs/human_review_handbook.md` (critical junctures only; not a second
+constitution).
+
 Each item is its own dedicated commit, per the standing convention (anchor
 tag at ratification; never deleted):
 
