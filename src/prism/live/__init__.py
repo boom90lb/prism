@@ -21,6 +21,11 @@ and nothing important may live only in memory:
 * ``daily``  — the one-cycle driver wiring delta-fetched panels → Signal
   → online construction (caps, stateful band, participation gate) → the
   decision protocol (``prism.scripts.paper_loop`` is its CLI shell).
+* ``regime_step`` — the SPEC §7.7 regime step: per-cycle §7.5 telemetry
+  through the ``prism.regime.fetch`` adapters, read by ``daily`` every
+  session into the regime ledger (docs/regime_step.md); the de-gross
+  action hook stays unarmed until docs/sizing_preregistration.md
+  ratifies.
 * ``replay`` — the diagnostic replay instrument: the same daily cycle over
   local historical bars with a simulated next-open venue, faster than
   realtime (``prism.scripts.replay_loop`` is its CLI shell). Modeled fills:
@@ -52,52 +57,95 @@ from prism.live.loop import (
     read_concordance_ledger,
     read_equity_ledger,
     read_fills_ledger,
+    read_regime_ledger,
     read_targets_ledger,
     settle,
     sweep_pending,
     targets_to_orders,
 )
 from prism.live.monitor import book_concordance, paper_monitor_read
+from prism.live.regime_step import ABSENT_BLOCKS, REGIME_BLOCKS, RegimeTelemetry
 from prism.live.replay import (
     ReplayBroker,
     align_replay_panels,
     load_local_bar_panels,
     replay_daily_cycles,
 )
+from prism.live.risk_profile import (
+    CERTIFIED_B1_PAPER_CONFIG,
+    PROFILE_IDS,
+    HedgePolicy,
+    RiskProfile,
+    SleeveBand,
+    assert_research_paper_bit_identity,
+    book_config_matches_certified_paper,
+    resolve_risk_profile,
+    validate_profile_payload,
+)
+from prism.live.safety import SafetyConfig, SafetyViolation, check_orders, halt_reason
+from prism.live.spinoff_mask import (
+    CORPORATE_ACTIONS_URL,
+    fetch_spinoffs,
+    spinoff_flags,
+    spinoff_unrankable,
+    spinoff_unrankable_provider,
+)
 from prism.live.state import LoopState, StateStore
 
 __all__ = [
+    "ABSENT_BLOCKS",
+    "CORPORATE_ACTIONS_URL",
     "DATA_BASE_URL",
     "DEFAULT_FEED",
     "LIVE_BASE_URL",
     "PAPER_BASE_URL",
+    "REGIME_BLOCKS",
     "AlpacaAPIError",
     "AlpacaBarSource",
     "AlpacaBroker",
     "Broker",
+    "CERTIFIED_B1_PAPER_CONFIG",
     "DailyBookConfig",
     "DailyCycleResult",
     "DuplicateOrder",
     "Fill",
+    "HedgePolicy",
     "LiveLoopContext",
     "OrderRejected",
     "LoopState",
     "Order",
+    "PROFILE_IDS",
+    "RegimeTelemetry",
     "ReplayBroker",
+    "RiskProfile",
+    "SafetyConfig",
+    "SafetyViolation",
+    "SleeveBand",
     "StateStore",
     "align_replay_panels",
+    "assert_research_paper_bit_identity",
     "book_concordance",
+    "book_config_matches_certified_paper",
+    "check_orders",
     "decide_and_submit",
+    "fetch_spinoffs",
+    "halt_reason",
     "fetch_universe_panels",
     "load_local_bar_panels",
     "paper_monitor_read",
     "read_concordance_ledger",
     "read_equity_ledger",
     "read_fills_ledger",
+    "resolve_risk_profile",
+    "validate_profile_payload",
+    "read_regime_ledger",
     "read_targets_ledger",
     "replay_daily_cycles",
     "run_daily_cycle",
     "settle",
+    "spinoff_flags",
+    "spinoff_unrankable",
+    "spinoff_unrankable_provider",
     "sweep_pending",
     "targets_to_orders",
 ]

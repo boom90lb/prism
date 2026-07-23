@@ -223,7 +223,9 @@ before costs* — gross annualized Sharpe **+0.54** (gross cumulative +6.1% vs
 8.6% in costs) — where the PCA signal was flat. That is exactly A-L's claim
 that ETF factors beat PCA factors, now visible as a real gross reversion edge
 rather than noise. It is still **net-negative**: ~0.26/day turnover at 2bp
-round-trip + impact + 50bp borrow eats the whole gross edge, and
+one-way (1bp spread + 1bp commission per dollar traded, the charge the
+engine levies on |trade| — see docs/cost_frontier.md) + impact + 50bp borrow
+eats the whole gross edge, and
 `residual_set_dsr` ~0.029 (deflated against all four trials) keeps it
 statistically indistinguishable from zero. So ETF factors refine the verdict
 from "no signal" to "a real but cost-bound signal" — the harness still
