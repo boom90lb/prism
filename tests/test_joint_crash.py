@@ -8,6 +8,7 @@ import pytest
 
 from prism.validation.joint_crash import (
     blend_returns,
+    capital_allocation_sensitivity,
     joint_crash_report,
     max_drawdown,
     window_return,
@@ -74,3 +75,32 @@ def test_joint_report_records_convexity_shape():
     assert tr_win is not None and tr_win > 0.0
     assert bl_win is not None and b1_win < bl_win < tr_win
     assert report["blend"]["max_drawdown"] > report["sleeves"]["b1"]["max_drawdown"]  # less bad
+
+
+def test_capital_allocation_sensitivity_grid_is_monotone_in_stress():
+    """Pure G4a arithmetic: more trend weight improves crash-window total return."""
+    idx = pd.date_range("2020-02-03", periods=40, freq="B", tz="America/New_York")
+    b1 = pd.Series(0.001, index=idx)
+    trend = pd.Series(0.0005, index=idx)
+    crash = idx[15:20]
+    b1.loc[crash] = -0.05
+    trend.loc[crash] = 0.02
+    windows = {"crash": (str(crash[0].date()), str(crash[-1].date()))}
+    sens = capital_allocation_sensitivity(
+        {"b1": b1, "trend": trend},
+        windows,
+        primary="b1",
+        primary_weights=[0.0, 0.5, 1.0],
+    )
+    assert sens["gate"] == "G4a"
+    assert sens["status"] == "uncounted_diagnostic"
+    assert len(sens["rows"]) == 3
+    rets = [row["windows"]["crash"]["total_return"] for row in sens["rows"]]
+    # primary=b1 weight 0 → all trend (best crash), 1 → all b1 (worst crash)
+    assert rets[0] > rets[1] > rets[2]
+
+
+def test_capital_allocation_sensitivity_requires_two_sleeves():
+    a = _series([0.01])
+    with pytest.raises(ValueError, match="exactly two"):
+        capital_allocation_sensitivity({"a": a}, {"w": ("2020-01-01", "2020-01-02")})

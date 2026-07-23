@@ -68,12 +68,18 @@ evidence** on the certified stream. Not a promotion; not G4b.
 # requires local deep-history ETF caches (see §3)
 uv run python -m research.scripts.joint_crash_receipt
 # → results/joint_crash_receipt_YYYY-MM-DD.json  (gitignored scratch)
+
+# G4a fixed-weight capital allocation sensitivity (b1 weight 0..1 step 0.1)
+uv run python -m research.scripts.joint_crash_receipt --sensitivity
 ```
 
 Library surface:
 
 ```python
-from prism.validation.joint_crash import joint_crash_report
+from prism.validation.joint_crash import (
+    capital_allocation_sensitivity,
+    joint_crash_report,
+)
 
 report = joint_crash_report(
     {"b1": b1_returns, "trend": trend_returns},
@@ -82,5 +88,10 @@ report = joint_crash_report(
         "bear_2022": ("2022-01-01", "2022-12-31"),
     },
     blend_weights={"b1": 0.7, "trend": 0.3},
+)
+grid = capital_allocation_sensitivity(
+    {"b1": b1_returns, "trend": trend_returns},
+    {"bear_2022": ("2022-01-01", "2022-12-31")},
+    primary="b1",
 )
 ```

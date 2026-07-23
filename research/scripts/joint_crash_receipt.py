@@ -245,6 +245,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--b1_weight", type=float, default=DEFAULT_BLEND["b1"])
     p.add_argument("--trend_weight", type=float, default=DEFAULT_BLEND["trend"])
     p.add_argument(
+        "--sensitivity",
+        action="store_true",
+        help="Also write a fixed-weight capital allocation sensitivity grid "
+        "(G4a; b1 weight 0..1 step 0.1). Not optimized weights (G4b).",
+    )
+    p.add_argument(
         "--out",
         type=Path,
         default=None,
@@ -254,6 +260,8 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    from prism.validation.joint_crash import capital_allocation_sensitivity
+
     args = parse_args()
     b1 = load_b1_returns(args.b1_returns)
     open_panel, close_panel, sources = load_etf_panels(
@@ -267,16 +275,23 @@ def main() -> None:
         decision_every=args.decision_every,
         vol_ewma_bars=args.vol_ewma_bars,
     )
+    sleeves = {"b1": b1, "trend": trend}
     blend_weights = {"b1": args.b1_weight, "trend": args.trend_weight}
     report = joint_crash_report(
-        {"b1": b1, "trend": trend},
+        sleeves,
         DEFAULT_WINDOWS,
         blend_weights=blend_weights,
     )
+    sensitivity = None
+    if args.sensitivity:
+        sensitivity = capital_allocation_sensitivity(
+            sleeves, DEFAULT_WINDOWS, primary="b1"
+        )
     out = args.out or Path(f"results/joint_crash_receipt_{date.today().isoformat()}.json")
     payload = {
         "instrument": "joint_crash",
         "status": "uncounted_diagnostic",
+        "gate": "G4a",
         "asof": date.today().isoformat(),
         "b1_source": str(args.b1_returns),
         "b1_span": _span(b1.index),
@@ -287,6 +302,7 @@ def main() -> None:
         "panel_n_sessions": int(len(close_panel)),
         "universe": list(TREND_V1_UNIVERSE),
         "report": report,
+        "capital_allocation_sensitivity": sensitivity,
         "notes": [
             "B1 certified demotion stream starts 2021-03-30 on this checkout — "
             "covid_2020_03 is empty for B1 by construction until a longer B1 "
@@ -294,11 +310,16 @@ def main() -> None:
             "Trend stream is offline T0 mechanics on local deep-history ETF "
             "caches; next-open fills; decision_every grid; default ExecutionConfig "
             "costs. Not a promotion read; not G4b.",
+            "capital_allocation_sensitivity (when present) is fixed-weight "
+            "G4a arithmetic only — optimized multi-sleeve weights require G4b.",
         ],
     }
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(_clean(payload), indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    print(json.dumps(_clean({"wrote": str(out), "report": report}), indent=2, sort_keys=True))
+    summary = {"wrote": str(out), "report": report}
+    if sensitivity is not None:
+        summary["sensitivity_n_rows"] = len(sensitivity["rows"])
+    print(json.dumps(_clean(summary), indent=2, sort_keys=True))
 
 
 if __name__ == "__main__":

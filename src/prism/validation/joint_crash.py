@@ -14,10 +14,13 @@ those eras; synthetic tests pin the arithmetic).
 
 from __future__ import annotations
 
-from typing import Mapping
+from typing import Mapping, Sequence
 
 import numpy as np
 import pandas as pd
+
+# Default product-profile weight for B1 in a two-sleeve sensitivity (not optimized).
+DEFAULT_PRODUCT_BLEND: dict[str, float] = {"b1": 0.7, "trend": 0.3}
 
 
 def max_drawdown(returns: pd.Series) -> float:
@@ -125,6 +128,77 @@ def joint_crash_report(
         "windows_defined": {k: {"start": a, "end": b} for k, (a, b) in windows.items()},
     }
     return report
+
+
+def capital_allocation_sensitivity(
+    sleeves: Mapping[str, pd.Series],
+    windows: Mapping[str, tuple[str, str]],
+    *,
+    primary: str | None = None,
+    primary_weights: Sequence[float] | None = None,
+) -> dict:
+    """Fixed-weight capital allocation *sensitivity* grid (G4a; uncounted).
+
+    For a two-sleeve book, sweeps the primary sleeve's capital weight on a fixed
+    grid (default 0.0 … 1.0 step 0.1) with the complement on the secondary.
+    Reports full-sample max drawdown and per-window total return at each
+    weight — **sensitivity only**, not optimized multi-sleeve weights (G4b).
+
+    Parameters
+    ----------
+    sleeves:
+        Exactly two named daily simple-return series.
+    windows:
+        Named stress intervals as in :func:`joint_crash_report`.
+    primary:
+        Sleeve that receives the swept weight; default first key in
+        insertion order.
+    primary_weights:
+        Explicit primary weights in [0, 1]. Default ``np.linspace(0, 1, 11)``.
+
+    Returns a JSON-serializable dict. Does not search, ledger, or promote.
+    """
+    names = list(sleeves.keys())
+    if len(names) != 2:
+        raise ValueError(
+            f"capital_allocation_sensitivity requires exactly two sleeves, got {names!r}"
+        )
+    if primary is None:
+        primary = names[0]
+    if primary not in sleeves:
+        raise ValueError(f"primary {primary!r} not in sleeves {names!r}")
+    secondary = names[0] if names[1] == primary else names[1]
+    if primary_weights is None:
+        primary_weights = [round(float(x), 10) for x in np.linspace(0.0, 1.0, 11)]
+    rows: list[dict] = []
+    for w in primary_weights:
+        w = float(w)
+        if not np.isfinite(w) or w < 0.0 or w > 1.0:
+            raise ValueError(f"primary weights must be finite in [0, 1], got {w}")
+        weights = {primary: w, secondary: 1.0 - w}
+        report = joint_crash_report(sleeves, windows, blend_weights=weights)
+        blend = report["blend"]
+        rows.append(
+            {
+                "weights": dict(weights),
+                "max_drawdown": blend["max_drawdown"],
+                "n_sessions": blend["n_sessions"],
+                "windows": blend["windows"],
+            }
+        )
+    return {
+        "instrument": "capital_allocation_sensitivity",
+        "status": "uncounted_diagnostic",
+        "gate": "G4a",
+        "primary": primary,
+        "secondary": secondary,
+        "rows": rows,
+        "windows_defined": {k: {"start": a, "end": b} for k, (a, b) in windows.items()},
+        "note": (
+            "Fixed-weight sensitivity only. Optimized multi-sleeve weights "
+            "require G4b (sleeve at bar + counted construction budget)."
+        ),
+    }
 
 
 def _session_series(returns: pd.Series) -> pd.Series:
