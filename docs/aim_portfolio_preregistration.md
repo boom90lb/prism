@@ -37,6 +37,22 @@ only after the kill-criterion resolves (`docs/handoff.md §8`). Until the moment
 verdict opens that gate, **zero counted trials run for this item.** A blend built on
 an unpromoted signal would be spending deflation budget to combine noise.
 
+**v0.4.0 split-gate note (pending seam amendment — does not open counted
+trials).** `docs/v040_program.md` (DRAFT) proposes splitting this gate as
+**G4a / G4b** without silently replacing the counted gate above:
+
+| Gate | Opens when | Spends deflation budget? |
+|---|---|---|
+| **G4a** | ≥ 2 sleeves at `mechanics_clean` | No — uncounted joint construction / crash diagnostics and engineering only |
+| **G4b** | ≥ 1 sleeve at its *ratified* bar (or under a firewalled A4 non-promotion kill still open) | Yes — counted construction trials (netting, cadence, band counterfactuals) |
+
+Until an owner-ratified seam amendment records that split on **this** banner
+(queue item under `docs/v040_program.md` §5 — aim-portfolio review + split-gate
+seam), **the counted gate in the paragraph above remains in force unchanged.**
+Uncounted engineering diagnostics were never this document's deflation-budget
+gate; they do not require an override to run. Do not treat the DRAFT program
+text as a silent un-gating of counted aim-portfolio trials.
+
 ## 1. The failure this fixes: sum-then-cap is anti-netting
 
 The doctrine that justifies a slow sleeve at all is internal netting — a slow,

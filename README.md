@@ -1,15 +1,24 @@
 # Prism
 
-> **v0.3.0 re-founds this project.** The authoritative documents are now
-> [`SPEC.md`](SPEC.md) (the constitution — the cross-sectional
-> score → residualize → construct → execute engine, the invariants, the claim
-> tiers, and the kill-criterion) and [`MARKETS.md`](MARKETS.md) (the zero-budget
-> market-structure analysis: which markets are core execution vs regime signal).
-> The "ensemble of models" is no longer the organizing abstraction — it is
-> demoted to *one* plug-in signal node. Package, distribution, and repository
-> are all named `prism` (formerly `trading-ensemble`; old GitHub URLs
-> redirect). **Read `SPEC.md` first.** The sections below describe the honest
-> evaluation harness, which v0.3.0 keeps almost intact and builds on.
+> **v0.3.0 re-founds this project; v0.4.0 is the deploy-first program (DRAFT).**
+> The authoritative documents are [`SPEC.md`](SPEC.md) (the constitution —
+> score → residualize → construct → execute, invariants, claim tiers, kill-
+> criterion) and [`MARKETS.md`](MARKETS.md) (market-structure: which markets
+> are core execution vs regime signal). Standing jurisprudence:
+> [`docs/handoff.md`](docs/handoff.md). The v0.4.0 objective ranking lives in
+> [`docs/v040_program.md`](docs/v040_program.md) — **DRAFT pending owner
+> ratification**; until that dedicated commit lands, it does not outrank
+> handoff. Package, distribution, and repository are all named `prism`
+> (formerly `trading-ensemble`). **Read `SPEC.md` first.**
+>
+> **Product priority: US equity and liquid-ETF markets first** (B1 momentum /
+> learned-XS, trend ETFs, multi-sleeve construction). Crypto is a second-
+> market validation lane when bandwidth allows — not the ranking prize or
+> preferred GO. Preferred GO shape (program DRAFT): equity sleeve + trend
+> convexity (`multi-premium, convexity-complemented`); single-sleeve B1 GO,
+> if ever, must be labeled `single-premium, de-gross-only`. Dual ranking:
+> objective = multi-sleeve net after-cost IR in an operator risk envelope;
+> integrity (N1–N8, trial accounting) is a hard filter that never moves.
 >
 > Status of the alpha, stated plainly: **the `SPEC.md §10` kill-criterion fired
 > on 2026-07-06** — across a pre-registered, fully counted 17-trial budget, no
@@ -17,18 +26,16 @@
 > under calibrated per-bucket costs, and the sleeve is archived. The negative
 > result is the harness's first certification:
 > [`docs/certifications/001-residual-reversion-daily-negative.md`](docs/certifications/001-residual-reversion-daily-negative.md).
-> The current candidate (monthly cross-sectional momentum, the demotion
-> budget's side discovery) is in flight under its own ratified pre-registered
-> budget ([`docs/momentum_design.md`](docs/momentum_design.md), ratified
-> 2026-07-06): entered at `mechanics_clean`, paper-trading nightly since
+> The live candidate is monthly cross-sectional momentum under its own
+> ratified budget ([`docs/momentum_design.md`](docs/momentum_design.md),
+> ratified 2026-07-06): `mechanics_clean`, paper-trading nightly since
 > 2026-07-13, promotion readable only at the M6 extension window (≥ 2027-06
-> data). Two successor pre-registrations are ratified (2026-07-18):
-> [`docs/replication_preregistration.md`](docs/replication_preregistration.md)
-> (gated per-cell on a §3-qualifying panel) and
-> [`docs/trend_design.md`](docs/trend_design.md) (design frozen, OOS clock
-> running since ratification). No
-> configuration has ever cleared the deflated evidence bar; nothing is
-> deployable today.
+> data). Successor pre-registrations ratified: replication (2026-07-18),
+> trend (2026-07-18; OOS clock running), learned-XS (2026-07-19), sizing /
+> crash-conditional de-gross (2026-07-20). GO preconditions (a) sizing
+> ratified and (b) §7.7 regime step + ≥ 21 clean paper sessions stand; no
+> configuration has cleared the deflated evidence bar for deployment; nothing
+> is deployable as real-money GO today.
 
 Prism is a cross-sectional systematic trading engine — **score → residualize
 → construct → execute**, conditioned by a regime layer — gated by an

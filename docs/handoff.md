@@ -18,14 +18,33 @@ on.
 
 ## 1. The asset ledger
 
-Ranked by durable value, most to least:
+Two rankings, never conflated (program text: `docs/v040_program.md` — **DRAFT
+pending owner ratification**; this section is the standing rewrite that queue
+item 1 lands):
+
+| Ranking | Prize | Role |
+|---|---|---|
+| **Objective** | Multi-sleeve net after-cost IR at real capital mode — **US equity / liquid-ETF first** | What we optimize |
+| **Integrity** | Claim credibility, N1–N8, trial accounting, claim tiers | Hard filter — never traded for features |
+
+Earlier drafts of this ledger ranked the harness first and the alpha last
+("Not an asset yet. Possibly never"). That was right as *integrity* and wrong
+as *objective*: it trained every future agent to protect process over IR, and
+it described the archived residual sleeve (net ≈ −0.01), not the live book
+(B1 momentum under its ratified budget; certified price-return Sharpe in the
+0.43–0.52 band with the −17 bps/yr live-vs-certified pin on the paper path).
+Integrity remains absolute. Process is not the thing we maximize.
+
+Durable assets under the *integrity* column (most to least; these outlive any
+one sleeve):
 
 1. **The evaluation methodology, made executable.** Purged/embargoed WFO,
    next-open costed fills, claim tiers, per-selection-set DSR deflation, trial
    ledgers, cost-toll and breadth diagnostics, ledger-conservation property
    tests, leakage regression tests. Retail backtests are almost universally
    lies; a harness that refuses to lie is rare and does not decay on
-   publication. This is the moat.
+   publication. This is the integrity moat — the enabling filter, not the
+   objective prize.
 2. **The constitution itself.** A spec that carries a numeric kill-criterion
    for its own flagship strategy, pre-registered trial budgets, and a
    non-goals section that survives contact with enthusiasm — that discipline
@@ -38,33 +57,54 @@ Ranked by durable value, most to least:
    `costs.py`): t+1 fills, borrow, dividends-as-cash, sqrt-ADV impact — the
    best-tested subsystem, now backed by machine-checked accounting algebra
    (`formal/`, §5).
-5. **The residual signal core** (`residual/factors.py`, `residual/residual.py`)
-   — real engineering with known numeric-integrity defects *(audit: NaN→0
-   imputation into factor returns; stale betas on mid-window ineligibility;
-   eigenvector sign discontinuity under degenerate sigma)*. Valuable after the
-   fix pass, not before.
-6. **The alpha.** Best net ≈ −0.01, un-deflated, under an uncalibrated cost
-   model. Not an asset yet. Possibly never. The project's design assumption is
-   that items 1–5 outlive item 6 in either case.
+5. **Live and archived signal machinery.** Production spine today: B1 monthly
+   cross-sectional momentum (`signal/momentum_node.py` → live daily loop).
+   Residual core (`residual/factors.py`, `residual/residual.py`) remains on
+   the import path as the archived first sleeve's machinery and the live
+   book's eligibility screen — certified uneconomic as a daily reversion
+   product (certification 001); no revival, no new knobs on its closed
+   selection set. Known residual numeric defects *(audit: NaN→0 imputation;
+   stale betas; eigenvector sign discontinuity)* still matter for any path
+   that reuses the residualizer.
+6. **Deployable multi-sleeve economics (the objective prize).** Preferred
+   product shape: equity sleeve + trend convexity inside an operator-declared
+   risk envelope — not a return SLA. Alpha clears only when a sleeve meets
+   its bar; kill branches remain first-class certified results. Crypto is a
+   second-market / optional validation lane (venue-true fees, no equity-
+   history gap), never the ranking prize or default owner-attention sink.
 
-The strategic consequence: **protect the harness's credibility above every
-feature.** Any change that would let a number be reported above its evidence
-tier is a worse bug than any crash.
+The strategic consequence: **never trade the integrity filter for a feature**
+(a number reported above its evidence tier is still a worse bug than any
+crash); **optimize multi-sleeve net after-cost IR inside the operator risk
+envelope**, with **US stock markets first**. "Deploy-first" re-ranks the
+prize, not the bar.
 
 ## 2. The strategy in one paragraph
 
-Prism is the honest certification engine that can also trade. Deployment is
-the mandate and it is gated hard (`SPEC §10`); the certification machinery is
-the durable public asset either way. Near-term work therefore has one shape:
-make the kill-criterion's own inputs trustworthy (calibrated costs, fixed
-deflation accounting, fixed residual numerics), run the cheap experiments the
-criterion contemplates (frequency demotion, slow-signal netting), and let the
-verdict fire honestly. If the daily residual sleeve clears `net_edge`, deploy
-at trivial size and scale by the capacity curve. If it dies, the sleeve is
-demoted or archived as a first-class ledgered negative result, the harness's
-first public certification — and the engine moves to the next candidate
-signal with the same bar. Either branch is a success state; only an
-un-fireable criterion is failure.
+Prism is a near-frontier-conditional systematic trading bot for operators
+under retail constraints: free/cheap data, solo or small operator, modest AUM,
+daily-to-weekly horizon, large local compute. **Product priority is US equity
+and liquid-ETF markets first** (cross-sectional B1 / learned-XS, trend ETFs,
+multi-sleeve construction, equity cost calibration). Crypto is an independent
+second market — useful as a *validation* lane (venue-true fees, 24/7 bars, no
+equity-history gap), never the preferred GO substitute or the default
+attention sink.
+
+Operating sentence: the harness is a hard filter that never moves; the
+objective is multi-sleeve net after-cost IR inside an operator-declared risk
+envelope, deployed at the operator's real capital mode (`docs/v040_program.md`
+DRAFT). Preferred GO shape is equity multi-sleeve + trend convexity (label
+`multi-premium, convexity-complemented`); single-sleeve B1 GO remains legal
+under its own docs but must be labeled `single-premium, de-gross-only`
+(de-gross is risk reduction, not CTA convexity). Certification 001 stands —
+daily residual reversion archived, no revival. Deployment is gated hard
+(`SPEC §10`); GO preconditions (sizing pre-registration ratified 2026-07-20;
+§7.7 regime step + ≥ 21 clean paper sessions) stand as amended 2026-07-19.
+A sleeve that clears its bar deploys under a named risk profile; a sleeve that
+fails is killed and certified — both are success states for the program.
+Incomplete history is accepted via liquid ETFs, crypto validation, and
+forward validation. Compute buys purged learning and construction search, not
+model species.
 
 ## 3. Economic doctrine
 
@@ -219,9 +259,17 @@ at `mechanics_clean` and climbs. Either branch: stabilize the Signal/Construct
 Prism certifies them. That is the open-source product regardless of the
 alpha's fate.
 
-**Phase D — the platform.**
-Second market lane (crypto time-series book) only after the equity verdict,
-under its own `net_edge` bar and venue-priced fees. Contributor surface:
+**Phase D — equity multi-sleeve product surface, then platform.**
+Product order is **stock markets first**: trend + multi-sleeve construction
+(aim-portfolio under the G4a/G4b split gate — see
+`docs/aim_portfolio_preregistration.md` banner note) + operator risk profiles
+on the US equity / liquid-ETF book; preferred GO is equity sleeve + trend
+convexity. Crypto time-series is a **second-market validation lane** under
+its own `net_edge` bar and venue-priced fees — it may run when operator
+bandwidth allows (independent family pre-registration; residualize-bypassed
+TS lane already contemplated in `SPEC §4` / §7.1), **without** leading product
+ranking, GO narrative, or default attention, and **without** stealing the
+serial promotion adjudication slot from equity (A4). Contributor surface:
 CONTRIBUTING.md, claim-packet reader docs, mypy + multi-Python CI, hypothesis
 property tests for N4/N1 paths. (Prophet left the core dependencies in the
 R1 quarantine — `uv pip install prism` no longer builds cmdstan; xgboost
@@ -273,7 +321,7 @@ So they are not relitigated under pressure:
 | Kill-criterion fires STOP | Weekly-cadence demotion + slow-sleeve netting book gets *one* pre-registered budget; else archive the sleeve, publish the negative packet |
 | Kill-criterion fires GO | Deploy at minimum viable size; scale only along the capacity curve; live monitor armed from day one. **Preconditions (amended 2026-07-19, owner-ratified): no real-money order until (a) the sizing pre-registration (`docs/sizing_preregistration.md`) is finished and ratified with its crash-conditional de-gross term, and (b) the SPEC §7.7 regime step is wired into the live cycle and has run in the paper loop for ≥ 21 consecutive sessions (one full decision cycle) without an N7 event. A GO read with these unmet deploys nothing — it starts the wiring, not the account.** |
 | Paper fills contradict the 1bp assumption | Recompute the entire historical verdict under calibrated buckets before any new work — the past numbers change meaning |
-| Crypto lane proposal before the equity verdict | No. One verdict at a time; the evidence bar machinery is shared and the ledger discipline doesn't parallelize across an operator of one |
+| Crypto lane / second market | **Equity owns product priority** (B1, trend ETFs, learned-XS, G0 equity costs, multi-sleeve preferred GO). Crypto may run as **independent validation when bandwidth allows** (own family pre-reg, venue-true fees, residualize-bypassed TS lane) — not a hard ban before the equity promotion verdict, not a re-rank to crypto-first. One *promotion adjudication* at a time still stands (A4); independent family ≠ concurrent promotion. Program text: `docs/v040_program.md` DRAFT W3 / §7. |
 | PyPI name collision on `prism` | Qualify the distribution name only; the import package stays `prism` (`SPEC §12`, already decided) |
 | Anyone proposes intraday anything | `SPEC §8`. Structural, not empirical. Closed. |
 
