@@ -258,3 +258,37 @@ def test_replay_refuses_a_start_bar_without_required_history(tmp_path) -> None:
             tmp_path / "replay",
             start_bar=str(close.index[2].date()),
         )
+
+
+def test_replay_cli_tif_defaults_to_whole_share_parity() -> None:
+    """--tif defaults to opg (whole shares, parity with every prior scripted
+    replay); day is the fractional-share sizing path mirroring paper_loop."""
+    from prism.scripts.replay_loop import _parse_args
+
+    assert _parse_args([]).tif == "opg"
+    assert _parse_args(["--tif", "day"]).tif == "day"
+    with pytest.raises(SystemExit):
+        _parse_args(["--tif", "ioc"])
+
+
+def test_replay_tif_wires_whole_shares_at_both_book_call_sites() -> None:
+    """--tif drives DailyBookConfig.whole_shares at BOTH construction paths —
+    the momentum decile book and the ensemble directional book — not just the
+    flag parse: opg = whole shares, day = fractional."""
+    from prism.scripts.replay_loop import _book_config, _parse_args
+
+    for book, expected_book in (
+        ("momentum", "decile_neutral"),
+        ("ensemble", "directional"),
+        ("trend", "inverse_vol"),
+    ):
+        for tif, whole in (("opg", True), ("day", False)):
+            args = _parse_args(["--book", book, "--tif", tif])
+            config = _book_config(
+                args, decision_every=21 if book in ("momentum", "trend") else 1
+            )
+            assert config.book == expected_book  # the branch under test is the branch taken
+            assert config.whole_shares is whole
+    # And the momentum path threads the cadence it was handed.
+    assert _book_config(_parse_args(["--book", "momentum"]), decision_every=21).decision_every == 21
+    assert _book_config(_parse_args(["--book", "trend"]), decision_every=21).vol_ewma_bars == 63

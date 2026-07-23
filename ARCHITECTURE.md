@@ -4,7 +4,7 @@ How the pieces connect, end to end. The README covers *why* (methodology) and
 *how to run* (usage); this is the *what calls what* map. `docs/operations.md`
 covers operational gotchas.
 
-> **v0.3.x architecture (current through v0.3.3) — see [`SPEC.md`](SPEC.md).** The organizing
+> **v0.3.x architecture (current through v0.3.4) — see [`SPEC.md`](SPEC.md).** The organizing
 > abstraction is now a cross-sectional engine, not a per-symbol ensemble:
 >
 > ```
@@ -37,9 +37,15 @@ covers operational gotchas.
 > ensemble-side config) moved from `src/prism/` into `research/`, where its
 > only consumers (the batch WFO CLIs) live. The production import closure is
 > prophet/matplotlib-free (`tests/test_import_hygiene.py`). v0.3.1–v0.3.3
-> then added the 12−1 momentum signal node, the `src/prism/live/` nightly
-> loop with durable order state and replay, and the R2 cost-measurement
-> instruments (`execution/spread.py`, `execution/edge.py`) — all described
+> added the 12−1 momentum node, the `src/prism/live/` nightly loop with
+> durable order state and replay, and the R2 cost-measurement instruments
+> (`execution/spread.py`, `execution/edge.py`). **v0.3.4** freezes the v0.4.0
+> deploy-first direction at the product surface: `TrendSignalNode` +
+> inverse-vol construct (`--book inverse_vol`), §7.7 `regime_step` telemetry
+> (de-gross hook unarmed), W6 `risk_profile` (frozen schema; G6 pin under
+> `research_paper`), spin-off eligibility mask, live safety rails,
+> `prism-doctor`, append-only observatory capture (`io/observatory.py`), and
+> the joint-crash diagnostic (`validation/joint_crash.py`) — all described
 > below. The map below describes this wiring.
 
 ## Data flow
@@ -72,13 +78,20 @@ close/open matrix ──► rolling formation/test folds ──► train-only pa
                     (fixed candidates per fold)       (coint + ADF + FDR)      (z-score state machine)    (gross/symbol limits)     (costs + borrow)
 ```
 
-### 1. Ingestion — `src/prism/io/` (`loader.py`, `store.py`, `rate_limit.py`)
+### 1. Ingestion — `src/prism/io/` (`loader.py`, `store.py`, `rate_limit.py`, `observatory.py`)
 - `DataLoader.fetch_historical_data` pulls split-adjusted daily bars, caches to
   `data/{symbol}_{interval}_{start}_{end}.parquet`, returns a tz-aware
   (America/New_York) OHLCV frame. Interval is normalized to the vendor's
-  `1day`/`1week`/`1month` only at the request boundary.
+  `1day`/`1week`/`1month` only at the request boundary. Credential-bearing
+  request URLs pass through `_redact` before any log or exception line
+  (`docs/security.md` §2.4).
 - `fetch_dividends` pulls ex-date→amount cash dividends (credited in the
   backtest, not back-adjusted into prices).
+- `observatory.py` is the W5 append-only capture store (jsonl.gz, capture
+  timestamps, verbatim payloads) for survivorship-free membership and
+  expectation-state lanes; capture is time-irreversible and never waits on
+  factory ratification. Modeling over captured payloads is a separate,
+  factory-gated program (`docs/v040_program.md` W5; `docs/factory_amendment.md`).
 
 ### 2. Features (legacy stack) — `research/features.py`
 - `create_features` (causal technical indicators) → `create_lagged_features` →
@@ -181,41 +194,68 @@ under `research/arbitrage/`.
 ### 8. Live loop — `src/prism/live/` (the nightly production path)
 
 ```
-Alpaca IEX bars ──► universe panels ──► MomentumSignalNode ──► construct ──► AlpacaBroker (OPG) ──► settle + ledgers
- (alpaca_data.py,   (file ∪ held book,   (12−1 scores over      (caps → online   (whole shares,        (fills.jsonl beside
-  free feed)         extras exit-only)    eligibility screen)    band → gate)     write-ahead submit)   decision-close refs)
+Alpaca IEX bars ──► universe panels ──► Signal node ──► construct ──► safety ──► AlpacaBroker ──► settle + ledgers
+ (alpaca_data.py)    (file ∪ held;        (momentum |         (decile |          (check_orders)  (OPG, write-ahead)  (fills /
+                      extras exit-only;    trend_v1)           inverse_vol;                        equity /
+                      spin-off mask)                           online band;                        targets /
+                                                               participation)                      regime /
+                                                                                                   concordance)
 ```
 
 - `daily.py` runs one decide-at-close / fill-at-next-open cycle (SPEC §7.7):
-  settle the prior decision first, then decide once — wiring the spine end
-  to end for the ratified B1 momentum book at trivial size.
+  settle the prior decision first, then decide once. `DailyBookConfig` admits
+  three books: the directional ensemble cost instrument, the decile-neutral
+  **momentum** book (production candidate), and the **inverse_vol** trend book
+  (uncounted mechanics; `TrendSignalNode` + `construct_inverse_vol_targets`).
 - `loop.py` implements the write-ahead protocol: reconcile to broker truth
   → decide once → persist pending *before* first submit; a restart resumes
   the persisted decision and never re-decides. `state.py` is the atomic
   durable store — corrupt or wrong-schema state refuses to start flat (N7).
 - `broker.py`/`alpaca.py`: idempotent submission keyed by per-book client
-  order ids, OPG next-open auction default, whole shares enforced loudly.
+  order ids, OPG next-open auction default, whole shares enforced loudly
+  (fractional-DAY remains a capital-mode gate, not the paper default).
   `alpaca_data.py` is the IEX-feed bar source (a measured ~5% volume sample
   — see `MARKETS.md`).
+- `regime_step.py`: SPEC §7.7 regime telemetry every cycle into the regime
+  ledger (`docs/regime_step.md`); the de-gross action hook stays unarmed
+  until its own GO-branch deployment commit after both handoff §8
+  preconditions (sizing RATIFIED; ≥ 21 clean paper sessions).
+- `risk_profile.py`: frozen W6 operator surface (`docs/risk_profile_schema.md`).
+  Profiles only tighten ratified pins; `research_paper` is bit-pinned to
+  `CERTIFIED_B1_PAPER_CONFIG` (G6; `tests/test_risk_profile.py`).
+- `spinoff_mask.py`: no new positions on adjustment-divergent ranks (bar-vendor
+  spin-off convention; live-verified flag set).
+- `safety.py`: pre-submit rails (halt / size / exposure checks) before broker
+  submission.
 - `monitor.py`: anytime-valid rolling PSR/DSR over the equity ledger plus
   the per-cycle book-concordance stream (active share, weight correlation).
 - `replay.py` + `prism.scripts.replay_loop` drive the same cycle from local
   bars with modeled fills — diagnostic-only, never calibration or
-  concordance evidence.
+  concordance evidence. Fractional-day replay sizing isolates the account
+  floor as a whole-share artifact (`docs/account_size_floor.md`).
 - The fills ledger feeds `execution/spread.py` (per-bucket spread
   calibration, I-9); unfilled auction orders are completed next morning by
   `prism.scripts.paper_sweep`.
 
+### 9. Joint stress and product diagnostics — `src/prism/validation/joint_crash.py`
+
+Uncounted G4a engineering instrument: B1 alone vs B1+trend over fixed crash
+windows (max DD, crash-window return, turnover interaction, fixed-weight
+capital-allocation sensitivity). Receipts live under `results/joint_crash_*`;
+CLI shell `research/scripts/joint_crash_receipt.py`. Spends no deflation
+budget; does not open counted aim-portfolio trials (G4b still gated).
+
 ## Scripts (`research/scripts/`) — the batch entry points (quarantined)
 
 Run as modules from the repo root, e.g. `python -m research.scripts.training`;
-no console entry points ship. The production-side scripts live under
-`src/prism/scripts/`: the periodic universe builder
-(`build_sp500_universe.py`, the one console entry point), the nightly
-Alpaca paper-loop cycle (`paper_loop.py`) with its morning completion
-sweep (`paper_sweep.py`) and anytime monitor read (`paper_monitor.py`),
-the local-bars replay of the same cycle (`replay_loop.py`), and the EDGE
-spread-bracketing diagnostic (`edge_diagnostic.py`).
+no console entry points ship for research. The production-side scripts live
+under `src/prism/scripts/`: the periodic universe builder
+(`build_sp500_universe.py` → `prism-build-universe`), the preflight doctor
+(`doctor.py` → `prism-doctor`), the nightly Alpaca paper-loop cycle
+(`paper_loop.py`) with its morning completion sweep (`paper_sweep.py`) and
+anytime monitor read (`paper_monitor.py`), the local-bars replay of the same
+cycle (`replay_loop.py`), and the EDGE spread-bracketing diagnostic
+(`edge_diagnostic.py`).
 
 | Script | Role | Key output |
 |---|---|---|

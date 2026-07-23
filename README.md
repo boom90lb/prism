@@ -1,15 +1,26 @@
 # Prism
 
-> **v0.3.0 re-founds this project.** The authoritative documents are now
-> [`SPEC.md`](SPEC.md) (the constitution — the cross-sectional
-> score → residualize → construct → execute engine, the invariants, the claim
-> tiers, and the kill-criterion) and [`MARKETS.md`](MARKETS.md) (the zero-budget
-> market-structure analysis: which markets are core execution vs regime signal).
-> The "ensemble of models" is no longer the organizing abstraction — it is
-> demoted to *one* plug-in signal node. Package, distribution, and repository
-> are all named `prism` (formerly `trading-ensemble`; old GitHub URLs
-> redirect). **Read `SPEC.md` first.** The sections below describe the honest
-> evaluation harness, which v0.3.0 keeps almost intact and builds on.
+> **v0.3.0 re-founds this project; v0.3.4 is the checkpoint that freezes the
+> v0.4.0 deploy-first direction before A3 funding; v0.4.0 is the deploy-first
+> program (RATIFIED 2026-07-22).** The authoritative documents are
+> [`SPEC.md`](SPEC.md) (the constitution — score → residualize → construct →
+> execute, invariants, claim tiers, kill-criterion) and
+> [`MARKETS.md`](MARKETS.md) (market-structure: which markets are core
+> execution vs regime signal). Standing jurisprudence:
+> [`docs/handoff.md`](docs/handoff.md). The v0.4.0 objective ranking lives in
+> [`docs/v040_program.md`](docs/v040_program.md) (**RATIFIED** — program ranking
+> law under SPEC; handoff remains jurisprudence). Package, distribution, and
+> repository are all named `prism` (formerly `trading-ensemble`). **Read
+> `SPEC.md` first.**
+>
+> **Product priority: US equity and liquid-ETF markets first** (B1 momentum /
+> learned-XS, trend ETFs, multi-sleeve construction). Crypto is a second-
+> market validation lane when bandwidth allows — not the ranking prize or
+> preferred GO. Preferred GO shape: equity sleeve + trend convexity
+> (`multi-premium, convexity-complemented`); single-sleeve B1 GO, if ever,
+> must be labeled `single-premium, de-gross-only`. Dual ranking: objective =
+> multi-sleeve net after-cost IR in an operator risk envelope; integrity
+> (N1–N8, trial accounting) is a hard filter that never moves.
 >
 > Status of the alpha, stated plainly: **the `SPEC.md §10` kill-criterion fired
 > on 2026-07-06** — across a pre-registered, fully counted 17-trial budget, no
@@ -17,16 +28,16 @@
 > under calibrated per-bucket costs, and the sleeve is archived. The negative
 > result is the harness's first certification:
 > [`docs/certifications/001-residual-reversion-daily-negative.md`](docs/certifications/001-residual-reversion-daily-negative.md).
-> The current candidate (monthly cross-sectional momentum, the demotion
-> budget's side discovery) is in flight under its own ratified pre-registered
-> budget ([`docs/momentum_design.md`](docs/momentum_design.md), ratified
-> 2026-07-06): entered at `mechanics_clean`, paper-trading nightly since
+> The live candidate is monthly cross-sectional momentum under its own
+> ratified budget ([`docs/momentum_design.md`](docs/momentum_design.md),
+> ratified 2026-07-06): `mechanics_clean`, paper-trading nightly since
 > 2026-07-13, promotion readable only at the M6 extension window (≥ 2027-06
-> data). Two successor pre-registrations are drafted, not ratified
-> ([`docs/replication_preregistration.md`](docs/replication_preregistration.md),
-> [`docs/trend_design.md`](docs/trend_design.md)). No
-> configuration has ever cleared the deflated evidence bar; nothing is
-> deployable today.
+> data). Successor pre-registrations ratified: replication (2026-07-18),
+> trend (2026-07-18; OOS clock running), learned-XS (2026-07-19), sizing /
+> crash-conditional de-gross (2026-07-20). GO preconditions (a) sizing
+> ratified and (b) §7.7 regime step + ≥ 21 clean paper sessions stand; no
+> configuration has cleared the deflated evidence bar for deployment; nothing
+> is deployable as real-money GO today.
 
 Prism is a cross-sectional systematic trading engine — **score → residualize
 → construct → execute**, conditioned by a regime layer — gated by an
@@ -65,10 +76,14 @@ The current candidate under the bar is the momentum program
 ([`docs/momentum_design.md`](docs/momentum_design.md)), held to exactly the
 tier its evidence supports.
 
-See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the end-to-end data flow (what
-calls what), [`docs/operations.md`](docs/operations.md) for operational
-gotchas (vendor tier, interval mapping, member contribution, per-bar cost),
-[`docs/handoff.md`](docs/handoff.md) for the long-horizon doctrine
+See [`docs/quickstart.md`](docs/quickstart.md) to go from a clone to a
+nightly paper loop on your own (free) Alpaca paper account — with
+[`docs/security.md`](docs/security.md) for the credential doctrine and
+[`docs/free_tier_profile.md`](docs/free_tier_profile.md) for exactly what $0
+reproduces. See [`ARCHITECTURE.md`](ARCHITECTURE.md) for the end-to-end data
+flow (what calls what), [`docs/operations.md`](docs/operations.md) for
+operational gotchas (vendor tier, interval mapping, member contribution, per-bar cost),
+[`docs/handoff.md`](docs/handoff.md) for the standing doctrine
 behind the roadmap, and [`formal/`](formal/README.md) for the Lean 4
 machine-checked kernel invariants.
 
@@ -379,8 +394,9 @@ survivorship bias in mind.
   and reversed 2026-07-17 in favor of in-house prospective accumulation; see
   `docs/data_purchase_evaluation.md`.
 - Sentiment distillation. The pipeline ships keyword `SentimentAnalyzer` and an
-  interim FinBERT `TransformerSentimentAnalyzer`; the white-box distillation
-  plan is documented in `docs/sentiment_roadmap.md` but not implemented.
+  interim FinBERT `TransformerSentimentAnalyzer` (research-quarantined). News
+  work proceeds capture-first under `docs/v040_program.md` W5; modeling is
+  barred until a factory pre-registration, so no separate roadmap doc exists.
 - A market simulator for multi-step synthetic OHLCV; positions are held flat
   across the prediction horizon rather than iteratively re-forecast.
 
@@ -393,24 +409,30 @@ src/prism/             (the distribution — production import path)
   config.py            production config: directories, spine API key,
                        ExecutionConfig / TradingConfig cost dataclasses
   io/                  loader (Twelvedata bars + dividends, range-keyed cache +
-                       incremental store), PIT universe, token-bucket rate limit
+                       incremental store), PIT universe, token-bucket rate
+                       limit, append-only observatory capture store (W5)
   signal/              the Signal contract + nodes: EnsembleSignalNode
-                       (JAX-free XGBoost/ARIMA blend), ResidualSignalNode
+                       (JAX-free XGBoost/ARIMA blend), ResidualSignalNode,
+                       MomentumSignalNode (B1), TrendSignalNode (default-off)
   residual/            factor model + causal OU s-scores + hedged book builder
-  portfolio/           book construction: caps, no-trade bands (batch + online step)
+  portfolio/           book construction: caps, no-trade bands, inverse-vol
+                       construct for the trend sleeve
   execution/           target-weight accounting, ExecutionModel + cost functions,
                        participation gate, per-bucket spread estimator
   regime/              curve / vol / inflation / net-liquidity regime state
                        ($0 sources) + FRED/DefiLlama fetch adapters
   live/                durable order state, write-ahead daily loop,
-                       Alpaca paper/live broker adapter
-  validation/          PurgedWalkForward, metrics (PSR/PBO/DSR/Calmar + FLAM breadth),
-                       capacity / cost-toll, research claim packets
+                       Alpaca paper/live broker adapter; regime_step telemetry
+                       (action hook unarmed); risk profiles (W6);
+                       spin-off eligibility mask; safety rails
+  validation/          PurgedWalkForward, metrics (PSR/PBO/DSR/Calmar + FLAM
+                       breadth), capacity / cost-toll, claim packets,
+                       joint-crash diagnostic (B1+trend, uncounted)
   conformal/           EnbPI + ACI
   logging_utils.py     configure_logging + per-symbol adapter
   scripts/             build_sp500_universe (periodic PIT universe build),
-                       paper_loop (nightly Alpaca paper cycle) + paper_sweep
-                       (morning completion sweep) + paper_monitor,
+                       doctor (preflight), paper_loop (nightly cycle) +
+                       paper_sweep (morning completion) + paper_monitor,
                        replay_loop (diagnostic replay), edge_diagnostic
 research/              (quarantined per SPEC §9 — not in the wheel; may import
                         prism, never the reverse)
@@ -433,11 +455,14 @@ research/              (quarantined per SPEC §9 — not in the wheel; may impor
     stat_arb_residual_wfo.py  residual + 12−1 momentum-sleeve WFO (the B1
                          evidence path; see docs/stat_arb.md)
     + diagnostics: data_integrity_sweep, dividend_wedge, breadth_diagnostic,
-                   carry_flatten_diagnostic, iex_eligibility_check
+                   carry_flatten_diagnostic, iex_eligibility_check,
+                   account_size_floor, bar_vendor_divergence, beta_telemetry,
+                   cost_frontier, joint_crash_receipt, observatory_capture,
+                   spin_adjustment_sweep, tax_wedge
 formal/                Lean 4 machine-checked kernel invariants (N4 ledger
                        conservation, no-trade-band hysteresis + batch-replay
                        divergence, purge/embargo geometry, participation gate)
-tests/                 783 offline tests, 781 passed / 2 skipped at v0.3.3
+tests/                 977 offline tests, 976 passed / 1 skipped at v0.3.4
                        (validation, leakage, execution, conformal, live
                        loop, logging); the slim subset runs without the
                        [research] extra in CI

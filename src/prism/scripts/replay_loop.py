@@ -45,6 +45,7 @@ from prism.residual.factors import ResidualStatArbConfig
 from prism.signal.base import Signal
 from prism.signal.ensemble_node import EnsembleNodeConfig, EnsembleSignalNode
 from prism.signal.momentum_node import MomentumSignalNode
+from prism.signal.trend_node import TREND_V1_UNIVERSE, TrendSignalNode
 
 logger = logging.getLogger(__name__)
 
@@ -63,18 +64,24 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--book",
-        choices=("ensemble", "momentum"),
+        choices=("ensemble", "momentum", "trend"),
         default="ensemble",
         help="Which book to replay (same construction paths as prism.scripts.paper_loop).",
     )
-    parser.add_argument("--mom-lookback", type=int, default=252, help="Momentum lookback bars (B1: 252).")
-    parser.add_argument("--mom-skip", type=int, default=21, help="Momentum skip bars (B1: 21).")
+    parser.add_argument("--mom-lookback", type=int, default=252, help="Momentum/trend lookback bars (B1/T0: 252).")
+    parser.add_argument("--mom-skip", type=int, default=21, help="Momentum/trend skip bars (B1/T0: 21).")
     parser.add_argument("--decile", type=float, default=0.10, help="Decile fraction per leg (B1: 0.10).")
+    parser.add_argument(
+        "--vol-ewma-bars",
+        type=int,
+        default=63,
+        help="Trend inverse-vol EWMA window (docs/trend_design.md §2: 63).",
+    )
     parser.add_argument(
         "--decision-every",
         type=int,
         default=None,
-        help="Refresh cadence in trading sessions; default 1 (ensemble) or 21 (momentum, B1).",
+        help="Refresh cadence in trading sessions; default 1 (ensemble) or 21 (momentum/trend).",
     )
     parser.add_argument("--start", default=None, help="First decision bar (YYYY-MM-DD); default earliest feasible.")
     parser.add_argument("--end", default=None, help="Last decision bar (YYYY-MM-DD); default last local bar.")
@@ -102,7 +109,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=float,
         default=None,
         help="Fraction of the universe allowed to have no local bars; default 0.0 (ensemble) "
-        "or 0.10 (momentum), mirroring paper_loop.",
+        "or 0.10 (momentum/trend), mirroring paper_loop.",
     )
     parser.add_argument(
         "--consensus",
@@ -128,6 +135,14 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--max-symbol-weight", type=float, default=0.10)
     parser.add_argument("--band", type=float, default=0.0, help="Online no-trade half-width (0 disables).")
     parser.add_argument("--min-notional", type=float, default=1.0)
+    parser.add_argument(
+        "--tif",
+        choices=("opg", "day"),
+        default="opg",
+        help="Sizing semantics to model: opg = whole shares (the live OPG book, "
+        "default = parity with every prior replay), day = fractional shares "
+        "(the live --tif day path). Fills are modeled either way.",
+    )
     parser.add_argument("--horizon", type=int, default=5, help="Ensemble signal forward horizon in bars.")
     return parser.parse_args(argv)
 
@@ -144,6 +159,48 @@ def _load_universe_file(path: Path) -> list[str]:
     return symbols
 
 
+def _book_config(args: argparse.Namespace, decision_every: int) -> DailyBookConfig:
+    """Construction config for the parsed args — sizing semantics wired once.
+
+    Both book paths thread ``whole_shares=(--tif == "opg")``: opg models the
+    live whole-share OPG book (parity with every prior scripted replay), day
+    the fractional-share sizing of paper_loop's ``--tif day`` path. Extracted
+    from the two inline constructions so the wiring is testable without a
+    replay run (tests/test_live_replay.py).
+    """
+    whole_shares = args.tif == "opg"
+    if args.book == "momentum":
+        return DailyBookConfig(
+            book="decile_neutral",
+            decile=args.decile,
+            decision_every=decision_every,
+            max_gross=args.max_gross,
+            max_symbol_abs_weight=args.max_symbol_weight,
+            no_trade_band=args.band,
+            min_order_notional=args.min_notional,
+            whole_shares=whole_shares,
+        )
+    if args.book == "trend":
+        return DailyBookConfig(
+            book="inverse_vol",
+            vol_ewma_bars=args.vol_ewma_bars,
+            decision_every=decision_every,
+            max_gross=args.max_gross,
+            max_symbol_abs_weight=args.max_symbol_weight,
+            no_trade_band=args.band,
+            min_order_notional=args.min_notional,
+            whole_shares=whole_shares,
+        )
+    return DailyBookConfig(
+        position_size=args.position_size,
+        max_gross=args.max_gross,
+        max_symbol_abs_weight=args.max_symbol_weight,
+        no_trade_band=args.band,
+        min_order_notional=args.min_notional,
+        whole_shares=whole_shares,
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     args = _parse_args(argv)
@@ -151,11 +208,17 @@ def main(argv: list[str] | None = None) -> int:
         symbols = _load_universe_file(args.universe_file)
     elif args.symbols:
         symbols = [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
+    elif args.book == "trend":
+        symbols = list(TREND_V1_UNIVERSE)
     else:
         raise SystemExit("provide --symbols or --universe-file")
     positions = {k.upper(): float(v) for k, v in json.loads(args.positions).items()} if args.positions else {}
 
-    max_missing = args.max_missing if args.max_missing is not None else (0.10 if args.book == "momentum" else 0.0)
+    max_missing = (
+        args.max_missing
+        if args.max_missing is not None
+        else (0.10 if args.book in ("momentum", "trend") else 0.0)
+    )
     close, volume, open_ = load_local_bar_panels(symbols, args.data_dir, max_missing=max_missing)
     close, volume, open_ = align_replay_panels(
         close,
@@ -174,8 +237,9 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     decision_every = args.decision_every if args.decision_every is not None else (
-        21 if args.book == "momentum" else 1
+        21 if args.book in ("momentum", "trend") else 1
     )
+    config = _book_config(args, decision_every)
     if args.book == "momentum":
         membership_mask = None
         if args.membership_file is not None:
@@ -200,29 +264,19 @@ def main(argv: list[str] | None = None) -> int:
                 membership_mask=membership_mask,
             )
 
-        config = DailyBookConfig(
-            book="decile_neutral",
-            decile=args.decile,
-            decision_every=decision_every,
-            max_gross=args.max_gross,
-            max_symbol_abs_weight=args.max_symbol_weight,
-            no_trade_band=args.band,
-            min_order_notional=args.min_notional,
-            whole_shares=True,
-        )
+    elif args.book == "trend":
+
+        def signal_factory() -> Signal:
+            return TrendSignalNode(
+                lookback_bars=args.mom_lookback,
+                skip_bars=args.mom_skip,
+                horizon_bars=decision_every,
+            )
+
     else:
 
         def signal_factory() -> Signal:
             return EnsembleSignalNode(EnsembleNodeConfig(horizon_bars=args.horizon))
-
-        config = DailyBookConfig(
-            position_size=args.position_size,
-            max_gross=args.max_gross,
-            max_symbol_abs_weight=args.max_symbol_weight,
-            no_trade_band=args.band,
-            min_order_notional=args.min_notional,
-            whole_shares=True,
-        )
 
     results, broker = replay_daily_cycles(
         signal_factory,

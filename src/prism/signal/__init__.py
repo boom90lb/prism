@@ -9,7 +9,9 @@ implementation (b), the salvaged forecast blend; ``MomentumSignalNode`` is
 the ratified B1 candidate's node — 12-1 cross-sectional momentum in rank
 space, consumed by the decile long/short construct (its score is deliberately
 not sigma-normalized because the decile book uses only the cross-sectional
-rank; see the node docstring).
+rank; see the node docstring); ``TrendSignalNode`` is the trend sleeve's
+per-name 12−1 TSMOM node (default-off; docs/trend_design.md), consumed by
+``construct_inverse_vol_targets``.
 
 Production-import-path safe (N8): no JAX/torch/prophet in the closure.
 """
@@ -25,6 +27,7 @@ from prism.signal.ensemble_node import (
 )
 from prism.signal.momentum_node import MomentumSignalNode
 from prism.signal.residual_node import ResidualSignalNode
+from prism.signal.trend_node import TREND_V1_UNIVERSE, TrendSignalNode
 
 __all__ = [
     "EnsembleNodeConfig",
@@ -32,6 +35,8 @@ __all__ = [
     "MomentumSignalNode",
     "ResidualSignalNode",
     "Signal",
+    "TREND_V1_UNIVERSE",
+    "TrendSignalNode",
     "build_features",
     "forward_log_return",
 ]

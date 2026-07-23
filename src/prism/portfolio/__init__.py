@@ -6,6 +6,7 @@ from prism.portfolio.construct import (
     cap_book,
     construct_decile_neutral,
     construct_directional_targets,
+    construct_inverse_vol_targets,
     cost_aware_band,
     strength_multiplier,
 )
@@ -16,6 +17,7 @@ __all__ = [
     "cap_book",
     "construct_decile_neutral",
     "construct_directional_targets",
+    "construct_inverse_vol_targets",
     "cost_aware_band",
     "strength_multiplier",
 ]
