@@ -14,6 +14,8 @@ Contract:
 * Appends never rewrite prior bytes (open ``ab`` / gzip append).
 * Reads are for inspection and tests; they do not mutate.
 * No network I/O here — fetchers live at the call site and pass payloads in.
+  Operator CLI: ``python -m research.scripts.observatory_capture`` (news +
+  EDGAR cadence lanes; capture only, no modeling).
 """
 
 from __future__ import annotations
