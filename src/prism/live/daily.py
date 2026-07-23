@@ -5,14 +5,17 @@ fetch (``io``/loader), a fitted :class:`~prism.signal.base.Signal`, online
 construction (down-only caps → the stateful no-trade band against *held*
 weights → the participation gate), and the write-ahead decision protocol
 (``prism.live.loop``), with last session's fills settled into the I-9 ledger
-first. The driver constructs one of two books per ``DailyBookConfig.book``: an
-unhedged directional book (linear score → weight) or the market-neutral decile
-long/short book the ratified B1 momentum candidate trades. The §7.2 factor-
-residualize stage is unwired for either — the directional book is a
-cost-measurement instrument (SPEC §13 R2, which needs turnover, not edge), and
-B1 is eligibility-screened momentum that is market-neutral by balanced decile
-legs, not by factor neutralization (adding a residualize stage would change its
-ratified config — a discovery event, docs/momentum_design.md §2).
+first. The driver constructs one of three books per ``DailyBookConfig.book``:
+an unhedged directional book (linear score → weight), the market-neutral
+decile long/short book the ratified B1 momentum candidate trades, or the
+trend sleeve's inverse-vol construct (``inverse_vol``; docs/trend_design.md
+§2, default-off paper instrument). The §7.2 factor-residualize stage is
+unwired for all three — the directional book is a cost-measurement
+instrument (SPEC §13 R2, which needs turnover, not edge), B1 is
+eligibility-screened momentum that is market-neutral by balanced decile
+legs, not by factor neutralization (adding a residualize stage would change
+its ratified config — a discovery event, docs/momentum_design.md §2), and
+trend is per-name TSMOM on a fixed ETF list with no residualize stage.
 
 Cadence and ordering (one call per session, after the close):
 
