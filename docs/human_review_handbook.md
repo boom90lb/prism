@@ -144,6 +144,7 @@ eyes even when “just a refactor.”
 | Claim packets / certs | `results/**/claim_packet.json`, `docs/certifications/` | Public honesty surface |
 | Regime seam | `docs/regime_step.md`, live regime ledger | GO precondition (b) |
 | Construction combine | aim-portfolio docs + any sum-then-cap remnant | Anti-netting failure mode (cert-001 §8) |
+| Risk profiles (W6) | `src/prism/live/risk_profile.py`, run-dir `profile.json` | Product surface; may only tighten pins; freeze = J6 |
 
 **Agent-safe (usually no owner commit):** uncounted diagnostics, capture-only
 observatory, trend/paper mechanics default-off, joint-crash arithmetic,

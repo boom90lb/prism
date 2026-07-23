@@ -38,6 +38,7 @@ when the loop graduates from cost instrument to unattended operation (R4).
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import sys
 from pathlib import Path
@@ -47,6 +48,7 @@ import pandas as pd
 
 from prism.io.loader import DataLoader
 from prism.live import (
+    PROFILE_IDS,
     AlpacaBarSource,
     AlpacaBroker,
     DailyBookConfig,
@@ -54,7 +56,9 @@ from prism.live import (
     RegimeTelemetry,
     SafetyConfig,
     StateStore,
+    assert_research_paper_bit_identity,
     fetch_universe_panels,
+    resolve_risk_profile,
     run_daily_cycle,
     spinoff_unrankable_provider,
 )
@@ -94,6 +98,16 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "inverse-vol construct, monthly cadence — docs/trend_design.md; uncounted paper "
         "instrument — not a counted trial). The live-monitor concordance read is B1-shaped "
         "only under 'momentum'.",
+    )
+    parser.add_argument(
+        "--profile",
+        choices=sorted(PROFILE_IDS),
+        default=None,
+        help="Optional W6 risk profile id (docs/risk_profile_schema.md, DRAFT until freeze). "
+        "research_paper forces the certified B1 paper path (book=momentum + pinned "
+        "DailyBookConfig) and refuses construction flag overrides that would fork it. "
+        "Other profiles are resolved for run-dir metadata only until schema freeze; "
+        "they do not enable live deploy.",
     )
     parser.add_argument("--mom-lookback", type=int, default=252, help="Momentum/trend lookback bars (B1/T0: 252).")
     parser.add_argument("--mom-skip", type=int, default=21, help="Momentum/trend skip bars (B1/T0: 21).")
@@ -243,6 +257,48 @@ def _with_held_names(symbols: list[str], state: Any) -> tuple[list[str], list[st
 def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     args = _parse_args(argv)
+
+    # W6 draft: optional named profile. research_paper is the G6 instrument —
+    # pin construction to CERTIFIED_B1_PAPER_CONFIG and refuse silent forks.
+    # Schema is DRAFT; non-paper profiles are metadata + tighten-only book
+    # config only (no multi-sleeve live routing yet).
+    resolved_profile = None
+    if args.profile is not None:
+        resolved_profile = resolve_risk_profile(args.profile)
+        if args.profile == "research_paper":
+            if args.book not in ("ensemble", "momentum"):
+                raise SystemExit(
+                    "--profile research_paper requires --book momentum "
+                    f"(got {args.book!r}); the certified paper path is B1 only"
+                )
+            args.book = "momentum"
+            pin = resolved_profile.book_config
+            args.decile = pin.decile
+            args.decision_every = pin.decision_every
+            args.max_gross = pin.max_gross
+            args.max_symbol_weight = pin.max_symbol_abs_weight
+            args.band = pin.no_trade_band
+            args.max_participation = pin.max_participation
+            args.min_notional = pin.min_order_notional
+            if args.tif != "opg":
+                raise SystemExit(
+                    "--profile research_paper requires --tif opg (whole-share "
+                    "certified paper path)"
+                )
+            logger.info(
+                "profile=research_paper: pinned to certified B1 paper DailyBookConfig "
+                "(G6; docs/risk_profile_schema.md DRAFT until freeze)"
+            )
+        else:
+            logger.info(
+                "profile=%s resolved (schema DRAFT); book=%s max_gross=%.3f "
+                "de_gross_armed=%s — not a GO authorization",
+                args.profile,
+                args.book,
+                resolved_profile.book_config.max_gross,
+                resolved_profile.hedge.de_gross_armed,
+            )
+
     if args.universe_file is not None:
         symbols = _load_universe_file(args.universe_file)
     elif args.symbols:
@@ -438,6 +494,16 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     args.run_dir.mkdir(parents=True, exist_ok=True)
+    if resolved_profile is not None:
+        if args.profile == "research_paper":
+            # G6: the constructed config must match the certified paper pin.
+            assert_research_paper_bit_identity(config)
+        profile_path = args.run_dir / "profile.json"
+        profile_path.write_text(
+            json.dumps(resolved_profile.to_public_dict(), indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        logger.info("wrote %s", profile_path)
     ctx = LiveLoopContext(
         store=StateStore(args.run_dir / "state.json"),
         broker=AlpacaBroker.from_env(time_in_force=args.tif),

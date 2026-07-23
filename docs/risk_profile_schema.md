@@ -1,13 +1,15 @@
 # Risk-profile schema — operator surface (W6) (DRAFT)
 
 > **Status: DRAFT — schema may land early; freeze lags code**
-> (`docs/v040_program.md` §5 queue item 6 / W6). Profiles are **product**;
-> ratified pins are **constitution**. No profile may loosen a pin. Code that
-> honors profiles is **not** authorized by this draft — G6 soft gate:
-> paper path under `research_paper` is bit-identical to the certified B1
-> loop before any other profile is enabled. Freeze of this schema is the
-> owner act that stops free renaming of profile fields; until freeze,
-> field names below are provisional.
+> (`docs/v040_program.md` §5 queue item 6 / W6; handbook J6). Profiles are
+> **product**; ratified pins are **constitution**. No profile may loosen a
+> pin. Code draft lives at `prism.live.risk_profile` (provisional names) with
+> G6 soft-gate tests in `tests/test_risk_profile.py`: `research_paper`
+> resolves to `CERTIFIED_B1_PAPER_CONFIG` and fails loud on divergence.
+> Paper CLI: `--profile research_paper` pins construction and writes
+> `profile.json` under the run dir. Freeze of this schema is the owner act
+> that stops free renaming of profile fields; until freeze, field names
+> below are provisional and non-paper profiles are not a live-deploy path.
 
 ## 0. Product law
 

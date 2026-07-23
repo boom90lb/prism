@@ -2,6 +2,30 @@
 
 Durable operational facts for running the pipeline on real data. Methodology
 lives in the README; this file is the "what will actually bite you" companion.
+Owner GO/account checklist (critical junctures only):
+`docs/human_review_handbook.md` §3 (A–E).
+
+## Account path prep (owner acts; agent cannot fund or arm)
+
+Record results somewhere durable (ops log commit note or dated section here)
+before GO. Agents may draft tooling; they do not fund A3, set live URL, or
+arm de-gross.
+
+| Step | Owner decision | Evidence to attach |
+|---|---|---|
+| **A3 micro-account** | Fund ≤ $2k cost-calibration equity (SPEC §10 carve-out) | Cap, funding date, venue account id (no secrets in git) |
+| **Venue (i)** | Fractional short acceptance + per-name fractionability | Screenshot / API probe receipt; fail → whole-share OPG ≥ $100k only |
+| **Venue (ii)** | Day-vs-auction fill quality from paper stream | Paper fill telemetry summary |
+| **Capital mode** | Whole-share OPG ≥ $100k **or** fractional-DAY if both venue checks pass | Chosen mode written down |
+| **GO (a)** | Sizing pre-reg (already RATIFIED); de-gross still unarmed | Banner + no arming commit yet |
+| **GO (b)** | ≥ 21 consecutive clean paper sessions (`regime.jsonl`, zero N7) | Session count + last N7 date |
+| **W6 profile** | Freeze schema (J6) before naming a live profile | `docs/risk_profile_schema.md` FROZEN |
+| **De-gross arm** | Dedicated GO-branch commit only after (a)+(b) | Commit SHA |
+| **First GO order** | Named profile + sleeve at bar + live URL intentional | Claim packet profile_id |
+
+Paper default: unset `APCA_API_BASE_URL` (`docs/security.md` §2.5). Live is
+explicit. Risk profiles: `python -m prism.scripts.paper_loop --profile research_paper ...`
+(G6 pin; schema still DRAFT).
 
 ## Data vendor (Twelvedata)
 
