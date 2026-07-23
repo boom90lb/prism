@@ -364,21 +364,31 @@ tag at ratification; never deleted):
    once ratified (honest "no cleared bar" kept); aim-portfolio banner note that
    G4 is split pending its seam amendment.
 2. **Trend A4 seam amendment** (small — banner amendment via the PI-2
-   mechanism). Equity path.
+   mechanism). Equity path. **RATIFIED 2026-07-22 on `main`**
+   (`docs/trend_design.md` banner; registry under
+   `docs/amendments_2026-07.md` A4). T0–T4 A4-concurrent firewalled; T5 serial.
 3. **Learned-XS A4 seam amendment** (small — same mechanism; its banner
-   already contemplates the opt-in). Equity path.
+   already contemplated the opt-in). Equity path. **RATIFIED 2026-07-22 on
+   `main`** (`docs/learned_xsection_design.md` banner). X0–X4 A4-concurrent
+   firewalled; X5 serial.
 4. **Factory amendment to SPEC §10** (substantive — pipeline-level
    pre-registration semantics under N5; draft may parallel items 2–3). Serves
-   equity search industrialization first.
+   equity search industrialization first. **Draft text landed** at
+   `docs/factory_amendment.md` (DRAFT; SPEC paste deferred to owner
+   ratification commit).
 5. **Aim-portfolio pre-registration review + split-gate seam** — triggered
    at G4a for engineering; counted G4b only when ≥1 sleeve at bar. Equity
-   multi-sleeve.
+   multi-sleeve. **Draft G4a/G4b seam text landed** on
+   `docs/aim_portfolio_preregistration.md` (box still DRAFT; counted hard
+   gate unchanged).
 6. **Risk-profile schema (W6)** — may draft with item 1; freeze when the
    paper path honors `research_paper` bit-identity. Equity operator surface.
+   **Draft schema landed** at `docs/risk_profile_schema.md` (DRAFT; freeze
+   lags code).
 7. **Crypto family pre-registration** (substantive — venue, fee, family,
    budget frozen). **Queued after equity A4 seams** unless owner explicitly
    pulls validation-lane work forward; never steals serial promotion slot from
-   equity.
+   equity. *Not drafted on this branch.*
 
 ## 6. What v0.4.0 does not claim
 
