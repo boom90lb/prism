@@ -54,6 +54,13 @@ Cadence and ordering (one call per session, after the close):
 Fit cadence is deliberately *not* owned here: the caller passes a fitted
 Signal, and which model serves "today" is the operator's explicit staleness
 policy (§7.7), not a hidden side effect of the driver.
+
+Two pre-cycle helpers live here for the same reason the driver does — the CLI
+shell must hold no logic worth testing. :func:`resolve_fetch_universe` splits
+the configured universe from the broker's actual book *before* any fetch (the
+mark step values venue truth, so the fetch must cover it), and
+:func:`fetch_universe_panels` assembles the panels, treating the held names as
+must-be-priced rather than droppable.
 """
 
 from __future__ import annotations
@@ -61,13 +68,13 @@ from __future__ import annotations
 import logging
 import math
 from dataclasses import dataclass
-from typing import Any, Callable, Collection, Sequence
+from typing import Any, Callable, Collection, Mapping, Sequence
 
 import numpy as np
 import pandas as pd
 
 from prism.execution.participation import participation_capped_targets
-from prism.live.broker import Fill, Order
+from prism.live.broker import Broker, Fill, Order
 from prism.live.loop import (
     LiveLoopContext,
     _append_concordance_ledger,
@@ -175,6 +182,97 @@ class DailyCycleResult:
     regime_scale: float | None = None
 
 
+@dataclass(frozen=True)
+class HeldUniverse:
+    """The fetch universe reconciled against **broker truth** (N7).
+
+    The mark step values what the *venue* holds (``run_daily_cycle`` step 2
+    reads ``ctx.broker.positions()``), so the fetch universe must cover the
+    venue's book or the cycle dies unable to price a position. Splitting the
+    two roles is what makes an index leaver safe:
+
+    * ``score`` — the configured universe, the only names that may be *ranked*.
+      A departed name must be able to leave the book but never re-enter it.
+    * ``valuation_only`` — held names outside ``score``. Fetched so they can be
+      marked and exited; masked out of scoring by the caller, where the decile
+      construct's explicit-flat pin turns them into exit orders at the next
+      refresh.
+    * ``fetch`` — ``score`` + ``valuation_only``, in that order.
+    * ``held`` — the broker-truth position book (nonzero shares) the split was
+      derived from. Every one of these names MUST come back priced, which is
+      what ``fetch_universe_panels(..., required=...)`` enforces.
+    """
+
+    fetch: tuple[str, ...]
+    score: tuple[str, ...]
+    valuation_only: tuple[str, ...]
+    held: Mapping[str, float]
+
+
+def resolve_fetch_universe(
+    configured: Sequence[str],
+    broker: Broker,
+    *,
+    state: LoopState | None = None,
+) -> HeldUniverse:
+    """Reconcile the configured universe against the broker's actual book.
+
+    Called BEFORE the fetch, because a held name that was never fetched cannot
+    be valued and the cycle then dies at the mark step (N7). The authority for
+    "what is held" is the **broker**, never the persisted state:
+
+    * A fresh run directory persists nothing, so a state-derived universe is
+      empty over a live account — every cycle from 2026-07-23 through 2026-07-29
+      died on ``cannot value held position 'POOL'`` for exactly this reason.
+    * A *populated* state is only a cache of the last reconcile, so it can be
+      stale too: the retired ``runs/paper_loop_momentum`` records 28 positions
+      against the same venue account's 98.
+
+    ``state`` is therefore advisory only. Its positions are still unioned into
+    the fetch list — a superset costs one extra symbol per stale name and
+    protects the reconcile/divergence path — but they never define ``held`` and
+    never make a name *required* to price, because a position the venue has
+    already closed must not be able to fail the fetch.
+
+    Raises only on an empty configured universe; a broker read that fails
+    raises from the broker (loudly, before any vendor call).
+    """
+    score = tuple(dict.fromkeys(str(s).strip().upper() for s in configured if str(s).strip()))
+    if not score:
+        raise ValueError("empty configured universe — nothing to score (N7)")
+    held = {str(s): float(q) for s, q in broker.positions().items() if float(q) != 0.0}
+    persisted = {str(s) for s, q in (state.positions if state is not None else {}).items() if float(q) != 0.0}
+
+    valuation_only = tuple(sorted((set(held) | persisted) - set(score)))
+    if valuation_only:
+        logger.warning(
+            "%d held name(s) are outside the configured universe %s; fetching them for "
+            "valuation/exit only (masked out of scoring, so they exit at the next refresh "
+            "and cannot re-enter)",
+            len(valuation_only),
+            list(valuation_only),
+        )
+    if held and not persisted:
+        # The 2026-07-23 class: a run directory with no memory of the account's
+        # book. Recoverable now (broker truth drives the fetch), but the session
+        # record and the NAV ledger live in whichever directory decided the book
+        # — prism-doctor FAILs on this so the operator reattaches deliberately.
+        logger.warning(
+            "this run directory has NO persisted book while the venue holds %d position(s): "
+            "the cycle proceeds on broker truth, but the equity/regime ledgers of the book "
+            "being marked are somewhere else — reattach the run directory (prism-doctor)",
+            len(held),
+        )
+    elif persisted - set(held) or set(held) - persisted:
+        logger.warning(
+            "broker book (%d position(s)) differs from the persisted book (%d): adopting "
+            "broker truth for valuation; the loop's reconcile step will adopt it for state",
+            len(held),
+            len(persisted),
+        )
+    return HeldUniverse(fetch=score + valuation_only, score=score, valuation_only=valuation_only, held=held)
+
+
 def fetch_universe_panels(
     loader: Any,
     symbols: Sequence[str],
@@ -184,6 +282,7 @@ def fetch_universe_panels(
     end_date: str | None = None,
     store: Any | None = None,
     max_missing: float = 0.0,
+    required: Collection[str] | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame | None]:
     """Wide (close, volume) panels via the incremental store's delta fetch.
 
@@ -199,6 +298,12 @@ def fetch_universe_panels(
     under that symbol: those are dropped with a loud warning naming them (so the
     universe file can be curated), but a miss rate above the bound still raises,
     because that signals a systemic feed/auth failure, not a few dead tickers.
+
+    ``required`` names are exempt from that tolerance: they are the broker's held
+    book (``HeldUniverse.held``), and a held position with no bars cannot be
+    marked or exited, so it raises here — naming the position and the remedy —
+    instead of being silently dropped into the same unpriceable-position death
+    at the mark step the reconciliation exists to prevent (N7).
     """
     if not symbols:
         raise ValueError("empty symbol list — nothing to fetch")
@@ -230,6 +335,13 @@ def fetch_universe_panels(
     if missing:
         shown = missing[:20]
         tail = "…" if len(missing) > len(shown) else ""
+        unpriceable = sorted(set(missing) & {str(s) for s in (required or ())})
+        if unpriceable:
+            raise RuntimeError(
+                f"no bars for held position(s) {unpriceable}: the book cannot be marked or "
+                "exited without them, so the max_missing tolerance does not apply — restore "
+                "the bar source for these names or close the positions at the venue (N7)"
+            )
         if len(missing) > max_missing * len(symbols):
             raise RuntimeError(
                 f"no bars for {len(missing)}/{len(symbols)} symbols "

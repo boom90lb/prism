@@ -3,11 +3,13 @@
 A thin, network-gated shell: it parses arguments and connects credentials to
 pieces that are each tested offline — ``DataLoader.fetch_incremental``
 (tests/test_incremental_store.py), ``EnsembleSignalNode``
-(tests/test_signal_node.py), the online construction and write-ahead
-protocol (tests/test_live_daily.py, tests/test_live_loop.py), and the
-Alpaca venue mappings (tests/test_live_alpaca.py). The shell itself holds
-no logic worth testing; anything that grows logic must move down into
-``prism.live.daily`` where it can be exercised without credentials.
+(tests/test_signal_node.py), the broker-truth universe reconciliation
+(``resolve_fetch_universe``; tests/test_paper_loop_universe.py), the online
+construction and write-ahead protocol (tests/test_live_daily.py,
+tests/test_live_loop.py), and the Alpaca venue mappings
+(tests/test_live_alpaca.py). The shell itself holds no logic worth testing;
+anything that grows logic must move down into ``prism.live.daily`` where it
+can be exercised without credentials.
 
 Run once per session, after the close (OPG next-open orders must reach
 Alpaca before ~09:28 ET the next morning):
@@ -58,6 +60,7 @@ from prism.live import (
     StateStore,
     assert_research_paper_bit_identity,
     fetch_universe_panels,
+    resolve_fetch_universe,
     resolve_risk_profile,
     run_daily_cycle,
     spinoff_unrankable_provider,
@@ -239,21 +242,6 @@ def _load_universe_file(path: Path) -> list[str]:
     return symbols
 
 
-def _with_held_names(symbols: list[str], state: Any) -> tuple[list[str], list[str]]:
-    """Fetch universe = configured universe ∪ persisted held book.
-
-    A held name must stay fetchable until the book exits it: the mark step
-    values every position and refuses loudly otherwise (N7), and only a priced
-    name can be rebalanced to flat. Index leavers drop out of a regenerated
-    universe file while the book still holds them (POOL, 2026-07-15), so the
-    extras ride along for valuation/exit — the caller keeps them OUT of the
-    scoring universe so they can leave the book but never re-enter it.
-    """
-    held = getattr(state, "positions", None) if state is not None else None
-    extras = sorted(set(held) - set(symbols)) if held else []
-    return symbols + extras, extras
-
-
 def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     args = _parse_args(argv)
@@ -314,15 +302,19 @@ def main(argv: list[str] | None = None) -> int:
             "docs/bar_vendor_divergence.md §5)"
         )
 
-    score_universe = list(symbols)
-    symbols, valuation_extras = _with_held_names(symbols, StateStore(args.run_dir / "state.json").load())
-    if valuation_extras:
-        logger.warning(
-            "universe file lacks %d held name(s) %s; fetching them for valuation/exit only "
-            "(they are masked out of scoring and exit at the next refresh)",
-            len(valuation_extras),
-            valuation_extras,
-        )
+    # Broker truth decides the fetch universe, BEFORE any bar is fetched. The
+    # mark step values what the venue holds, and this run directory's persisted
+    # state is not that: a fresh run directory persists nothing (every cycle
+    # 2026-07-23..29 died on `cannot value held position 'POOL'`), and a
+    # populated one is only a cache of the last reconcile. One broker instance
+    # serves the reconciliation and the cycle, so the account is read on the
+    # same credentials the orders will use.
+    store = StateStore(args.run_dir / "state.json")
+    broker = AlpacaBroker.from_env(time_in_force=args.tif)
+    universe = resolve_fetch_universe(symbols, broker, state=store.load())
+    score_universe = list(universe.score)
+    symbols = list(universe.fetch)
+    valuation_extras = list(universe.valuation_only)
 
     # Bars from Alpaca (the broker's own feed) by default so decision and fill
     # share one venue and clock; the Twelve Data spine stays available as a
@@ -338,7 +330,15 @@ def main(argv: list[str] | None = None) -> int:
         if args.max_missing is not None
         else (0.10 if args.book in ("momentum", "trend") else 0.0)
     )
-    close, volume = fetch_universe_panels(loader, symbols, start_date=start_date, max_missing=max_missing)
+    # ``required``: a held name may not be silently dropped by the max_missing
+    # tolerance — an unpriceable position cannot be marked or exited (N7).
+    close, volume = fetch_universe_panels(
+        loader,
+        symbols,
+        start_date=start_date,
+        max_missing=max_missing,
+        required=sorted(universe.held),
+    )
     logger.info(
         "panels: %d bars x %d symbols through %s (source=%s)",
         len(close),
@@ -505,8 +505,8 @@ def main(argv: list[str] | None = None) -> int:
         )
         logger.info("wrote %s", profile_path)
     ctx = LiveLoopContext(
-        store=StateStore(args.run_dir / "state.json"),
-        broker=AlpacaBroker.from_env(time_in_force=args.tif),
+        store=store,
+        broker=broker,
         fills_ledger=args.run_dir / "fills.jsonl",
         equity_ledger=args.run_dir / "equity.jsonl",
         targets_ledger=args.run_dir / "targets.jsonl",
