@@ -84,10 +84,22 @@ uv run python -m prism.scripts.paper_sweep --run-dir runs/paper_loop_momentum
 
 ## 6. Schedule it
 
-Wrap the two commands in any scheduler — cron, systemd timers, or Windows
-Task Scheduler via `wsl.exe`: an evening loop run (between the close and
-~09:00 ET) and a morning sweep (~09:35 ET), weekdays only. A holiday run
-no-ops on the stale-panel guard.
+Two wrappers ship in-tree; point any scheduler — cron, systemd timers, or
+Windows Task Scheduler via `wsl.exe` — at them, weekdays only:
+
+```sh
+ops/paper_loop_nightly.sh      # evening: one cycle, then the health verdict
+ops/paper_sweep_morning.sh     # morning: the completion sweep, then the health verdict
+```
+
+Both read `runs/ACTIVE_RUN_DIR` (one line, the live run directory relative to
+the repo) and `.env`. A holiday run no-ops on the stale-panel guard.
+
+Each wrapper runs `prism-doctor` after its work and alerts if *either* goes
+nonzero — a marker at `{run-dir}/ALERT`, a loud log line, and a nonzero exit.
+This is not ceremony: a sweep with nothing pending legitimately exits 0, so a
+green morning is not evidence that last night ran. Set `PRISM_ALERT_CMD` in
+`.env` to route alerts somewhere you actually read (`docs/operations.md`).
 
 What accumulates in the run directory:
 
@@ -99,6 +111,8 @@ What accumulates in the run directory:
 | `concordance.jsonl` | held-versus-target divergence per session |
 | `unfilled.jsonl` | every order the venue did not print |
 | `state.json` | durable loop state — never edit by hand |
+| `nightly.log` / `sweep.log` | per-session wrapper log, verdict line per run |
+| `ALERT` | present = an unresolved unhealthy session; a healthy nightly clears it |
 
 ## 7. Safety rails and stopping
 

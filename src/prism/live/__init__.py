@@ -48,7 +48,9 @@ from prism.live.broker import Broker, DuplicateOrder, Fill, Order, OrderRejected
 from prism.live.daily import (
     DailyBookConfig,
     DailyCycleResult,
+    HeldUniverse,
     fetch_universe_panels,
+    resolve_fetch_universe,
     run_daily_cycle,
 )
 from prism.live.loop import (
@@ -110,6 +112,7 @@ __all__ = [
     "DuplicateOrder",
     "Fill",
     "HedgePolicy",
+    "HeldUniverse",
     "LiveLoopContext",
     "OrderRejected",
     "LoopState",
@@ -136,6 +139,7 @@ __all__ = [
     "read_concordance_ledger",
     "read_equity_ledger",
     "read_fills_ledger",
+    "resolve_fetch_universe",
     "resolve_risk_profile",
     "validate_profile_payload",
     "read_regime_ledger",

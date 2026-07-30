@@ -35,14 +35,18 @@ clocks — not more design documents.
   ([cert 001](docs/certifications/001-residual-reversion-daily-negative.md)).
 - The live candidate is monthly cross-sectional momentum
   ([design](docs/momentum_design.md), ratified 2026-07-06), paper-trading
-  nightly since 2026-07-13. Its promotion verdict is unreadable before the
-  pre-registered window (≥ 2027-06 data).
+  nightly from 2026-07-13. Its promotion verdict is unreadable before the
+  pre-registered window (≥ 2027-06 data). The stream is **interrupted**: the
+  last completed session is 2026-07-17, and every scheduled cycle from
+  2026-07-23 to 07-29 failed on an unvaluable held position. The defect is
+  fixed and pinned; restarting the stream needs an owner run-directory
+  decision ([operations](docs/operations.md), "Reattaching a run directory").
 - Successor pre-registrations ratified: replication, trend, learned
   cross-section, and sizing with crash-conditional de-grossing (2026-07-18
   through 2026-07-20). The v0.4.0 program, its amendment set, and the operator
   risk-profile schema are ratified or frozen. Trend mechanics, regime
   telemetry, and the joint-crash diagnostic are built but uncounted.
-- Test suite at tag: 976 passed, 1 skipped.
+- Test suite: 1008 passed, 1 skipped.
 
 **Open — what actually blocks v0.4.0:**
 
@@ -53,10 +57,15 @@ clocks — not more design documents.
 - **Capital mode.** Whole-share auction orders at ≥ $100k, or fractional
   day orders if both venue checks pass — neither selected yet.
 - **The regime clock.** Deployment requires ≥ 21 consecutive clean paper
-  sessions with regime telemetry recorded; the streak has not started (the
-  active run is a handful of sessions with one fail-loud event on 2026-07-15).
-- **Operations.** Boot-resilient nightly scheduling, a filesystem health
-  check, and a one-page deploy runbook.
+  sessions with regime telemetry recorded; the streak has not started. Four
+  sessions ran 2026-07-13 → 07-17 with one fail-loud event on 07-15, then the
+  nightly went dark 07-23 → 07-29. `prism-doctor` now reports the count off the
+  regime ledger instead of anyone remembering it.
+- **Operations.** Boot-resilient nightly scheduling and a one-page deploy
+  runbook. The health signal itself now exists: the scheduled wrappers live in
+  [`ops/`](ops/), each runs `prism-doctor` after its work, and either going
+  nonzero raises an alert — a green morning sweep no longer implies a live book
+  ([operations](docs/operations.md)).
 
 **Nothing is authorized for real-money deployment today.** No sleeve has
 cleared its evidence bar; the crash de-gross hook is wired but deliberately
@@ -148,6 +157,7 @@ src/prism/     the shipped package — production import path (JAX/torch-free, S
   validation/  purged WFO, metrics, capacity, claim packets, joint-crash diagnostic
   conformal/   EnbPI + ACI prediction bands
   scripts/     prism-doctor, paper_loop / paper_sweep / paper_monitor, replay
+ops/           scheduled paper-session wrappers + alerting (docs/operations.md)
 research/      quarantined research tree (imports prism; never the reverse — SPEC §9)
 formal/        Lean 4 machine-checked kernel invariants (see formal/README.md)
 tests/         offline suite; the slim subset runs without the [research] extra

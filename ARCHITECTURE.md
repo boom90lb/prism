@@ -28,8 +28,17 @@ the reverse.
 trading session — this is the path that matters:
 
 ```
-Alpaca IEX bars ─► universe panels ─► signal node ─► construct ─► safety ─► broker ─► settle + ledgers
+broker book ─► universe panels ─► signal node ─► construct ─► safety ─► broker ─► settle + ledgers
+   (Alpaca IEX bars)
 ```
+
+The path opens at the *broker*, not the universe file: the mark step values
+what the venue holds, so `daily.resolve_fetch_universe` reads the account
+before the fetch universe is decided and fetches configured ∪ held. Held names
+outside the configured universe are valuation/exit-only — priceable, never
+rankable — and may not be dropped by the missing-bar tolerance. Persisted state
+is a reconciliation cache, never the authority for holdings
+(`docs/operations.md`, postmortem 2026-07-23).
 
 **The residual/stat-arb batch path** exercises the same spine offline:
 `src/prism/residual/` (factor model, causal s-scores) plus the shared
@@ -108,8 +117,11 @@ the loop. Unfilled auction orders are completed next morning by
 ## Entry points
 
 Production console scripts (`src/prism/scripts/`): `prism-doctor`
-(preflight), `prism-build-universe`, plus the module-run paper loop, sweep,
-monitor, replay, and spread diagnostic.
+(preflight *and* operational health — ledger freshness, nightly verdict,
+regime clock, and venue-book reconciliation; its exit code is the alert
+condition), `prism-build-universe`, plus the module-run paper loop, sweep,
+monitor, replay, and spread diagnostic. The scheduled wrappers that drive the
+paper session and route alerts are versioned under `ops/`.
 
 Research CLIs run as `python -m research.scripts.<name>` from the repo root —
 training, backtest, sweep, the stat-arb walk-forwards, and a set of one-shot
