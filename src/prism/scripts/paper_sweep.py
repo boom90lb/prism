@@ -33,6 +33,7 @@ import sys
 from pathlib import Path
 
 from prism.live import AlpacaBroker, LiveLoopContext, StateStore, sweep_pending
+from prism.live.lockfile import run_dir_lock
 
 logger = logging.getLogger(__name__)
 
@@ -71,15 +72,19 @@ def main(argv: list[str] | None = None) -> int:
     if str(kill_switch) != "off" and Path(kill_switch).exists():
         logger.error("SAFETY HALT (kill switch present at %s): not sweeping", kill_switch)
         return 2
-    ctx = LiveLoopContext(
-        store=StateStore(args.run_dir / "state.json"),
-        # DAY market orders: the auction the original OPG orders were for has
-        # already happened; the sweep executes at the open market.
-        broker=AlpacaBroker.from_env(time_in_force="day"),
-        fills_ledger=args.run_dir / "fills.jsonl",
-        unfilled_ledger=args.run_dir / "unfilled.jsonl",
-    )
-    swept = sweep_pending(ctx, sweep_suffix=args.sweep_suffix)
+    # One writer per run directory (prism.live.lockfile): the sweep appends to
+    # the same persisted pending set the evening loop owns, and the write-ahead
+    # protocol protects against crashes, not concurrent writers.
+    with run_dir_lock(args.run_dir):
+        ctx = LiveLoopContext(
+            store=StateStore(args.run_dir / "state.json"),
+            # DAY market orders: the auction the original OPG orders were for has
+            # already happened; the sweep executes at the open market.
+            broker=AlpacaBroker.from_env(time_in_force="day"),
+            fills_ledger=args.run_dir / "fills.jsonl",
+            unfilled_ledger=args.run_dir / "unfilled.jsonl",
+        )
+        swept = sweep_pending(ctx, sweep_suffix=args.sweep_suffix)
     logger.info("sweep: %d residual orders submitted", len(swept))
     return 0
 

@@ -149,14 +149,9 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def _load_universe_file(path: Path) -> list[str]:
     """One symbol per line; blank lines and ``#`` comments skipped, upper-cased."""
-    symbols = [
-        line.strip().upper()
-        for line in path.read_text(encoding="utf-8").splitlines()
-        if line.strip() and not line.strip().startswith("#")
-    ]
-    if not symbols:
-        raise ValueError(f"universe file {path} has no symbols")
-    return symbols
+    from prism.io.universe_file import load_universe_symbols
+
+    return load_universe_symbols(path)
 
 
 def _book_config(args: argparse.Namespace, decision_every: int) -> DailyBookConfig:

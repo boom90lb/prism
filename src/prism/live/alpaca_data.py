@@ -28,13 +28,11 @@ from __future__ import annotations
 
 import logging
 import os
-import time
 from typing import Any, Callable, Iterable, Sequence
 
 import pandas as pd
-import requests
 
-from prism.live.alpaca import AlpacaAPIError
+from prism.live.alpaca_transport import AlpacaSession, resolve_env_credentials
 
 logger = logging.getLogger(__name__)
 
@@ -62,11 +60,6 @@ _VENDOR_TIMEFRAMES = {"1d": "1Day", "1wk": "1Week", "1mo": "1Month"}
 # history it actually has (IEX daily begins mid-2020), so we need not guess a
 # listing date.
 _DEFAULT_START = "2016-01-01"
-
-# Retryable HTTP statuses: rate limit + transient server errors. Even a batched
-# universe fetch can momentarily exceed the ~200 req/min IEX budget, so back off
-# and retry rather than crash a nightly run.
-_RETRY_STATUSES = frozenset({429, 500, 502, 503, 504})
 
 # Symbols per multi-symbol request — well under any URL-length limit; the total
 # page count is ~total_bars / page_limit regardless of how symbols are chunked.
@@ -96,20 +89,18 @@ class AlpacaBarSource:
         backoff_base: float = 0.5,
         sleep: Callable[[float], None] | None = None,
     ) -> None:
-        if not key_id or not secret_key:
-            raise ValueError("Alpaca key_id and secret_key must be non-empty")
-        self._headers = {
-            "APCA-API-KEY-ID": key_id,
-            "APCA-API-SECRET-KEY": secret_key,
-        }
-        self._base_url = base_url.rstrip("/")
-        self._session = session if session is not None else requests.Session()
+        self._api = AlpacaSession(
+            key_id,
+            secret_key,
+            base_url,
+            session=session,
+            timeout=timeout,
+            max_retries=max_retries,
+            backoff_base=backoff_base,
+            sleep=sleep,
+        )
         self._feed = feed
         self._adjustment = adjustment
-        self._timeout = timeout
-        self._max_retries = int(max_retries)
-        self._backoff_base = float(backoff_base)
-        self._sleep = sleep or time.sleep
 
     @classmethod
     def from_env(cls, *, base_url: str | None = None, feed: str | None = None, **kwargs: Any) -> "AlpacaBarSource":
@@ -119,13 +110,7 @@ class AlpacaBarSource:
         (default ``iex``). Missing credentials raise (N7) — the same fail-loud
         contract as the broker's ``from_env``.
         """
-        key_id = os.environ.get("APCA_API_KEY_ID", "")
-        secret_key = os.environ.get("APCA_API_SECRET_KEY", "")
-        if not key_id or not secret_key:
-            raise RuntimeError(
-                "APCA_API_KEY_ID / APCA_API_SECRET_KEY are not set; "
-                "export the paper-account credentials before sourcing Alpaca bars (N7)"
-            )
+        key_id, secret_key = resolve_env_credentials("sourcing Alpaca bars")
         resolved_url = base_url or os.environ.get("APCA_DATA_URL") or DATA_BASE_URL
         resolved_feed = feed or os.environ.get("APCA_DATA_FEED") or DEFAULT_FEED
         return cls(key_id, secret_key, base_url=resolved_url, feed=resolved_feed, **kwargs)
@@ -229,49 +214,15 @@ class AlpacaBarSource:
         return {sym: _bars_to_frame(rows) for sym, rows in collected.items()}
 
     def _request(self, method: str, path: str, **kwargs: Any) -> Any:
-        """One HTTP call, retrying rate-limit/transient statuses with backoff.
-
-        A 429 (or transient 5xx) is retried up to ``max_retries`` times, honoring
-        a ``Retry-After`` header when present and otherwise using exponential
-        backoff. The final response (success or the last error) is returned for
-        :meth:`_json_or_raise` to interpret — a genuine 4xx like 403 is not
-        retried and surfaces immediately.
-        """
-        url = self._base_url + path
-        response: Any = None
-        for attempt in range(self._max_retries + 1):
-            response = self._session.request(
-                method,
-                url,
-                headers=self._headers,
-                timeout=self._timeout,
-                **kwargs,
-            )
-            if response.status_code not in _RETRY_STATUSES or attempt == self._max_retries:
-                return response
-            headers = getattr(response, "headers", None) or {}
-            try:
-                retry_after = float(headers.get("Retry-After", 0) or 0)
-            except (TypeError, ValueError):
-                retry_after = 0.0
-            wait = retry_after if retry_after > 0 else self._backoff_base * (2.0**attempt)
-            logger.warning(
-                "Alpaca %s -> HTTP %s (attempt %d/%d); backing off %.1fs",
-                path,
-                response.status_code,
-                attempt + 1,
-                self._max_retries,
-                wait,
-            )
-            self._sleep(wait)
-        return response
+        """One HTTP call through the shared retrying transport
+        (:class:`~prism.live.alpaca_transport.AlpacaSession`): 429/transient
+        5xx retried with Retry-After/backoff; a genuine 4xx like 403 surfaces
+        immediately for :meth:`_json_or_raise` to interpret."""
+        return self._api.request(method, path, **kwargs)
 
     @staticmethod
     def _json_or_raise(response: Any, context: str) -> Any:
-        if 200 <= response.status_code < 300:
-            return response.json()
-        body = (response.text or "")[:500]
-        raise AlpacaAPIError(f"{context} -> HTTP {response.status_code}: {body}", response.status_code)
+        return AlpacaSession.json_or_raise(response, context)
 
 
 def _bars_to_frame(rows: list[dict]) -> pd.DataFrame:

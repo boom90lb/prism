@@ -177,21 +177,26 @@ class _Response:
 
 
 class FakeSession:
-    """Canned corporate-actions pages; records every request's params."""
+    """Canned corporate-actions pages; records every request's params.
+
+    Speaks the requests-compatible ``request(method, url, ...)`` surface the
+    shared transport (``prism.live.alpaca_transport.AlpacaSession``) drives.
+    """
 
     def __init__(self, pages: list[dict]) -> None:
         self.pages = list(pages)
         self.requests: list[dict] = []
 
-    def get(self, url, params=None, headers=None, timeout=None):
+    def request(self, method, url, params=None, headers=None, timeout=None):
         # Credentials travel in headers, never the URL (the AlpacaBroker rule).
+        assert method == "GET"
         assert "APCA-API-KEY-ID" in headers and "key" not in url
         self.requests.append(dict(params))
         return _Response(self.pages[min(len(self.requests) - 1, len(self.pages) - 1)])
 
 
 class ExplodingSession:
-    def get(self, *args, **kwargs):
+    def request(self, *args, **kwargs):
         raise ConnectionError("venue down")
 
 

@@ -133,13 +133,11 @@ def check_env_credentials(env: dict[str, str]) -> list[CheckResult]:
 
 def _read_universe(path: Path | None) -> list[str]:
     """The universe file's symbols, or ``[]`` — the loop's parse, minus the raise."""
+    from prism.io.universe_file import load_universe_symbols
+
     if path is None or not path.exists():
         return []
-    return [
-        line.strip().upper()
-        for line in path.read_text(encoding="utf-8").splitlines()
-        if line.strip() and not line.strip().startswith("#")
-    ]
+    return load_universe_symbols(path, require_nonempty=False)
 
 
 def check_universe_file(path: Path | None) -> CheckResult:

@@ -26,7 +26,7 @@ nor submit them twice. The protocol:
 
 from __future__ import annotations
 
-import json
+import inspect
 import logging
 import math
 from dataclasses import dataclass
@@ -35,6 +35,7 @@ from typing import Callable
 
 import pandas as pd
 
+from prism.live import ledgers
 from prism.live.broker import Broker, DuplicateOrder, Fill, Order, OrderRejected
 from prism.live.state import LoopState, StateStore
 
@@ -214,7 +215,7 @@ def decide_and_submit(
             )
         _reconcile(state, ctx.broker)
         equity = state.cash + sum(
-            shares * _require_price(prices, symbol) for symbol, shares in state.positions.items()
+            shares * require_price(prices, symbol) for symbol, shares in state.positions.items()
         )
         orders = targets_to_orders(
             target_weights,
@@ -238,7 +239,7 @@ def decide_and_submit(
             # baseline (what the instrument SHOULD hold until the next refresh)
             # and the audit record behind the completion sweep. Written inside
             # the write-ahead step, idempotent per refresh bar.
-            _append_targets_ledger(
+            append_targets_ledger(
                 ctx.targets_ledger, refresh_bar, decision_bar, target_weights, prices, equity
             )
 
@@ -248,7 +249,9 @@ def decide_and_submit(
 
 def _submit_pending(broker: Broker, orders: list[Order]) -> None:
     """Idempotent submission of a persisted order set (decide and sweep share it)."""
-    known = broker.submitted_order_ids()
+    if not orders:
+        return
+    known = _known_order_ids(broker, orders)
     for order in orders:
         if order.client_order_id in known:
             continue
@@ -269,6 +272,27 @@ def _submit_pending(broker: Broker, orders: list[Order]) -> None:
                 order.client_order_id,
                 exc,
             )
+
+
+def _known_order_ids(broker: Broker, orders: list[Order]) -> set[str]:
+    """Ids the venue already knows, scoped to the pending set's bars when possible.
+
+    A pending set is always bounded to one decision bar, but the bare
+    contract call pages the account's *entire* order history — latency and
+    rate-limit exposure that grow with account age. An adapter that accepts
+    ``since`` (duck-typed, the ``open_order_ids`` precedent) is asked only
+    from the earliest pending decision bar; ids for bar *t* are submitted
+    the evening of *t* at the earliest, so midnight-of-*t* strictly precedes
+    every submission the pending set could have made.
+    """
+    submitted: Callable[..., set[str]] = broker.submitted_order_ids
+    try:
+        supports_since = "since" in inspect.signature(submitted).parameters
+    except (TypeError, ValueError):  # builtins/partials without introspectable signatures
+        supports_since = False
+    if supports_since:
+        return submitted(since=min(order.decision_bar for order in orders))
+    return submitted()
 
 
 def settle(ctx: LiveLoopContext, settle_bar: str) -> list[Fill]:
@@ -322,10 +346,17 @@ def settle(ctx: LiveLoopContext, settle_bar: str) -> list[Fill]:
     # was unrecoverable locally because only the first 8 ids were ever logged.
     if ctx.unfilled_ledger is not None:
         executed = {f.client_order_id: f.qty for f in fills}
+        # Crash-idempotent: a resume between this append and the state save
+        # below must not duplicate rows (the same discipline the monotone
+        # per-session ledgers already carry).
+        already_unfilled = {
+            (row.get("client_order_id"), row.get("settle_bar"))
+            for row in ledgers.read_rows(ctx.unfilled_ledger)
+        }
         residual_rows = []
         for order in state.pending_orders:
             residual = order.qty - executed.get(order.client_order_id, 0.0)
-            if residual == 0.0:
+            if residual == 0.0 or (order.client_order_id, settle_bar) in already_unfilled:
                 continue
             residual_rows.append(
                 {
@@ -340,25 +371,41 @@ def settle(ctx: LiveLoopContext, settle_bar: str) -> list[Fill]:
                 }
             )
         if residual_rows:
-            _append_jsonl(ctx.unfilled_ledger, residual_rows)
+            ledgers.append_rows(ctx.unfilled_ledger, residual_rows)
 
     reference = {o.client_order_id: o.reference_price for o in state.pending_orders}
     if fills:
-        _append_fills_ledger(
-            ctx.fills_ledger,
-            [
-                {
-                    "client_order_id": f.client_order_id,
-                    "symbol": f.symbol,
-                    "qty": f.qty,
-                    "fill_price": f.price,
-                    "reference_price": reference[f.client_order_id],
-                    "decision_bar": state.pending_decision_bar,
-                    "filled_bar": f.filled_bar,
-                }
-                for f in fills
-            ],
-        )
+        # Same crash-idempotency for the I-9 record: a settle resumed after a
+        # crash between this append and the state save re-pulls the same
+        # fills; ledgering them twice would corrupt the calibration stream.
+        already_ledgered = {
+            row.get("client_order_id")
+            for row in ledgers.read_rows(ctx.fills_ledger)
+            if row.get("decision_bar") == state.pending_decision_bar
+        }
+        fill_rows = [
+            {
+                "client_order_id": f.client_order_id,
+                "symbol": f.symbol,
+                "qty": f.qty,
+                "fill_price": f.price,
+                "reference_price": reference[f.client_order_id],
+                "decision_bar": state.pending_decision_bar,
+                "filled_bar": f.filled_bar,
+            }
+            for f in fills
+            if f.client_order_id not in already_ledgered
+        ]
+        if len(fill_rows) < len(fills):
+            logger.warning(
+                "settle %s: %d fill row(s) already ledgered (crash-resume) — appending only "
+                "the %d new one(s), never duplicating the I-9 record",
+                state.pending_decision_bar,
+                len(fills) - len(fill_rows),
+                len(fill_rows),
+            )
+        if fill_rows:
+            ledgers.append_rows(ctx.fills_ledger, fill_rows)
 
     state.positions = {s: q for s, q in ctx.broker.positions().items() if q != 0.0}
     state.cash = ctx.broker.cash()
@@ -480,11 +527,7 @@ def sweep_pending(ctx: LiveLoopContext, *, sweep_suffix: str = "S1") -> list[Ord
 
 def read_fills_ledger(path: Path) -> pd.DataFrame:
     """The append-only fills ledger as a frame (the I-9 calibration input)."""
-    path = Path(path)
-    if not path.exists():
-        return pd.DataFrame()
-    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
-    return pd.DataFrame(rows)
+    return ledgers.read_frame(path)
 
 
 def read_equity_ledger(path: Path) -> pd.DataFrame:
@@ -492,28 +535,17 @@ def read_equity_ledger(path: Path) -> pd.DataFrame:
     decision bar (``decision_bar``, ``equity``, ``cash``). This is the
     return-series source for the anytime-valid monitor
     (:mod:`prism.validation.anytime` via :mod:`prism.live.monitor`)."""
-    path = Path(path)
-    if not path.exists():
-        return pd.DataFrame()
-    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
-    return pd.DataFrame(rows)
+    return ledgers.read_frame(path)
 
 
 def read_targets_ledger(path: Path) -> list[dict]:
     """The refresh-target ledger rows, oldest first (concordance baseline)."""
-    path = Path(path)
-    if not path.exists():
-        return []
-    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
+    return ledgers.read_rows(path)
 
 
 def read_concordance_ledger(path: Path) -> pd.DataFrame:
     """The book-concordance telemetry ledger as a frame."""
-    path = Path(path)
-    if not path.exists():
-        return pd.DataFrame()
-    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
-    return pd.DataFrame(rows)
+    return ledgers.read_frame(path)
 
 
 def read_regime_ledger(path: Path) -> pd.DataFrame:
@@ -521,11 +553,7 @@ def read_regime_ledger(path: Path) -> pd.DataFrame:
     bar (``decision_bar``, ``clean``, ``gross_scale``, ``blocks``,
     ``failures``, …). The handoff §8 precondition-(b) 21-session clock reads
     ``clean`` (docs/regime_step.md)."""
-    path = Path(path)
-    if not path.exists():
-        return pd.DataFrame()
-    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
-    return pd.DataFrame(rows)
+    return ledgers.read_frame(path)
 
 
 def _reconcile(state: LoopState, broker: Broker) -> None:
@@ -547,26 +575,16 @@ def _reconcile(state: LoopState, broker: Broker) -> None:
     state.cash = broker.cash()
 
 
-def _require_price(prices: pd.Series, symbol: str) -> float:
+def require_price(prices: pd.Series, symbol: str) -> float:
+    """A finite positive price for ``symbol``, or raise (N7) — the mark/size
+    precondition shared by the protocol and the daily driver."""
     price = prices.get(symbol)
     if price is None or not math.isfinite(float(price)) or float(price) <= 0:
         raise ValueError(f"cannot value held position {symbol!r}: price {price!r} (N7)")
     return float(price)
 
 
-def _append_jsonl(path: Path, rows: list[dict]) -> None:
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "a", encoding="utf-8") as handle:
-        for row in rows:
-            handle.write(json.dumps(row, sort_keys=True) + "\n")
-
-
-def _append_fills_ledger(path: Path, rows: list[dict]) -> None:
-    _append_jsonl(path, rows)
-
-
-def _append_targets_ledger(
+def append_targets_ledger(
     path: Path,
     refresh_bar: str,
     decision_bar: str,
@@ -577,11 +595,6 @@ def _append_targets_ledger(
     """Persist the constructed refresh book (nonzero weights + their decision
     closes). Idempotent per ``refresh_bar`` so a same-bar restart never
     duplicates the row; absent names read as an explicit 0.0 downstream."""
-    path = Path(path)
-    if path.exists():
-        lines = [ln for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()]
-        if lines and refresh_bar <= json.loads(lines[-1])["refresh_bar"]:
-            return
     book = {
         str(symbol): float(weight)
         for symbol, weight in target_weights.items()
@@ -590,32 +603,26 @@ def _append_targets_ledger(
         and float(weight) != 0.0
     }
     reference_prices = {symbol: float(prices[symbol]) for symbol in book}
-    _append_jsonl(
+    ledgers.append_monotone(
         path,
-        [
-            {
-                "refresh_bar": refresh_bar,
-                "decision_bar": decision_bar,
-                "equity": float(equity),
-                "targets": book,
-                "reference_prices": reference_prices,
-            }
-        ],
+        "refresh_bar",
+        {
+            "refresh_bar": refresh_bar,
+            "decision_bar": decision_bar,
+            "equity": float(equity),
+            "targets": book,
+            "reference_prices": reference_prices,
+        },
     )
 
 
-def _append_concordance_ledger(path: Path, decision_bar: str, row: dict) -> None:
+def append_concordance_ledger(path: Path, decision_bar: str, row: dict) -> None:
     """Append one concordance read per decision bar (idempotent, monotone —
     the same discipline as the equity ledger)."""
-    path = Path(path)
-    if path.exists():
-        lines = [ln for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()]
-        if lines and decision_bar <= json.loads(lines[-1])["decision_bar"]:
-            return
-    _append_jsonl(path, [{"decision_bar": decision_bar, **row}])
+    ledgers.append_monotone(path, "decision_bar", {"decision_bar": decision_bar, **row})
 
 
-def _append_regime_ledger(path: Path, decision_bar: str, state: dict, gross_scale: float | None) -> None:
+def append_regime_ledger(path: Path, decision_bar: str, state: dict, gross_scale: float | None) -> None:
     """Append one regime telemetry read per decision bar (idempotent, monotone
     — the equity-ledger discipline, so a same-bar restart never duplicates a
     session on the precondition-(b) clock). ``clean`` is the session verdict:
@@ -624,21 +631,16 @@ def _append_regime_ledger(path: Path, decision_bar: str, state: dict, gross_scal
     construction — null while the hook is unarmed
     (docs/sizing_preregistration.md unratified) or the session did not
     qualify (not a refresh, or a not-clean read)."""
-    path = Path(path)
-    if path.exists():
-        lines = [ln for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()]
-        if lines and decision_bar <= json.loads(lines[-1])["decision_bar"]:
-            return
     row = {
         "decision_bar": decision_bar,
         "clean": not state.get("failures"),
         "gross_scale": gross_scale,
         **{key: value for key, value in state.items() if key != "decision_bar"},
     }
-    _append_jsonl(path, [row])
+    ledgers.append_monotone(path, "decision_bar", row)
 
 
-def _append_equity_ledger(path: Path, decision_bar: str, equity: float, cash: float) -> None:
+def append_equity_ledger(path: Path, decision_bar: str, equity: float, cash: float) -> None:
     """Append one mark-to-market NAV snapshot for ``decision_bar``.
 
     Idempotent and monotone: a same-bar rerun (the write-ahead protocol's
@@ -646,17 +648,17 @@ def _append_equity_ledger(path: Path, decision_bar: str, equity: float, cash: fl
     row per bar and re-running the loop never double-counts a daily return.
     ``decision_bar`` strings are ISO dates, so lexical ``<=`` is chronological.
     """
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    if path.exists():
-        lines = [ln for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()]
-        if lines and decision_bar <= json.loads(lines[-1])["decision_bar"]:
-            return
-    with open(path, "a", encoding="utf-8") as handle:
-        handle.write(
-            json.dumps(
-                {"decision_bar": decision_bar, "equity": float(equity), "cash": float(cash)},
-                sort_keys=True,
-            )
-            + "\n"
-        )
+    ledgers.append_monotone(
+        path,
+        "decision_bar",
+        {"decision_bar": decision_bar, "equity": float(equity), "cash": float(cash)},
+    )
+
+
+# Pre-2026-07-29 private names, kept so downstream callers migrate on their
+# own clock (tests and the daily driver now use the public names above).
+_require_price = require_price
+_append_targets_ledger = append_targets_ledger
+_append_concordance_ledger = append_concordance_ledger
+_append_regime_ledger = append_regime_ledger
+_append_equity_ledger = append_equity_ledger

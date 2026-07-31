@@ -97,7 +97,13 @@ class StateStore:
             ) from exc
 
     def save(self, state: LoopState) -> None:
-        """Write-then-rename so the file on disk is always a whole document."""
+        """Write-then-rename so the file on disk is always a whole document.
+
+        The parent directory is fsynced after the rename: without it a power
+        loss can drop the rename itself, silently reverting the state one
+        version — after a submit, that is a re-decide on the next run, the
+        exact defect the write-ahead protocol exists to prevent.
+        """
         self.path.parent.mkdir(parents=True, exist_ok=True)
         tmp = self.path.with_suffix(self.path.suffix + ".tmp")
         with open(tmp, "w", encoding="utf-8") as handle:
@@ -105,3 +111,8 @@ class StateStore:
             handle.flush()
             os.fsync(handle.fileno())
         os.replace(tmp, self.path)
+        dir_fd = os.open(self.path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+        try:
+            os.fsync(dir_fd)
+        finally:
+            os.close(dir_fd)

@@ -11,6 +11,13 @@ and nothing important may live only in memory:
   last processed bar), atomic-write JSON, schema-versioned, fail-loud.
 * ``broker`` — the Broker contract (idempotent submit keyed by
   ``client_order_id``) plus the Order/Fill types.
+* ``ledgers`` — the one JSONL append/read discipline every run-dir ledger
+  rides: fsynced appends, torn-tail tolerance, monotone idempotency.
+* ``lockfile`` — the run directory's advisory writer lock (the write-ahead
+  protocol survives crashes, not two concurrent writers).
+* ``alpaca_transport`` — the shared Alpaca REST session: one auth/timeout/
+  transient-retry (429/5xx) policy for the broker, the bar source, and the
+  corporate-actions fetch.
 * ``alpaca`` — the concrete Alpaca REST adapter, written against an
   injectable session so every venue mapping is tested offline; only the
   transport is network-gated.

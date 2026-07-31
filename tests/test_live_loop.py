@@ -602,3 +602,62 @@ def test_order_validation() -> None:
         Order("id", "AAA", 1.0, "d", 0.0)
     with pytest.raises(ValueError, match="client_order_id"):
         Order("", "AAA", 1.0, "d", 100.0)
+
+
+# ---------------------------------------------------------------------------
+# Crash-idempotent settle ledgering and the scoped submit scan
+# ---------------------------------------------------------------------------
+
+
+def test_settle_crash_resume_does_not_duplicate_fill_rows(ctx) -> None:
+    # A crash BETWEEN the fills-ledger append and the state save resumes with
+    # the pending set intact; re-settling must not double-append the I-9 rows.
+    decide_and_submit(ctx, "2026-01-02", _targets(AAA=0.5), _PRICES)
+    pre_settle_state = ctx.store.path.read_text(encoding="utf-8")
+    settle(ctx, "2026-01-02")
+    rows_after_first = len(read_fills_ledger(ctx.fills_ledger))
+    assert rows_after_first >= 1
+    ctx.store.path.write_text(pre_settle_state, encoding="utf-8")  # the simulated crash
+    settle(ctx, "2026-01-02")
+    assert len(read_fills_ledger(ctx.fills_ledger)) == rows_after_first
+
+
+def test_settle_crash_resume_does_not_duplicate_unfilled_rows(ctx, tmp_path) -> None:
+    ctx = LiveLoopContext(
+        store=ctx.store,
+        broker=ctx.broker,
+        fills_ledger=ctx.fills_ledger,
+        unfilled_ledger=tmp_path / "unfilled.jsonl",
+    )
+    orders = decide_and_submit(ctx, "2026-01-02", _targets(AAA=0.5, BBB=0.2), _PRICES)
+    ctx.broker.no_fill.add(orders[0].client_order_id)
+    pre_settle_state = ctx.store.path.read_text(encoding="utf-8")
+    settle(ctx, "2026-01-02")
+    rows = [json.loads(line) for line in ctx.unfilled_ledger.read_text().splitlines() if line]
+    ctx.store.path.write_text(pre_settle_state, encoding="utf-8")
+    settle(ctx, "2026-01-02")
+    rows_again = [json.loads(line) for line in ctx.unfilled_ledger.read_text().splitlines() if line]
+    assert rows_again == rows
+
+
+def test_known_order_ids_passes_since_only_when_supported() -> None:
+    from prism.live.loop import _known_order_ids
+
+    class SinceBroker(FakeBroker):
+        def __init__(self) -> None:
+            super().__init__()
+            self.since_seen: str | None = "unset"
+
+        def submitted_order_ids(self, since: str | None = None) -> set[str]:
+            self.since_seen = since
+            return set(self.orders)
+
+    orders = [
+        Order("mom:2026-07-14:BBB", "BBB", 1.0, "2026-07-14", 50.0),
+        Order("mom:2026-07-13:AAA", "AAA", 1.0, "2026-07-13", 100.0),
+    ]
+    scoped = SinceBroker()
+    assert _known_order_ids(scoped, orders) == set()
+    assert scoped.since_seen == "2026-07-13"  # earliest pending decision bar
+    # A bare-contract broker (no `since` param) still works, full-history.
+    assert _known_order_ids(FakeBroker(), orders) == set()

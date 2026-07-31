@@ -32,7 +32,8 @@ Which convention Alpaca uses is unverified; no rename map is maintained
 here — the limitation is recorded, not papered over
 (docs/bar_vendor_divergence.md §5).
 
-Production-import-path safe (N8): stdlib + requests only.
+Production-import-path safe (N8): stdlib + the shared Alpaca transport
+(requests) only.
 """
 
 from __future__ import annotations
@@ -44,14 +45,17 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Collection, Sequence
 
-import requests
+from prism.live.alpaca_transport import AlpacaSession
 
 logger = logging.getLogger(__name__)
 
 # Same endpoint, auth headers, batching, and pagination as the dividend-wedge
 # fetch (research/scripts/dividend_wedge.py) — the $0 vendor and key the loop
-# already reads bars from.
-CORPORATE_ACTIONS_URL = "https://data.alpaca.markets/v1/corporate-actions"
+# already reads bars from. Transport rides the shared AlpacaSession, so this
+# surface carries the same bounded 429/5xx retry as the broker and bar source.
+_DATA_BASE_URL = "https://data.alpaca.markets"
+_CORPORATE_ACTIONS_PATH = "/v1/corporate-actions"
+CORPORATE_ACTIONS_URL = _DATA_BASE_URL + _CORPORATE_ACTIONS_PATH
 SYMBOL_BATCH = 50
 PAGE_LIMIT = 1000
 
@@ -77,8 +81,7 @@ def fetch_spinoffs(
     all-clear: the endpoint omits empty type keys (live-verified vendor
     behavior, docs/bar_vendor_divergence.md §6 probes).
     """
-    sess = session if session is not None else requests.Session()
-    headers = {"APCA-API-KEY-ID": key_id, "APCA-API-SECRET-KEY": secret_key}
+    api = AlpacaSession(key_id, secret_key, _DATA_BASE_URL, session=session, timeout=timeout)
     symbols = list(symbols)
     records: list[dict] = []
     for i in range(0, len(symbols), SYMBOL_BATCH):
@@ -94,9 +97,10 @@ def fetch_spinoffs(
             }
             if page_token:
                 params["page_token"] = page_token
-            resp = sess.get(CORPORATE_ACTIONS_URL, params=params, headers=headers, timeout=timeout)
-            resp.raise_for_status()
-            payload = resp.json()
+            payload = api.json_or_raise(
+                api.request("GET", _CORPORATE_ACTIONS_PATH, params=params),
+                f"GET {_CORPORATE_ACTIONS_PATH}",
+            )
             container = payload.get("corporate_actions")
             if container is None:
                 raise ValueError(
@@ -281,7 +285,7 @@ def spinoff_unrankable_provider(
       score mask (its exit is a universe decision, not a rank decision).
 
     ``close`` is duck-typed (``.index``/``.columns`` only), keeping this
-    module production-import-path safe (N8): stdlib + requests only.
+    module production-import-path safe (N8): stdlib + the shared transport only.
     """
     window_start = str(close.index[max(0, len(close) - 1 - int(lookback_bars))].date())
     checked = sorted(close.columns)

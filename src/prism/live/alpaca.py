@@ -30,12 +30,25 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any
+from typing import Any, Callable, Iterator
 
 import pandas as pd
-import requests
 
+from prism.live.alpaca_transport import (
+    DEFAULT_BACKOFF_BASE,
+    DEFAULT_MAX_RETRIES,
+    AlpacaAPIError,
+    AlpacaSession,
+    resolve_env_credentials,
+)
 from prism.live.broker import Broker, DuplicateOrder, Fill, Order, OrderRejected
+
+__all__ = [
+    "AlpacaAPIError",  # canonical home is prism.live.alpaca_transport; re-exported for callers
+    "AlpacaBroker",
+    "LIVE_BASE_URL",
+    "PAPER_BASE_URL",
+]
 
 logger = logging.getLogger(__name__)
 
@@ -53,22 +66,17 @@ _ORDERS_PAGE_LIMIT = 500
 _VALID_TIME_IN_FORCE = ("opg", "day")
 
 
-class AlpacaAPIError(RuntimeError):
-    """A non-2xx venue response the adapter cannot map onto the contract.
-
-    Carries ``status_code`` and the (truncated) response body. For ``submit``
-    the loop's crash-safety semantics apply: the order may or may not have
-    been accepted, and the write-ahead protocol retries it idempotently on
-    the next pass.
-    """
-
-    def __init__(self, message: str, status_code: int) -> None:
-        super().__init__(message)
-        self.status_code = status_code
-
-
 class AlpacaBroker(Broker):
-    """:class:`Broker` over the Alpaca v2 REST trading API (paper by default)."""
+    """:class:`Broker` over the Alpaca v2 REST trading API (paper by default).
+
+    Transport rides :class:`~prism.live.alpaca_transport.AlpacaSession` — the
+    same bounded 429/5xx retry the bar source carries, because a transient
+    venue hiccup at 18:30 must not cost a session that "cannot be backfilled
+    as live evidence" (docs/operations.md). Retrying ``submit`` is safe here
+    precisely because every order carries a deterministic ``client_order_id``:
+    a retry of an already-accepted POST is a duplicate-id rejection, which the
+    protocol treats as success.
+    """
 
     def __init__(
         self,
@@ -79,22 +87,26 @@ class AlpacaBroker(Broker):
         session: Any | None = None,
         time_in_force: str = "opg",
         timeout: float = 30.0,
+        max_retries: int = DEFAULT_MAX_RETRIES,
+        backoff_base: float = DEFAULT_BACKOFF_BASE,
+        sleep: Callable[[float], None] | None = None,
     ) -> None:
-        if not key_id or not secret_key:
-            raise ValueError("Alpaca key_id and secret_key must be non-empty")
         if time_in_force not in _VALID_TIME_IN_FORCE:
             raise ValueError(
                 f"time_in_force must be one of {_VALID_TIME_IN_FORCE}, got {time_in_force!r}; "
                 "'opg' is the N2 next-open convention, 'day' admits fractional shares"
             )
-        self._headers = {
-            "APCA-API-KEY-ID": key_id,
-            "APCA-API-SECRET-KEY": secret_key,
-        }
-        self._base_url = base_url.rstrip("/")
-        self._session = session if session is not None else requests.Session()
+        self._api = AlpacaSession(
+            key_id,
+            secret_key,
+            base_url,
+            session=session,
+            timeout=timeout,
+            max_retries=max_retries,
+            backoff_base=backoff_base,
+            sleep=sleep,
+        )
         self._time_in_force = time_in_force
-        self._timeout = timeout
 
     @classmethod
     def from_env(cls, *, base_url: str | None = None, **kwargs: Any) -> "AlpacaBroker":
@@ -105,33 +117,18 @@ class AlpacaBroker(Broker):
         silently constructs unauthenticated would fail one request later
         with a less actionable error.
         """
-        key_id = os.environ.get("APCA_API_KEY_ID", "")
-        secret_key = os.environ.get("APCA_API_SECRET_KEY", "")
-        if not key_id or not secret_key:
-            raise RuntimeError(
-                "APCA_API_KEY_ID / APCA_API_SECRET_KEY are not set; "
-                "export the paper-account credentials before starting the loop (N7)"
-            )
+        key_id, secret_key = resolve_env_credentials("starting the loop")
         resolved = base_url or os.environ.get("APCA_API_BASE_URL") or PAPER_BASE_URL
         return cls(key_id, secret_key, base_url=resolved, **kwargs)
 
     # ------------------------------------------------------------ transport
 
     def _request(self, method: str, path: str, **kwargs: Any) -> Any:
-        return self._session.request(
-            method,
-            self._base_url + path,
-            headers=self._headers,
-            timeout=self._timeout,
-            **kwargs,
-        )
+        return self._api.request(method, path, **kwargs)
 
     @staticmethod
     def _json_or_raise(response: Any, context: str) -> Any:
-        if 200 <= response.status_code < 300:
-            return response.json()
-        body = (response.text or "")[:500]
-        raise AlpacaAPIError(f"{context} -> HTTP {response.status_code}: {body}", response.status_code)
+        return AlpacaSession.json_or_raise(response, context)
 
     # ------------------------------------------------------------- contract
 
@@ -169,42 +166,60 @@ class AlpacaBroker(Broker):
             # "client_order_id must be unique" — the order already exists,
             # which the write-ahead protocol treats as success.
             raise DuplicateOrder(order.client_order_id)
-        if 400 <= response.status_code < 500:
+        if 400 <= response.status_code < 500 and response.status_code != 429:
             # A client-side rejection of this one order (e.g. 403 "insufficient
             # qty available" on a side-crossing order, a non-shortable name):
             # the venue is healthy, so the loop skips this order and submits the
-            # rest. A 5xx / transport failure falls through to AlpacaAPIError and
-            # propagates so the write-ahead crash-resume applies.
+            # rest. A 429 is NOT a rejection — it is a transient the transport
+            # already retried; exhausted, it falls through with the 5xx class to
+            # AlpacaAPIError and propagates so the write-ahead crash-resume
+            # applies (skipping a rate-limited order as "rejected" would drop it
+            # for the session on a healthy venue).
             raise OrderRejected(
                 f"order {order.client_order_id} rejected: HTTP {response.status_code}: "
                 f"{self._error_message(response)}"
             )
         self._json_or_raise(response, f"POST /v2/orders ({order.client_order_id})")
 
-    def submitted_order_ids(self) -> set[str]:
-        ids: set[str] = set()
-        after: str | None = None
+    def _iter_orders(self, status: str, after: str | None) -> Iterator[dict]:
+        """Every order row for ``status``, paginated on ``submitted_at``.
+
+        `after` filters strictly on submitted_at; REST-sequential submissions
+        get distinct nanosecond stamps, so no order is skipped at the page
+        boundary in practice.
+        """
         while True:
             params: dict[str, Any] = {
-                "status": "all",
+                "status": status,
                 "limit": _ORDERS_PAGE_LIMIT,
                 "direction": "asc",
             }
             if after is not None:
                 params["after"] = after
             page = self._json_or_raise(
-                self._request("GET", "/v2/orders", params=params), "GET /v2/orders"
+                self._request("GET", "/v2/orders", params=params), f"GET /v2/orders ({status})"
             )
-            for row in page:
-                client_order_id = row.get("client_order_id")
-                if client_order_id:
-                    ids.add(str(client_order_id))
+            yield from page
             if len(page) < _ORDERS_PAGE_LIMIT:
-                return ids
-            # `after` filters strictly on submitted_at; REST-sequential
-            # submissions get distinct nanosecond stamps, so no order is
-            # skipped at the page boundary in practice.
+                return
             after = str(page[-1]["submitted_at"])
+
+    def submitted_order_ids(self, since: str | None = None) -> set[str]:
+        """Every client_order_id the venue knows, optionally submitted after ``since``.
+
+        ``since`` (an ISO date or timestamp) is the loop's scan anchor
+        (``prism.live.loop._known_order_ids``, duck-typed like
+        ``open_order_ids``): a pending set is bounded to one decision bar, so
+        paging the account's entire order history on every submit pass is
+        latency and rate-limit exposure that grow with account age. ``None``
+        keeps the bare-contract full-history behavior.
+        """
+        ids: set[str] = set()
+        for row in self._iter_orders("all", since):
+            client_order_id = row.get("client_order_id")
+            if client_order_id:
+                ids.add(str(client_order_id))
+        return ids
 
     def open_order_ids(self, client_order_ids: set[str]) -> set[str]:
         """Subset of the given client ids still *live* at the venue.
@@ -216,25 +231,11 @@ class AlpacaBroker(Broker):
         pending_new, partially_filled with the remainder working).
         """
         ids: set[str] = set()
-        after: str | None = None
-        while True:
-            params: dict[str, Any] = {
-                "status": "open",
-                "limit": _ORDERS_PAGE_LIMIT,
-                "direction": "asc",
-            }
-            if after is not None:
-                params["after"] = after
-            page = self._json_or_raise(
-                self._request("GET", "/v2/orders", params=params), "GET /v2/orders (open)"
-            )
-            for row in page:
-                client_order_id = row.get("client_order_id")
-                if client_order_id and str(client_order_id) in client_order_ids:
-                    ids.add(str(client_order_id))
-            if len(page) < _ORDERS_PAGE_LIMIT:
-                return ids
-            after = str(page[-1]["submitted_at"])
+        for row in self._iter_orders("open", None):
+            client_order_id = row.get("client_order_id")
+            if client_order_id and str(client_order_id) in client_order_ids:
+                ids.add(str(client_order_id))
+        return ids
 
     def fills_for(self, client_order_ids: set[str]) -> list[Fill]:
         fills: list[Fill] = []

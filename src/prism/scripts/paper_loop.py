@@ -6,10 +6,15 @@ pieces that are each tested offline — ``DataLoader.fetch_incremental``
 (tests/test_signal_node.py), the broker-truth universe reconciliation
 (``resolve_fetch_universe``; tests/test_paper_loop_universe.py), the online
 construction and write-ahead protocol (tests/test_live_daily.py,
-tests/test_live_loop.py), and the Alpaca venue mappings
-(tests/test_live_alpaca.py). The shell itself holds no logic worth testing;
-anything that grows logic must move down into ``prism.live.daily`` where it
-can be exercised without credentials.
+tests/test_live_loop.py), the Alpaca venue mappings
+(tests/test_live_alpaca.py), and the per-book assembly registry
+(``prism.scripts.paper_books``; tests/test_paper_books.py). The shell itself
+holds no logic worth testing; anything that grows logic must move down into
+``prism.live.daily`` (cycle logic) or ``prism.scripts.paper_books`` (CLI
+assembly) where it can be exercised without credentials. The whole mutating
+path runs under the run directory's writer lock
+(``prism.live.lockfile.run_dir_lock``): the write-ahead protocol survives
+crashes, not two concurrent writers.
 
 Run once per session, after the close (OPG next-open orders must reach
 Alpaca before ~09:28 ET the next morning):
@@ -46,17 +51,13 @@ import sys
 from pathlib import Path
 from typing import Any
 
-import pandas as pd
-
 from prism.io.loader import DataLoader
 from prism.live import (
     PROFILE_IDS,
     AlpacaBarSource,
     AlpacaBroker,
-    DailyBookConfig,
     LiveLoopContext,
     RegimeTelemetry,
-    SafetyConfig,
     StateStore,
     assert_research_paper_bit_identity,
     fetch_universe_panels,
@@ -65,10 +66,17 @@ from prism.live import (
     run_daily_cycle,
     spinoff_unrankable_provider,
 )
-from prism.residual.factors import ResidualStatArbConfig
-from prism.signal.ensemble_node import EnsembleNodeConfig, EnsembleSignalNode
-from prism.signal.momentum_node import MomentumSignalNode
-from prism.signal.trend_node import TREND_V1_UNIVERSE, TrendSignalNode
+from prism.live.daily import warn_if_stale_panel
+from prism.live.lockfile import run_dir_lock
+from prism.scripts.paper_books import (
+    BOOKS,
+    BookParams,
+    apply_certified_paper_pin,
+    build_safety_config,
+    default_panel_start,
+    resolve_cli_universe,
+    valuation_masked_membership,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -230,18 +238,6 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def _load_universe_file(path: Path) -> list[str]:
-    """One symbol per line; blank lines and ``#`` comments skipped, upper-cased."""
-    symbols = [
-        line.strip().upper()
-        for line in path.read_text(encoding="utf-8").splitlines()
-        if line.strip() and not line.strip().startswith("#")
-    ]
-    if not symbols:
-        raise ValueError(f"universe file {path} has no symbols")
-    return symbols
-
-
 def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     args = _parse_args(argv)
@@ -250,6 +246,21 @@ def main(argv: list[str] | None = None) -> int:
     # pin construction to CERTIFIED_B1_PAPER_CONFIG and refuse silent forks.
     # Non-paper profiles: metadata + tighten-only book config; multi-sleeve
     # live routing and GO still require handoff §8 + sleeve admission.
+    params = BookParams(
+        lookback_bars=args.mom_lookback,
+        skip_bars=args.mom_skip,
+        decile=args.decile,
+        vol_ewma_bars=args.vol_ewma_bars,
+        horizon_bars=args.horizon,
+        decision_every=args.decision_every,
+        position_size=args.position_size,
+        max_gross=args.max_gross,
+        max_symbol_abs_weight=args.max_symbol_weight,
+        no_trade_band=args.band,
+        max_participation=args.max_participation,
+        min_order_notional=args.min_notional,
+        whole_shares=(args.tif == "opg"),
+    )
     resolved_profile = None
     if args.profile is not None:
         resolved_profile = resolve_risk_profile(args.profile)
@@ -260,19 +271,12 @@ def main(argv: list[str] | None = None) -> int:
                     f"(got {args.book!r}); the certified paper path is B1 only"
                 )
             args.book = "momentum"
-            pin = resolved_profile.book_config
-            args.decile = pin.decile
-            args.decision_every = pin.decision_every
-            args.max_gross = pin.max_gross
-            args.max_symbol_weight = pin.max_symbol_abs_weight
-            args.band = pin.no_trade_band
-            args.max_participation = pin.max_participation
-            args.min_notional = pin.min_order_notional
             if args.tif != "opg":
                 raise SystemExit(
                     "--profile research_paper requires --tif opg (whole-share "
                     "certified paper path)"
                 )
+            params = apply_certified_paper_pin(params, resolved_profile.book_config)
             logger.info(
                 "profile=research_paper: pinned to certified B1 paper DailyBookConfig "
                 "(G6; docs/risk_profile_schema.md FROZEN)"
@@ -287,243 +291,131 @@ def main(argv: list[str] | None = None) -> int:
                 resolved_profile.hedge.de_gross_armed,
             )
 
-    if args.universe_file is not None:
-        symbols = _load_universe_file(args.universe_file)
-    elif args.symbols:
-        symbols = [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
-    elif args.book == "trend":
-        # Pinned trend_v1 universe (docs/trend_design.md §1); no free choice.
-        symbols = list(TREND_V1_UNIVERSE)
-    else:
-        raise SystemExit("provide --symbols or --universe-file")
+    spec = BOOKS[args.book]
+    symbols = resolve_cli_universe(args.universe_file, args.symbols, spec)
     if args.spinoff_mask and args.book != "momentum":
         raise SystemExit(
             "--spinoff-mask applies to --book momentum only (the lookback-window mechanic, "
             "docs/bar_vendor_divergence.md §5)"
         )
 
-    # Broker truth decides the fetch universe, BEFORE any bar is fetched. The
-    # mark step values what the venue holds, and this run directory's persisted
-    # state is not that: a fresh run directory persists nothing (every cycle
-    # 2026-07-23..29 died on `cannot value held position 'POOL'`), and a
-    # populated one is only a cache of the last reconcile. One broker instance
-    # serves the reconciliation and the cycle, so the account is read on the
-    # same credentials the orders will use.
-    store = StateStore(args.run_dir / "state.json")
-    broker = AlpacaBroker.from_env(time_in_force=args.tif)
-    universe = resolve_fetch_universe(symbols, broker, state=store.load())
-    score_universe = list(universe.score)
-    symbols = list(universe.fetch)
-    valuation_extras = list(universe.valuation_only)
+    # One writer per run directory: state.json and the ledgers are shared with
+    # the morning sweep and any manual invocation, and the write-ahead protocol
+    # protects against crashes, not concurrent writers. Held through the whole
+    # mutating path (reconcile reads state; the cycle writes it).
+    with run_dir_lock(args.run_dir):
+        # Broker truth decides the fetch universe, BEFORE any bar is fetched. The
+        # mark step values what the venue holds, and this run directory's persisted
+        # state is not that: a fresh run directory persists nothing (every cycle
+        # 2026-07-23..29 died on `cannot value held position 'POOL'`), and a
+        # populated one is only a cache of the last reconcile. One broker instance
+        # serves the reconciliation and the cycle, so the account is read on the
+        # same credentials the orders will use.
+        store = StateStore(args.run_dir / "state.json")
+        broker = AlpacaBroker.from_env(time_in_force=args.tif)
+        universe = resolve_fetch_universe(symbols, broker, state=store.load())
+        score_universe = list(universe.score)
+        symbols = list(universe.fetch)
+        valuation_extras = list(universe.valuation_only)
 
-    # Bars from Alpaca (the broker's own feed) by default so decision and fill
-    # share one venue and clock; the Twelve Data spine stays available as a
-    # fallback. Both satisfy the duck-typed fetch_incremental read path.
-    loader: Any = AlpacaBarSource.from_env() if args.bar_source == "alpaca" else DataLoader()
-    start_date = args.start_date
-    if start_date is None and args.book in ("momentum", "trend"):
-        # ~3y is ample for the 252-bar lookback (+ vol warmup for trend) and
-        # keeps the universe-scale batch fetch to a handful of pages.
-        start_date = (pd.Timestamp.now() - pd.DateOffset(years=3)).strftime("%Y-%m-%d")
-    max_missing = (
-        args.max_missing
-        if args.max_missing is not None
-        else (0.10 if args.book in ("momentum", "trend") else 0.0)
-    )
-    # ``required``: a held name may not be silently dropped by the max_missing
-    # tolerance — an unpriceable position cannot be marked or exited (N7).
-    close, volume = fetch_universe_panels(
-        loader,
-        symbols,
-        start_date=start_date,
-        max_missing=max_missing,
-        required=sorted(universe.held),
-    )
-    logger.info(
-        "panels: %d bars x %d symbols through %s (source=%s)",
-        len(close),
-        close.shape[1],
-        close.index[-1],
-        args.bar_source,
-    )
-
-    # The instrument decides on the freshest bar the vendor has published. If
-    # that bar is many calendar days old the feed is lagging (or the loop has
-    # been dark), the decision is being made on stale prices, and any resulting
-    # fill carries extra arrival lag versus its close-t reference — flag it
-    # loudly (N7) rather than trade on it silently. 4 days clears a normal
-    # Fri->Tue holiday weekend; more than that is anomalous.
-    last_bar = close.index[-1]
-    stale_days = (pd.Timestamp.now(tz=last_bar.tz) - last_bar).days
-    if stale_days > 4:
-        logger.warning(
-            "latest available bar %s is %d calendar days old — the vendor feed is lagging "
-            "or the loop has been dark; deciding on a stale panel, and fills will carry "
-            "extra arrival lag beyond the close-t reference (verify before trusting them)",
-            last_bar.date(),
-            stale_days,
-        )
-
-    decision_every = args.decision_every if args.decision_every is not None else (
-        21 if args.book in ("momentum", "trend") else 1
-    )
-    if args.book == "momentum":
-        # Valuation-only extras are masked ineligible: NaN-scored names get an
-        # explicit 0.0 from the decile construct (its explicit-flat pin), so a
-        # departed-but-held name exits at the next refresh and cannot re-enter.
-        score_mask = None
-        if valuation_extras:
-            score_mask = pd.DataFrame(False, index=close.index, columns=close.columns)
-            score_mask.loc[:, [s for s in score_universe if s in close.columns]] = True
-        signal = MomentumSignalNode(
-            ResidualStatArbConfig(),
-            lookback_bars=args.mom_lookback,
-            skip_bars=args.mom_skip,
-            horizon_bars=decision_every,
-            membership_mask=score_mask,
-        )
-        signal.fit(close, volume)
-        config = DailyBookConfig(
-            book="decile_neutral",
-            decile=args.decile,
-            decision_every=decision_every,
-            max_gross=args.max_gross,
-            max_symbol_abs_weight=args.max_symbol_weight,
-            no_trade_band=args.band,
-            max_participation=args.max_participation,
-            min_order_notional=args.min_notional,
-            whole_shares=(args.tif == "opg"),
+        # Bars from Alpaca (the broker's own feed) by default so decision and fill
+        # share one venue and clock; the Twelve Data spine stays available as a
+        # fallback. Both satisfy the duck-typed fetch_incremental read path.
+        loader: Any = AlpacaBarSource.from_env() if args.bar_source == "alpaca" else DataLoader()
+        start_date = args.start_date if args.start_date is not None else default_panel_start(spec)
+        max_missing = args.max_missing if args.max_missing is not None else spec.default_max_missing
+        # ``required``: a held name may not be silently dropped by the max_missing
+        # tolerance — an unpriceable position cannot be marked or exited (N7).
+        close, volume = fetch_universe_panels(
+            loader,
+            symbols,
+            start_date=start_date,
+            max_missing=max_missing,
+            required=sorted(universe.held),
         )
         logger.info(
-            "book=momentum: 12-1 decile L/S, lookback=%d skip=%d decile=%.2f cadence=%d, %d symbols",
-            args.mom_lookback,
-            args.mom_skip,
-            args.decile,
-            decision_every,
-            len(symbols),
+            "panels: %d bars x %d symbols through %s (source=%s)",
+            len(close),
+            close.shape[1],
+            close.index[-1],
+            args.bar_source,
         )
-    elif args.book == "trend":
-        # Uncounted paper instrument for trend_v1 mechanics (docs/trend_design.md).
-        # Default max_symbol_weight 0.10 is tight for a 10-name inv-vol book;
-        # operator may raise via flag. Order ids namespaced "trd:" so a shared
-        # venue account cannot collide with the momentum book's "mom:" prefix.
-        signal = TrendSignalNode(
-            lookback_bars=args.mom_lookback,
-            skip_bars=args.mom_skip,
-            horizon_bars=decision_every,
+        warn_if_stale_panel(close)
+
+        decision_every = spec.decision_every(params)
+        # Valuation-only extras are masked ineligible (momentum only): NaN-scored
+        # names get an explicit 0.0 from the decile construct (its explicit-flat
+        # pin), so a departed-but-held name exits at the next refresh and cannot
+        # re-enter.
+        score_mask = (
+            valuation_masked_membership(close, score_universe, bool(valuation_extras))
+            if args.book == "momentum"
+            else None
         )
+        signal = spec.build_signal(params, decision_every, score_mask)
         signal.fit(close, volume)
-        config = DailyBookConfig(
-            book="inverse_vol",
-            vol_ewma_bars=args.vol_ewma_bars,
-            decision_every=decision_every,
-            max_gross=args.max_gross,
-            max_symbol_abs_weight=args.max_symbol_weight,
-            no_trade_band=args.band,
-            max_participation=args.max_participation if args.max_participation is not None else 0.05,
-            min_order_notional=args.min_notional,
-            whole_shares=(args.tif == "opg"),
-        )
-        logger.info(
-            "book=trend: 12-1 TSMOM inv-vol, lookback=%d skip=%d vol_ewma=%d cadence=%d, %d symbols",
-            args.mom_lookback,
-            args.mom_skip,
-            args.vol_ewma_bars,
-            decision_every,
-            len(symbols),
-        )
-    else:
-        signal = EnsembleSignalNode(EnsembleNodeConfig(horizon_bars=args.horizon))
-        signal.fit(close, volume)
-        config = DailyBookConfig(
-            position_size=args.position_size,
-            max_gross=args.max_gross,
-            max_symbol_abs_weight=args.max_symbol_weight,
-            no_trade_band=args.band,
-            max_participation=args.max_participation,
-            min_order_notional=args.min_notional,
-            whole_shares=(args.tif == "opg"),
-        )
-        logger.info(
-            "book=ensemble: %d symbols, weights %s",
-            len(signal.fitted_symbols_),
-            signal.weight_basis_,
+        config = spec.build_config(params, decision_every)
+        logger.info("%s", spec.describe(params, decision_every, len(symbols), signal))
+
+        # Spin-off eligibility mask (docs/bar_vendor_divergence.md §5): a name with
+        # a spin-off inside the momentum lookback is unrankable this refresh.
+        # The window/universe/intersection decisions live in the tested factory
+        # (prism.live.spinoff_mask.spinoff_unrankable_provider) — this shell only
+        # connects it. Consulted by run_daily_cycle on refresh sessions only.
+        unrankable = (
+            spinoff_unrankable_provider(close, params.lookback_bars, score_universe, args.run_dir)
+            if args.spinoff_mask
+            else None
         )
 
-    # Spin-off eligibility mask (docs/bar_vendor_divergence.md §5): a name with
-    # a spin-off inside the momentum lookback is unrankable this refresh.
-    # The window/universe/intersection decisions live in the tested factory
-    # (prism.live.spinoff_mask.spinoff_unrankable_provider) — this shell only
-    # connects it. Consulted by run_daily_cycle on refresh sessions only.
-    unrankable = (
-        spinoff_unrankable_provider(close, args.mom_lookback, score_universe, args.run_dir)
-        if args.spinoff_mask
-        else None
-    )
+        # SPEC §7.7 regime step (docs/regime_step.md): §7.5 telemetry every cycle
+        # when armed, with the real FRED client from the environment. A missing
+        # FRED_API_KEY fails loud here, before any venue call (N7) — the operator
+        # asked for the regime record, so a cycle without one must not run
+        # quietly. Telemetry only: the gross-scale ACTION hook is deliberately
+        # not constructible from the CLI; it arms in code only after
+        # docs/sizing_preregistration.md ratifies.
+        regime_provider = RegimeTelemetry.from_env() if args.regime else None
 
-    # SPEC §7.7 regime step (docs/regime_step.md): §7.5 telemetry every cycle
-    # when armed, with the real FRED client from the environment. A missing
-    # FRED_API_KEY fails loud here, before any venue call (N7) — the operator
-    # asked for the regime record, so a cycle without one must not run
-    # quietly. Telemetry only: the gross-scale ACTION hook is deliberately
-    # not constructible from the CLI; it arms in code only after
-    # docs/sizing_preregistration.md ratifies.
-    regime_provider = RegimeTelemetry.from_env() if args.regime else None
-
-    # Safety rails (prism.live.safety): inert at this book's normal state, loud
-    # at pathology. The notional bound is derived from the construction cap
-    # (2x is slack for whole-share rounding), the order-count bound from the
-    # universe's geometric ceiling; both catch order-of-magnitude corruption,
-    # not strategy behavior. 'off'/0 disables a rail explicitly.
-    kill_switch: Path | None
-    if args.kill_switch is None:
-        kill_switch = args.run_dir / "KILL_SWITCH"
-    elif str(args.kill_switch) == "off":
-        kill_switch = None
-    else:
-        kill_switch = args.kill_switch
-    max_order_fraction = (
-        args.max_order_fraction if args.max_order_fraction is not None else 2.0 * args.max_symbol_weight
-    )
-    max_orders = args.max_orders if args.max_orders is not None else 2 * len(symbols) + 10
-    safety = SafetyConfig(
-        kill_switch=kill_switch,
-        max_drawdown=args.max_drawdown if args.max_drawdown > 0 else None,
-        max_order_fraction=max_order_fraction if max_order_fraction > 0 else None,
-        max_orders=max_orders if max_orders > 0 else None,
-    )
-
-    args.run_dir.mkdir(parents=True, exist_ok=True)
-    if resolved_profile is not None:
-        if args.profile == "research_paper":
-            # G6: the constructed config must match the certified paper pin.
-            assert_research_paper_bit_identity(config)
-        profile_path = args.run_dir / "profile.json"
-        profile_path.write_text(
-            json.dumps(resolved_profile.to_public_dict(), indent=2, sort_keys=True) + "\n",
-            encoding="utf-8",
+        safety = build_safety_config(
+            run_dir=args.run_dir,
+            kill_switch_arg=args.kill_switch,
+            max_drawdown=args.max_drawdown,
+            max_order_fraction=args.max_order_fraction,
+            max_symbol_abs_weight=params.max_symbol_abs_weight,
+            max_orders=args.max_orders,
+            n_symbols=len(symbols),
         )
-        logger.info("wrote %s", profile_path)
-    ctx = LiveLoopContext(
-        store=store,
-        broker=broker,
-        fills_ledger=args.run_dir / "fills.jsonl",
-        equity_ledger=args.run_dir / "equity.jsonl",
-        targets_ledger=args.run_dir / "targets.jsonl",
-        unfilled_ledger=args.run_dir / "unfilled.jsonl",
-        concordance_ledger=args.run_dir / "concordance.jsonl",
-        regime_ledger=args.run_dir / "regime.jsonl",
-        # Namespaced client ids: two books sharing one venue account with the
-        # bare {bar}:{symbol} scheme silently substitute each other's same-bar
-        # orders (duplicate-id == success). Persisted pending orders keep the
-        # ids they were decided with, so flipping the prefix is resume-safe.
-        order_id_prefix=(
-            "mom:" if args.book == "momentum" else "trd:" if args.book == "trend" else ""
-        ),
-    )
-    result = run_daily_cycle(
-        ctx, signal, close, volume, config, safety=safety, unrankable=unrankable, regime=regime_provider
-    )
+
+        args.run_dir.mkdir(parents=True, exist_ok=True)
+        if resolved_profile is not None:
+            if args.profile == "research_paper":
+                # G6: the constructed config must match the certified paper pin.
+                assert_research_paper_bit_identity(config)
+            profile_path = args.run_dir / "profile.json"
+            profile_path.write_text(
+                json.dumps(resolved_profile.to_public_dict(), indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            logger.info("wrote %s", profile_path)
+        ctx = LiveLoopContext(
+            store=store,
+            broker=broker,
+            fills_ledger=args.run_dir / "fills.jsonl",
+            equity_ledger=args.run_dir / "equity.jsonl",
+            targets_ledger=args.run_dir / "targets.jsonl",
+            unfilled_ledger=args.run_dir / "unfilled.jsonl",
+            concordance_ledger=args.run_dir / "concordance.jsonl",
+            regime_ledger=args.run_dir / "regime.jsonl",
+            # Namespaced client ids: two books sharing one venue account with the
+            # bare {bar}:{symbol} scheme silently substitute each other's same-bar
+            # orders (duplicate-id == success). Persisted pending orders keep the
+            # ids they were decided with, so flipping the prefix is resume-safe.
+            order_id_prefix=spec.order_id_prefix,
+        )
+        result = run_daily_cycle(
+            ctx, signal, close, volume, config, safety=safety, unrankable=unrankable, regime=regime_provider
+        )
 
     held = result.target_weights[result.target_weights.abs() > 1e-9]
     logger.info(

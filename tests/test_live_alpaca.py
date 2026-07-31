@@ -69,7 +69,22 @@ def session():
 
 @pytest.fixture()
 def broker(session):
-    return AlpacaBroker(KEY, SECRET, session=session)
+    # sleep is injected away so tests that exercise (or exhaust) the transient
+    # retry never wait on real backoff.
+    return AlpacaBroker(KEY, SECRET, session=session, sleep=lambda wait: None)
+
+
+class SequencedResponses:
+    """A route handler that plays canned responses in order (retry tests)."""
+
+    def __init__(self, responses):
+        self.responses = list(responses)
+        self.calls = 0
+
+    def __call__(self, json=None, params=None):
+        response = self.responses[min(self.calls, len(self.responses) - 1)]
+        self.calls += 1
+        return response
 
 
 # ---------------------------------------------------------------------------
@@ -290,7 +305,7 @@ def test_from_env_reads_credentials_and_base_url(monkeypatch) -> None:
     monkeypatch.setenv("APCA_API_SECRET_KEY", SECRET)
     monkeypatch.setenv("APCA_API_BASE_URL", PAPER_BASE_URL)
     broker = AlpacaBroker.from_env()
-    assert broker._base_url == PAPER_BASE_URL
+    assert broker._api.base_url == PAPER_BASE_URL
 
 
 # ---------------------------------------------------------------------------
@@ -379,3 +394,92 @@ def test_adapter_satisfies_write_ahead_protocol(tmp_path) -> None:
     state = ctx.store.load()
     assert state.positions == {"AAA": 50.0}
     assert state.cash == pytest.approx(10_000.0 - 50.0 * 101.0)
+
+
+# ---------------------------------------------------------------------------
+# Transient-failure policy: the broker retries what the bar source retries
+# ---------------------------------------------------------------------------
+
+
+def test_submit_retries_transient_429_then_succeeds(session) -> None:
+    # One rate-limit response must not cost the session (docs/operations.md:
+    # a failed session cannot be backfilled). The transport retries and the
+    # order lands.
+    waits: list[float] = []
+    broker = AlpacaBroker(KEY, SECRET, session=session, backoff_base=0.25, sleep=waits.append)
+    session.route(
+        "POST",
+        "/v2/orders",
+        SequencedResponses(
+            [
+                FakeResponse(status_code=429, payload={"message": "rate limit exceeded"}),
+                FakeResponse(status_code=200, payload={"id": "abc"}),
+            ]
+        ),
+    )
+    broker.submit(_order(1.0))
+    posts = [c for c in session.calls if c["method"] == "POST"]
+    assert len(posts) == 2  # first attempt + one retry
+    assert waits == [0.25]
+
+
+def test_submit_rate_limit_exhaustion_is_transient_not_rejected(session) -> None:
+    # 429 is a 4xx, but it is NOT a per-order rejection: mapping it to
+    # OrderRejected would skip the order for the session on a healthy venue.
+    # Exhausted retries surface as AlpacaAPIError so the write-ahead
+    # crash-resume applies.
+    broker = AlpacaBroker(KEY, SECRET, session=session, max_retries=1, sleep=lambda w: None)
+    session.route(
+        "POST",
+        "/v2/orders",
+        FakeResponse(status_code=429, payload={"message": "rate limit exceeded"}),
+    )
+    with pytest.raises(AlpacaAPIError) as excinfo:
+        broker.submit(_order(1.0))
+    assert excinfo.value.status_code == 429
+
+
+def test_positions_read_retries_transient_5xx(session) -> None:
+    broker = AlpacaBroker(KEY, SECRET, session=session, backoff_base=0.0, sleep=lambda w: None)
+    session.route(
+        "GET",
+        "/v2/positions",
+        SequencedResponses(
+            [
+                FakeResponse(status_code=503, payload={"message": "unavailable"}),
+                FakeResponse(status_code=200, payload=[]),
+            ]
+        ),
+    )
+    assert broker.positions() == {}
+    assert len(session.calls) == 2
+
+
+def test_retry_honors_retry_after_header(session) -> None:
+    waits: list[float] = []
+    broker = AlpacaBroker(KEY, SECRET, session=session, backoff_base=0.1, sleep=waits.append)
+    throttled = FakeResponse(status_code=429, payload={"message": "rate limit"})
+    throttled.headers = {"Retry-After": "2.5"}
+    session.route(
+        "GET",
+        "/v2/account",
+        SequencedResponses([throttled, FakeResponse(status_code=200, payload={"cash": "100.0"})]),
+    )
+    assert broker.cash() == 100.0
+    assert waits == [2.5]
+
+
+def test_submitted_order_ids_since_maps_to_after_param(broker, session) -> None:
+    seen_params: list[dict] = []
+
+    def handler(json=None, params=None):
+        seen_params.append(dict(params))
+        return FakeResponse(payload=[{"client_order_id": "mom:2026-07-13:AAA", "submitted_at": "t1"}])
+
+    session.route("GET", "/v2/orders", handler)
+    assert broker.submitted_order_ids(since="2026-07-13") == {"mom:2026-07-13:AAA"}
+    assert seen_params[0]["after"] == "2026-07-13"
+    # Bare-contract call stays full-history: no `after` filter.
+    seen_params.clear()
+    assert broker.submitted_order_ids() == {"mom:2026-07-13:AAA"}
+    assert "after" not in seen_params[0]

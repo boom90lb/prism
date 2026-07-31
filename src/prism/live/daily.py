@@ -77,12 +77,12 @@ from prism.execution.participation import participation_capped_targets
 from prism.live.broker import Broker, Fill, Order
 from prism.live.loop import (
     LiveLoopContext,
-    _append_concordance_ledger,
-    _append_equity_ledger,
-    _append_regime_ledger,
-    _require_price,
+    append_concordance_ledger,
+    append_equity_ledger,
+    append_regime_ledger,
     decide_and_submit,
     read_targets_ledger,
+    require_price,
     settle,
 )
 from prism.live.monitor import book_concordance, paper_monitor_read
@@ -365,6 +365,29 @@ def fetch_universe_panels(
     return close, volume
 
 
+def warn_if_stale_panel(close: pd.DataFrame, *, max_calendar_days: int = 4) -> int:
+    """Warn loudly (N7) when the panel's freshest bar is anomalously old.
+
+    The instrument decides on the freshest bar the vendor has published. If
+    that bar is many calendar days old the feed is lagging (or the loop has
+    been dark), the decision is being made on stale prices, and any resulting
+    fill carries extra arrival lag versus its close-t reference — flag it
+    rather than trade on it silently. The default 4 clears a normal Fri->Tue
+    holiday weekend; more than that is anomalous. Returns the age in days.
+    """
+    last_bar = close.index[-1]
+    stale_days = int((pd.Timestamp.now(tz=last_bar.tz) - last_bar).days)
+    if stale_days > max_calendar_days:
+        logger.warning(
+            "latest available bar %s is %d calendar days old — the vendor feed is lagging "
+            "or the loop has been dark; deciding on a stale panel, and fills will carry "
+            "extra arrival lag beyond the close-t reference (verify before trusting them)",
+            last_bar.date(),
+            stale_days,
+        )
+    return stale_days
+
+
 def run_daily_cycle(
     ctx: LiveLoopContext,
     signal: Signal,
@@ -440,109 +463,23 @@ def run_daily_cycle(
         )
     decision_bar = decision_bar or str(close.index[-1].date())
 
-    # 1. Settle the previous bar's decision. Its settle marker is the bar the
-    # decision was made on ("that decision bar is fully processed"), keeping
-    # today's decision_bar strictly greater for the re-decide guard.
-    settled: list[Fill] = []
+    # 1. Settle the previous bar's decision.
     state = ctx.store.load()
-    if state is not None and state.pending_orders:
-        if state.pending_decision_bar == decision_bar:
-            # WARNING, not INFO: a decision bar that has not advanced since the
-            # last cycle means the loop is stuck resuming the same bar (a dark
-            # or lagging data feed is the usual cause) and is not accruing
-            # fills/equity — that should be visible without reading every line.
-            logger.warning(
-                "pending decision for %s already persisted — resuming submission, not "
-                "settling (decision bar has not advanced since last cycle)",
-                decision_bar,
-            )
-        else:
-            settled = settle(ctx, state.pending_decision_bar)
-            logger.info("settled %d fills from decision bar %s", len(settled), state.pending_decision_bar)
+    settled = _settle_prior(ctx, state, decision_bar)
 
     # 2. Mark broker truth at today's closes.
     prices = close.iloc[-1]
-    positions = {s: q for s, q in ctx.broker.positions().items() if q != 0.0}
-    cash = ctx.broker.cash()
-    equity = cash + sum(shares * _require_price(prices, s) for s, shares in positions.items())
-    if equity <= 0:
-        raise RuntimeError(f"non-positive equity {equity}; the loop cannot size a book (N7)")
-    prev_weights = pd.Series(
-        {s: shares * _require_price(prices, s) / equity for s, shares in positions.items()},
-        dtype=float,
-    )
+    equity, cash, prev_weights = _mark_book(ctx.broker, prices)
 
-    # 2b. Book-concordance telemetry: how faithfully does the held book track
-    # the book the last refresh decided? Computed against the latest persisted
-    # refresh targets STRICTLY before today (the book the instrument should
-    # currently embody), so a refresh day reads its predecessor, never its own
-    # about-to-be-decided targets. Pure telemetry: a 0.19-gross partial-fill
-    # book and a faithful book are indistinguishable in the equity monitor;
-    # they are not indistinguishable here.
-    concordance: dict | None = None
-    if ctx.targets_ledger is not None and ctx.concordance_ledger is not None:
-        prior = [
-            row for row in read_targets_ledger(ctx.targets_ledger) if row["refresh_bar"] < decision_bar
-        ]
-        if prior:
-            baseline = prior[-1]
-            concordance = book_concordance(
-                prev_weights, pd.Series(baseline["targets"], dtype=float)
-            )
-            concordance["refresh_bar"] = baseline["refresh_bar"]
-            _append_concordance_ledger(ctx.concordance_ledger, decision_bar, concordance)
-            logger.info(
-                "concordance %s vs refresh %s: active_share=%.4f gross %.4f/%.4f corr=%s",
-                decision_bar,
-                baseline["refresh_bar"],
-                concordance["active_share"],
-                concordance["gross_held"],
-                concordance["gross_target"],
-                None if concordance["weight_corr"] is None else round(concordance["weight_corr"], 4),
-            )
+    # 2b. Book-concordance telemetry (pure; gates nothing).
+    concordance = _concordance_read(ctx, prev_weights, decision_bar)
 
     # 2c. Halt rails (kill switch, drawdown) — decided on the marked equity
-    # before any decision is constructed or persisted. A halted cycle still
-    # settles and marks NAV (the ledger stays continuous through a halt) but
-    # initiates nothing, and it does NOT resume a pending submission either:
-    # the kill switch must gate every path to the venue.
-    halted: str | None = None
-    if safety is not None:
-        halted = halt_reason(safety, equity, ctx.equity_ledger)
-        if halted is not None:
-            logger.error(
-                "SAFETY HALT (%s): settling and marking NAV only — no decision, no orders "
-                "this cycle",
-                halted,
-            )
+    # before any decision is constructed or persisted.
+    halted = _halt_check(safety, equity, ctx)
 
-    # 2d. Regime telemetry (SPEC §7.5 through the §7.7 step) — read EVERY
-    # cycle, refresh or not, halted or not: the handoff §8 precondition-(b)
-    # clock counts sessions, and a halted cycle still records regime state.
-    # The provider owns its failure policy; a raise or a silently-empty
-    # result here is a contract violation, converted to a named ``provider``
-    # failure entry so telemetry can never take down the certified book's
-    # cycle (N7: loud and named — not fatal, not silent).
-    regime_state: dict | None = None
-    if regime is not None:
-        try:
-            regime_state = regime(decision_bar)
-            if not isinstance(regime_state, dict) or not (
-                regime_state.get("blocks") or regime_state.get("failures")
-            ):
-                raise RuntimeError("regime provider returned a silently-empty result")
-        except Exception as exc:  # noqa: BLE001 — telemetry, never a cycle precondition
-            logger.warning(
-                "REGIME PROVIDER FAILED for %s (%s) — recording a named provider failure; this "
-                "session is NOT clean for the handoff §8 precondition-(b) clock (N7)",
-                decision_bar,
-                type(exc).__name__,
-            )
-            regime_state = {
-                "decision_bar": decision_bar,
-                "blocks": {},
-                "failures": [{"block": "provider", "error": type(exc).__name__}],
-            }
+    # 2d. Regime telemetry (SPEC §7.5) — read EVERY cycle, halted or not.
+    regime_state = _regime_read(regime, decision_bar)
 
     # 3. Cadence gate, then score → construct against held weights. Off a refresh
     # session (the decision cadence has not elapsed) the book holds its filled
@@ -551,121 +488,23 @@ def run_daily_cycle(
     refresh = halted is None and _is_refresh_session(
         state, decision_bar, close.index, config.decision_every
     )
-
-    # The §7.5 de-gross ACTION hook: only on a refresh, only on a regime read
-    # with zero failure entries, clamped to [0, config.max_gross]. A dirty
-    # read de-arms the action loudly — construction proceeds at the
-    # configured gross, never a silent de-gross on broken telemetry.
-    effective_max_gross = config.max_gross
-    regime_scale: float | None = None
-    if refresh and regime_gross_scale is not None:
-        if regime_state is not None and not regime_state.get("failures"):
-            scale = float(regime_gross_scale(regime_state))
-            if not math.isfinite(scale):
-                raise ValueError(f"regime_gross_scale returned {scale}; refusing to size a book on it (N7)")
-            regime_scale = min(max(scale, 0.0), 1.0)
-            effective_max_gross = regime_scale * config.max_gross
-            logger.info(
-                "regime gross scale %.4f applied at refresh %s: effective max_gross %.4f (configured %.4f)",
-                regime_scale,
-                decision_bar,
-                effective_max_gross,
-                config.max_gross,
-            )
-        else:
-            logger.warning(
-                "regime gross-scale hook NOT applied at refresh %s: the regime read is not clean; "
-                "constructing at the configured max_gross %.4f (a telemetry failure de-arms the "
-                "action, it never silently de-grosses)",
-                decision_bar,
-                config.max_gross,
-            )
+    effective_max_gross, regime_scale = _effective_gross(
+        config, refresh, regime_gross_scale, regime_state, decision_bar
+    )
 
     masked: list[str] | None = None
     if refresh:
-        score_row = pd.DataFrame([signal.score(close, volume)], index=close.index[-1:])
-        if unrankable is not None:
-            # Unrankable names (spin-off inside the lookback — see the
-            # docstring) leave the scored cross-section entirely, so decile
-            # membership is decided over rankable names only.
-            masked = sorted(set(unrankable(decision_bar)) & set(score_row.columns))
-            if masked:
-                score_row.loc[:, masked] = float("nan")
-                logger.info(
-                    "unrankable mask: %d name(s) held out of ranking this refresh: %s",
-                    len(masked),
-                    masked,
-                )
-        if effective_max_gross <= 0.0:
-            # A zero effective cap — regime_scale clamped to 0.0, the full
-            # de-gross — admits no gross, and cap_book refuses a 0 cap, so
-            # emit each book's own flat form directly: the decile /
-            # inverse_vol books' explicit 0.0 for every name (NaN-score pin
-            # included), the directional book's flat-where-decided (a NaN
-            # score keeps carrying no decision, exactly as the construct
-            # would emit). The band step below then exits every held,
-            # decidable name.
-            if config.book in ("decile_neutral", "inverse_vol"):
-                raw = pd.Series(0.0, index=score_row.columns, dtype=float)
-            else:
-                raw = score_row.iloc[0] * 0.0
-        elif config.book == "decile_neutral":
-            # The decile construct emits an explicit weight (0.0 outside the
-            # decile) for every scored name, so a held name that falls out of the
-            # decile — including a book inherited at cutover, as long as it is in
-            # the fetched universe — is rebalanced to flat by the online band
-            # below. A held name absent from the universe cannot be priced and is
-            # refused loudly at the mark step above (N7): trade only what you can
-            # value, so a cutover universe must contain the names it inherits.
-            raw = construct_decile_neutral(
-                score_row,
-                decile=config.decile,
-                max_gross=effective_max_gross,
-                max_symbol_abs_weight=config.max_symbol_abs_weight,
-            ).iloc[0]
-        elif config.book == "inverse_vol":
-            # Trend sleeve (docs/trend_design.md §2). Vol needs trailing
-            # close history; align the one-row score onto the full panel so
-            # only the decision bar carries a sign and earlier bars stay
-            # NaN (unused by the last-row construct read).
-            scores_aligned = pd.DataFrame(
-                np.nan, index=close.index, columns=score_row.columns, dtype=float
-            )
-            scores_aligned.iloc[-1] = score_row.iloc[0].reindex(score_row.columns)
-            raw = construct_inverse_vol_targets(
-                scores_aligned,
-                close.reindex(columns=score_row.columns),
-                vol_ewma_bars=config.vol_ewma_bars,
-                max_gross=effective_max_gross,
-                max_symbol_abs_weight=config.max_symbol_abs_weight,
-            ).iloc[-1]
-        else:
-            raw = construct_directional_targets(
-                score_row,
-                position_size=config.position_size,
-                max_gross=effective_max_gross,
-                max_symbol_abs_weight=config.max_symbol_abs_weight,
-                no_trade_band=0.0,  # the online step below owns hysteresis (never the flat replay)
-            ).iloc[0]
-        if masked:
-            # Hold, don't flatten: the decile construct pins a NaN score to an
-            # explicit 0.0 (exit), but an unrankable name carries NO decision.
-            # A NaN target resolves to the held weight in step_no_trade_band
-            # (0.0 for an unheld name), so no new position opens on a divergent
-            # rank and a held name is held until the event clears the lookback.
-            raw.loc[masked] = float("nan")
-        targets = step_no_trade_band(prev_weights, raw, config.no_trade_band)
-        if config.max_participation is not None:
-            if volume is None:
-                raise ValueError("max_participation is set but there is no volume panel to compute ADV (N7)")
-            dollar_volume = (close * volume).rolling(config.adv_window_bars, min_periods=1).mean().iloc[-1]
-            targets = participation_capped_targets(
-                prev_weights,
-                targets,
-                dollar_volume,
-                aum=equity,
-                max_participation=config.max_participation,
-            )
+        targets, masked = _construct_refresh_targets(
+            signal,
+            close,
+            volume,
+            config,
+            prev_weights,
+            equity,
+            effective_max_gross,
+            unrankable,
+            decision_bar,
+        )
     else:
         targets = prev_weights  # hold the filled book: no decision this session
 
@@ -697,7 +536,7 @@ def run_daily_cycle(
     # non-refresh cycles too, because the precondition-(b) clock reads this
     # ledger. Idempotent per decision bar (the equity-ledger discipline).
     if ctx.regime_ledger is not None and regime_state is not None:
-        _append_regime_ledger(ctx.regime_ledger, decision_bar, regime_state, regime_scale)
+        append_regime_ledger(ctx.regime_ledger, decision_bar, regime_state, regime_scale)
 
     # Record the post-settle mark-to-market NAV for this bar (the anytime-valid
     # monitor's return-series source). Idempotent per bar, so same-bar restarts
@@ -705,7 +544,7 @@ def run_daily_cycle(
     # an incomplete bar.
     monitor_read: dict | None = None
     if ctx.equity_ledger is not None:
-        _append_equity_ledger(ctx.equity_ledger, decision_bar, equity, cash)
+        append_equity_ledger(ctx.equity_ledger, decision_bar, equity, cash)
         # Arm the anytime-valid monitor as additive telemetry beside the ratified
         # rolling-PSR promotion read (docs/momentum_design.md): time-uniform
         # coverage makes a per-cycle read safe to log, it moves no ratified
@@ -734,6 +573,285 @@ def run_daily_cycle(
         regime=regime_state,
         regime_scale=regime_scale,
     )
+
+
+def _settle_prior(ctx: LiveLoopContext, state: LoopState | None, decision_bar: str) -> list[Fill]:
+    """Step 1: settle a pending decision from an *earlier* bar.
+
+    The settle marker is the bar the decision was made on ("that decision bar
+    is fully processed"), keeping today's decision_bar strictly greater for
+    the re-decide guard. A pending decision for *today's* bar is a
+    same-session restart: skip settle, the write-ahead protocol resumes
+    submission idempotently.
+    """
+    if state is None or not state.pending_orders:
+        return []
+    if state.pending_decision_bar == decision_bar:
+        # WARNING, not INFO: a decision bar that has not advanced since the
+        # last cycle means the loop is stuck resuming the same bar (a dark
+        # or lagging data feed is the usual cause) and is not accruing
+        # fills/equity — that should be visible without reading every line.
+        logger.warning(
+            "pending decision for %s already persisted — resuming submission, not "
+            "settling (decision bar has not advanced since last cycle)",
+            decision_bar,
+        )
+        return []
+    settled = settle(ctx, state.pending_decision_bar)
+    logger.info("settled %d fills from decision bar %s", len(settled), state.pending_decision_bar)
+    return settled
+
+
+def _mark_book(broker: Broker, prices: pd.Series) -> tuple[float, float, pd.Series]:
+    """Step 2: broker-truth positions and cash marked at today's closes.
+
+    Returns ``(equity, cash, prev_weights)`` — the same marks
+    ``decide_and_submit`` sizes with. Every held position must price
+    (``require_price``, N7) and equity must be positive.
+    """
+    positions = {s: q for s, q in broker.positions().items() if q != 0.0}
+    cash = broker.cash()
+    equity = cash + sum(shares * require_price(prices, s) for s, shares in positions.items())
+    if equity <= 0:
+        raise RuntimeError(f"non-positive equity {equity}; the loop cannot size a book (N7)")
+    prev_weights = pd.Series(
+        {s: shares * require_price(prices, s) / equity for s, shares in positions.items()},
+        dtype=float,
+    )
+    return equity, cash, prev_weights
+
+
+def _concordance_read(ctx: LiveLoopContext, prev_weights: pd.Series, decision_bar: str) -> dict | None:
+    """Step 2b: how faithfully does the held book track the last refresh's book?
+
+    Computed against the latest persisted refresh targets STRICTLY before
+    today (the book the instrument should currently embody), so a refresh day
+    reads its predecessor, never its own about-to-be-decided targets. Pure
+    telemetry: a 0.19-gross partial-fill book and a faithful book are
+    indistinguishable in the equity monitor; they are not indistinguishable
+    here.
+    """
+    if ctx.targets_ledger is None or ctx.concordance_ledger is None:
+        return None
+    prior = [
+        row for row in read_targets_ledger(ctx.targets_ledger) if row["refresh_bar"] < decision_bar
+    ]
+    if not prior:
+        return None
+    baseline = prior[-1]
+    concordance = book_concordance(prev_weights, pd.Series(baseline["targets"], dtype=float))
+    concordance["refresh_bar"] = baseline["refresh_bar"]
+    append_concordance_ledger(ctx.concordance_ledger, decision_bar, concordance)
+    logger.info(
+        "concordance %s vs refresh %s: active_share=%.4f gross %.4f/%.4f corr=%s",
+        decision_bar,
+        baseline["refresh_bar"],
+        concordance["active_share"],
+        concordance["gross_held"],
+        concordance["gross_target"],
+        None if concordance["weight_corr"] is None else round(concordance["weight_corr"], 4),
+    )
+    return concordance
+
+
+def _halt_check(safety: SafetyConfig | None, equity: float, ctx: LiveLoopContext) -> str | None:
+    """Step 2c: the halt rails' verdict on the marked equity.
+
+    A halted cycle still settles and marks NAV (the ledger stays continuous
+    through a halt) but initiates nothing, and it does NOT resume a pending
+    submission either: the kill switch must gate every path to the venue.
+    """
+    if safety is None:
+        return None
+    halted = halt_reason(safety, equity, ctx.equity_ledger)
+    if halted is not None:
+        logger.error(
+            "SAFETY HALT (%s): settling and marking NAV only — no decision, no orders "
+            "this cycle",
+            halted,
+        )
+    return halted
+
+
+def _regime_read(regime: Callable[[str], dict] | None, decision_bar: str) -> dict | None:
+    """Step 2d: the §7.5 telemetry read, shielded so it can never kill a cycle.
+
+    The provider owns its failure policy; a raise or a silently-empty result
+    here is a contract violation, converted to a named ``provider`` failure
+    entry so telemetry can never take down the certified book's cycle (N7:
+    loud and named — not fatal, not silent).
+    """
+    if regime is None:
+        return None
+    try:
+        regime_state = regime(decision_bar)
+        if not isinstance(regime_state, dict) or not (
+            regime_state.get("blocks") or regime_state.get("failures")
+        ):
+            raise RuntimeError("regime provider returned a silently-empty result")
+        return regime_state
+    except Exception as exc:  # noqa: BLE001 — telemetry, never a cycle precondition
+        logger.warning(
+            "REGIME PROVIDER FAILED for %s (%s) — recording a named provider failure; this "
+            "session is NOT clean for the handoff §8 precondition-(b) clock (N7)",
+            decision_bar,
+            type(exc).__name__,
+        )
+        return {
+            "decision_bar": decision_bar,
+            "blocks": {},
+            "failures": [{"block": "provider", "error": type(exc).__name__}],
+        }
+
+
+def _effective_gross(
+    config: DailyBookConfig,
+    refresh: bool,
+    regime_gross_scale: Callable[[dict], float] | None,
+    regime_state: dict | None,
+    decision_bar: str,
+) -> tuple[float, float | None]:
+    """The §7.5 de-gross ACTION hook: only on a refresh, only on a regime read
+    with zero failure entries, clamped to [0, config.max_gross]. A dirty read
+    de-arms the action loudly — construction proceeds at the configured
+    gross, never a silent de-gross on broken telemetry. Returns
+    ``(effective_max_gross, regime_scale)``.
+    """
+    if not refresh or regime_gross_scale is None:
+        return config.max_gross, None
+    if regime_state is None or regime_state.get("failures"):
+        logger.warning(
+            "regime gross-scale hook NOT applied at refresh %s: the regime read is not clean; "
+            "constructing at the configured max_gross %.4f (a telemetry failure de-arms the "
+            "action, it never silently de-grosses)",
+            decision_bar,
+            config.max_gross,
+        )
+        return config.max_gross, None
+    scale = float(regime_gross_scale(regime_state))
+    if not math.isfinite(scale):
+        raise ValueError(f"regime_gross_scale returned {scale}; refusing to size a book on it (N7)")
+    regime_scale = min(max(scale, 0.0), 1.0)
+    effective_max_gross = regime_scale * config.max_gross
+    logger.info(
+        "regime gross scale %.4f applied at refresh %s: effective max_gross %.4f (configured %.4f)",
+        regime_scale,
+        decision_bar,
+        effective_max_gross,
+        config.max_gross,
+    )
+    return effective_max_gross, regime_scale
+
+
+def _construct_refresh_targets(
+    signal: Signal,
+    close: pd.DataFrame,
+    volume: pd.DataFrame | None,
+    config: DailyBookConfig,
+    prev_weights: pd.Series,
+    equity: float,
+    effective_max_gross: float,
+    unrankable: Callable[[str], Collection[str]] | None,
+    decision_bar: str,
+) -> tuple[pd.Series, list[str] | None]:
+    """Step 3 on a refresh session: score → construct → band → participation.
+
+    Returns ``(targets, masked)``. Sizing folds in exactly once (I-4): the
+    book construct owns weights, the online band owns hysteresis against
+    *held* weights, the participation gate shrinks trades over the %ADV cap.
+    """
+    score_row = pd.DataFrame([signal.score(close, volume)], index=close.index[-1:])
+    masked: list[str] | None = None
+    if unrankable is not None:
+        # Unrankable names (spin-off inside the lookback — see the
+        # run_daily_cycle docstring) leave the scored cross-section entirely,
+        # so decile membership is decided over rankable names only.
+        masked = sorted(set(unrankable(decision_bar)) & set(score_row.columns))
+        if masked:
+            score_row.loc[:, masked] = float("nan")
+            logger.info(
+                "unrankable mask: %d name(s) held out of ranking this refresh: %s",
+                len(masked),
+                masked,
+            )
+    raw = _construct_raw_book(score_row, close, config, effective_max_gross)
+    if masked:
+        # Hold, don't flatten: the decile construct pins a NaN score to an
+        # explicit 0.0 (exit), but an unrankable name carries NO decision.
+        # A NaN target resolves to the held weight in step_no_trade_band
+        # (0.0 for an unheld name), so no new position opens on a divergent
+        # rank and a held name is held until the event clears the lookback.
+        raw.loc[masked] = float("nan")
+    targets = step_no_trade_band(prev_weights, raw, config.no_trade_band)
+    if config.max_participation is not None:
+        if volume is None:
+            raise ValueError("max_participation is set but there is no volume panel to compute ADV (N7)")
+        dollar_volume = (close * volume).rolling(config.adv_window_bars, min_periods=1).mean().iloc[-1]
+        targets = participation_capped_targets(
+            prev_weights,
+            targets,
+            dollar_volume,
+            aum=equity,
+            max_participation=config.max_participation,
+        )
+    return targets, masked
+
+
+def _construct_raw_book(
+    score_row: pd.DataFrame,
+    close: pd.DataFrame,
+    config: DailyBookConfig,
+    effective_max_gross: float,
+) -> pd.Series:
+    """One scored row → the book's raw target weights (pre-band, pre-gate)."""
+    if effective_max_gross <= 0.0:
+        # A zero effective cap — regime_scale clamped to 0.0, the full
+        # de-gross — admits no gross, and cap_book refuses a 0 cap, so
+        # emit each book's own flat form directly: the decile /
+        # inverse_vol books' explicit 0.0 for every name (NaN-score pin
+        # included), the directional book's flat-where-decided (a NaN
+        # score keeps carrying no decision, exactly as the construct
+        # would emit). The band step then exits every held, decidable name.
+        if config.book in ("decile_neutral", "inverse_vol"):
+            return pd.Series(0.0, index=score_row.columns, dtype=float)
+        return score_row.iloc[0] * 0.0
+    if config.book == "decile_neutral":
+        # The decile construct emits an explicit weight (0.0 outside the
+        # decile) for every scored name, so a held name that falls out of the
+        # decile — including a book inherited at cutover, as long as it is in
+        # the fetched universe — is rebalanced to flat by the online band. A
+        # held name absent from the universe cannot be priced and is refused
+        # loudly at the mark step (N7): trade only what you can value, so a
+        # cutover universe must contain the names it inherits.
+        return construct_decile_neutral(
+            score_row,
+            decile=config.decile,
+            max_gross=effective_max_gross,
+            max_symbol_abs_weight=config.max_symbol_abs_weight,
+        ).iloc[0]
+    if config.book == "inverse_vol":
+        # Trend sleeve (docs/trend_design.md §2). Vol needs trailing
+        # close history; align the one-row score onto the full panel so
+        # only the decision bar carries a sign and earlier bars stay
+        # NaN (unused by the last-row construct read).
+        scores_aligned = pd.DataFrame(
+            np.nan, index=close.index, columns=score_row.columns, dtype=float
+        )
+        scores_aligned.iloc[-1] = score_row.iloc[0].reindex(score_row.columns)
+        return construct_inverse_vol_targets(
+            scores_aligned,
+            close.reindex(columns=score_row.columns),
+            vol_ewma_bars=config.vol_ewma_bars,
+            max_gross=effective_max_gross,
+            max_symbol_abs_weight=config.max_symbol_abs_weight,
+        ).iloc[-1]
+    return construct_directional_targets(
+        score_row,
+        position_size=config.position_size,
+        max_gross=effective_max_gross,
+        max_symbol_abs_weight=config.max_symbol_abs_weight,
+        no_trade_band=0.0,  # the online band owns hysteresis (never the flat replay)
+    ).iloc[0]
 
 
 def _is_refresh_session(

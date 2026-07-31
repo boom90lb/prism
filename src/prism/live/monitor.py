@@ -1,7 +1,7 @@
 """Anytime-valid monitor over the paper-loop equity ledger (SPEC.md §10, I-9).
 
 The daily loop appends one mark-to-market NAV per decision bar to an equity
-ledger (``prism.live.loop._append_equity_ledger``). This module turns that
+ledger (``prism.live.loop.append_equity_ledger``). This module turns that
 accruing ledger into a live read: it forms the per-bar net-return series and
 passes it through the time-uniform confidence sequence in
 :mod:`prism.validation.anytime`, so the paper stream can be inspected after
