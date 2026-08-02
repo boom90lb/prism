@@ -23,6 +23,11 @@ thing that ran:
   precondition-(b) clock (docs/regime_step.md §4).
 * ``nightly-log`` — the last wrapper verdict, and whether a *successful* one
   is stale (the "green but old" failure).
+* ``wrapper-provenance`` — did the scheduler execute the repo's ops/ wrappers,
+  or a drifted copy? The wrappers stamp ``wrapper=<physical path>`` onto their
+  RUN/SWEEP lines; an unstamped or foreign-path session FAILs. This is the
+  "what runs is what was reviewed" invariant: the 2026-07-23 outage's alert
+  layer was committed but a stale ~/bin copy kept executing, invisibly.
 * ``alpaca-account-book`` (network) — does the venue's book belong to this run
   directory? A run directory with no persisted book over a live account is the
   fatal condition that produced the outage.
@@ -72,6 +77,9 @@ CLEAN_SESSIONS_REQUIRED = 21
 
 # `2026-07-29T18:30:16-0700 EXIT 1` — the wrapper's verdict line (ops/).
 _LOG_VERDICT = re.compile(r"^(?P<ts>\S+)\s+(?P<verdict>EXIT|SKIP)\b\D*(?P<code>\d+)?")
+
+# `… RUN: … wrapper=/abs/path commit=abc1234` — the wrappers' provenance stamp.
+_WRAPPER_STAMP = re.compile(r"\bwrapper=(?P<path>\S+)")
 
 
 @dataclass(frozen=True)
@@ -374,6 +382,79 @@ def check_nightly_log(run_dir: Path, *, today: date | None = None) -> CheckResul
     return _result("nightly-log", True, f"{log}: last run EXIT 0 at {when}")
 
 
+def _repo_ops_file(name: str) -> Path | None:
+    """Locate the repo's ops/ wrapper from this installation, or None.
+
+    Editable install: three parents up from this file is the repo root. Slim
+    or wheel install: the wrappers cd into the repo before invoking python,
+    so the cwd candidate covers it.
+    """
+    for base in (Path.cwd(), Path(__file__).resolve().parents[3]):
+        candidate = base / "ops" / name
+        if candidate.exists():
+            return candidate.resolve()
+    return None
+
+
+def check_wrapper_provenance(run_dir: Path) -> CheckResult:
+    """Was the last session driven by the repo's ops/ wrapper, byte-for-byte?
+
+    Path identity, not content hashing: the stamp records the physical path
+    (`readlink -f`) of the executing file, so a symlinked deployment resolves
+    to the repo file itself and *cannot* drift, while a copy — however
+    faithful today — stamps its own path and FAILs. An unstamped session
+    means a pre-provenance wrapper ran: exactly the condition under which the
+    committed alert layer silently never executed (found 2026-07-31).
+    """
+    problems: list[str] = []
+    oks: list[str] = []
+    unverifiable: list[str] = []
+    for log_name, marker, ops_name in (
+        ("nightly.log", "RUN", "paper_loop_nightly.sh"),
+        ("sweep.log", "SWEEP", "paper_sweep_morning.sh"),
+    ):
+        log = run_dir / log_name
+        required = marker == "RUN"  # the trading path; a fresh dir may have no sweep yet
+        if not log.exists():
+            if required:
+                unverifiable.append(f"{log_name} absent — no session to verify")
+            continue
+        entry = re.compile(rf"^\S+\s+{marker}:")
+        lines = [ln for ln in log.read_text(encoding="utf-8").splitlines() if entry.match(ln)]
+        if not lines:
+            if required:
+                unverifiable.append(f"{log_name}: no {marker} lines — no session to verify")
+            continue
+        stamp = _WRAPPER_STAMP.search(lines[-1])
+        if stamp is None:
+            problems.append(
+                f"{log_name}: last {marker} is unstamped — a pre-provenance copy ran, "
+                f"not ops/{ops_name}; repoint the scheduler (or symlink) at the repo file"
+            )
+            continue
+        expected = _repo_ops_file(ops_name)
+        if expected is None:
+            unverifiable.append(f"ops/{ops_name} not locatable from this install")
+            continue
+        stamped = Path(stamp.group("path"))
+        try:
+            stamped = stamped.resolve()
+        except OSError:
+            pass
+        if stamped != expected:
+            problems.append(
+                f"{log_name}: ran {stamp.group('path')} but the repo wrapper is {expected} — "
+                "a drifted copy is scheduled"
+            )
+        else:
+            oks.append(f"{log_name} ran ops/{ops_name}")
+    if problems:
+        return _result("wrapper-provenance", False, "; ".join(problems))
+    if unverifiable and not oks:
+        return _result("wrapper-provenance", False, "; ".join(unverifiable), warn=True)
+    return _result("wrapper-provenance", True, "; ".join(oks))
+
+
 def check_account_book(
     held: Mapping[str, float],
     universe: Sequence[str],
@@ -565,6 +646,7 @@ def run_checks(
     # same venue reachability whose absence it has to report.
     results.append(check_equity_ledger(run_dir, today=today))
     results.append(check_nightly_log(run_dir, today=today))
+    results.append(check_wrapper_provenance(run_dir))
     results.append(check_regime_clock(run_dir))
     if network:
         results.extend(check_alpaca_account(universe_file, run_dir))

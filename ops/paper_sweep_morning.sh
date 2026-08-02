@@ -16,7 +16,10 @@
 # is not.
 set -u
 
-REPO="${PRISM_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+# Physical path, for the same reasons as the nightly wrapper: symlink-safe
+# REPO resolution and an honest provenance stamp.
+SELF="$(readlink -f "${BASH_SOURCE[0]}")"
+REPO="${PRISM_REPO:-$(cd "$(dirname "$SELF")/.." && pwd)}"
 # Single switch shared with the nightly wrapper: runs/ACTIVE_RUN_DIR names the
 # live run-dir (one line, relative to the repo).
 RUN_DIR="$(cat "$REPO/runs/ACTIVE_RUN_DIR" 2>/dev/null || echo runs/paper_loop_momentum)"
@@ -39,7 +42,9 @@ fi
 
 cd "$REPO" || exit 1
 PY="$REPO/.venv/bin/python3"
-echo "$(ts) SWEEP: run-dir=$RUN_DIR" >>"$LOG"
+COMMIT="$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+[ -n "$(git -C "$REPO" status --porcelain -uno 2>/dev/null)" ] && COMMIT="${COMMIT}+dirty"
+echo "$(ts) SWEEP: run-dir=$RUN_DIR wrapper=$SELF commit=$COMMIT" >>"$LOG"
 "$PY" -m prism.scripts.paper_sweep \
     --run-dir "$RUN_DIR" \
     >>"$LOG" 2>&1

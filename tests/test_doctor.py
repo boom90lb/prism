@@ -23,9 +23,11 @@ from prism.scripts.doctor import (
     check_holdings_priceable,
     check_kill_switch,
     check_loop_state,
+    _repo_ops_file,
     check_nightly_log,
     check_regime_clock,
     check_universe_file,
+    check_wrapper_provenance,
     main,
     run_checks,
     weekdays_since,
@@ -249,6 +251,74 @@ def test_nightly_log_without_verdicts_warns(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# Wrapper provenance — what runs must be what was reviewed
+# ---------------------------------------------------------------------------
+
+
+def _sweep(run_dir, lines):
+    run_dir.mkdir(parents=True, exist_ok=True)
+    (run_dir / "sweep.log").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def _ops(name):
+    path = _repo_ops_file(name)
+    assert path is not None, f"repo ops/{name} must exist for these tests"
+    return path
+
+
+def test_wrapper_provenance_no_sessions_warns(tmp_path):
+    assert check_wrapper_provenance(tmp_path).status == "WARN"
+
+
+def test_wrapper_provenance_unstamped_run_fails(tmp_path):
+    # The 2026-07-31 condition: the committed alert layer never executed because
+    # a stale pre-provenance ~/bin copy was scheduled — and nothing said so.
+    _nightly(tmp_path, ["2026-07-30T18:30:01-0700 RUN: book=momentum regime=on", "2026-07-30T18:30:48-0700 EXIT 0"])
+    result = check_wrapper_provenance(tmp_path)
+    assert result.status == "FAIL" and "unstamped" in result.detail
+
+
+def test_wrapper_provenance_foreign_path_fails(tmp_path):
+    _nightly(tmp_path, [f"2026-07-31T18:30:01-0700 RUN: book=momentum wrapper={tmp_path}/stale_copy.sh commit=abc1234"])
+    result = check_wrapper_provenance(tmp_path)
+    assert result.status == "FAIL" and "drifted copy" in result.detail
+
+
+def test_wrapper_provenance_repo_wrapper_passes(tmp_path):
+    _nightly(tmp_path, [f"2026-07-31T18:30:01-0700 RUN: book=momentum wrapper={_ops('paper_loop_nightly.sh')} commit=abc1234"])
+    result = check_wrapper_provenance(tmp_path)
+    assert result.status == "PASS" and "paper_loop_nightly.sh" in result.detail
+
+
+def test_wrapper_provenance_only_latest_entry_counts(tmp_path):
+    # Pre-provenance history is history; the invariant binds the *last* session.
+    _nightly(
+        tmp_path,
+        [
+            "2026-07-30T18:30:01-0700 RUN: book=momentum regime=on",
+            "2026-07-30T18:30:48-0700 EXIT 0",
+            f"2026-07-31T18:30:01-0700 RUN: book=momentum wrapper={_ops('paper_loop_nightly.sh')} commit=abc1234",
+            "2026-07-31T18:30:48-0700 EXIT 0",
+        ],
+    )
+    assert check_wrapper_provenance(tmp_path).status == "PASS"
+
+
+def test_wrapper_provenance_stale_sweep_fails_even_with_good_nightly(tmp_path):
+    _nightly(tmp_path, [f"2026-07-31T18:30:01-0700 RUN: book=momentum wrapper={_ops('paper_loop_nightly.sh')} commit=abc1234"])
+    _sweep(tmp_path, ["2026-07-31T06:50:00-0700 SWEEP: run-dir=runs/x", "2026-07-31T06:50:02-0700 EXIT 0"])
+    result = check_wrapper_provenance(tmp_path)
+    assert result.status == "FAIL" and "sweep.log" in result.detail
+
+
+def test_wrapper_provenance_both_stamped_passes(tmp_path):
+    _nightly(tmp_path, [f"2026-07-31T18:30:01-0700 RUN: book=momentum wrapper={_ops('paper_loop_nightly.sh')} commit=abc1234"])
+    _sweep(tmp_path, [f"2026-07-31T06:50:00-0700 SWEEP: run-dir=runs/x wrapper={_ops('paper_sweep_morning.sh')} commit=abc1234"])
+    result = check_wrapper_provenance(tmp_path)
+    assert result.status == "PASS" and "sweep" in result.detail
+
+
+# ---------------------------------------------------------------------------
 # Regime clock (handoff §8 precondition (b), docs/regime_step.md §4)
 # ---------------------------------------------------------------------------
 
@@ -336,7 +406,13 @@ def test_run_checks_offline_composes(tmp_path):
     universe.write_text("\n".join(f"SYM{i}" for i in range(150)), encoding="utf-8")
     run_dir = tmp_path / "run"
     _equity(run_dir, ["2026-07-29"])
-    _nightly(run_dir, ["2026-07-29T18:30:16-0700 EXIT 0"])
+    _nightly(
+        run_dir,
+        [
+            f"2026-07-29T18:30:01-0700 RUN: book=momentum wrapper={_ops('paper_loop_nightly.sh')} commit=abc1234",
+            "2026-07-29T18:30:16-0700 EXIT 0",
+        ],
+    )
     _regime(run_dir, [(f"2026-07-{d:02d}", True) for d in range(1, 1 + CLEAN_SESSIONS_REQUIRED)])
     results = _by_name(
         run_checks(
@@ -353,7 +429,7 @@ def test_run_checks_offline_composes(tmp_path):
     # …but it does include the health checks: a dark loop must be detectable
     # without credentials, since the alerting path cannot depend on the same
     # venue reachability whose absence it has to report.
-    assert {"equity-ledger", "nightly-log", "regime-clock"} <= set(results)
+    assert {"equity-ledger", "nightly-log", "wrapper-provenance", "regime-clock"} <= set(results)
 
 
 def test_run_checks_offline_fails_on_a_dark_loop(tmp_path):

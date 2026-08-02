@@ -26,7 +26,13 @@
 # Until then this script logs SKIP and exits 3.
 set -u
 
-REPO="${PRISM_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+# Resolve through the physical path so a symlinked deployment (~/bin -> ops/)
+# still finds the repo, and so the stamp below names the file that actually
+# executed - the one thing the doctor's wrapper-provenance check can hold to
+# the repo's copy. Deploy as a symlink or point the scheduler here directly;
+# never copy this file (a copy stamps its own path and runs red).
+SELF="$(readlink -f "${BASH_SOURCE[0]}")"
+REPO="${PRISM_REPO:-$(cd "$(dirname "$SELF")/.." && pwd)}"
 # Single switch shared with the morning sweep: runs/ACTIVE_RUN_DIR names the
 # live run-dir (one line, relative to the repo).
 RUN_DIR="$(cat "$REPO/runs/ACTIVE_RUN_DIR" 2>/dev/null || echo runs/paper_loop_momentum)"
@@ -71,7 +77,12 @@ fi
 
 cd "$REPO" || exit 1
 PY="$REPO/.venv/bin/python3"
-echo "$(ts) RUN: book=momentum universe=$UNIVERSE regime=$REGIME_STATE" >>"$LOG"
+# Provenance stamp: which file drove this session, from which commit. The
+# doctor FAILs the next health read if wrapper= is absent or is not the
+# repo's ops/paper_loop_nightly.sh - a drifted copy cannot run green.
+COMMIT="$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+[ -n "$(git -C "$REPO" status --porcelain -uno 2>/dev/null)" ] && COMMIT="${COMMIT}+dirty"
+echo "$(ts) RUN: book=momentum universe=$UNIVERSE regime=$REGIME_STATE wrapper=$SELF commit=$COMMIT" >>"$LOG"
 # shellcheck disable=SC2086
 "$PY" -m prism.scripts.paper_loop \
     --book momentum \
