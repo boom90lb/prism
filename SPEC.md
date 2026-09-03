@@ -35,10 +35,12 @@ research record. Code and docs defer to this file.
 - **Certified negative.** Daily residual reversion on the S&P cross-section is
   uneconomic at retail cost (`docs/certifications/001-…`, 17 counted trials,
   `results/stat_arb_residual_trials.jsonl`). That selection set is closed.
-- **Registered, never run.** Momentum fragility reads M1–M5
-  (`docs/momentum_design.md` §2) and trend reads T0–T4 (`docs/trend_design.md`
-  §3). Learned cross-section X0–X5 and replication C-cells are designed but
-  unbuilt. Nothing has been added to any ledger since 2026-07-06.
+- **Momentum fragility reads M1–M5 ran 2026-09-03**; the sleeve survives the
+  pre-committed kill (median net Sharpe 0.477 vs B1 0.465, no sign flip;
+  `docs/momentum_m_series_read_2026-09-03.md`; ledger
+  `results/momentum_v1_trials.jsonl`, 6 rows; M2 and M4 sit at their N6
+  ceiling; no configuration moved). Trend reads T0–T4 need a counted driver
+  (`docs/trend_design.md` §3). Learned cross-section and replication: unbuilt.
 - **Suite.** `pytest -q` (research extra installed): 1051 passed, 1 skipped.
 
 ## 2. Invariants — a change that violates one is wrong, not the invariant
@@ -190,10 +192,9 @@ results/       ledgers and claim packets (cited ones immutable)
 data/universe/ tracked PIT membership files         runs/   live run dirs (ignored)
 ```
 
-`docs/`: the registrations and designs (`*_design.md`, `*_preregistration.md`,
-`risk_profile_schema`, `regime_step`), the diagnostics and receipts (data
-integrity, vendor divergence, joint crash, program review, live robustness
-audit, and the rest), operations (`operations`, `quickstart`, `security`,
+`docs/`: registrations and designs (`*_design.md`, `*_preregistration.md`,
+`risk_profile_schema`, `regime_step`), read records (`*_read_<date>.md`),
+diagnostics and receipts, operations (`operations`, `quickstart`, `security`,
 `free_tier_profile`), `certifications/001`, and `audit.md` (the 2026-06 audit
 of the pre-Prism codebase, historical). `ARCHITECTURE.md` is the call graph;
 `MARKETS.md` the market-structure analysis.

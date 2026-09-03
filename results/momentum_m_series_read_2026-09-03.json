@@ -1,0 +1,389 @@
+{
+  "b1": {
+    "arith_mean_return_annual_pct": 5.356287001766468,
+    "avg_turnover": 0.049976844189589156,
+    "claim_tier": "net_edge",
+    "clears_hurdle": true,
+    "code_commit": "a2f44781ff1d2f87e1746fc70060eb17ee9d2918",
+    "config_hash": "000b74941cfd",
+    "deflation_trials": 17,
+    "delta": "B1 (M0 import)",
+    "dsr_as_written_sequence_dependent": 0.19089048724068036,
+    "gross_total_return": 0.3238271007053424,
+    "hurdle_annual_pct": 3.71,
+    "knobs": {
+      "band_mode": "closed_form",
+      "decision_every": 21,
+      "max_participation": 0.05,
+      "mom_decile": 0.1,
+      "mom_decision_every": 21,
+      "mom_lookback_bars": 252,
+      "mom_skip_bars": 21,
+      "spread_mode": "bucket"
+    },
+    "max_drawdown": 0.13999581002068906,
+    "n6": {
+      "capture_gross": 0.6948523276304603,
+      "capture_net": 0.6133025796721269,
+      "ceiling": 0.2190789150531523,
+      "falsification_gross": false,
+      "falsification_net": false,
+      "hurdle": 0.09306479887325804,
+      "ic_lower_95_one_sided": -0.009464453518600122,
+      "ic_n": 62,
+      "ic_se": 0.024090688497699842,
+      "n_eff": 52.74755156170981,
+      "rank_ic": 0.030164729060116118,
+      "realized_gross": 0.15222749405943878,
+      "realized_net": 0.13436166375386904
+    },
+    "n_folds": 21.0,
+    "n_symbols": 574.0,
+    "oos_periodic_sharpe": 0.029320118792967115,
+    "periodic_hurdle": 0.02030840406535933,
+    "run_dir": "results/demotion_b1",
+    "sharpe": 0.46544245642237375,
+    "total_cost": 0.03695893383824346,
+    "total_return": 0.27579902407593426
+  },
+  "config_keys_moved_vs_b1": {
+    "momentum_m1": {
+      "design_trials": [
+        17,
+        8
+      ],
+      "walk.mom_skip_bars": [
+        21,
+        0
+      ]
+    },
+    "momentum_m2": {
+      "design_trials": [
+        17,
+        8
+      ],
+      "walk.mom_lookback_bars": [
+        252,
+        126
+      ]
+    },
+    "momentum_m3": {
+      "design_trials": [
+        17,
+        8
+      ],
+      "walk.mom_decile": [
+        0.1,
+        0.2
+      ]
+    },
+    "momentum_m4": {
+      "design_trials": [
+        17,
+        8
+      ],
+      "signal.decision_every": [
+        21,
+        63
+      ],
+      "walk.mom_decision_every": [
+        21,
+        63
+      ]
+    },
+    "momentum_m5": {
+      "design_trials": [
+        17,
+        8
+      ],
+      "walk.mom_skip_bars": [
+        21,
+        42
+      ]
+    }
+  },
+  "dsr_uniform_vs_final_ledger": {
+    "n_deflation": 8,
+    "values": {
+      "results/demotion_b1": 0.781389468573969,
+      "results/momentum_m1": 0.7881809929444368,
+      "results/momentum_m2": 0.6764186712228066,
+      "results/momentum_m3": 0.7419327434739311,
+      "results/momentum_m4": 0.8338824365775477,
+      "results/momentum_m5": 0.8215099833530524
+    }
+  },
+  "ledger": {
+    "config_hashes": [
+      "301c449b9173",
+      "e60721b3698b",
+      "f921f22503f7",
+      "f5d523ff29b1",
+      "52b2c7bb82c8",
+      "56bff2b1e452"
+    ],
+    "note": "ledger config_hash is sha256(config payload)[:12]; the packet/summary config_hash is stable_config_hash({strategy, config, data}) \u2014 two digests of one configuration",
+    "output_dirs": [
+      "results/demotion_b1",
+      "results/momentum_m1",
+      "results/momentum_m2",
+      "results/momentum_m3",
+      "results/momentum_m4",
+      "results/momentum_m5"
+    ],
+    "path": "results/momentum_v1_trials.jsonl",
+    "rows": 6
+  },
+  "read": {
+    "b1_sharpe": 0.46544245642237375,
+    "b1_total_return": 0.27579902407593426,
+    "kill_a_median_negative": false,
+    "kill_b_flipping_trials_sharpe": [],
+    "kill_b_sign_flip_sharpe": false,
+    "median_sharpe_m1_m5": 0.47651641574098014,
+    "min_sharpe_m1_m5": 0.32352568052209296,
+    "n_above_b1": 3,
+    "n_trials_read": 5,
+    "note": "Survival is not promotion: promotion reads only at M6 (extension >= 2027-06) + paper (\u00a73).",
+    "rule": "docs/momentum_design.md \u00a73 fragility kill: median(net annualized Sharpe of M1-M5) < 0, or any single knob move flips the sign of the net result at magnitude > B1's point estimate",
+    "secondary_sign_flip_total_return": [],
+    "verdict": "SURVIVES fragility read"
+  },
+  "trials": [
+    {
+      "arith_mean_return_annual_pct": 5.627630486618508,
+      "avg_turnover": 0.04978269327988617,
+      "claim_tier": "net_edge",
+      "clears_hurdle": true,
+      "code_commit": "2b4bca9d8a1f029aeb3abec26f2aaad96b5ee3a2",
+      "config_hash": "3e5c23be9c91",
+      "deflation_trials": 8,
+      "delta": "mom_skip_bars=0",
+      "dsr_as_written_sequence_dependent": 0.852875035218287,
+      "gross_total_return": 0.34001445254964446,
+      "hurdle_annual_pct": 3.71,
+      "knobs": {
+        "band_mode": "closed_form",
+        "decision_every": 21,
+        "max_participation": 0.05,
+        "mom_decile": 0.1,
+        "mom_decision_every": 21,
+        "mom_lookback_bars": 252,
+        "mom_skip_bars": 0,
+        "spread_mode": "bucket"
+      },
+      "max_drawdown": 0.1467723150618725,
+      "n6": {
+        "capture_gross": 0.7127103020007118,
+        "capture_net": 0.6327816506909048,
+        "ceiling": 0.21738689846722262,
+        "falsification_gross": false,
+        "falsification_net": false,
+        "hurdle": 0.09068502548016708,
+        "ic_lower_95_one_sided": -0.009486142456902914,
+        "ic_n": 62,
+        "ic_se": 0.02418200933348626,
+        "n_eff": 51.49613385962721,
+        "rank_ic": 0.030293262896681987,
+        "realized_gross": 0.1549338820575723,
+        "realized_net": 0.13755844045066523
+      },
+      "n_folds": 21.0,
+      "n_symbols": 574.0,
+      "oos_periodic_sharpe": 0.030017712659297563,
+      "periodic_hurdle": 0.019789094936279273,
+      "run_dir": "results/momentum_m1",
+      "sharpe": 0.47651641574098014,
+      "total_cost": 0.03688859921466028,
+      "total_return": 0.2914905466596647
+    },
+    {
+      "arith_mean_return_annual_pct": 3.487361052844875,
+      "avg_turnover": 0.060070876177536724,
+      "claim_tier": "net_edge",
+      "clears_hurdle": false,
+      "code_commit": "2b4bca9d8a1f029aeb3abec26f2aaad96b5ee3a2",
+      "config_hash": "ad164addcd27",
+      "deflation_trials": 8,
+      "delta": "mom_lookback_bars=126",
+      "dsr_as_written_sequence_dependent": 0.674168767937335,
+      "gross_total_return": 0.21237122246789708,
+      "hurdle_annual_pct": 3.71,
+      "knobs": {
+        "band_mode": "closed_form",
+        "decision_every": 21,
+        "max_participation": 0.05,
+        "mom_decile": 0.1,
+        "mom_decision_every": 21,
+        "mom_lookback_bars": 126,
+        "mom_skip_bars": 21,
+        "spread_mode": "bucket"
+      },
+      "max_drawdown": 0.12896501428023555,
+      "n6": {
+        "capture_gross": 1.3597039300703,
+        "capture_net": 1.1051187044515494,
+        "ceiling": 0.08451021505055721,
+        "falsification_gross": true,
+        "falsification_net": true,
+        "hurdle": 0.09935623659573006,
+        "ic_lower_95_one_sided": -0.028201449093917426,
+        "ic_n": 62,
+        "ic_se": 0.023309828056426073,
+        "n_eff": 69.41716763668603,
+        "rank_ic": 0.01014321805890347,
+        "realized_gross": 0.11490887153532885,
+        "realized_net": 0.09339381936959361
+      },
+      "n_folds": 21.0,
+      "n_symbols": 574.0,
+      "oos_periodic_sharpe": 0.02038020222391408,
+      "periodic_hurdle": 0.021681308331708313,
+      "run_dir": "results/momentum_m2",
+      "sharpe": 0.32352568052209296,
+      "total_cost": 0.04178825976847544,
+      "total_return": 0.16278583391763113
+    },
+    {
+      "arith_mean_return_annual_pct": 3.564804920277954,
+      "avg_turnover": 0.04735546765649722,
+      "claim_tier": "net_edge",
+      "clears_hurdle": false,
+      "code_commit": "2b4bca9d8a1f029aeb3abec26f2aaad96b5ee3a2",
+      "config_hash": "809746a28858",
+      "deflation_trials": 8,
+      "delta": "mom_decile=0.2",
+      "dsr_as_written_sequence_dependent": 0.7560761396018947,
+      "gross_total_return": 0.22211929541114306,
+      "hurdle_annual_pct": 3.71,
+      "knobs": {
+        "band_mode": "closed_form",
+        "decision_every": 21,
+        "max_participation": 0.05,
+        "mom_decile": 0.2,
+        "mom_decision_every": 21,
+        "mom_lookback_bars": 252,
+        "mom_skip_bars": 21,
+        "spread_mode": "bucket"
+      },
+      "max_drawdown": 0.1109138021613505,
+      "n6": {
+        "capture_gross": 0.6270887756313327,
+        "capture_net": 0.5265637555852589,
+        "ceiling": 0.2242674738450853,
+        "falsification_gross": false,
+        "falsification_net": false,
+        "hurdle": 0.12290099379338883,
+        "ic_lower_95_one_sided": -0.009464453518600122,
+        "ic_n": 62,
+        "ic_se": 0.024090688497699842,
+        "n_eff": 55.27563299956961,
+        "rank_ic": 0.030164729060116118,
+        "realized_gross": 0.14063561558744647,
+        "realized_net": 0.11809112328348695
+      },
+      "n_folds": 21.0,
+      "n_symbols": 574.0,
+      "oos_periodic_sharpe": 0.025769595778521,
+      "periodic_hurdle": 0.026819195573500106,
+      "run_dir": "results/momentum_m3",
+      "sharpe": 0.4090796508997589,
+      "total_cost": 0.035300397157959025,
+      "total_return": 0.17973096947663536
+    },
+    {
+      "arith_mean_return_annual_pct": 5.986807236442338,
+      "avg_turnover": 0.032110091743119254,
+      "claim_tier": "net_edge",
+      "clears_hurdle": true,
+      "code_commit": "2b4bca9d8a1f029aeb3abec26f2aaad96b5ee3a2",
+      "config_hash": "a46735a61c49",
+      "deflation_trials": 8,
+      "delta": "decision_every=63",
+      "dsr_as_written_sequence_dependent": 0.8326476616798477,
+      "gross_total_return": 0.36101726962043723,
+      "hurdle_annual_pct": 3.71,
+      "knobs": {
+        "band_mode": "closed_form",
+        "decision_every": 63,
+        "max_participation": 0.05,
+        "mom_decile": 0.1,
+        "mom_decision_every": 63,
+        "mom_lookback_bars": 252,
+        "mom_skip_bars": 21,
+        "spread_mode": "bucket"
+      },
+      "max_drawdown": 0.1343427713373544,
+      "n6": {
+        "capture_gross": 1.0415180337469547,
+        "capture_net": 0.9551044910859023,
+        "ceiling": 0.28883261420636275,
+        "falsification_gross": true,
+        "falsification_net": false,
+        "hurdle": 0.17095261677079227,
+        "ic_lower_95_one_sided": -0.008422501128672523,
+        "ic_n": 20,
+        "ic_se": 0.030093013202078713,
+        "n_eff": 49.43344782888581,
+        "rank_ic": 0.041080505588746964,
+        "realized_gross": 0.30082437643020365,
+        "realized_net": 0.27586532700057886
+      },
+      "n_folds": 21.0,
+      "n_symbols": 574.0,
+      "oos_periodic_sharpe": 0.034755764313763975,
+      "periodic_hurdle": 0.021538005235773625,
+      "run_dir": "results/momentum_m4",
+      "sharpe": 0.5517306540011577,
+      "total_cost": 0.028132856708640887,
+      "total_return": 0.3232736034334236
+    },
+    {
+      "arith_mean_return_annual_pct": 5.749206093564937,
+      "avg_turnover": 0.05100597402631159,
+      "claim_tier": "net_edge",
+      "clears_hurdle": true,
+      "code_commit": "2b4bca9d8a1f029aeb3abec26f2aaad96b5ee3a2",
+      "config_hash": "4361ecfeef54",
+      "deflation_trials": 8,
+      "delta": "mom_skip_bars=42",
+      "dsr_as_written_sequence_dependent": 0.8215099833530548,
+      "gross_total_return": 0.357025861313955,
+      "hurdle_annual_pct": 3.71,
+      "knobs": {
+        "band_mode": "closed_form",
+        "decision_every": 21,
+        "max_participation": 0.05,
+        "mom_decile": 0.1,
+        "mom_decision_every": 21,
+        "mom_lookback_bars": 252,
+        "mom_skip_bars": 42,
+        "spread_mode": "bucket"
+      },
+      "max_drawdown": 0.13511266443482772,
+      "n6": {
+        "capture_gross": 0.7020710044355885,
+        "capture_net": 0.6235927794376648,
+        "ceiling": 0.24523013028089963,
+        "falsification_gross": false,
+        "falsification_net": false,
+        "hurdle": 0.09868268083696781,
+        "ic_lower_95_one_sided": -0.005785094178944433,
+        "ic_n": 62,
+        "ic_se": 0.023675533925758194,
+        "n_eff": 54.68752292374303,
+        "rank_ic": 0.033161159128927795,
+        "realized_gross": 0.1721689638841814,
+        "realized_net": 0.15292373854372684
+      },
+      "n_folds": 21.0,
+      "n_symbols": 574.0,
+      "oos_periodic_sharpe": 0.033370695592012584,
+      "periodic_hurdle": 0.02153432641507491,
+      "run_dir": "results/momentum_m5",
+      "sharpe": 0.5297433696822279,
+      "total_cost": 0.03752274797753182,
+      "total_return": 0.30705211997000226
+    }
+  ]
+}

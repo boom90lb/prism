@@ -1,0 +1,61 @@
+{
+  "run_dir": "results/momentum_m4",
+  "config_hash": "a46735a61c49",
+  "horizon_bars": 63,
+  "n_eff": {
+    "book_contribution_participation_ratio": 49.43344782888581,
+    "held_names_return_participation_ratio": 11.99434077667661,
+    "top_eigenvalue_shares": [
+      0.07755769793123996,
+      0.061910028882493695,
+      0.05295557272869217
+    ],
+    "avg_names_held": 95.66350710900474,
+    "n_ever_held": 455,
+    "n_active_days": 1266
+  },
+  "ic": {
+    "mean_rank_ic_nonoverlap": 0.041080505588746964,
+    "se_nonoverlap": 0.030093013202078713,
+    "n_nonoverlap": 20,
+    "lower_95_one_sided": -0.008422501128672523,
+    "mean_rank_ic_dense": 0.04145310548030307,
+    "n_dense": 1246
+  },
+  "realized": {
+    "net_daily_sharpe": 0.034755764313763975,
+    "gross_daily_sharpe": 0.03790030896859044,
+    "hurdle_daily_sharpe": 0.021538005235773625,
+    "sqrt_h_scaling": "daily Sharpes scaled by sqrt(horizon_bars) to the horizon frequency (iid approx)"
+  },
+  "diagnostic_horizon_net": {
+    "n_eff": 49.43344782888581,
+    "information_coefficient": 0.041080505588746964,
+    "ir_ceiling": 0.28883261420636275,
+    "realized_periodic_sharpe": 0.27586532700057886,
+    "after_cost_hurdle": 0.17095261677079227,
+    "falsification": 0.0,
+    "viable": 1.0,
+    "viability_margin": 0.11787999743557048
+  },
+  "diagnostic_horizon_gross": {
+    "n_eff": 49.43344782888581,
+    "information_coefficient": 0.041080505588746964,
+    "ir_ceiling": 0.28883261420636275,
+    "realized_periodic_sharpe": 0.30082437643020365,
+    "after_cost_hurdle": 0.17095261677079227,
+    "falsification": 1.0,
+    "viable": 1.0,
+    "viability_margin": 0.11787999743557048
+  },
+  "viability_at_ic_lower_95": {
+    "information_coefficient": -0.008422501128672523,
+    "ir_ceiling": 0.05921769910779541,
+    "viable": 0.0,
+    "viability_margin": -0.11173491766299685
+  },
+  "capture": {
+    "net_over_ceiling": 0.9551044910859023,
+    "gross_over_ceiling": 1.0415180337469547
+  }
+}
