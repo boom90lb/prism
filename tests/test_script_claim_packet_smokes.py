@@ -1,0 +1,437 @@
+"""Offline smoke tests for script-level research claim packets."""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+from types import SimpleNamespace
+
+import numpy as np
+import pandas as pd
+import pytest
+
+from prism.execution.target_weights import backtest_target_weights
+from prism.validation.trials import validate_claim_packet_dir
+from research.features import forward_return_column
+from research.models.base import BaseModel
+
+# The smokes drive research/scripts CLIs (mlflow at module scope) in-process;
+# mlflow is a reliable sentinel for the whole [research] extra here.
+pytest.importorskip("mlflow", reason="needs the [research] extra")
+pytestmark = pytest.mark.research
+
+# The per-symbol fetch→features loop lives in _cli_common, so that is the
+# monkeypatch seam for build_features.
+import research.scripts._cli_common as cli_common  # noqa: E402
+
+
+class _DummyRun:
+    def __enter__(self):
+        return SimpleNamespace(info=SimpleNamespace(run_id="dummy"))
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+
+def _patch_mlflow(monkeypatch, module) -> None:
+    monkeypatch.setattr(module, "init_mlflow", lambda *a, **k: "0", raising=False)
+    monkeypatch.setattr(module.mlflow, "start_run", lambda *a, **k: _DummyRun(), raising=False)
+    monkeypatch.setattr(module, "log_metrics_safe", lambda *a, **k: None, raising=False)
+    monkeypatch.setattr(module, "log_params_safe", lambda *a, **k: None, raising=False)
+    monkeypatch.setattr(module, "log_artifact_dir", lambda *a, **k: None, raising=False)
+
+
+def _bars(n: int = 64) -> pd.DataFrame:
+    idx = pd.bdate_range("2026-01-02", periods=n, tz="America/New_York")
+    close = 100.0 + np.arange(n, dtype=float)
+    return pd.DataFrame(
+        {
+            "open": close,
+            "high": close + 1.0,
+            "low": close - 1.0,
+            "close": close,
+            "volume": 1_000_000.0,
+        },
+        index=idx,
+    )
+
+
+def _feature_frame(raw_df: pd.DataFrame, horizon: int) -> pd.DataFrame:
+    out = raw_df.copy()
+    target_col = f"target_{horizon}"
+    out[target_col] = out["close"].shift(-horizon)
+    out[forward_return_column(horizon)] = out[target_col] / out["close"] - 1.0
+    return out
+
+
+class _ConstModel(BaseModel):
+    def __init__(self, value: float = 0.6):
+        super().__init__(name="const", target_column="close", horizon=1)
+        self.value = value
+        self.is_fitted = True
+
+    def fit(self, X, y=None, **kwargs):
+        return self
+
+    def predict(self, X):
+        return np.full(len(X), self.value, dtype=float)
+
+    def save(self, directory: Path) -> Path:
+        return Path(directory)
+
+    def load(self, model_path: Path):
+        return self
+
+    def evaluate(self, X_test, y_test):
+        return {}
+
+
+def test_stat_arb_wfo_main_emits_valid_claim_packet(monkeypatch, tmp_path: Path) -> None:
+    import research.scripts.stat_arb_wfo as mod
+
+    close = pd.DataFrame({"AAA": _bars()["close"], "BBB": _bars()["close"] * 0.99})
+    open_ = pd.DataFrame({"AAA": _bars()["open"], "BBB": _bars()["open"] * 0.99})
+    targets = pd.DataFrame({"AAA": 0.4, "BBB": -0.4}, index=open_.index)
+    portfolio = backtest_target_weights(open_, targets)
+    fake_fold = object()
+    fake_result = SimpleNamespace(
+        folds=(fake_fold,),
+        portfolio=portfolio,
+        pair_trial_sharpes=(0.1, 0.2),
+        summary=portfolio.metrics | {"pair_set_dsr": 0.1},
+    )
+
+    monkeypatch.setattr(mod, "_fetch_matrices", lambda *a, **k: (close, open_))
+    monkeypatch.setattr(mod, "run_stat_arb_walk_forward", lambda *a, **k: fake_result)
+    monkeypatch.setattr(
+        mod,
+        "fold_result_to_dict",
+        lambda _fold: {
+            "fold": 0,
+            "formation_start": close.index[0].isoformat(),
+            "formation_end": close.index[9].isoformat(),
+            "test_start": close.index[10].isoformat(),
+            "test_end": close.index[-1].isoformat(),
+            "selected_pairs": [],
+        },
+    )
+    monkeypatch.setattr(sys, "argv", [
+        "stat_arb_wfo.py",
+        "--symbols",
+        "AAA,BBB",
+        "--formation_bars",
+        "30",
+        "--test_bars",
+        "20",
+        "--output_dir",
+        str(tmp_path),
+    ])
+
+    mod.main()
+
+    packet = validate_claim_packet_dir(tmp_path)
+    assert packet["strategy"] == "pairs_stat_arb_wfo"
+
+
+def test_stat_arb_residual_wfo_main_emits_valid_claim_packet(monkeypatch, tmp_path: Path) -> None:
+    import research.scripts.stat_arb_residual_wfo as mod
+
+    bars = _bars()
+    frames = {
+        "AAA": bars,
+        "BBB": bars.assign(close=bars["close"] * 0.99, open=bars["open"] * 0.99),
+        "CCC": bars.assign(close=bars["close"] * 1.01, open=bars["open"] * 1.01),
+    }
+    closes = pd.DataFrame({s: df["close"] for s, df in frames.items()})
+    opens = pd.DataFrame({s: df["open"] for s, df in frames.items()})
+    targets = pd.DataFrame({"AAA": 0.2, "BBB": -0.1, "CCC": 0.0}, index=opens.index)
+    portfolio = backtest_target_weights(opens, targets)
+    fake_fold = object()
+    fake_result = SimpleNamespace(
+        folds=(fake_fold,),
+        portfolio=portfolio,
+        summary=portfolio.metrics | {
+            "n_folds": 1.0,
+            "n_symbols": 3.0,
+            "oos_periodic_sharpe": 0.1,
+        },
+    )
+
+    monkeypatch.setattr(mod, "_fetch_frames", lambda *a, **k: frames)
+    monkeypatch.setattr(mod, "run_residual_stat_arb_walk_forward", lambda *a, **k: fake_result)
+    monkeypatch.setattr(
+        mod,
+        "residual_fold_to_dict",
+        lambda _fold: {
+            "fold": 0,
+            "formation_start": closes.index[0].isoformat(),
+            "formation_end": closes.index[9].isoformat(),
+            "test_start": closes.index[10].isoformat(),
+            "test_end": closes.index[-1].isoformat(),
+        },
+    )
+    monkeypatch.setattr(sys, "argv", [
+        "stat_arb_residual_wfo.py",
+        "--symbols",
+        "AAA,BBB,CCC",
+        "--n_factors",
+        "1",
+        "--sizing_mode",
+        "strength",
+        "--initial_capital",
+        "1000000",
+        "--adv_impact_model",
+        "sqrt",
+        "--output_dir",
+        str(tmp_path),
+        "--trial_ledger",
+        str(tmp_path / "trials.jsonl"),
+        "--design_trials",
+        "7",
+    ])
+
+    mod.main()
+
+    packet = validate_claim_packet_dir(tmp_path)
+    assert packet["strategy"] == "residual_stat_arb_wfo"
+    assert packet["config"]["initial_capital"] == 1_000_000.0
+    assert packet["config"]["design_trials"] == 7
+    assert packet["config"]["signal"]["sizing_mode"] == "strength"
+    assert packet["config"]["execution"]["adv_impact_model"] == "sqrt"
+    assert (tmp_path / "summary.json").exists()
+
+
+def test_backtest_main_target_weights_emits_root_claim_packet(monkeypatch, tmp_path: Path) -> None:
+    import research.scripts.backtest as mod
+
+    _patch_mlflow(monkeypatch, mod)
+    training_run = tmp_path / "training_run"
+    fold_dir = training_run / "AAA" / "fold_0"
+    fold_dir.mkdir(parents=True)
+    raw = _bars()
+    config = {
+        "prediction_horizon": 1,
+        "timeframe": "1d",
+        "start_date": "2026-01-02",
+        "end_date": None,
+        "use_sentiment": False,
+        "models": ["xgboost"],
+        "n_splits": 1,
+        "purge_horizon": 1,
+        "embargo_pct": 0.0,
+        "expanding": True,
+    }
+
+    class _Loader:
+        def fetch_historical_data(self, *args, **kwargs):
+            return raw
+
+        def fetch_dividends(self, *args, **kwargs):
+            return pd.Series([1.0], index=[raw.index[5]], name="amount")
+
+    monkeypatch.setattr(mod, "RESULTS_DIR", tmp_path)
+    monkeypatch.setattr(mod, "DataLoader", _Loader)
+    monkeypatch.setattr(mod, "load_training_run", lambda _path: (config, {"AAA": [fold_dir]}))
+    monkeypatch.setattr(
+        cli_common,
+        "build_features",
+        lambda raw_df, symbol, feature_engineer, sentiment_analyzer, horizon: _feature_frame(raw_df, horizon),
+    )
+    monkeypatch.setattr(mod, "load_fold_ensemble", lambda *a, **k: _ConstModel(0.7))
+    monkeypatch.setattr(
+        mod,
+        "_fold_date_range",
+        lambda _fold, usable, **kwargs: (usable.index[0], usable.index[-1]),
+    )
+    monkeypatch.setattr(mod, "_fold_model_data", lambda _fold, symbol, full_df: full_df)
+    captured = {}
+    real_backtest_target_weights = mod.backtest_target_weights
+
+    def _capture_backtest_target_weights(*args, **kwargs):
+        captured["dollar_volume"] = kwargs.get("dollar_volume")
+        captured["execution"] = kwargs.get("execution")
+        return real_backtest_target_weights(*args, **kwargs)
+
+    monkeypatch.setattr(mod, "backtest_target_weights", _capture_backtest_target_weights)
+    monkeypatch.setattr(sys, "argv", [
+        "backtest.py",
+        "--training_run",
+        str(training_run),
+        "--symbols",
+        "AAA",
+        "--adv_impact_coeff",
+        "25",
+        "--adv_floor_dollars",
+        "1000",
+    ])
+
+    mod.main()
+
+    out_dirs = sorted(tmp_path.glob("wfo_backtest_*"))
+    assert out_dirs
+    packet = validate_claim_packet_dir(out_dirs[-1])
+    assert packet["strategy"] == "ensemble_wfo_target_weights"
+    assert (out_dirs[-1] / "target_weights.csv").exists()
+    assert (out_dirs[-1] / "fill_weights.csv").exists()
+    assert captured["execution"].adv_impact_coeff == 25
+    assert captured["execution"].adv_floor_dollars == 1000
+    assert captured["dollar_volume"] is not None
+    pd.testing.assert_series_equal(
+        captured["dollar_volume"]["AAA"],
+        (raw["close"] * raw["volume"]).reindex(captured["dollar_volume"].index).rename("AAA"),
+    )
+
+
+def test_backtest_main_shared_construct_opt_in_emits_claim_packet(monkeypatch, tmp_path: Path) -> None:
+    import research.scripts.backtest as mod
+
+    _patch_mlflow(monkeypatch, mod)
+    training_run = tmp_path / "training_run"
+    fold_dir = training_run / "AAA" / "fold_0"
+    fold_dir.mkdir(parents=True)
+    raw = _bars()
+    config = {
+        "prediction_horizon": 1,
+        "timeframe": "1d",
+        "start_date": "2026-01-02",
+        "end_date": None,
+        "use_sentiment": False,
+        "models": ["xgboost"],
+        "n_splits": 1,
+        "purge_horizon": 1,
+        "embargo_pct": 0.0,
+        "expanding": True,
+    }
+
+    class _Loader:
+        def fetch_historical_data(self, *args, **kwargs):
+            return raw
+
+        def fetch_dividends(self, *args, **kwargs):
+            return pd.Series(dtype=float)
+
+    monkeypatch.setattr(mod, "RESULTS_DIR", tmp_path)
+    monkeypatch.setattr(mod, "DataLoader", _Loader)
+    monkeypatch.setattr(mod, "load_training_run", lambda _path: (config, {"AAA": [fold_dir]}))
+    monkeypatch.setattr(
+        cli_common,
+        "build_features",
+        lambda raw_df, symbol, feature_engineer, sentiment_analyzer, horizon: _feature_frame(raw_df, horizon),
+    )
+    monkeypatch.setattr(mod, "load_fold_ensemble", lambda *a, **k: _ConstModel(0.7))
+    monkeypatch.setattr(
+        mod,
+        "_fold_date_range",
+        lambda _fold, usable, **kwargs: (usable.index[0], usable.index[-1]),
+    )
+    monkeypatch.setattr(mod, "_fold_model_data", lambda _fold, symbol, full_df: full_df)
+    monkeypatch.setattr(sys, "argv", [
+        "backtest.py",
+        "--training_run",
+        str(training_run),
+        "--symbols",
+        "AAA",
+        "--construct_style",
+        "shared",
+    ])
+
+    mod.main()
+
+    out_dirs = sorted(tmp_path.glob("wfo_backtest_*"))
+    assert out_dirs
+    packet = validate_claim_packet_dir(out_dirs[-1])
+    assert packet["strategy"] == "ensemble_wfo_target_weights"
+    assert packet["config"]["construct_style"] == "shared"
+    assert packet["claim_tier"] == "no_claim"
+    assert (out_dirs[-1] / "target_weights.csv").exists()
+
+
+def test_rl_seed_eval_main_emits_member_claim_packet(monkeypatch, tmp_path: Path) -> None:
+    import research.scripts.rl_seed_eval as mod
+
+    _patch_mlflow(monkeypatch, mod)
+    training_run = tmp_path / "training_run"
+    fold_dir = training_run / "AAA" / "fold_0"
+    fold_dir.mkdir(parents=True)
+    raw = _bars()
+    config = {
+        "prediction_horizon": 1,
+        "timeframe": "1d",
+        "start_date": "2026-01-02",
+        "end_date": None,
+        "use_sentiment": False,
+    }
+
+    class _Loader:
+        def fetch_historical_data(self, *args, **kwargs):
+            return raw
+
+        def fetch_dividends(self, *args, **kwargs):
+            return pd.Series(dtype=float)
+
+    def _seed_returns(member, seed, **kwargs):
+        idx = pd.bdate_range("2026-03-02", periods=30)
+        values = 0.001 + seed * 0.0001 + np.linspace(-0.0005, 0.0005, len(idx))
+        return pd.Series(values, index=idx, name=member)
+
+    monkeypatch.setattr(mod, "DataLoader", _Loader)
+    monkeypatch.setattr(mod, "load_training_run", lambda _path: (config, {"AAA": [fold_dir]}))
+    monkeypatch.setattr(
+        cli_common,
+        "build_features",
+        lambda raw_df, symbol, feature_engineer, sentiment_analyzer, horizon: _feature_frame(raw_df, horizon),
+    )
+    monkeypatch.setattr(mod, "eval_member_seed", _seed_returns)
+    out_dir = tmp_path / "out"
+    monkeypatch.setattr(sys, "argv", [
+        "rl_seed_eval.py",
+        "--training_run",
+        str(training_run),
+        "--members",
+        "lstm_ppo",
+        "--seeds",
+        "0,1",
+        "--output_dir",
+        str(out_dir),
+    ])
+
+    mod.main()
+
+    packet = validate_claim_packet_dir(out_dir / "lstm_ppo")
+    assert packet["strategy"] == "rl_member_seed_robustness"
+
+
+def test_rl_seed_eval_rejects_sentiment_before_data_loading(monkeypatch, tmp_path: Path) -> None:
+    import research.scripts.rl_seed_eval as mod
+
+    training_run = tmp_path / "training_run"
+    fold_dir = training_run / "AAA" / "fold_0"
+    fold_dir.mkdir(parents=True)
+    config = {
+        "prediction_horizon": 1,
+        "timeframe": "1d",
+        "start_date": "2026-01-02",
+        "end_date": None,
+        "use_sentiment": True,
+    }
+
+    class _Loader:
+        def __init__(self, *args, **kwargs):
+            raise AssertionError("DataLoader should not be constructed")
+
+    monkeypatch.setattr(mod, "DataLoader", _Loader)
+    monkeypatch.setattr(mod, "load_training_run", lambda _path: (config, {"AAA": [fold_dir]}))
+    monkeypatch.setattr(sys, "argv", [
+        "rl_seed_eval.py",
+        "--training_run",
+        str(training_run),
+        "--members",
+        "lstm_ppo",
+        "--seeds",
+        "0",
+        "--output_dir",
+        str(tmp_path / "out"),
+    ])
+
+    with pytest.raises(ValueError, match="sentiment is disabled for rl_seed_eval"):
+        mod.main()

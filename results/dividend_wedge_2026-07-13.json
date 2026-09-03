@@ -1,0 +1,34 @@
+{
+  "meta": {
+    "generated": "2026-07-13",
+    "run_dir": "results/demotion_b1",
+    "window": [
+      "2021-03-30",
+      "2026-06-12"
+    ],
+    "n_ever_held": 491,
+    "source": "https://data.alpaca.markets/v1/corporate-actions",
+    "records_reused": false,
+    "n_records": 7519,
+    "n_records_in_universe": 7519,
+    "n_special": 51,
+    "n_foreign": 435,
+    "n_ex_dates_off_calendar": 87
+  },
+  "wedge": {
+    "window_years": 5.201916495550993,
+    "total_wedge_return": -0.018758299274864533,
+    "annualized_wedge_bps": -36.06036215865405,
+    "long_leg": {
+      "flow_annualized_bps": 63.92805653073668,
+      "avg_gross": 0.49997759100662514,
+      "portfolio_yield_pct": 1.2786184357188437
+    },
+    "short_leg": {
+      "flow_annualized_bps": -99.98841868939076,
+      "avg_gross": 0.5001755508188195,
+      "portfolio_yield_pct": 1.9990664982665243
+    },
+    "n_ex_date_days_hit": 717
+  }
+}

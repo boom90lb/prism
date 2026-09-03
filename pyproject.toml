@@ -1,0 +1,105 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "prism"
+version = "0.3.4"
+description = "Prism — a cross-sectional systematic trading engine (score → residualize → construct → execute), evaluated under a purged-WFO, cost-realistic, deflation-adjusted honesty harness"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+authors = [
+    { name = "Brendon Reperttang", email = "boom90lb@alum.mit.edu" },
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+
+# Core = the production import path (SPEC N8): no JAX/torch/mlflow, and —
+# since the R1 vocabulary convergence quarantined the legacy forecaster
+# stack — no prophet/matplotlib either (tests/test_import_hygiene.py pins
+# the closure). xgboost/statsmodels stay core: prism.signal.ensemble_node
+# uses them.
+dependencies = [
+    "numpy>=1.24.0",
+    "pandas>=2.0.0",
+    "scikit-learn>=1.2.0",
+    "statsmodels>=0.14.0",
+    "xgboost>=1.7.0",
+    "pyarrow>=10.0.0",
+    "tqdm>=4.64.0",
+    "python-dotenv>=1.0.0",
+    "requests>=2.30.0",
+]
+
+[project.optional-dependencies]
+# Everything the quarantined research/ tree (the legacy forecaster stack,
+# RL members, mlflow tracking, batch WFO CLIs) needs on top of the core.
+# `transformers` rides here because it drags torch; the FinBERT sentiment
+# scorer imports it lazily. `prophet` moved here with research/models/ (it
+# was the only prophet importer, and it drags matplotlib transitively).
+research = [
+    "prophet>=1.1.0",
+    "jax[cuda12]>=0.5.3",
+    "flax>=0.10.5",
+    "distrax>=0.1.5",
+    "optax>=0.2.4",
+    "torch>=2.0.0",
+    "transformers>=4.40.0",
+    "gymnasium>=0.29.0",
+    "mlflow>=3.0.0",
+    "matplotlib>=3.7.0",
+]
+
+# Dev tooling is a PEP 735 dependency group (installed by a bare `uv sync`,
+# never shipped as an extra). flake8 was dropped in 0.3.1: its pyproject
+# config was inert (flake8 does not read pyproject.toml) and nothing ran it.
+[dependency-groups]
+dev = [
+    "pytest>=7.0.0",
+    "black>=22.10.0",
+    "isort>=5.10.0",
+    "mypy>=1.0.0",
+    "pandas-stubs>=2.2.3.250308",
+    "types-tqdm>=4.64.0.20250328",
+    "types-requests>=2.32.0.20250328",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/boom90lb/prism"
+"Bug Tracker" = "https://github.com/boom90lb/prism/issues"
+
+# The batch WFO / sweep / stat-arb CLIs are quarantined under research/
+# (SPEC §9), ship no entry points, and run as modules from the repo root
+# (`python -m research.scripts.training`). Only the production-side periodic
+# universe builder gets a console script.
+[project.scripts]
+prism-build-universe = "prism.scripts.build_sp500_universe:main"
+prism-doctor = "prism.scripts.doctor:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/prism"]
+
+[tool.black]
+line-length = 119
+target-version = ["py312"]
+
+[tool.isort]
+profile = "black"
+
+[[tool.mypy.overrides]]
+module = ["sklearn.*", "statsmodels.*", "prophet.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+# src-layout: make `prism` importable from the source tree so tests do not
+# depend on a (possibly stale) editable install. "." exposes the quarantined
+# top-level `research` package (SPEC §9), which ships no wheel.
+pythonpath = ["src", "."]
+markers = [
+    "research: needs the [research] extra (torch/jax/mlflow heavy deps)",
+]

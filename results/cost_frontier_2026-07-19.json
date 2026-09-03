@@ -1,0 +1,174 @@
+{
+  "meta": {
+    "generated": "2026-07-19",
+    "script": "research/scripts/cost_frontier.py",
+    "status": "uncounted diagnostic: re-prices stored artifacts, searches nothing, appends no ledger row, moves no ratified statistic",
+    "axis_note": "spread cost per dollar traded is AUM-invariant in the shipped model and the certified runs set adv_impact_coeff=0, so the capacity_curve AUM axis is flat by construction (src/prism/validation/capacity.py:55-68); the meaningful axis is the effective one-way spread level",
+    "flat_levels_one_way_bps": [
+      0.0,
+      0.5,
+      1.0,
+      2.0
+    ],
+    "doc": "docs/cost_frontier.md"
+  },
+  "frozen_stack_trial3": {
+    "run_dir": "results/r2_t3_full",
+    "config_hash": "d4c93af68855",
+    "cert_reference": "docs/certifications/001-residual-reversion-daily-negative.md row 9 (frozen stack)",
+    "commission_bps_held": 1.0,
+    "adv_impact_coeff": 0.0,
+    "validation": {
+      "recomputed_sharpe": -0.7507369107978005,
+      "stored_sharpe": -0.750736910797816,
+      "recomputed_total_cost": 0.11780894423220888,
+      "stored_total_cost": 0.11780894423222565,
+      "recomputed_avg_turnover": 0.2245083977355135,
+      "stored_avg_turnover": 0.2245083977355135,
+      "n_obs": 1308
+    },
+    "granularity": "daily",
+    "realized_effective_one_way_spread_bps": 2.5710247057422655,
+    "break_even_one_way_spread_bps": -0.23100864807297183,
+    "frontier": [
+      {
+        "level": "flat_0bp",
+        "one_way_spread_bps": 0.0,
+        "net_annualized_sharpe": -0.06195693097997359,
+        "net_total_return": -0.007906670314812625,
+        "net_annualized_return": -0.0015281886457574334,
+        "gross_annualized_sharpe": 0.3245158815200678,
+        "total_cost": 0.042309008083234734,
+        "cost_to_gross": 0.03264518343386258,
+        "toll_booth_fraction": 0.03287461773700306
+      },
+      {
+        "level": "flat_0.5bp",
+        "one_way_spread_bps": 0.5,
+        "net_annualized_sharpe": -0.19603183822697318,
+        "net_total_return": -0.02236748758882634,
+        "net_annualized_return": -0.004348774452997195,
+        "gross_annualized_sharpe": 0.32451588152006766,
+        "total_cost": 0.05699185729513731,
+        "cost_to_gross": 0.04397431468911033,
+        "toll_booth_fraction": 0.04128440366972477
+      },
+      {
+        "level": "flat_1bp",
+        "one_way_spread_bps": 1.0,
+        "net_annualized_sharpe": -0.3300602522763426,
+        "net_total_return": -0.03661775578746185,
+        "net_annualized_return": -0.007161438590983393,
+        "gross_annualized_sharpe": 0.32451588152006766,
+        "total_cost": 0.0716747065070399,
+        "cost_to_gross": 0.05530344594435808,
+        "toll_booth_fraction": 0.046636085626911315
+      },
+      {
+        "level": "flat_2bp",
+        "one_way_spread_bps": 2.0,
+        "net_annualized_sharpe": -0.5979243620311037,
+        "net_total_return": -0.06449884928796734,
+        "net_annualized_return": -0.012763090274991673,
+        "gross_annualized_sharpe": 0.3245158815200678,
+        "total_cost": 0.10104040493084505,
+        "cost_to_gross": 0.07796170845485359,
+        "toll_booth_fraction": 0.06574923547400612
+      },
+      {
+        "level": "bucket_v1_as_run",
+        "one_way_spread_bps": 2.5710247057422655,
+        "net_annualized_sharpe": -0.7507369107978005,
+        "net_total_return": -0.08005658556469375,
+        "net_annualized_return": -0.015947664469931344,
+        "gross_annualized_sharpe": 0.3245158815200678,
+        "total_cost": 0.11780894423220888,
+        "cost_to_gross": 0.09090013613753595,
+        "toll_booth_fraction": 0.07568807339449542
+      },
+      {
+        "level": "zero_cost_gross_ceiling",
+        "one_way_spread_bps": null,
+        "gross_ceiling": true,
+        "deflated_read": "gross ceiling, not a claim: the best residual selection-set DSR is 0.145 (docs/certifications/001-residual-reversion-daily-negative.md:108-109); deflation fails the sleeve before costs are even charged",
+        "net_annualized_sharpe": 0.3245158815200678,
+        "net_total_return": 0.03496844193905857,
+        "net_annualized_return": 0.006643896738202093,
+        "gross_annualized_sharpe": 0.3245158815200678,
+        "total_cost": 0.0,
+        "cost_to_gross": 0.0,
+        "toll_booth_fraction": 0.0
+      }
+    ]
+  },
+  "etf_factor_run": {
+    "config_hash": "a2c5538e70b1",
+    "artifact_status": "per-day artifacts not on disk (ledger output_dir was in a deleted worktree); reconstructed from results/stat_arb_residual_trials.jsonl aggregates + docs/stat_arb.md:218-232",
+    "inputs": {
+      "config_hash": "a2c5538e70b1",
+      "net_annualized_sharpe": -0.22606475156753253,
+      "n_obs": 1304,
+      "gross_cum_return_arith": 0.061,
+      "cost_cum_arith": 0.086,
+      "avg_daily_turnover": 0.26,
+      "commission_bps": 1.0,
+      "spread_bps_as_run": 1.0,
+      "doc_gross_annualized_sharpe": 0.54,
+      "residual_set_dsr_recorded": 0.029
+    },
+    "granularity": "aggregate",
+    "implied_annualized_vol": 0.021371258942661935,
+    "implied_gross_annualized_sharpe": 0.5515979938247798,
+    "as_run_net_annualized_sharpe": -0.22606475156753253,
+    "break_even_one_way_spread_bps": 0.2626238791882969,
+    "frontier": [
+      {
+        "level": "flat_0bp",
+        "one_way_spread_bps": 0.0,
+        "net_annualized_sharpe": 0.0805152219182926,
+        "net_annualized_return_arith": 0.001720711656441721,
+        "net_window_return_arith": 0.008904000000000018,
+        "cost_ann_arith": 0.010067631901840488,
+        "cost_to_gross_pnl": 0.8540327868852456
+      },
+      {
+        "level": "flat_0.5bp",
+        "one_way_spread_bps": 0.5,
+        "net_annualized_sharpe": -0.07277476482461999,
+        "net_annualized_return_arith": -0.0015552883435582792,
+        "net_window_return_arith": -0.008047999999999986,
+        "cost_ann_arith": 0.013343631901840488,
+        "cost_to_gross_pnl": 1.131934426229508
+      },
+      {
+        "level": "flat_1bp",
+        "one_way_spread_bps": 1.0,
+        "net_annualized_sharpe": -0.22606475156753253,
+        "net_annualized_return_arith": -0.004831288343558279,
+        "net_window_return_arith": -0.024999999999999984,
+        "cost_ann_arith": 0.016619631901840487,
+        "cost_to_gross_pnl": 1.4098360655737703
+      },
+      {
+        "level": "flat_2bp",
+        "one_way_spread_bps": 2.0,
+        "net_annualized_sharpe": -0.5326447250533577,
+        "net_annualized_return_arith": -0.01138328834355828,
+        "net_window_return_arith": -0.058903999999999984,
+        "cost_ann_arith": 0.02317163190184049,
+        "cost_to_gross_pnl": 1.965639344262295
+      },
+      {
+        "level": "zero_cost_gross_ceiling",
+        "one_way_spread_bps": null,
+        "gross_ceiling": true,
+        "deflated_read": "gross ceiling, not a claim: the best residual selection-set DSR is 0.145 (docs/certifications/001-residual-reversion-daily-negative.md:108-109); deflation fails the sleeve before costs are even charged; this run's own recorded residual_set_dsr ~0.029 (docs/stat_arb.md:218-232)",
+        "net_annualized_sharpe": 0.5515979938247798,
+        "net_annualized_return_arith": 0.011788343558282208,
+        "net_window_return_arith": 0.061000000000000006,
+        "cost_ann_arith": 0.0,
+        "cost_to_gross_pnl": 0.0
+      }
+    ]
+  }
+}

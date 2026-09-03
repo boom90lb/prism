@@ -1,0 +1,5 @@
+name = "prism-formal"
+defaultTargets = ["PrismFormal"]
+
+[[lean_lib]]
+name = "PrismFormal"

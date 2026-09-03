@@ -1,0 +1,100 @@
+{
+  "summary": {
+    "config_hash": {
+      "cert": "000b74941cfd",
+      "repro": "583b9155eab7"
+    },
+    "sharpe": {
+      "cert": 0.46544245642237375,
+      "repro": 0.47901244503477025
+    },
+    "annualized_vol": {
+      "cert": 0.11507946745850657,
+      "repro": 0.11515062650274262
+    },
+    "total_return": {
+      "cert": 0.27579902407593426,
+      "repro": 0.28635304380002324
+    },
+    "oos_periodic_sharpe": {
+      "cert": 0.029320118792967115,
+      "repro": 0.030174947725404726
+    },
+    "n_folds": {
+      "cert": 21.0,
+      "repro": 21.0
+    },
+    "avg_turnover": {
+      "cert": 0.049976844189589156,
+      "repro": 0.0500472539138273
+    }
+  },
+  "columns": {
+    "removed": [
+      "ADS",
+      "FB",
+      "INFO",
+      "PCLN",
+      "SBNY",
+      "SOLS",
+      "WLTW"
+    ],
+    "added": [
+      "FLEX",
+      "HONA",
+      "MRVL"
+    ],
+    "removed_ever_nonzero_in_cert": [],
+    "added_ever_nonzero_in_repro": [],
+    "n_common": 567
+  },
+  "index_equal": true,
+  "books": {
+    "max_abs_weight_diff": 0.0107183580387685,
+    "n_days_with_any_diff": 307,
+    "max_daily_active_share": 0.021397885396835084,
+    "mean_daily_active_share": 0.0037571436370811948,
+    "names_ever_differing": [
+      "AAL",
+      "AAP",
+      "ABBV",
+      "ABT",
+      "ACN",
+      "ADBE",
+      "ADI",
+      "ADM",
+      "ADP",
+      "ADSK",
+      "AEE",
+      "AEP",
+      "AES",
+      "AJG",
+      "AKAM",
+      "ALB",
+      "ALGN",
+      "ALK",
+      "AMAT",
+      "AMD",
+      "AMGN",
+      "ANET",
+      "APA",
+      "APD",
+      "APH",
+      "APO",
+      "APP",
+      "APTV",
+      "ARE",
+      "ARES",
+      "ATO",
+      "AVB",
+      "AVGO",
+      "AXON",
+      "AXP",
+      "AZO",
+      "BA",
+      "BAC",
+      "BALL",
+      "BAX"
+    ]
+  }
+}

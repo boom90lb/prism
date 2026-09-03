@@ -1,0 +1,264 @@
+{
+  "meta": {
+    "generated": "2026-07-17",
+    "run_dir": "results/demotion_b1",
+    "cache_suffix": "_1d_2020-01-01_2026-06-16.parquet",
+    "n_test_rows": 1308,
+    "n_folds": 21,
+    "note": "fold-opening targets were band-stepped from flat in the recorded run; the measured cost saving is a lower bound on the flatten artifact"
+  },
+  "validation": {
+    "max_abs_return_diff": 3.400058012914542e-16,
+    "mean_abs_return_diff": 3.6097637878746416e-17,
+    "tolerance": 1e-12,
+    "recorded_sharpe": 0.46544245642237375,
+    "replayed_sharpe": 0.4654424564223728,
+    "recorded_total_cost": 0.03695893383824346,
+    "replayed_total_cost": 0.036958933838243245,
+    "dropped_all_zero_columns": [],
+    "missing_caches": []
+  },
+  "boundary_decomposition": {
+    "n_interior_boundaries": 20,
+    "avg_gross_at_fold_end": 1.000510204081627,
+    "avg_gross_next_open_book": 0.9999999999999938,
+    "avg_turnover_flatten_per_boundary": 2.000510204081621,
+    "avg_turnover_carry_per_boundary": 0.5722324432676678,
+    "avg_turnover_saved_per_boundary": 1.4282777608139534,
+    "total_turnover_saved": 28.56555521627907,
+    "carry_over_flatten_ratio": 0.2860432514166374
+  },
+  "baseline_replayed": {
+    "total_return": 0.2757990240759327,
+    "annualized_return": 0.04804533575295444,
+    "annualized_vol": 0.11507946745850595,
+    "sharpe": 0.4654424564223728,
+    "periodic_sharpe": 0.029320118792967056,
+    "max_drawdown": 0.13999581002068795,
+    "skew_daily": -0.49095100780314715,
+    "kurtosis_daily": 2.150600161448332,
+    "worst_day": -0.03979584790649206,
+    "avg_gross": 0.9680381326842606,
+    "avg_turnover": 0.04997684418958887,
+    "total_cost": 0.036958933838243245,
+    "total_cost_bps_per_year": 71.20528537643195,
+    "total_borrow": 0.012563933478901302,
+    "years": 5.190476190476191
+  },
+  "carry_interior_terminal_flatten": {
+    "total_return": 0.32185215825213764,
+    "annualized_return": 0.05523007677765834,
+    "annualized_vol": 0.11648771860048644,
+    "sharpe": 0.5198679082813344,
+    "periodic_sharpe": 0.032748599997993975,
+    "max_drawdown": 0.14258967290073,
+    "skew_daily": -0.4518807235948647,
+    "kurtosis_daily": 2.026275782801691,
+    "worst_day": -0.03979584790649206,
+    "avg_gross": 0.9986347750109159,
+    "avg_turnover": 0.028137734697020786,
+    "total_cost": 0.026880627541770764,
+    "total_cost_bps_per_year": 51.78836498873267,
+    "total_borrow": 0.012961208048149923,
+    "years": 5.190476190476191
+  },
+  "carry_all_boundaries": {
+    "total_return": 0.34357670513249716,
+    "annualized_return": 0.05854936800289634,
+    "annualized_vol": 0.11669298307242448,
+    "sharpe": 0.5460764043605738,
+    "periodic_sharpe": 0.03439958006615299,
+    "max_drawdown": 0.14258967290073,
+    "skew_daily": -0.4470592522039903,
+    "kurtosis_daily": 2.010307149388753,
+    "worst_day": -0.03979584790649206,
+    "avg_gross": 0.9993993010047997,
+    "avg_turnover": 0.027373208703137,
+    "total_cost": 0.026478548176691402,
+    "total_cost_bps_per_year": 51.01371667068985,
+    "total_borrow": 0.012971128683070557,
+    "years": 5.190476190476191
+  },
+  "certified_recorded": {
+    "sharpe": 0.46544245642237375,
+    "annualized_vol": 0.11507946745850657,
+    "annualized_return": 0.048045335752954665,
+    "max_drawdown": 0.13999581002068906,
+    "avg_gross": 0.9680381326842661,
+    "avg_turnover": 0.049976844189589156,
+    "total_cost": 0.03695893383824346,
+    "total_return": 0.27579902407593426,
+    "skew_daily": -0.49095100780315154,
+    "kurtosis_daily": 2.150600161448395,
+    "worst_day": -0.0397958479064924,
+    "oos_periodic_sharpe": 0.029320118792967115
+  },
+  "deltas_carryA_minus_base": {
+    "sharpe": 0.05442545185896164,
+    "periodic_sharpe": 0.0034284812050269196,
+    "annualized_vol": 0.001408251141980496,
+    "annualized_return": 0.0071847410247039,
+    "max_drawdown": 0.0025938628800420416,
+    "skew_daily": 0.03907028420828246,
+    "avg_gross": 0.030596642326655266,
+    "avg_turnover": -0.021839109492568086,
+    "total_cost": -0.01007830629647248,
+    "total_cost_bps_per_year": -19.416920387699278,
+    "total_return": 0.046053134176204935
+  },
+  "deltas_carryB_minus_base": {
+    "sharpe": 0.080633947938201,
+    "periodic_sharpe": 0.005079461273185936,
+    "annualized_vol": 0.001613515613918537,
+    "annualized_return": 0.010504032249941897,
+    "max_drawdown": 0.0025938628800420416,
+    "skew_daily": 0.04389175559915687,
+    "avg_gross": 0.031361168320539035,
+    "avg_turnover": -0.022603635486451872,
+    "total_cost": -0.010480385661551843,
+    "total_cost_bps_per_year": -20.191568705742093,
+    "total_return": 0.06777768105656445
+  },
+  "per_boundary": [
+    {
+      "boundary": 0,
+      "gross_B": 0.9999999999999903,
+      "gross_Bnext": 0.9999999999999905,
+      "turnover_flatten": 1.999999999999981,
+      "turnover_carry": 0.41304347826086557
+    },
+    {
+      "boundary": 1,
+      "gross_B": 0.9999999999999903,
+      "gross_Bnext": 0.9999999999999905,
+      "turnover_flatten": 1.999999999999981,
+      "turnover_carry": 0.54347826086956
+    },
+    {
+      "boundary": 2,
+      "gross_B": 0.9999999999999986,
+      "gross_Bnext": 0.9999999999999974,
+      "turnover_flatten": 1.999999999999996,
+      "turnover_carry": 0.7056474296331938
+    },
+    {
+      "boundary": 3,
+      "gross_B": 0.9999999999999974,
+      "gross_Bnext": 0.9999999999999976,
+      "turnover_flatten": 1.9999999999999951,
+      "turnover_carry": 0.7659574468085089
+    },
+    {
+      "boundary": 4,
+      "gross_B": 0.9999999999999976,
+      "gross_Bnext": 0.9999999999999976,
+      "turnover_flatten": 1.9999999999999951,
+      "turnover_carry": 0.6170212765957432
+    },
+    {
+      "boundary": 5,
+      "gross_B": 0.9999999999999974,
+      "gross_Bnext": 0.9999999999999976,
+      "turnover_flatten": 1.9999999999999951,
+      "turnover_carry": 0.3404255319148928
+    },
+    {
+      "boundary": 6,
+      "gross_B": 0.9999999999999976,
+      "gross_Bnext": 0.9999999999999936,
+      "turnover_flatten": 1.9999999999999911,
+      "turnover_carry": 0.5054870058964853
+    },
+    {
+      "boundary": 7,
+      "gross_B": 0.9999999999999936,
+      "gross_Bnext": 0.9999999999999936,
+      "turnover_flatten": 1.9999999999999871,
+      "turnover_carry": 0.5624999999999964
+    },
+    {
+      "boundary": 8,
+      "gross_B": 0.9999999999999936,
+      "gross_Bnext": 0.9999999999999936,
+      "turnover_flatten": 1.9999999999999871,
+      "turnover_carry": 0.7083333333333288
+    },
+    {
+      "boundary": 9,
+      "gross_B": 0.9999999999999936,
+      "gross_Bnext": 0.9999999999999934,
+      "turnover_flatten": 1.9999999999999871,
+      "turnover_carry": 0.5416666666666632
+    },
+    {
+      "boundary": 10,
+      "gross_B": 0.9999999999999936,
+      "gross_Bnext": 0.9999999999999936,
+      "turnover_flatten": 1.9999999999999871,
+      "turnover_carry": 0.5208333333333299
+    },
+    {
+      "boundary": 11,
+      "gross_B": 0.9999999999999936,
+      "gross_Bnext": 0.9999999999999936,
+      "turnover_flatten": 1.9999999999999871,
+      "turnover_carry": 0.7083333333333288
+    },
+    {
+      "boundary": 12,
+      "gross_B": 0.9999999999999936,
+      "gross_Bnext": 0.9999999999999936,
+      "turnover_flatten": 1.9999999999999871,
+      "turnover_carry": 0.6041666666666627
+    },
+    {
+      "boundary": 13,
+      "gross_B": 0.9999999999999936,
+      "gross_Bnext": 0.9999999999999936,
+      "turnover_flatten": 1.9999999999999871,
+      "turnover_carry": 0.4999999999999968
+    },
+    {
+      "boundary": 14,
+      "gross_B": 0.9999999999999936,
+      "gross_Bnext": 0.999999999999994,
+      "turnover_flatten": 1.9999999999999876,
+      "turnover_carry": 0.6734693877550977
+    },
+    {
+      "boundary": 15,
+      "gross_B": 0.999999999999994,
+      "gross_Bnext": 0.999999999999994,
+      "turnover_flatten": 1.999999999999988,
+      "turnover_carry": 0.673469387755098
+    },
+    {
+      "boundary": 16,
+      "gross_B": 0.999999999999994,
+      "gross_Bnext": 0.999999999999994,
+      "turnover_flatten": 1.999999999999988,
+      "turnover_carry": 0.489795918367344
+    },
+    {
+      "boundary": 17,
+      "gross_B": 0.999999999999994,
+      "gross_Bnext": 0.999999999999994,
+      "turnover_flatten": 1.999999999999988,
+      "turnover_carry": 0.61224489795918
+    },
+    {
+      "boundary": 18,
+      "gross_B": 1.010204081632647,
+      "gross_Bnext": 0.999999999999994,
+      "turnover_flatten": 2.010204081632641,
+      "turnover_carry": 0.43877551020407907
+    },
+    {
+      "boundary": 19,
+      "gross_B": 0.999999999999994,
+      "gross_Bnext": 0.9999999999999901,
+      "turnover_flatten": 1.999999999999984,
+      "turnover_carry": 0.5199999999999987
+    }
+  ]
+}
