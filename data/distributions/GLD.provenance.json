@@ -1,0 +1,87 @@
+{
+  "symbol": "GLD",
+  "issuer": "SPDR Gold Trust (sponsor: World Gold Trust Services, LLC; marketing agent: State Street Global Advisors Funds Distributors, LLC)",
+  "source_url": "https://www.ssga.com/library-content/pdfs/etf/us/6-spdr_gold-trust_prospectus.pdf",
+  "source_kind": "issuer_pdf",
+  "captured_at": "2026-09-03T14:45:00-07:00",
+  "http_status": 200,
+  "fetch_method": "python requests GET (sandboxed; no sandbox bypass needed)",
+  "raw_file": "/tmp/claude-1000/-home-b90-prism/a3a82832-90e1-4e4f-a4ed-ac289ce72644/scratchpad/distributions/GLD_raw.pdf",
+  "sha256": "be9415b153f3186f52e3009fa58beaf9eb39077dcc600859b9fbbd18d44118ee",
+  "raw_file_bytes": 228072,
+  "n_records": 0,
+  "first_ex_date": null,
+  "last_ex_date": null,
+  "coverage": "listing (2004-11-18) through 2026-07-17: no cash distributions found or expected",
+  "columns_in_source": [],
+  "parsing_notes": "GLD is a grantor trust holding only gold bullion. It has never paid a regular cash distribution; expenses are paid by selling gold, which reduces gold-per-share instead of producing cash to shareholders. No issuer distribution table/CSV exists to parse: the ssga.com GLD product page has a 'Distributions' tab (anchor #dividend) whose table is rendered client-side and is empty in the delivered HTML; the ssga.com fundfinder JSON record for GLD carries no distribution fields; the ssga.com spdr-product-data-us-en.xlsx (as of Sep 02 2026) lists GLD with 'Distribution Frequency' = '-'; spdrgoldshares.com/usa/gld/ has no dividend/distribution content. Issuer statements confirming no cash distributions (verbatim): (1) Prospectus (ssga.com-hosted SPDR Gold Trust prospectus, dated Aug 2019 per cover), section DISTRIBUTIONS: 'The Trust Indenture provides for distributions to Shareholders in only two circumstances. First, if the Trustee and the Sponsor determine that the Trust's cash account balance exceeds the anticipated expenses of the Trust for the next 12 months and the excess amount is more than $0.01 per Share outstanding, they shall direct the excess amount to be distributed to the Shareholders. Second, if the Trust is terminated and liquidated, ...'; Risk factors: 'the Shares have limited voting and distribution rights (for example, Shareholders do not have the right to elect directors and will not receive dividends)'; 'The Trust does not generate any income and regularly sells gold to pay for its ongoing expenses.' (2) GLD FAQ (ssga.com, January 2026; same text in the spdrgoldshares.com January 2025 FAQ): 'Because the Trust sells only a de minimis amount of gold for payment of Trust expenses during the year and makes no distributions of sale proceeds to the Trust's shareholders ...'; 'GLD does not generate any income, and as GLD regularly sells gold to pay for its ongoing expenses, the amount of gold represented by each Share will decline over time to that extent.' The SSGA historical-data JSON endpoint (/bin/v1/ssmp/historical-data?...&ticker=GLD&section=<dividend|distribution|distributions|dividends>&date=<2024|2025|2026|all>) returned {'msg':'success','status':200} with no data payload for GLD; the same calls for SPY (a dividend-paying control) also returned no payload, so the correct 'section' parameter was not identified and that endpoint is inconclusive rather than confirmatory. Output GLD.csv is intentionally header-only (ex_date,pay_date,amount). No records were invented. Stock splits: none for GLD. The 1099-B/gold-sale proceeds are not cash distributions to shareholders and are excluded by construction.",
+  "secondary_issuer_sources": [
+    {
+      "url": "https://www.ssga.com/us/en/intermediary/etfs/spdr-gold-shares-gld",
+      "http_status": 200,
+      "content_type": "text/html",
+      "local_file": "/tmp/claude-1000/-home-b90-prism/a3a82832-90e1-4e4f-a4ed-ac289ce72644/scratchpad/distributions/GLD_ssga_page.html",
+      "sha256": "831e2a84d832ce16dd034c15aee1b03ab643af3d769155e4e24a7332f1912e9a",
+      "bytes": 179594
+    },
+    {
+      "url": "https://www.ssga.com/library-content/products/fund-docs/etfs/us/tax-documents/gld-faq.pdf",
+      "http_status": 200,
+      "content_type": "application/pdf",
+      "local_file": "/tmp/claude-1000/-home-b90-prism/a3a82832-90e1-4e4f-a4ed-ac289ce72644/scratchpad/distributions/GLD_ssga_faq.pdf",
+      "sha256": "bb312825fd536c11bc8f55f253606f971622a1e99f4976af55d1f73d276e560f",
+      "bytes": 165001
+    },
+    {
+      "url": "https://files.spdrgoldshares.com/spdr-cms/2025-10/GLD-FAQs-January-2025.pdf",
+      "http_status": 200,
+      "content_type": "application/pdf",
+      "local_file": "/tmp/claude-1000/-home-b90-prism/a3a82832-90e1-4e4f-a4ed-ac289ce72644/scratchpad/distributions/GLD_wgts_faq.pdf",
+      "sha256": "a252fa9fdf5d2ce61212ae777f6154ede2c82688b789bf03a208f3175975622c",
+      "bytes": 218624
+    },
+    {
+      "url": "https://www.spdrgoldshares.com/usa/gld/",
+      "http_status": 200,
+      "content_type": "text/html",
+      "local_file": "/tmp/claude-1000/-home-b90-prism/a3a82832-90e1-4e4f-a4ed-ac289ce72644/scratchpad/distributions/GLD_wgts_page.html",
+      "sha256": "b5df89f4fe57d5cd26c8f973113d7625e7a5361a95dbd32498fac9e2aba31b4f",
+      "bytes": 1316565
+    },
+    {
+      "url": "https://www.ssga.com/library-content/products/fund-data/etfs/us/spdr-product-data-us-en.xlsx",
+      "http_status": 200,
+      "content_type": "xlsx",
+      "local_file": "/tmp/claude-1000/-home-b90-prism/a3a82832-90e1-4e4f-a4ed-ac289ce72644/scratchpad/distributions/GLD_cand_spdr-product-data-us-en.xlsx",
+      "sha256": "5c7daa562bd26bd4d8d07237931ba4b1f88b545fc6258d8b28f15c809f1d7b05",
+      "bytes": 93699
+    },
+    {
+      "url": "https://www.ssga.com/bin/v1/ssmp/fund/fundfinder?country=us&language=en&role=intermediary&product=etfs&ui=fund-finder",
+      "http_status": 200,
+      "content_type": "application/json",
+      "local_file": "/tmp/claude-1000/-home-b90-prism/a3a82832-90e1-4e4f-a4ed-ac289ce72644/scratchpad/distributions/GLD_cand_fundfinder",
+      "sha256": "0a36b555fb52fa953debda79b8e484ce4cc892b01314c69a584d3bbea8fcc402",
+      "bytes": 846105
+    }
+  ],
+  "urls_tried_no_data": [
+    {
+      "url": "https://www.spdrgoldshares.com/usa/frequently-asked-questions/",
+      "result": "HTTP 404"
+    },
+    {
+      "url": "https://www.ssga.com/library-content/products/fund-data/etfs/us/distributions-us-en-gld.xlsx",
+      "result": "HTTP 404 (guessed path)"
+    },
+    {
+      "url": "https://www.ssga.com/library-content/products/fund-data/etfs/us/disthist-us-en-gld.xlsx",
+      "result": "HTTP 404 (guessed path)"
+    },
+    {
+      "url": "https://www.ssga.com/bin/v1/ssmp/historical-data?country=us&language=en&role=intermediary&ticker=GLD&product=etfs&section=dividend&date=2025",
+      "result": "HTTP 200, body {\"msg\":\"success\",\"status\":200}, no data (section param unverified; SPY control also empty)"
+    }
+  ],
+  "fetched": true
+}

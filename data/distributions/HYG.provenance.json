@@ -1,0 +1,71 @@
+{
+  "symbol": "HYG",
+  "issuer": "iShares (BlackRock)",
+  "fund_name": "iShares iBoxx $ High Yield Corporate Bond ETF",
+  "source_url": "https://www.blackrock.com/varnish-api/blk-one01-product-data/product-data/api/v1/get-fund-document?appType=PRODUCT_PAGE&appSubType=ISHARES&targetSite=us-ishares&locale=en_US&portfolioId=239565&component=fundDownload&userType=individual",
+  "source_page_url": "https://www.ishares.com/us/products/239565/ishares-iboxx-high-yield-corporate-bond-etf",
+  "source_kind": "issuer_csv",
+  "source_kind_detail": "issuer fund-download workbook (SpreadsheetML 2003 XML served as .xls, Content-Disposition filename=iShares-iBoxx--High-Yield-Corporate-Bond-ETF_fund.xls), 'Distributions' worksheet; this is the file behind the product page's Data Download button",
+  "captured_at": "2026-09-03T14:45:00-07:00",
+  "fetched": true,
+  "http_status": 200,
+  "fetch_method": "python requests GET inside the default sandbox (no sandbox override needed); desktop Chrome User-Agent; Referer https://www.ishares.com/",
+  "raw_file": "/tmp/claude-1000/-home-b90-prism/a3a82832-90e1-4e4f-a4ed-ac289ce72644/scratchpad/distributions/HYG_raw.xls",
+  "raw_sha256": "51229e263abb106b793395a9e4f33dcf3e864d284915d5a4c2b9bc11d09ef1cf",
+  "raw_bytes": 4655098,
+  "cross_check": {
+    "file": "/tmp/claude-1000/-home-b90-prism/a3a82832-90e1-4e4f-a4ed-ac289ce72644/scratchpad/distributions/HYG_raw.html",
+    "sha256": "d7c720876d582b625ed4d31d7855a36c23d00c8f1f991f8c9ac7ec8ae4e47ed2",
+    "url": "https://www.ishares.com/us/products/239565/ishares-iboxx-high-yield-corporate-bond-etf?siteEntryPassthrough=true",
+    "http_status": 200,
+    "description": "Issuer product page HTML; its server-rendered Distributions table (embedded JSON in the DistributionV3 component props and in performance.distributions.table) has 233 rows identical to the workbook on ex-date, record date, payable date and every amount (Decimal comparison)."
+  },
+  "n_records": 233,
+  "first_ex_date": "2007-05-01",
+  "last_ex_date": "2026-09-01",
+  "columns_in_source": [
+    "Record Date",
+    "Ex-Date",
+    "Payable Date",
+    "Total Distribution",
+    "Income",
+    "ST Cap Gains",
+    "LT Cap Gains",
+    "Return of Capital"
+  ],
+  "parsing_notes": "Workbook is SpreadsheetML XML; the Disclaimers sheet contains unescaped '&' in URLs so bare ampersands were escaped to '&amp;' before ElementTree parsing (no effect on the Distributions sheet). Distributions sheet: 1 header row + 233 data rows, all cells typed String for dates ('Mon DD, YYYY') and Number for amounts. ex_date/pay_date parsed with format '%b %d, %Y'; amount = 'Total Distribution' as float (6 dp in source). For all 233 rows Total Distribution == Income + ST Cap Gains + LT Cap Gains + Return of Capital exactly; ST/LT cap gains and return of capital are 0 on every row, so amount == Income throughout. All entries are cash per-share USD distributions; the sheet contains no splits and no reinvested/undistributed capital-gain lines. No duplicate ex-dates (no summing needed). Payable date >= ex-date on every row. Source is sorted descending; output ascending. Coverage: first ex-date 2007-05-01 (fund inception 2007-04-04; the issuer lists no April 2007 distribution), last ex-date 2026-09-01. Two rows fall after the requested 2026-07-17 horizon (2026-08-03 and 2026-09-01, the latter payable 2026-09-04) and were retained as issuer-published records. Calendar pattern: no January ex-dates in any year; every December has two ex-dates (early December plus a late-December distribution standing in for January), so 12 per full year; 233 = 9 (May-Dec 2007) + 18*12 (2008-2025) + 8 (Feb-Sep 2026). The ishares.com .ajax download endpoints did not yield a distributions file (see urls_tried), which is why the BlackRock get-fund-document endpoint was used.",
+  "urls_tried": [
+    "https://www.ishares.com/us/products/239565/ishares-iboxx-high-yield-corporate-bond-etf?siteEntryPassthrough=true  (200; product page, used as cross-check)",
+    "https://www.ishares.com/us/products/239565/ishares-iboxx-high-yield-corporate-bond-etf/1467271812596.ajax?fileType=xls&fileName=iShares-iBoxx-High-Yield-Corporate-Bond-ETF_fund&dataType=fund  (200 but an 11.7KB HTML holdings fragment, not a workbook)",
+    "https://www.ishares.com/us/products/239565/ishares-iboxx-high-yield-corporate-bond-etf/1467271812596.ajax?fileType=xls&fileName=iShares-iBoxx-%24-High-Yield-Corporate-Bond-ETF_fund&dataType=fund  (403)",
+    "https://www.ishares.com/us/products/239565/fund/1467271812596.ajax?fileType=xls&fileName=iShares-iBoxx-$-High-Yield-Corporate-Bond-ETF_fund&dataType=fund  (403)",
+    "https://www.ishares.com/us/products/239565/ishares-iboxx-high-yield-corporate-bond-etf/1467271812596.ajax?fileType=csv&fileName=HYG_distributions&dataType=fund  (200 but returned page HTML)",
+    "https://www.ishares.com/us/products/239565/ishares-iboxx-high-yield-corporate-bond-etf/1467271812596.ajax?tab=distributions&fileType=json  (200 but returned page HTML)",
+    "https://www.blackrock.com/varnish-api/blk-one01-product-data/product-data/api/v1/get-fund-document?appType=PRODUCT_PAGE&appSubType=ISHARES&targetSite=us-ishares&locale=en_US&portfolioId=239565&component=fundDownload&userType=individual  (200; 4,655,098-byte workbook; USED)"
+  ],
+  "gaps": [
+    "No January ex-dates in any year (issuer pays the January distribution with a late-December ex-date; a calendar pattern, not missing data).",
+    "No distribution between inception 2007-04-04 and first ex-date 2007-05-01 (none listed by issuer)."
+  ],
+  "missing_calendar_months_between_first_and_last": [
+    "2008-01",
+    "2009-01",
+    "2010-01",
+    "2011-01",
+    "2012-01",
+    "2013-01",
+    "2014-01",
+    "2015-01",
+    "2016-01",
+    "2017-01",
+    "2018-01",
+    "2019-01",
+    "2020-01",
+    "2021-01",
+    "2022-01",
+    "2023-01",
+    "2024-01",
+    "2025-01",
+    "2026-01"
+  ]
+}

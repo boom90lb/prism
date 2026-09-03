@@ -1,0 +1,37 @@
+{
+  "symbol": "EEM",
+  "issuer": "iShares (BlackRock)",
+  "source_url": "https://www.ishares.com/us/products/239637/ishares-msci-emerging-markets-etf/1467271812596.ajax?fileType=csv&fileName=EEM_distributions&dataType=fund",
+  "source_kind": "issuer_html_table",
+  "captured_at": "2026-09-03T14:45:00-07:00",
+  "http_status": 200,
+  "fetch_method": "curl -L (Chrome UA, Accept-Language en-US) GET of the issuer's own 'Distributions' download link (href found in the product page's Distributions section). Server answered http=200 content_type=text/csv;charset=UTF-8 size=1441768 but the body is the product-page HTML; the distribution table was read from the raw server-rendered JSON block \"performance.distributions.table\" inside that HTML (bracket-matched, json.loads, no regex on numbers).",
+  "csv_export_url_tried": "https://www.ishares.com/us/products/239637/ishares-msci-emerging-markets-etf/1467271812596.ajax?fileType=csv&fileName=EEM_distributions&dataType=fund",
+  "csv_export_result": "HTTP 200 with Content-Type text/csv but body was the product-page HTML (same with siteEntryPassthrough=true, Referer/Accept/X-Requested-With headers, no-UA, and via WebFetch); the embedded JSON in that HTML is the same table the page renders, so it was parsed instead",
+  "raw_file": "/tmp/claude-1000/-home-b90-prism/a3a82832-90e1-4e4f-a4ed-ac289ce72644/scratchpad/distributions/EEM_raw.html",
+  "sha256": "107b3a553d3ce31eaa7cbeec858a2715c7ebe7dd9ab1fe86d613f9d2bc1b175c",
+  "raw_bytes": 1441768,
+  "n_records": 47,
+  "first_ex_date": "2003-12-22",
+  "last_ex_date": "2026-06-15",
+  "columns_in_source": [
+    "exDate",
+    "incomeAmount",
+    "longTermCapitalGain",
+    "payableDate",
+    "recordDate",
+    "returnOnCapital",
+    "shortTermCapitalGain",
+    "totalDistribution"
+  ],
+  "amount_definition": "per-share cash total = totalDistribution column (issuer-reported) = incomeAmount + shortTermCapitalGain + longTermCapitalGain + returnOnCapital; all in USD",
+  "parsing_notes": "totalDistribution differs from component sum on 3 rows (max diff 0.000045); used totalDistribution as reported by issuer",
+  "coverage_note": "EEM inception 2003-04-07; first distribution ex-date in issuer table is 2003-12-22; cutoff applied ex_date <= 2026-07-17",
+  "secondary_confirmation": {
+    "url": "https://www.ishares.com/us/products/239637/ishares-msci-emerging-markets-etf",
+    "file": "/tmp/claude-1000/-home-b90-prism/a3a82832-90e1-4e4f-a4ed-ac289ce72644/scratchpad/distributions/EEM_canonical_page.html",
+    "sha256": "f87aa1aa514d8e78f3856c44f236cd9b02cbc74323f0b4bc54e86cb07e8d1e66",
+    "note": "canonical product page fetched separately (http 200, 1687754 bytes); carries the same table HTML-entity-encoded (&quot;), not parsed. An earlier independent fetch of the export URL (probe3.bin, sha256 5578d26b...) parsed to a byte-identical CSV."
+  },
+  "excluded": "none: no stock splits, no reinvested/undistributed capital gains rows in the issuer table; all shortTermCapitalGain/longTermCapitalGain/returnOnCapital values are 0.0 for every row, so every amount is ordinary income cash"
+}

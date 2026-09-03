@@ -1,0 +1,41 @@
+{
+  "symbol": "LQD",
+  "issuer": "iShares (BlackRock)",
+  "fund_name": "iShares iBoxx $ Investment Grade Corporate Bond ETF",
+  "source_url": "https://www.blackrock.com/varnish-api/blk-one01-product-data/product-data/api/v1/get-fund-document?appType=PRODUCT_PAGE&appSubType=ISHARES&targetSite=us-ishares&locale=en_US&portfolioId=239566&component=fundDownload&userType=individual",
+  "source_page_url": "https://www.ishares.com/us/products/239566/ishares-iboxx-investment-grade-corporate-bond-etf",
+  "source_kind": "issuer_xls",
+  "captured_at": "2026-09-03T14:45:00-07:00",
+  "http_status": 200,
+  "fetch_method": "python requests GET (sandboxed; no sandbox override needed); the source_url is the 'Data Download' (Excel) link on the ishares.com LQD product page, served with Content-Disposition attachment; filename=iShares-iBoxx--Investment-Grade-Corporate-Bond-ETF_fund.xls",
+  "raw_file": "/tmp/claude-1000/-home-b90-prism/a3a82832-90e1-4e4f-a4ed-ac289ce72644/scratchpad/distributions/LQD_raw.xls",
+  "raw_file_format": "SpreadsheetML 2003 XML (.xls extension); worksheets: Disclaimers, Holdings, Historical, Performance, Distributions",
+  "raw_file_bytes": 8805943,
+  "sha256": "c1b7bbc6e1a7d156d3492561c9eb15e65e5a56325caa23c5b8617046ebb69b2f",
+  "n_records": 289,
+  "first_ex_date": "2002-09-03",
+  "last_ex_date": "2026-09-01",
+  "last_ex_date_on_or_before_2026-07-17": "2026-07-01",
+  "columns_in_source": [
+    "Record Date",
+    "Ex-Date",
+    "Payable Date",
+    "Total Distribution",
+    "Income",
+    "ST Cap Gains",
+    "LT Cap Gains",
+    "Return of Capital"
+  ],
+  "cross_check": {
+    "secondary_issuer_source": "server-rendered DistributionV3 componentprops JSON embedded in the ishares.com LQD product page (saved as LQD_product_page.html / LQD_distribution_componentprops.json in scratchpad)",
+    "result": "identical: 289 rows, all dates and all five amount columns match the xls Distributions sheet exactly"
+  },
+  "parsing_notes": "Parsed the 'Distributions' worksheet of the issuer's Data Download workbook. The file is SpreadsheetML XML despite the .xls extension; strict XML parsing fails on one unescaped '&' in a URL inside the Disclaimers sheet, so bare '&' were escaped to '&amp;' before parsing (no data cells affected). amount = 'Total Distribution' per share in USD, which equals Income + ST Cap Gains + LT Cap Gains + Return of Capital on every row (max abs diff 0). All 289 rows are cash distributions with an ex-date and payable date; there are no stock splits, no undistributed/reinvested capital gains rows, and no return-of-capital rows. Exactly one row has a non-zero capital-gain component: ex 2012-12-03 (LT Cap Gains 0.009392 on total 0.276969), included since it was paid in cash. Ex-dates are unique; no summing across duplicate ex-dates was needed. Dates were 'Mon DD, YYYY' strings converted to YYYY-MM-DD. Every January has no ex-date and every December has two (a first-business-day monthly distribution plus a mid/late-December year-end distribution); this is iShares' standard schedule, not a gap. Coverage requested was through 2026-07-17; the file keeps the full history as published, which includes 2 ex-dates after that cutoff (2026-08-03, 2026-09-01). The 2026-09-01 record (payable 2026-09-04) was declared but not yet paid at capture time. Fund inception 2002-07-22 (per issuer page); first distribution ex-date 2002-09-03.",
+  "urls_tried": [
+    "https://www.ishares.com/us/products/239566/ishares-iboxx-investment-grade-corporate-bond-etf/1467271812596.ajax?fileType=csv&fileName=LQD_Distributions&dataType=fund  (HTTP 200 but returned the HTML product page, not a CSV; discarded)",
+    "https://www.ishares.com/us/products/239566/ishares-iboxx-investment-grade-corporate-bond-etf/1467271812596.ajax?fileType=xls&fileName=LQD_Distributions&dataType=fund  (same; discarded)",
+    "https://www.ishares.com/us/products/239566/ishares-iboxx-investment-grade-corporate-bond-etf  (HTTP 200; product page, SSR distribution table used as cross-check)",
+    "https://www.blackrock.com/varnish-api/blk-one01-product-data/product-data/api/v1/get-fund-document?...portfolioId=239566&component=fundDownload  (HTTP 200; primary source)"
+  ],
+  "fetched": true
+}

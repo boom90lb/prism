@@ -1,0 +1,48 @@
+{
+  "symbol": "PDBC",
+  "issuer": "Invesco (Invesco Optimum Yield Diversified Commodity Strategy No K-1 ETF); CUSIP 46090F100; ISIN US46090F1003; share class inception 2014-11-07 per issuer page metadata",
+  "source_url": "https://dng-api.invesco.com/cache/v1/accounts/en_US/shareclasses/46090F100/distribution?idType=cusip&productType=ETF",
+  "source_page_url": "https://www.invesco.com/us/en/financial-products/etfs/invesco-optimum-yield-diversified-commodity-strategy-no-k-1-etf.html",
+  "source_url_template_from_page": "https://dng-api.invesco.com/cache/v1/accounts/{locale}/shareclasses/{id}/distribution?idType={uniqueIdentifier}&productType=ETF (page productMetaData: locale=en_US, id=cusip 46090F100, uniqueIdentifier=cusip)",
+  "source_kind": "other: issuer JSON API (dng-api.invesco.com is the data backend called by the invesco.com product page's 'Yields & Distributions' dynamic table)",
+  "captured_at": "2026-09-03T14:45:00-07:00",
+  "http_status": 200,
+  "fetch_method": "curl via sandbox proxy (sandbox NOT disabled). www.invesco.com and dng-api.invesco.com answer HTTP 406 with an empty body (Via: 1.1 varnish) to curl/python-requests carrying Chrome/Firefox User-Agents; the same URLs return 200 with User-Agent 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'. Response content-type application/json; server header x_req_api: /adobe-global/v1/products/{locale}/shareclasses/{fundId}/distribution. Legacy endpoints (/us/financial-products/etfs/distributions?...&ticker=PDBC and .../product-detail/main/distributions/0?...action=download) now 301 to the generic ETF listing page and are dead.",
+  "raw_file": "/tmp/claude-1000/-home-b90-prism/a3a82832-90e1-4e4f-a4ed-ac289ce72644/scratchpad/distributions/PDBC_raw.json",
+  "raw_sha256": "654dfa3c7a81e97fb019ccaf78604f2afaa862c4579cf61c31dce183b836c43a",
+  "raw_bytes": 3454,
+  "n_records": 11,
+  "first_ex_date": "2016-12-16",
+  "last_ex_date": "2025-12-22",
+  "coverage_requested": "listing (2014-11-07) through 2026-07-17",
+  "columns_in_source": [
+    "cusip",
+    "currencyCode",
+    "distributions[].exDate",
+    "distributions[].recordDate",
+    "distributions[].payDate",
+    "distributions[].distributionAmountPerUnit",
+    "distributions[].ordinaryIncomeDistribution",
+    "distributions[].shortTermCapitalGainsDistribution",
+    "distributions[].longTermCapitalGainsDistribution",
+    "distributions[].returnOfCapitalDistribution",
+    "distributions[].liquidationDistribution"
+  ],
+  "column_mapping": {
+    "ex_date": "exDate",
+    "pay_date": "payDate",
+    "amount": "distributionAmountPerUnit"
+  },
+  "parsing_notes": "11 rows parsed with pandas from the API JSON; amount = distributionAmountPerUnit (the page's '$/Share' column), which equals ordinaryIncomeDistribution in every row; short/long-term gains are 0 or null, returnOfCapitalDistribution and liquidationDistribution are null/0 in every row, so max|perUnit - sum(components)| = 0.0 and every row is a cash income distribution. The page config also defines cashDistribution/totalDistribution/reinvestmentDistribution columns but the API does not emit them. No duplicate ex-dates (two separate Dec-2021 distributions, 2021-12-03 $5.39 and 2021-12-20 $1.75736, are distinct dates and kept as separate rows; no summing performed). Sorted ascending. Currency USD. The API returned byte-identical output (3454 bytes, 11 rows) under 8 parameter variants (sinceInception/startDate/fromDate/maxRowCount etc.), so the page's maxRowCount=10 is a client-side display limit and the file is the full server-side history. Cross-check: issuer distribution notice PDF (invesco.com /content/dam/invesco/us/en/product-documents/etf/flyer/pdbc-distribution-notice-dec-2024.pdf, also served at /us-rest/contentdetail?contentId=30764e28-1344-4e69-9e99-2bad61fa3a53) states ex 2024-12-23, record 2024-12-23, payable 2024-12-27, $0.57471/share = API row.",
+  "gaps": [
+    "No distributions between listing (2014-11-07) and 2016-12-16 in the API. Corroborated (numbers NOT taken from it) by the issuer's own N-CSRS financial highlights filed on EDGAR: FY2018 report https://www.sec.gov/Archives/edgar/data/1595386/000119312518214378/d579634dncsrs.htm and FY2019 report https://www.sec.gov/Archives/edgar/data/1595386/000119312519190424/d737733dncsrs.htm show 'Distributions to shareholders from net investment income' = '\u2014' for the period Nov 5, 2014 through Oct 31, 2015 and for FY ended Oct 31, 2016, then 1.12 (FY2017), 0.67 (FY2018), 0.15 (six months to Apr 30, 2019), matching API rows 1.12416 / 0.66914 / 0.15074.",
+    "No 2026 distribution through the 2026-07-17 cutoff (last row 2025-12-22); consistent with the fund's annual December cadence, not a data gap.",
+    "Record dates are in the raw JSON but not carried into the CSV (schema is ex_date, pay_date, amount)."
+  ],
+  "urls_tried": [
+    "https://www.invesco.com/us/financial-products/etfs/product-detail?audienceType=Investor&ticker=PDBC -> 406 (browser UA) / 301 -> product page 200 (Googlebot UA)",
+    "https://www.invesco.com/us/financial-products/etfs/distributions?audienceType=Investor&ticker=PDBC -> 406 / 301 to https://www.invesco.com/us/en/financial-products/etfs.html (dead)",
+    "https://www.invesco.com/us/financial-products/etfs/product-detail/main/distributions/0?audienceType=Investor&action=download&ticker=PDBC -> 406 / 301 to generic ETF listing (dead)",
+    "https://www.invesco.com/us-rest/contentdetail?contentId=30764e28-1344-4e69-9e99-2bad61fa3a53 -> 200 PDF (Dec-2024 distribution notice; saved as PDBC_usrest_30764e28.pdf in scratchpad)"
+  ]
+}

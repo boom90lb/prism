@@ -1,0 +1,47 @@
+{
+  "symbol": "EFA",
+  "issuer": "iShares (BlackRock)",
+  "fund_name": "iShares MSCI EAFE ETF",
+  "fund_inception_date": "2001-08-14",
+  "source_url": "https://www.ishares.com/us/products/239623/ishares-msci-eafe-etf",
+  "source_kind": "issuer_html_table",
+  "source_detail": "Distributions table embedded in the product page HTML as HTML-escaped JSON in the componentprops attribute of <walrus-render-on-client> under <div data-componentname=\"PerformanceV3\">; path containersByNameMap.distributions.subContainersByNameMap.table.dataPointsByNameMap",
+  "captured_at": "2026-09-03T14:45:00-07:00",
+  "fetch_method": "python requests GET (sandboxed; no sandbox bypass needed), User-Agent Chrome/126 desktop",
+  "http_status": 200,
+  "raw_file": "/tmp/claude-1000/-home-b90-prism/a3a82832-90e1-4e4f-a4ed-ac289ce72644/scratchpad/distributions/EFA_raw.html",
+  "raw_sha256": "6ea58e07e397b3eea60c7003e13b98f97323ead88af3e4f34c98ce4b246bcc2c",
+  "derived_file": "/tmp/claude-1000/-home-b90-prism/a3a82832-90e1-4e4f-a4ed-ac289ce72644/scratchpad/distributions/EFA_dist_attr_unescaped.json",
+  "n_records": 46,
+  "first_ex_date": "2001-10-02",
+  "last_ex_date": "2026-06-15",
+  "columns_in_source": [
+    "exDate",
+    "recordDate",
+    "payableDate",
+    "incomeAmount",
+    "shortTermCapitalGain",
+    "longTermCapitalGain",
+    "returnOnCapital",
+    "totalDistribution"
+  ],
+  "column_mapping": {
+    "ex_date": "exDate (yyyymmdd int)",
+    "pay_date": "payableDate (yyyymmdd int)",
+    "amount": "totalDistribution (per-share USD cash)"
+  },
+  "parsing_notes": "amount = totalDistribution as published by iShares. For the 41 rows with incomeAmount populated, totalDistribution equals incomeAmount+shortTermCapitalGain+longTermCapitalGain+returnOnCapital exactly (max abs diff 0.00e+00). incomeAmount is null in the source for the 5 oldest rows (ex-dates 2001-10-02, 2001-12-24, 2002-12-23, 2003-12-22, 2004-12-23) while totalDistribution is populated; totalDistribution used. All ST/LT capital-gain and return-of-capital fields are 0.0 for every row; no reinvested/undistributed capital-gain column exists in the source. No stock-split rows exist in this table. All 46 ex-dates are unique; 0 rows merged by ex-date-sum. Two distinct December 2021 distributions (ex 2021-12-13 and 2021-12-30) are kept as separate records. Coverage: fund inception 2001-08-14; first ex-date 2001-10-02; last ex-date 2026-06-15 (<= 2026-07-17 cutoff). Guessed download endpoints (<page>/1467271812596.ajax?fileType=csv|xls&fileName=EFA_distributions&dataType=fund, ?tab=distributions&fileType=json|csv) returned HTTP 200 but the product HTML page, not data; <page>/latest-distributions.csv and <page>/distributions.csv returned 404. Record dates are present in the source but not written to the CSV.",
+  "gaps": [
+    "Issuer table shows December-only ex-dates for 2002-2007 (no June distribution those years); this is the issuer's published record, not a fetch gap, but it means the 'semiannual' pattern only starts 2008-06-25."
+  ],
+  "urls_tried": [
+    "https://www.ishares.com/us/products/239623/ishares-msci-eafe-etf (200, used)",
+    "https://www.ishares.com/us/products/239623/ishares-msci-eafe-etf/1467271812596.ajax?fileType=csv&fileName=EFA_distributions&dataType=fund (200 but HTML page)",
+    "https://www.ishares.com/us/products/239623/ishares-msci-eafe-etf/1467271812596.ajax?fileType=xls&fileName=EFA_distributions&dataType=fund (200 but HTML page)",
+    "https://www.ishares.com/us/products/239623/ishares-msci-eafe-etf/1467271812596.ajax?tab=distributions&fileType=json (200 but HTML page)",
+    "https://www.ishares.com/us/products/239623/ishares-msci-eafe-etf/1467271812596.ajax?tab=distributions&fileType=csv (200 but HTML page)",
+    "https://www.ishares.com/us/products/239623/ishares-msci-eafe-etf/latest-distributions.csv (404)",
+    "https://www.ishares.com/us/products/239623/ishares-msci-eafe-etf/distributions.csv (404)"
+  ],
+  "fetched": true
+}

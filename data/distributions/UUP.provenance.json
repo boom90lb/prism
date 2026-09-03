@@ -1,0 +1,45 @@
+{
+  "symbol": "UUP",
+  "issuer": "Invesco (Invesco DB US Dollar Index Bullish Fund)",
+  "source_url": "https://dng-api.invesco.com/cache/v1/accounts/en_US/shareclasses/46141D203/distribution?idType=cusip&productType=ETF",
+  "source_page": "https://www.invesco.com/us/en/financial-products/etfs/invesco-db-us-dollar-index-bullish-fund.html",
+  "source_kind": "issuer_json_api (backs the 'Distributions' table in the product page's 'Yields & Distributions' section; endpoint template taken verbatim from the page's dynamic_table component config, tableVariation='distributions')",
+  "captured_at": "2026-09-03T14:45:00-07:00",
+  "http_status": 200,
+  "fetch_method": "curl (default curl User-Agent, headers Accept: application/json, Origin/Referer https://www.invesco.com) through the session sandbox proxy; invesco.com returns HTTP 406 (empty body, Fastly/Varnish) to requests carrying a spoofed Chrome/Firefox User-Agent, both inside and outside the sandbox (one out-of-sandbox retry was made to rule out egress-IP blocking) - default curl UA is served normally",
+  "raw_file": "/tmp/claude-1000/-home-b90-prism/a3a82832-90e1-4e4f-a4ed-ac289ce72644/scratchpad/distributions/UUP_raw.json",
+  "raw_sha256": "9d4d0a9f9544d04f84576cb3c0c8133c79f1b4f8865b567eed1126723ee70b0c",
+  "raw_bytes": 2775,
+  "n_records": 9,
+  "first_ex_date": "2007-12-17",
+  "last_ex_date": "2025-12-22",
+  "coverage_requested": "listing (2007-02-20) through 2026-07-17",
+  "columns_in_source": [
+    "cusip",
+    "currencyCode",
+    "distributions[]",
+    "distributionAmountPerUnit",
+    "exDate",
+    "liquidationDistribution",
+    "longTermCapitalGainsDistribution",
+    "ordinaryIncomeDistribution",
+    "payDate",
+    "recordDate",
+    "returnOfCapitalDistribution",
+    "shortTermCapitalGainsDistribution"
+  ],
+  "parsing_notes": "amount = distributionAmountPerUnit (the page's '$/Share' column), per-share USD cash; pay_date = payDate; recordDate retained only in the raw file. Source had 9 records, 0 duplicate ex-dates (no summing needed), all amounts > 0. Per-type breakdown fields (ordinaryIncome/shortTerm/longTerm/returnOfCapital) are internally inconsistent in the source (e.g. 2023-12-18 returnOfCapitalDistribution=2 vs total 1.74553; 2019-12-23 returnOfCapitalDistribution=1; several rows have all components 0 or null) and were NOT used; total per-share cash is what the fund paid regardless of tax character (return of capital kept). liquidationDistribution is null on every row; no reinvested/undistributed capital gains or stock-split rows are present in the source, so nothing was excluded. The endpoint was called without a date-range parameter and returned records back to 2007-12-17 (fund inception 2007-02-20), i.e. the full since-inception list the page's 'View since inception' option uses; the page component's maxRowCount=10 is a display limit only. Cross-check: issuer Qualified Notice PDFs (invesco.com tax center, 'Invesco DB pools Qualified Notice') independently show UUP ex 2019-12-23 0.52612, ex 2024-12-23 1.31709 (pay 2024-12-27), ex 2025-12-22 0.92686 (pay 2025-12-26) - all match. No 2026 distribution appears in the source through the capture date; UUP distributes yearly in December.",
+  "urls_tried": [
+    "https://www.invesco.com/us/financial-products/etfs/product-detail?audienceType=Investor&ticker=UUP (legacy portal; 406 to browser UAs, redirects to AEM page)",
+    "https://www.invesco.com/us/financial-products/etfs/distributions/export?audienceType=Investor&ticker=UUP&action=download (legacy export guess; 406)",
+    "https://www.invesco.com/us/en/financial-products/etfs/invesco-db-us-dollar-index-bullish-fund.html (200 with default curl UA; component config revealed the API)",
+    "https://www.invesco.com/content/dam/invesco/us/en/documents/tax-centre/Distribution-Qualified-Notices-25.12.09.pdf (cross-check)",
+    "https://www.invesco.com/us-rest/contentdetail?contentId=62d5f1ec872fe610VgnVCM1000006e36b50aRCRD&dnsName=us (2019 Qualified Notice, cross-check)",
+    "https://www.invesco.com/us-rest/contentdetail?contentId=083ba7fa-a1de-4f70-9b8e-e77ff1228dac&dnsName=us (2024 Qualified Notice, cross-check)"
+  ],
+  "fetched": true,
+  "gaps": [
+    "Cross-check only: the 2026 quarterly 'invesco-db-funds-qualified-notices-03-09-26.pdf' and '-06-09-26.pdf' links from the ETF Tax Center resolved to the invesco.com Country Splash HTML page instead of a PDF at capture time, so H1-2026 could not be independently corroborated from a notice; the primary API source shows no 2026 distribution through 2026-09-03 (UUP distributes yearly in December), so no record is missing for the requested window ending 2026-07-17.",
+    "No pre-2017 corroborating issuer document was checked (2007-12-17 and 2008-12-15 rows rest on the issuer API alone)."
+  ]
+}

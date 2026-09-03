@@ -1,0 +1,41 @@
+{
+  "symbol": "TLT",
+  "issuer": "iShares (BlackRock)",
+  "fund_name": "iShares 20+ Year Treasury Bond ETF",
+  "source_url": "https://www.blackrock.com/varnish-api/blk-one01-product-data/product-data/api/v1/get-fund-document?appType=PRODUCT_PAGE&appSubType=ISHARES&targetSite=us-ishares&locale=en_US&portfolioId=239454&component=fundDownload&userType=individual",
+  "source_page": "https://www.ishares.com/us/products/239454/ishares-20-year-treasury-bond-etf",
+  "source_kind": "issuer_csv",
+  "source_kind_note": "Issuer's official 'Data Download' spreadsheet (Content-Disposition: attachment; filename=iShares-20-Year-Treasury-Bond-ETF_fund.xls; SpreadsheetML XML, worksheets Disclaimers/Holdings/Historical/Performance/Distributions). Classified as issuer_csv because it is the issuer-hosted structured data download; format is XLS, not CSV.",
+  "captured_at": "2026-09-03T14:45:00-07:00",
+  "http_status": 200,
+  "fetch_method": "python requests GET with browser User-Agent, inside the default sandbox (no sandbox override needed). The download link was taken from the href in the TLT product page HTML.",
+  "raw_file": "/tmp/claude-1000/-home-b90-prism/a3a82832-90e1-4e4f-a4ed-ac289ce72644/scratchpad/distributions/TLT_raw.xls",
+  "sha256": "b4781507ace706459a4679a4ef24fb0c96ac663cdda2f61d976b5cd09b83c827",
+  "cross_check": {
+    "raw_file": "/tmp/claude-1000/-home-b90-prism/a3a82832-90e1-4e4f-a4ed-ac289ce72644/scratchpad/distributions/TLT_raw.html",
+    "sha256": "d490e236ea4893fba1f073d057addf992b5c0977eb563ec1b120c8c8d23f0716",
+    "description": "TLT product page HTML fetched at the same time; its Distributions section is server-rendered with the full 289-row table as JSON (walrus-render-on-client componentprops.distributionTableData, extracted to /tmp/claude-1000/-home-b90-prism/a3a82832-90e1-4e4f-a4ed-ac289ce72644/scratchpad/distributions/TLT_distribution_component.json). Outer-merge on ex-date against the XLS Distributions sheet: 289 matched, 0 left-only, 0 right-only, 0 payable-date mismatches, 0 amount mismatches (tol 1e-9)."
+  },
+  "n_records": 289,
+  "first_ex_date": "2002-09-03",
+  "last_ex_date": "2026-09-01",
+  "columns_in_source": [
+    "Record Date",
+    "Ex-Date",
+    "Payable Date",
+    "Total Distribution",
+    "Income",
+    "ST Cap Gains",
+    "LT Cap Gains",
+    "Return of Capital"
+  ],
+  "parsing_notes": "The XLS is SpreadsheetML XML; the whole file is not well-formed (a bare '&' inside a Disclaimers-sheet hyperlink), so the <ss:Worksheet ss:Name=\"Distributions\"> block was extracted by regex, bare ampersands escaped, and parsed with xml.etree; rows -> pandas DataFrame. Sheet has 1 header row + 289 data rows, no footer/notes rows. Dates parsed with format '%b %d, %Y' (0 failures). amount = 'Total Distribution', which equals Income + ST Cap Gains + LT Cap Gains + Return of Capital on every row (max abs diff < 1e-9); ST/LT cap gains and return of capital are 0 on all 289 rows, so every record is a cash income distribution. No reinvested/undistributed capital-gain rows and no split/stock-distribution rows exist in the sheet, so nothing was excluded. No duplicate ex-dates, so no summing was needed. Zero rows with amount <= 0. Amounts written with 6 decimals as published (USD per share). Calendar check: every month from 2002-09 to 2026-09 has exactly one ex-date except December (two: regular early-December plus a late-December year-end distribution) and January (none) in every year 2002-2026 -- the standard iShares bond-ETF distribution calendar, not a data gap. Two records post-date the requested 2026-07-17 coverage end and are retained: ex 2026-08-03 (0.330454, paid 2026-08-06) and ex 2026-09-01 (0.314686, payable 2026-09-04; declared and past ex-date but not yet paid at capture time). Filter on ex_date <= 2026-07-17 if a hard cutoff is needed (287 rows). Record Date is present in the source but not written to the CSV. Guessed legacy .ajax download URLs (fileType=csv|xls, fileName=TLT_distributions, dataType=fund) returned HTTP 200 with the HTML product page as the body rather than a data file and were discarded.",
+  "urls_tried": [
+    "https://www.ishares.com/us/products/239454/ishares-20-year-treasury-bond-etf (200; HTML, used as cross-check)",
+    "https://www.blackrock.com/varnish-api/blk-one01-product-data/product-data/api/v1/get-fund-document?...portfolioId=239454&component=fundDownload&userType=individual (200; XLS, primary)",
+    "https://www.ishares.com/us/products/239454/ishares-20-year-treasury-bond-etf/1467271812596.ajax?fileType=csv&fileName=TLT_distributions&dataType=fund (200; body was the HTML page, not CSV)",
+    "https://www.ishares.com/us/products/239454/ishares-20-year-treasury-bond-etf/1467271812596.ajax?fileType=xls&fileName=TLT_distributions&dataType=fund (200; body was the HTML page, not XLS)",
+    "https://www.ishares.com/us/products/239454/ishares-20-year-treasury-bond-etf/1467271812596.ajax?fileType=csv&fileName=iShares-20-Year-Treasury-Bond-ETF_fund&dataType=fund (200; body was the HTML page, not CSV)"
+  ],
+  "fetched": true
+}
