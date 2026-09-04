@@ -246,7 +246,7 @@ def backtest_target_weights(
     max_gross_exposure: float | None = None,
     dividends: pd.DataFrame | Mapping[str, pd.Series] | None = None,
     dollar_volume: pd.DataFrame | None = None,
-    spread_bps_per_name: pd.Series | None = None,
+    spread_bps_per_name: pd.Series | pd.DataFrame | None = None,
 ) -> PortfolioBacktestResult:
     """Backtest close-time target weights with next-open fills.
 
@@ -257,7 +257,11 @@ def backtest_target_weights(
 
     ``spread_bps_per_name`` (optional, indexed by symbol) prices the spread
     per name instead of the flat ``execution.spread_bps`` (r2_design.md §3);
-    missing/NaN entries fall back to the flat spread, ``None`` is bit-identical
+    missing/NaN entries fall back to the flat spread, ``None`` is bit-identical.
+    A day x symbol ``DataFrame`` prices each fill day's trades with that day's
+    row (a walk-forward may re-bucket per fold); a constant frame is
+    bit-identical to the Series form, and missing days/names fall back to the
+    flat spread, never to a silent zero. ``None`` remains bit-identical
     to the flat computation.
     """
     if initial_capital <= 0:
@@ -287,7 +291,17 @@ def backtest_target_weights(
     divs = _dividend_frame(dividends, index, symbols)
     dvol = None if dollar_volume is None else _aligned_numeric(dollar_volume).reindex(index=index, columns=symbols)
     spread_arr: np.ndarray | None = None
-    if spread_bps_per_name is not None:
+    spread_panel: np.ndarray | None = None
+    if isinstance(spread_bps_per_name, pd.DataFrame):
+        # Day x symbol spread: the fill day's row prices that day's trades; a
+        # missing day or name falls back to the flat configured spread.
+        spread_panel = (
+            _aligned_numeric(spread_bps_per_name)
+            .reindex(index=index, columns=symbols)
+            .fillna(execution.spread_bps)
+            .to_numpy(dtype=float)
+        )
+    elif spread_bps_per_name is not None:
         # A name absent from the Series (or NaN) falls back to the flat
         # configured spread, never to a silent zero.
         spread_arr = (
@@ -352,7 +366,7 @@ def backtest_target_weights(
             dividend_return=dividend_return,
             dollar_volume=None if dvol_arr is None else dvol_arr[pos],
             initial_capital=initial_capital,
-            spread_bps_per_name=spread_arr,
+            spread_bps_per_name=spread_panel[pos] if spread_panel is not None else spread_arr,
         )
         gross_return = float((current * open_ret).sum()) + dividend_return
         return_rows.append(gross_return - cost["total"])

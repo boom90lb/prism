@@ -148,6 +148,24 @@ retail-implementable premium), not a defect of the data.
   `mechanics_clean` entry discipline (`docs/demotion_design.md` §6, Arm-B).
   Mechanics may land any time; landing mechanics is not a trial.
 
+> **Seam pin 2026-09-03 — spread accounting (no trial value moves).** The
+> counted driver (`research/scripts/trend_wfo.py`, hashed
+> `spread_accounting="per_fold_bucket"`) applies `SPREAD_BUCKET_SCHEDULE_V1`
+> **per fold**: each fold's 312-bar formation-window median dollar volume sets
+> that fold's buckets for both the closed-form band and the accounting of every
+> fill inside its test window. The sibling driver computed per-fold buckets for
+> the band but froze fold 0's buckets for the whole sample's accounting
+> (`research/arbitrage/residual_walk_forward.py:428-433`, a one-backtest
+> shortcut its own docs call a limitation). On B1's 2020+ large-cap panel the
+> freeze was inert; on this 2007+ ETF panel fold 0 prices six of ten names at
+> 10 bps that the schedule prices at 1 bps by the last fold. Per-fold buckets
+> are equally causal (formation precedes test) and are the schedule as written
+> above. Disclosed: the choice was made from the bucket table exposed by an
+> uncounted sub-sample rehearsal (2006-09-27 → 2021-12-31, scratch, both
+> accountings seen; §0's post-ratification prohibition was breached by that
+> rehearsal and is recorded in the T0 read record); it is favourable to the
+> sleeve, and the registered kill and convexity rules are unchanged.
+
 ## 3. Counted trial set (ratify or amend, then frozen)
 
 Namespace `trend_v1`; budget **exactly 6 counted trials**, never refilled;
