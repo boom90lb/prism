@@ -158,7 +158,7 @@ retail-implementable premium), not a defect of the data.
 > (`research/arbitrage/residual_walk_forward.py:428-433`, a one-backtest
 > shortcut its own docs call a limitation). On B1's 2020+ large-cap panel the
 > freeze was inert; on this 2007+ ETF panel fold 0 prices six of ten names at
-> 10 bps that the schedule prices at 1 bps by the last fold. Per-fold buckets
+> 10 bps; by the last fold four of them are at 1 bps and two at 5 bps. Per-fold buckets
 > are equally causal (formation precedes test) and are the schedule as written
 > above. Disclosed: the choice was made from the bucket table exposed by an
 > uncounted sub-sample rehearsal (2006-09-27 → 2021-12-31, scratch, both

@@ -3,14 +3,14 @@
 Prism is a daily-bar, cross-sectional US equity trading system: score →
 residualize → construct → execute, conditioned by a regime layer, evaluated by
 a harness built to produce out-of-sample numbers that can be believed. This
-file is the entire operating contract. On 2026-09-02 it replaced the
-constitution, program document, doctrine, amendments, pinned interpretations,
-ratification tags, timestamp anchors, and agent contract that had accumulated
-through 2026-08 (≈13k lines of governing prose over a 14k-line package). The
-registrations, diagnostics, and certification under `docs/` remain as the
-research record. Code and docs defer to this file.
+file is the entire operating contract; code and docs defer to it. On
+2026-09-02 it replaced the constitution, program document, doctrine,
+amendments, pinned interpretations, ratification tags, timestamp anchors, and
+agent contract that had accumulated through 2026-08 (≈13k lines of governing
+prose over a 14k-line package). Registrations, read records, diagnostics, and
+the certification under `docs/` remain as the research record.
 
-## 1. State of the system (2026-09-02)
+## 1. State of the system (2026-09-03)
 
 - **Live book.** 12−1 cross-sectional momentum (`prism.signal.momentum_node`:
   252-bar lookback, 21-bar skip, top/bottom decile equal-weight long−short,
@@ -33,15 +33,16 @@ research record. Code and docs defer to this file.
   cadence the book is **signal-bound, not cost-bound**; breadth and IC are the
   levers, cost is not.
 - **Certified negative.** Daily residual reversion on the S&P cross-section is
-  uneconomic at retail cost (`docs/certifications/001-…`, 17 counted trials,
-  `results/stat_arb_residual_trials.jsonl`). That selection set is closed.
+  uneconomic at retail cost (`docs/certifications/001-…`, 17 trials, closed set).
 - **Momentum fragility reads M1–M5 ran 2026-09-03**; the sleeve survives the
   pre-committed kill (median net Sharpe 0.477 vs B1 0.465, no sign flip;
   `docs/momentum_m_series_read_2026-09-03.md`; ledger
   `results/momentum_v1_trials.jsonl`, 6 rows; M2 and M4 sit at their N6
-  ceiling; no configuration moved). Trend reads T0–T4 need a counted driver
-  (`docs/trend_design.md` §3). Learned cross-section and replication: unbuilt.
-- **Suite.** `pytest -q` (research extra installed): 1051 passed, 1 skipped.
+  ceiling; no configuration moved). **Trend T0–T4 ran 2026-09-03**: no
+  standalone carry (net Sharpe 0.04, below the cash hurdle) and the convexity
+  admission read fails on the B1 leg — admission refused
+  (`docs/trend_t_series_read_2026-09-03.md`; 5 of 6 rows spent; T5 on its
+  clock). Learned cross-section and replication: unbuilt.
 
 ## 2. Invariants — a change that violates one is wrong, not the invariant
 
@@ -57,8 +58,7 @@ research record. Code and docs defer to this file.
   `run_conserves`); the float implementation is property-tested against it
   (`tests/test_ledger_conservation.py`). Lean proves the algebra; pytest
   bridges the code to it. Nothing about markets is formalized.
-- **N5 Every claim carries its deflation**, recomputable from the trial ledger
-  (§4).
+- **N5 Every claim carries its deflation**, recomputable from the ledger (§4).
 - **N6 Breadth is accounted.** Every cross-sectional claim reports N_eff
   (participation ratio of the post-residualization covariance) and the IC·√N_eff
   ceiling. Realized above ceiling ⇒ leak or bug. Ceiling below the after-cost
@@ -95,9 +95,9 @@ research record. Code and docs defer to this file.
   timestamp is required. The registration is the commit that adds the doc.
 - **Every evaluated configuration is a ledger row**, including NaN and
   degenerate outcomes, appended by the run itself (`--trial_ledger`,
-  `research/scripts/stat_arb_residual_wfo.py` pattern) with config hash, code
-  commit, sample, and periodic Sharpe. Ledgers are append-only; editing or
-  deleting rows is falsification.
+  `research/scripts/stat_arb_residual_wfo.py` pattern) with config hash,
+  sample, and periodic Sharpe; the claim packet carries the code commit.
+  Ledgers are append-only; editing or deleting rows is falsification.
 - **A claim deflates against its own selection set** — the effective
   independent count of every row in that set — never against a pooled ledger
   of incommensurable strategies, and never against fewer rows than were run.
@@ -115,9 +115,9 @@ research record. Code and docs defer to this file.
 
 ## 5. Research direction
 
-1. **Run the registered reads first.** M1–M5 and T0–T4 are pre-registered,
-   cheap, and the only information available before the momentum extension
-   read (M6, ≥ 2027-06 data, stays on its clock; nothing waits for it).
+1. **The registered reads are done** (§1). M6 (≥ 2027-06 data) and T5
+   (≥ 2027-07-17) stay on their clocks; nothing waits for them, and T5's B1
+   leg is unreadable until M6 extends the B1 stream.
 2. **Breadth.** N_eff ≈ 53 on ~96 names held is the binding constraint. The
    lever is a point-in-time universe beyond the S&P 500 with the survivorship
    leak counted, not hidden (`prism.scripts.build_sp500_universe` is the
@@ -127,8 +127,8 @@ research record. Code and docs defer to this file.
    (momentum variants, long-horizon reversal, idiosyncratic volatility,
    residualized versions of each) as one registered selection set, deflated
    as a whole. Combination happens inside construction
-   (`docs/aim_portfolio_preregistration.md`); the trend sleeve is admitted for
-   crash convexity, not Sharpe (`docs/trend_design.md` §4).
+   (`docs/aim_portfolio_preregistration.md`); the trend sleeve's convexity
+   admission was refused 2026-09-03, so a second sleeve needs a new registration.
 4. **Not this:** reviving residual reversion; intraday anything; model species
    (RL, forecaster zoos) in place of breadth; crypto before an equity sleeve
    promotes; quantum amplitude estimation (its own design concluded STOP).

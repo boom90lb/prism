@@ -1,0 +1,152 @@
+{
+  "convexity": {
+    "b1_stream": {
+      "n": 1308,
+      "path": "results/demotion_b1/returns.csv",
+      "span": [
+        "2021-03-30T00:00:00-04:00",
+        "2026-06-12T00:00:00-04:00"
+      ]
+    },
+    "decile": 0.1,
+    "full_sample": {
+      "b1_overlap": {
+        "diff": -0.02019986447046585,
+        "m": 6,
+        "mu_cond": -0.0170028383832684,
+        "mu_unc": 0.0031970260871974523,
+        "n": 62,
+        "pass": false,
+        "span": [
+          "2021-03-31T00:00:00-04:00",
+          "2026-05-07T00:00:00-04:00"
+        ],
+        "threshold": -0.04019980436316972,
+        "worst_decision_bars": [
+          "2022-12-29T00:00:00-05:00",
+          "2024-07-03T00:00:00-04:00",
+          "2023-11-30T00:00:00-05:00",
+          "2025-02-04T00:00:00-05:00",
+          "2025-06-05T00:00:00-04:00",
+          "2022-06-30T00:00:00-04:00"
+        ]
+      },
+      "n_windows": 221,
+      "pass": false,
+      "spy": {
+        "diff": 0.0004375739485210136,
+        "m": 22,
+        "mu_cond": 0.0006462180172199743,
+        "mu_unc": 0.0002086440686989607,
+        "n": 221,
+        "pass": true,
+        "span": [
+          "2007-12-24T00:00:00-05:00",
+          "2026-05-07T00:00:00-04:00"
+        ],
+        "threshold": -0.05020320344250562,
+        "worst_decision_bars": [
+          "2008-09-24T00:00:00-04:00",
+          "2020-03-02T00:00:00-05:00",
+          "2008-10-23T00:00:00-04:00",
+          "2025-03-06T00:00:00-05:00",
+          "2011-07-26T00:00:00-04:00",
+          "2007-12-24T00:00:00-05:00",
+          "2022-03-30T00:00:00-04:00",
+          "2010-04-27T00:00:00-04:00",
+          "2018-09-27T00:00:00-04:00",
+          "2022-08-30T00:00:00-04:00",
+          "2022-05-31T00:00:00-04:00",
+          "2009-01-26T00:00:00-05:00",
+          "2015-12-28T00:00:00-05:00",
+          "2021-12-29T00:00:00-05:00",
+          "2018-11-27T00:00:00-05:00",
+          "2008-08-25T00:00:00-04:00",
+          "2020-01-30T00:00:00-05:00",
+          "2019-05-01T00:00:00-04:00",
+          "2015-07-29T00:00:00-04:00",
+          "2015-08-27T00:00:00-04:00",
+          "2010-07-27T00:00:00-04:00",
+          "2011-10-24T00:00:00-04:00"
+        ]
+      }
+    },
+    "oos_segment": {
+      "n_windows": 0,
+      "pass": null,
+      "reason": "no decision bar at or after oos_start 2026-07-20T00:00:00-04:00 (empty for T0-T4)"
+    },
+    "readable": true,
+    "window_bars": 21
+  },
+  "fragility": {
+    "kill_a_median_negative": false,
+    "kill_b_flipping_trials_sharpe": [],
+    "kill_b_sign_flip_sharpe": false,
+    "median_sharpe_t1_t4": 0.07362389188666865,
+    "n_nan_sharpes": 0,
+    "note": "Survival is not promotion: promotion reads only at T5 (docs/trend_design.md \u00a73-4).",
+    "readable": true,
+    "rule": "docs/trend_design.md \u00a74 fragility kill: median(net annualized Sharpe of T1-T4) < 0 (NaN -> -inf), or any single probe flips the sign of the net result at magnitude > T0's point estimate (NaN excluded)",
+    "secondary_sign_flip_total_return": [
+      4
+    ],
+    "t0": {
+      "config_hash": "bc92b505f26f",
+      "run_dir": "results/trend_t0"
+    },
+    "t0_sharpe": 0.04240125941180066,
+    "t0_total_return": 0.014239773174520298,
+    "trial_sharpes": [
+      0.3933128776173948,
+      0.10360015744713165,
+      0.04364762632620564,
+      0.02388445868621313
+    ],
+    "trial_total_returns": [
+      0.5226701644382821,
+      0.0854404388449217,
+      0.013168967237871643,
+      -0.020087421337872113
+    ],
+    "trials": [
+      {
+        "config_hash": "29c0be7a030f",
+        "delta": "T1 lookback 126",
+        "run_dir": "results/trend_t1"
+      },
+      {
+        "config_hash": "1196725d6b2e",
+        "delta": "T2 skip 0",
+        "run_dir": "results/trend_t2"
+      },
+      {
+        "config_hash": "ec4443c8ee09",
+        "delta": "T3 decision_every 63",
+        "run_dir": "results/trend_t3"
+      },
+      {
+        "config_hash": "72ed0e5b74dd",
+        "delta": "T4 equal_notional",
+        "run_dir": "results/trend_t4"
+      }
+    ],
+    "verdict": "SURVIVES fragility read"
+  },
+  "inputs": {
+    "b1_returns": "results/demotion_b1/returns.csv",
+    "decile": 0.1,
+    "ledger": "results/trend_v1_trials.jsonl",
+    "oos_start": "2026-07-20T00:00:00-04:00",
+    "t0": "results/trend_t0",
+    "t0_end_date": "2026-07-17T00:00:00-04:00",
+    "t0_sharpe": 0.04240125941180066,
+    "trials": [
+      "results/trend_t1",
+      "results/trend_t2",
+      "results/trend_t3",
+      "results/trend_t4"
+    ]
+  },
+  "verdict": "positive-carry, non-convex; portfolio admission refused"
+}

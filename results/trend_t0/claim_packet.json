@@ -1,0 +1,3000 @@
+{
+  "artifacts": {
+    "claim_packet": "claim_packet.json",
+    "closes": "closes.csv",
+    "config": "config.json",
+    "costs": "costs.csv",
+    "dividends": "dividends.csv",
+    "equity": "equity.csv",
+    "folds": "folds.json",
+    "returns": "returns.csv",
+    "score_close": "score_close.csv",
+    "summary": "summary.json",
+    "target_weights": "target_weights.csv"
+  },
+  "claim_rules": {
+    "claim_tiers": [
+      "no_claim",
+      "mechanics_clean",
+      "gross_edge",
+      "net_edge",
+      "robust_edge"
+    ],
+    "gross_edge": "gross_total_return > 0 and gross_periodic_sharpe > 0",
+    "min_obs": 20,
+    "net_edge": "total_return > 0 and periodic_sharpe > 0",
+    "robust_dsr_threshold": 0.95,
+    "robust_edge": "net_edge and dsr >= robust_dsr_threshold"
+  },
+  "claim_tier": "net_edge",
+  "code_commit": "56eb3bf83c8f3d2e55705ee264f8c95d9fafc039",
+  "code_state": {
+    "available": true,
+    "commit": "56eb3bf83c8f3d2e55705ee264f8c95d9fafc039",
+    "dirty": true,
+    "status_hash": "449950b3f342af51a38eb974c128465173925997e6417fe915c6272f336f9005",
+    "tracked_diff_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "untracked_count": 11,
+    "untracked_paths_hash": "4f3f7f0ad9f12b3b767736703150bdaa2b18b7f697d24c8242c6d886efba07b8"
+  },
+  "config": {
+    "band_gamma_risk": 1.0,
+    "cache_files": {
+      "EEM": [
+        "EEM_1d_2007-01-01_2017-12-31.parquet",
+        "EEM_1d_2018-01-01_2026-07-22.parquet"
+      ],
+      "EFA": [
+        "EFA_1d_2007-01-01_2017-12-31.parquet",
+        "EFA_1d_2018-01-01_2026-07-22.parquet"
+      ],
+      "GLD": [
+        "GLD_1d_2007-01-01_2017-12-31.parquet",
+        "GLD_1d_2018-01-01_2026-07-22.parquet"
+      ],
+      "HYG": [
+        "HYG_1d_2007-01-01_2017-12-31.parquet",
+        "HYG_1d_2018-01-01_2026-07-22.parquet"
+      ],
+      "IEF": [
+        "IEF_1d_2007-01-01_2017-12-31.parquet",
+        "IEF_1d_2018-01-01_2026-07-22.parquet"
+      ],
+      "LQD": [
+        "LQD_1d_2007-01-01_2017-12-31.parquet",
+        "LQD_1d_2018-01-01_2026-07-22.parquet"
+      ],
+      "PDBC": [
+        "PDBC_1d_2007-01-01_2017-12-31.parquet",
+        "PDBC_1d_2018-01-01_2026-07-22.parquet"
+      ],
+      "SPY": [
+        "SPY_1d_min_2026-08-14.parquet",
+        "SPY_1d_2018-01-01_2026-07-22.parquet"
+      ],
+      "TLT": [
+        "TLT_1d_2007-01-01_2017-12-31.parquet",
+        "TLT_1d_2018-01-01_2026-07-22.parquet"
+      ],
+      "UUP": [
+        "UUP_1d_2007-01-01_2017-12-31.parquet",
+        "UUP_1d_2018-01-01_2026-07-22.parquet"
+      ]
+    },
+    "construction": {
+      "annualization_bars": 252,
+      "sizing": "inverse_vol",
+      "vol_ewma_bars": 63
+    },
+    "data_convention": "split_adjusted_total_return_dividends_as_cash",
+    "design_trials": 6,
+    "distributions_dir": "data/distributions",
+    "end_date": "2026-07-17T00:00:00-04:00",
+    "execution": {
+      "adv_floor_dollars": 100000.0,
+      "adv_impact_coeff": 0.0,
+      "adv_impact_model": "linear",
+      "borrow_rate_bps_annual": 50.0,
+      "commission_bps": 1.0,
+      "default_order_type": "MOO",
+      "slippage_coeff": 10.0,
+      "spread_bps": 1.0,
+      "trading_days_per_year": 252
+    },
+    "initial_capital": 1.0,
+    "price_convention": "total_return",
+    "price_return_fallback": false,
+    "signal": {
+      "decision_every": 21,
+      "dollar_volume_window": 20,
+      "entry_bars": 252,
+      "lookback_bars": 252,
+      "skip_bars": 21
+    },
+    "spread_accounting": "per_fold_bucket",
+    "spread_schedule": {
+      "buckets": [
+        [
+          500000000.0,
+          1.0
+        ],
+        [
+          100000000.0,
+          2.0
+        ],
+        [
+          25000000.0,
+          5.0
+        ],
+        [
+          0.0,
+          10.0
+        ]
+      ],
+      "name": "SPREAD_BUCKET_SCHEDULE_V1"
+    },
+    "start_date": "2006-09-27",
+    "strategy": "trend_v1",
+    "symbols": [
+      "EEM",
+      "EFA",
+      "GLD",
+      "HYG",
+      "IEF",
+      "LQD",
+      "PDBC",
+      "SPY",
+      "TLT",
+      "UUP"
+    ],
+    "timezone": "America/New_York",
+    "universe": {
+      "asof": "2026-07-17",
+      "name": "TREND_V1_UNIVERSE",
+      "policy": "fixed_registered_list",
+      "registration": "docs/trend_design.md \u00a71"
+    },
+    "walk": {
+      "band_mode": "closed_form",
+      "close_positions_at_fold_end": true,
+      "formation_bars": 312,
+      "max_gross": 1.0,
+      "max_participation": 0.05,
+      "max_symbol_abs_weight": 1.0,
+      "min_test_bars": 20,
+      "mom_decile": 0.1,
+      "mom_decision_every": 21,
+      "mom_lookback_bars": 252,
+      "mom_skip_bars": 21,
+      "no_trade_band": 0.0,
+      "sleeve_mode": "off",
+      "spread_mode": "bucket",
+      "step_bars": null,
+      "test_bars": 63
+    }
+  },
+  "config_hash": "bc92b505f26f",
+  "created_at_utc": "2026-09-04T04:09:22.291138+00:00",
+  "data": {
+    "bar_interval": "1d",
+    "cache_files": {
+      "EEM": [
+        {
+          "dup_rows_dropped": 951,
+          "file": "EEM_1d_2007-01-01_2017-12-31.parquet",
+          "first": "2008-01-02T00:00:00-05:00",
+          "last": "2017-12-29T00:00:00-05:00",
+          "rows_raw": 3469,
+          "rows_unique": 2518,
+          "sha256": "c7186977298f1be55e6962bdbd0cb0a8ea9df4a9ec82ee72644f7c9e70560d5c"
+        },
+        {
+          "dup_rows_dropped": 664,
+          "file": "EEM_1d_2018-01-01_2026-07-22.parquet",
+          "first": "2018-01-02T00:00:00-05:00",
+          "last": "2026-07-21T00:00:00-04:00",
+          "rows_raw": 2812,
+          "rows_unique": 2148,
+          "sha256": "db614246f417f07277fab3787056a23db24c94ed860df27ff8c0772aade9929a"
+        }
+      ],
+      "EFA": [
+        {
+          "dup_rows_dropped": 0,
+          "file": "EFA_1d_2007-01-01_2017-12-31.parquet",
+          "first": "2007-01-03T00:00:00-05:00",
+          "last": "2017-12-29T00:00:00-05:00",
+          "rows_raw": 2769,
+          "rows_unique": 2769,
+          "sha256": "e12308a65bd13cae2166880d111c6b38fbd5c9b24166bb6404940cf17b58becc"
+        },
+        {
+          "dup_rows_dropped": 0,
+          "file": "EFA_1d_2018-01-01_2026-07-22.parquet",
+          "first": "2018-01-02T00:00:00-05:00",
+          "last": "2026-07-21T00:00:00-04:00",
+          "rows_raw": 2148,
+          "rows_unique": 2148,
+          "sha256": "2dff47f0be0ab9e2e7001656dd316210e2f17267781259d6e43637d8ada6efa0"
+        }
+      ],
+      "GLD": [
+        {
+          "dup_rows_dropped": 0,
+          "file": "GLD_1d_2007-01-01_2017-12-31.parquet",
+          "first": "2007-01-03T00:00:00-05:00",
+          "last": "2017-12-29T00:00:00-05:00",
+          "rows_raw": 2769,
+          "rows_unique": 2769,
+          "sha256": "4b09f28a84de9ba8758a587cd7cccff632b961218d3aa24178335905c5d69d0b"
+        },
+        {
+          "dup_rows_dropped": 0,
+          "file": "GLD_1d_2018-01-01_2026-07-22.parquet",
+          "first": "2018-01-02T00:00:00-05:00",
+          "last": "2026-07-21T00:00:00-04:00",
+          "rows_raw": 2148,
+          "rows_unique": 2148,
+          "sha256": "0347a0cc651a8146b7adbbb0fcaac1e8161d3cff63c2d2b9c091208af947c366"
+        }
+      ],
+      "HYG": [
+        {
+          "dup_rows_dropped": 0,
+          "file": "HYG_1d_2007-01-01_2017-12-31.parquet",
+          "first": "2007-04-11T00:00:00-04:00",
+          "last": "2017-12-29T00:00:00-05:00",
+          "rows_raw": 2702,
+          "rows_unique": 2702,
+          "sha256": "55411540b70c1d24bb8c1fc4b849d703cfda3dc229167967da79ad66cc89b3ab"
+        },
+        {
+          "dup_rows_dropped": 0,
+          "file": "HYG_1d_2018-01-01_2026-07-22.parquet",
+          "first": "2018-01-02T00:00:00-05:00",
+          "last": "2026-07-21T00:00:00-04:00",
+          "rows_raw": 2148,
+          "rows_unique": 2148,
+          "sha256": "7885be75df1bb215f2b196a33b32439f7514f7db7915764fc783c9305cc818b5"
+        }
+      ],
+      "IEF": [
+        {
+          "dup_rows_dropped": 0,
+          "file": "IEF_1d_2007-01-01_2017-12-31.parquet",
+          "first": "2007-01-03T00:00:00-05:00",
+          "last": "2017-12-29T00:00:00-05:00",
+          "rows_raw": 2769,
+          "rows_unique": 2769,
+          "sha256": "7c9b873198ec475268930ca5d51eab01742e1cf6a79d681c712f8d0c9dc7029f"
+        },
+        {
+          "dup_rows_dropped": 0,
+          "file": "IEF_1d_2018-01-01_2026-07-22.parquet",
+          "first": "2018-01-02T00:00:00-05:00",
+          "last": "2026-07-21T00:00:00-04:00",
+          "rows_raw": 2148,
+          "rows_unique": 2148,
+          "sha256": "6ccd14021398b919e36b9c6efc1bdb40b3523cc0649c1837f34cbcb73fa76e33"
+        }
+      ],
+      "LQD": [
+        {
+          "dup_rows_dropped": 0,
+          "file": "LQD_1d_2007-01-01_2017-12-31.parquet",
+          "first": "2007-01-03T00:00:00-05:00",
+          "last": "2017-12-29T00:00:00-05:00",
+          "rows_raw": 2769,
+          "rows_unique": 2769,
+          "sha256": "8199eae45551fb28646041728dafff4858c088f33f7afccd5289e43ec9490556"
+        },
+        {
+          "dup_rows_dropped": 0,
+          "file": "LQD_1d_2018-01-01_2026-07-22.parquet",
+          "first": "2018-01-02T00:00:00-05:00",
+          "last": "2026-07-21T00:00:00-04:00",
+          "rows_raw": 2148,
+          "rows_unique": 2148,
+          "sha256": "4fd5ba3b197d2b185a6f795a636e2707059cec7ace109113fe8aad6b0833dd08"
+        }
+      ],
+      "PDBC": [
+        {
+          "dup_rows_dropped": 0,
+          "file": "PDBC_1d_2007-01-01_2017-12-31.parquet",
+          "first": "2014-11-07T00:00:00-05:00",
+          "last": "2017-12-29T00:00:00-05:00",
+          "rows_raw": 792,
+          "rows_unique": 792,
+          "sha256": "fbe74851b08741e18034014d01fb724d953fed283217720e14e4563efb410768"
+        },
+        {
+          "dup_rows_dropped": 0,
+          "file": "PDBC_1d_2018-01-01_2026-07-22.parquet",
+          "first": "2018-01-02T00:00:00-05:00",
+          "last": "2026-07-21T00:00:00-04:00",
+          "rows_raw": 2148,
+          "rows_unique": 2148,
+          "sha256": "2bbfd86c108568e7f7b18b388c373e440c33b646e2ff245400603402786b42aa"
+        }
+      ],
+      "SPY": [
+        {
+          "dup_rows_dropped": 0,
+          "file": "SPY_1d_min_2026-08-14.parquet",
+          "first": "2006-09-27T00:00:00-04:00",
+          "last": "2026-08-13T00:00:00-04:00",
+          "rows_raw": 5000,
+          "rows_unique": 5000,
+          "sha256": "823d893d298b3dbb9d8aa145ddcb49a7be4d866a4337d05bfb6e6a7ebfde212b"
+        },
+        {
+          "dup_rows_dropped": 0,
+          "file": "SPY_1d_2018-01-01_2026-07-22.parquet",
+          "first": "2018-01-02T00:00:00-05:00",
+          "last": "2026-07-21T00:00:00-04:00",
+          "rows_raw": 2148,
+          "rows_unique": 2148,
+          "sha256": "519728943baed2ed28295ba4b79c386f9c9f2ac0d6fab613adf7244b1c14060b"
+        }
+      ],
+      "TLT": [
+        {
+          "dup_rows_dropped": 0,
+          "file": "TLT_1d_2007-01-01_2017-12-31.parquet",
+          "first": "2007-01-03T00:00:00-05:00",
+          "last": "2017-12-29T00:00:00-05:00",
+          "rows_raw": 2769,
+          "rows_unique": 2769,
+          "sha256": "2d8350de9882797d1143b66c7dee574299dc7ceff7570faafed64d6414ab6ca4"
+        },
+        {
+          "dup_rows_dropped": 0,
+          "file": "TLT_1d_2018-01-01_2026-07-22.parquet",
+          "first": "2018-01-02T00:00:00-05:00",
+          "last": "2026-07-21T00:00:00-04:00",
+          "rows_raw": 2148,
+          "rows_unique": 2148,
+          "sha256": "e2566104d9fca2f1ebab3a90a171222ec425bf83d551de3cb03d638f52065d58"
+        }
+      ],
+      "UUP": [
+        {
+          "dup_rows_dropped": 0,
+          "file": "UUP_1d_2007-01-01_2017-12-31.parquet",
+          "first": "2007-03-01T00:00:00-05:00",
+          "last": "2017-12-29T00:00:00-05:00",
+          "rows_raw": 2730,
+          "rows_unique": 2730,
+          "sha256": "d2286e5c9e0cb2dc40ddc9143ffa887b5f119e88baa5e0ca4a4234008cf14ff1"
+        },
+        {
+          "dup_rows_dropped": 0,
+          "file": "UUP_1d_2018-01-01_2026-07-22.parquet",
+          "first": "2018-01-02T00:00:00-05:00",
+          "last": "2026-07-21T00:00:00-04:00",
+          "rows_raw": 2148,
+          "rows_unique": 2148,
+          "sha256": "856aa75b9b7d956ece190802d405245ecf5d2fd9d3effff9cdab4f19ef9d00dc"
+        }
+      ]
+    },
+    "data_caveats": [
+      "EEM 2008: the vendor's O=H=L=C zero-volume year is accepted as cached (never filled: the first EEM fill is >= the 2009-01-02 open, and the zero-ADV hold-prior rule keeps EEM flat until its 20-bar median dollar volume is positive)",
+      "EEM within-file duplicate stamps resolved keep-last (82 closes move <= $0.035)",
+      "PDBC thin 2014-15 bars",
+      "GLD distributions header-only by issuer statement",
+      "data/distributions/verification_2026-09-03.json overall = \"partial\""
+    ],
+    "data_convention": "split_adjusted_total_return_dividends_as_cash",
+    "distributions": {
+      "EEM": {
+        "file": "data/distributions/EEM.csv",
+        "first_ex_date": "2008-06-25",
+        "last_ex_date": "2026-06-15",
+        "n_beyond_index": 0,
+        "n_records_in_sample": 41,
+        "n_sessions_credited": 41,
+        "n_shifted": 0,
+        "provenance_file": "data/distributions/EEM.provenance.json",
+        "provenance_sha256": "01318867e53913ae48430657daf1ba999fface2ad92eacaeeacba9d88cd1337e",
+        "sha256": "b18899d7ff1557c58d34518795131275a9ef5f1ba1f68b729fd4026a324b7db6"
+      },
+      "EFA": {
+        "file": "data/distributions/EFA.csv",
+        "first_ex_date": "2007-12-24",
+        "last_ex_date": "2026-06-15",
+        "n_beyond_index": 0,
+        "n_records_in_sample": 39,
+        "n_sessions_credited": 39,
+        "n_shifted": 0,
+        "provenance_file": "data/distributions/EFA.provenance.json",
+        "provenance_sha256": "06726e1ea1526811fb41e707c4419b93e731420db0730153ff204f063f67c2d9",
+        "sha256": "d85ec2e51a0896c043159205896caabd9794fa66271cda486cd326d249a27d19"
+      },
+      "GLD": {
+        "file": "data/distributions/GLD.csv",
+        "first_ex_date": null,
+        "last_ex_date": null,
+        "n_beyond_index": 0,
+        "n_records_in_sample": 0,
+        "n_sessions_credited": 0,
+        "n_shifted": 0,
+        "provenance_file": "data/distributions/GLD.provenance.json",
+        "provenance_sha256": "9d7f4fa465c6c243e0d2c777dc8aaf41cb67c15e23c8ba4d7f194e56ed943feb",
+        "sha256": "8e37cde23ef263cdd6684e8303b33cd66101594bf9027cd91029d2c48fa5dab0"
+      },
+      "HYG": {
+        "file": "data/distributions/HYG.csv",
+        "first_ex_date": "2007-05-01",
+        "last_ex_date": "2026-07-01",
+        "n_beyond_index": 0,
+        "n_records_in_sample": 231,
+        "n_sessions_credited": 231,
+        "n_shifted": 0,
+        "provenance_file": "data/distributions/HYG.provenance.json",
+        "provenance_sha256": "5365ec71cf0d9b6725df5985b270f0235344f9244464db31d7e1b2d5a6a8d56d",
+        "sha256": "6d909577225271fdbce8baa37faf714f31169ab8ca13b17e31879c4209741128"
+      },
+      "IEF": {
+        "file": "data/distributions/IEF.csv",
+        "first_ex_date": "2007-02-01",
+        "last_ex_date": "2026-07-01",
+        "n_beyond_index": 0,
+        "n_records_in_sample": 234,
+        "n_sessions_credited": 234,
+        "n_shifted": 0,
+        "provenance_file": "data/distributions/IEF.provenance.json",
+        "provenance_sha256": "5b1bc9a8ed47afad111ab413b1736aacd16901561835e62c471d9289264ec560",
+        "sha256": "f037efcb60f282b76c1d99b0f9d62793c8641456ef749d57dbf75928c5e51b5c"
+      },
+      "LQD": {
+        "file": "data/distributions/LQD.csv",
+        "first_ex_date": "2007-02-01",
+        "last_ex_date": "2026-07-01",
+        "n_beyond_index": 0,
+        "n_records_in_sample": 234,
+        "n_sessions_credited": 234,
+        "n_shifted": 0,
+        "provenance_file": "data/distributions/LQD.provenance.json",
+        "provenance_sha256": "31ec9711b1b6eda6865e55cc04b3558a2cb79056cc0e9a1119d1bc33a460cc9b",
+        "sha256": "2322f798738a0c5d7ef43b2f31a714253d82342d5d3150dc31d0443648c97edb"
+      },
+      "PDBC": {
+        "file": "data/distributions/PDBC.csv",
+        "first_ex_date": "2016-12-16",
+        "last_ex_date": "2025-12-22",
+        "n_beyond_index": 0,
+        "n_records_in_sample": 11,
+        "n_sessions_credited": 11,
+        "n_shifted": 0,
+        "provenance_file": "data/distributions/PDBC.provenance.json",
+        "provenance_sha256": "8b94729a6603f7c1adec334877f159a3a2a9faddeebf27b02eb74960afd6e33a",
+        "sha256": "9a703fb124b5692610ac5d55fb330fce1d6dae1a03bef4f025c24f43ecfe7528"
+      },
+      "SPY": {
+        "file": "data/distributions/SPY.csv",
+        "first_ex_date": "2006-12-15",
+        "last_ex_date": "2026-06-18",
+        "n_beyond_index": 0,
+        "n_records_in_sample": 79,
+        "n_sessions_credited": 79,
+        "n_shifted": 0,
+        "provenance_file": "data/distributions/SPY.provenance.json",
+        "provenance_sha256": "9713c41d4ab8fa0f939b1723155be27dfeca3d40eec014d03628ad4906ee98d9",
+        "sha256": "fe2a99b323fa6716dca876417387dcbb7ce68a74df75edddfb6a3928ef21fa2c"
+      },
+      "TLT": {
+        "file": "data/distributions/TLT.csv",
+        "first_ex_date": "2007-02-01",
+        "last_ex_date": "2026-07-01",
+        "n_beyond_index": 0,
+        "n_records_in_sample": 234,
+        "n_sessions_credited": 234,
+        "n_shifted": 0,
+        "provenance_file": "data/distributions/TLT.provenance.json",
+        "provenance_sha256": "940ce14551650edab853496486547fb5345ad8936ab3ee9eaa0f25cef856b60f",
+        "sha256": "5ce3292d89d6836eeca316d2686f35929a848e73648bf4ad60bb786194a81756"
+      },
+      "UUP": {
+        "file": "data/distributions/UUP.csv",
+        "first_ex_date": "2007-12-17",
+        "last_ex_date": "2025-12-22",
+        "n_beyond_index": 0,
+        "n_records_in_sample": 9,
+        "n_sessions_credited": 9,
+        "n_shifted": 0,
+        "provenance_file": "data/distributions/UUP.provenance.json",
+        "provenance_sha256": "e6a7262061cd62006559a22a8f69bcca51ff4b4c47d85cbb9e5b2d7b5e6ba0d9",
+        "sha256": "7187ab81695d8ccf122742593e549eca3c0ec10445f5c04caec11065aba9fdb6"
+      },
+      "verification": {
+        "file": "data/distributions/verification_2026-09-03.json",
+        "overall": "partial",
+        "per_symbol": {
+          "EEM": {
+            "alpaca_holes_confirmed_by_narrow_query": [],
+            "alpaca_records_2016plus": 22,
+            "alpaca_special_count": 0,
+            "amount_diff_summary": {
+              "n_diff_gt_1e-4": 0,
+              "n_diff_le_1e-4": 1,
+              "n_exact_equal": 21
+            },
+            "amount_mismatches_gt_0.005": [],
+            "bar_cache_files": [
+              "EEM_1d_2007-01-01_2017-12-31.parquet",
+              "EEM_1d_2018-01-01_2026-07-22.parquet",
+              "EEM_1d_2025-06-01_2026-07-17.parquet"
+            ],
+            "coverage_gaps": [],
+            "coverage_ok_from_listing": true,
+            "detail": "22/22 Alpaca records match exactly, max |diff| 1e-7. Bar cache for EEM begins 2008-01-02 (the 2007-01-01_2017-12-31 parquet has no 2007 rows), so coverage is judged from 2008: 2+ ex-dates every year 2008-2025 (3 in 2009, 2010, 2012, 2021), 1 in 2026. No gaps. All 40 in-window ex-dates are cached sessions.",
+            "first_cached_bar": "2008-01-02",
+            "gaps": [
+              "Bar cache starts 2008-01-02, not 2007; issuer CSV has 2007 records (2007-06-27, 2007-12-24) that fall before the cache and were not coverage-checked."
+            ],
+            "issuer_first_ex": "2003-12-22",
+            "issuer_last_ex": "2026-06-15",
+            "issuer_records": 47,
+            "issuer_records_2016plus": 22,
+            "issuer_records_after_cutoff_excluded": [],
+            "issuer_records_in_window": 41,
+            "issuer_records_total_in_file": 47,
+            "last_cached_bar": "2026-07-21",
+            "matched_by_offset": {
+              "exact": 22,
+              "issuer+1bd": 0,
+              "issuer-1bd": 0
+            },
+            "matched_ex_dates": 22,
+            "matched_offset_nonexact": [],
+            "max_abs_amount_diff": 1.0000000000287557e-07,
+            "n_cached_sessions": 4666,
+            "per_year": {
+              "2008": {
+                "expected": 2,
+                "records": 2
+              },
+              "2009": {
+                "expected": 2,
+                "records": 3
+              },
+              "2010": {
+                "expected": 2,
+                "records": 3
+              },
+              "2011": {
+                "expected": 2,
+                "records": 2
+              },
+              "2012": {
+                "expected": 2,
+                "records": 3
+              },
+              "2013": {
+                "expected": 2,
+                "records": 2
+              },
+              "2014": {
+                "expected": 2,
+                "records": 2
+              },
+              "2015": {
+                "expected": 2,
+                "records": 2
+              },
+              "2016": {
+                "expected": 2,
+                "records": 2
+              },
+              "2017": {
+                "expected": 2,
+                "records": 2
+              },
+              "2018": {
+                "expected": 2,
+                "records": 2
+              },
+              "2019": {
+                "expected": 2,
+                "records": 2
+              },
+              "2020": {
+                "expected": 2,
+                "records": 2
+              },
+              "2021": {
+                "expected": 2,
+                "records": 3
+              },
+              "2022": {
+                "expected": 2,
+                "records": 2
+              },
+              "2023": {
+                "expected": 2,
+                "records": 2
+              },
+              "2024": {
+                "expected": 2,
+                "records": 2
+              },
+              "2025": {
+                "expected": 2,
+                "records": 2
+              },
+              "2026": {
+                "expected": 1,
+                "records": 1
+              }
+            },
+            "sanity": {
+              "all_amounts_positive": true,
+              "bar_cache_gaps_gt_5d": [],
+              "ex_dates_not_in_bar_cache": [],
+              "window_amount_max": 0.929022,
+              "window_amount_min": 0.012012
+            },
+            "symbol": "EEM",
+            "unmatched_alpaca": 0,
+            "unmatched_alpaca_list": [],
+            "unmatched_issuer": 0,
+            "unmatched_issuer_list": [],
+            "verdict": "usable",
+            "years_with_records": [
+              2008,
+              2009,
+              2010,
+              2011,
+              2012,
+              2013,
+              2014,
+              2015,
+              2016,
+              2017,
+              2018,
+              2019,
+              2020,
+              2021,
+              2022,
+              2023,
+              2024,
+              2025,
+              2026
+            ]
+          },
+          "EFA": {
+            "alpaca_holes_confirmed_by_narrow_query": [],
+            "alpaca_records_2016plus": 22,
+            "alpaca_special_count": 0,
+            "amount_diff_summary": {
+              "n_diff_gt_1e-4": 0,
+              "n_diff_le_1e-4": 0,
+              "n_exact_equal": 22
+            },
+            "amount_mismatches_gt_0.005": [],
+            "bar_cache_files": [
+              "EFA_1d_2007-01-01_2017-12-31.parquet",
+              "EFA_1d_2018-01-01_2026-07-22.parquet",
+              "EFA_1d_2025-06-01_2026-07-17.parquet"
+            ],
+            "coverage_gaps": [
+              "2007: 1 records, expected 2"
+            ],
+            "coverage_ok_from_listing": false,
+            "detail": "22/22 Alpaca records match exactly, max |diff| 0.0. Coverage from first cached bar 2007-01-03: 2 ex-dates every year 2008-2025 (3 in 2021), 1 in 2026 (June). 2007 has only the December ex-date (2007-12-24): the issuer table shows a December-only annual cadence for 2002-2007 with June+December starting 2008-06-25. Attempts to corroborate a missing June-2007 distribution against a third source failed (stockanalysis.com paywalls pre-2021 history; dividendhistory.org 404; nasdaq.com timed out), so 2007 is flagged as an unverified single-record year rather than a confirmed gap. All 39 in-window ex-dates are cached sessions.",
+            "first_cached_bar": "2007-01-03",
+            "gaps": [
+              "2007: only the 2007-12-24 ex-date is present (issuer table shows annual December-only cadence through 2007; semiannual from 2008-06-25). Not independently corroborated: third-party history sources were paywalled/404/timeout. If a June-2007 distribution existed it is missing from EFA.csv."
+            ],
+            "issuer_first_ex": "2001-10-02",
+            "issuer_last_ex": "2026-06-15",
+            "issuer_records": 46,
+            "issuer_records_2016plus": 22,
+            "issuer_records_after_cutoff_excluded": [],
+            "issuer_records_in_window": 39,
+            "issuer_records_total_in_file": 46,
+            "last_cached_bar": "2026-07-21",
+            "matched_by_offset": {
+              "exact": 22,
+              "issuer+1bd": 0,
+              "issuer-1bd": 0
+            },
+            "matched_ex_dates": 22,
+            "matched_offset_nonexact": [],
+            "max_abs_amount_diff": 0.0,
+            "n_cached_sessions": 4917,
+            "per_year": {
+              "2007": {
+                "expected": 2,
+                "records": 1
+              },
+              "2008": {
+                "expected": 2,
+                "records": 2
+              },
+              "2009": {
+                "expected": 2,
+                "records": 2
+              },
+              "2010": {
+                "expected": 2,
+                "records": 2
+              },
+              "2011": {
+                "expected": 2,
+                "records": 2
+              },
+              "2012": {
+                "expected": 2,
+                "records": 2
+              },
+              "2013": {
+                "expected": 2,
+                "records": 2
+              },
+              "2014": {
+                "expected": 2,
+                "records": 2
+              },
+              "2015": {
+                "expected": 2,
+                "records": 2
+              },
+              "2016": {
+                "expected": 2,
+                "records": 2
+              },
+              "2017": {
+                "expected": 2,
+                "records": 2
+              },
+              "2018": {
+                "expected": 2,
+                "records": 2
+              },
+              "2019": {
+                "expected": 2,
+                "records": 2
+              },
+              "2020": {
+                "expected": 2,
+                "records": 2
+              },
+              "2021": {
+                "expected": 2,
+                "records": 3
+              },
+              "2022": {
+                "expected": 2,
+                "records": 2
+              },
+              "2023": {
+                "expected": 2,
+                "records": 2
+              },
+              "2024": {
+                "expected": 2,
+                "records": 2
+              },
+              "2025": {
+                "expected": 2,
+                "records": 2
+              },
+              "2026": {
+                "expected": 1,
+                "records": 1
+              }
+            },
+            "sanity": {
+              "all_amounts_positive": true,
+              "bar_cache_gaps_gt_5d": [],
+              "ex_dates_not_in_bar_cache": [],
+              "window_amount_max": 2.000182,
+              "window_amount_min": 0.163147
+            },
+            "symbol": "EFA",
+            "unmatched_alpaca": 0,
+            "unmatched_alpaca_list": [],
+            "unmatched_issuer": 0,
+            "unmatched_issuer_list": [],
+            "verdict": "usable_with_gaps",
+            "years_with_records": [
+              2007,
+              2008,
+              2009,
+              2010,
+              2011,
+              2012,
+              2013,
+              2014,
+              2015,
+              2016,
+              2017,
+              2018,
+              2019,
+              2020,
+              2021,
+              2022,
+              2023,
+              2024,
+              2025,
+              2026
+            ]
+          },
+          "GLD": {
+            "alpaca_holes_confirmed_by_narrow_query": [],
+            "alpaca_records_2016plus": 0,
+            "alpaca_special_count": 0,
+            "amount_diff_summary": {
+              "n_diff_gt_1e-4": 0,
+              "n_diff_le_1e-4": 0,
+              "n_exact_equal": 0
+            },
+            "amount_mismatches_gt_0.005": [],
+            "bar_cache_files": [
+              "GLD_1d_2007-01-01_2017-12-31.parquet",
+              "GLD_1d_2018-01-01_2026-07-22.parquet",
+              "GLD_1d_2025-06-01_2026-07-17.parquet"
+            ],
+            "coverage_gaps": [],
+            "coverage_ok_from_listing": true,
+            "detail": "Issuer file is header-only and Alpaca returns 0 cash-dividend records for GLD over 2016-01-01..2026-07-17, consistent with the no-distribution grantor-trust policy documented in the capture. Zero records expected, zero found, all years 2007-2026.",
+            "first_cached_bar": "2007-01-03",
+            "gaps": [],
+            "issuer_first_ex": null,
+            "issuer_last_ex": null,
+            "issuer_records": 0,
+            "issuer_records_2016plus": 0,
+            "issuer_records_after_cutoff_excluded": [],
+            "issuer_records_in_window": 0,
+            "issuer_records_total_in_file": 0,
+            "last_cached_bar": "2026-07-21",
+            "matched_by_offset": {
+              "exact": 0,
+              "issuer+1bd": 0,
+              "issuer-1bd": 0
+            },
+            "matched_ex_dates": 0,
+            "matched_offset_nonexact": [],
+            "max_abs_amount_diff": 0.0,
+            "n_cached_sessions": 4917,
+            "per_year": {
+              "2007": {
+                "expected": null,
+                "records": 0
+              },
+              "2008": {
+                "expected": null,
+                "records": 0
+              },
+              "2009": {
+                "expected": null,
+                "records": 0
+              },
+              "2010": {
+                "expected": null,
+                "records": 0
+              },
+              "2011": {
+                "expected": null,
+                "records": 0
+              },
+              "2012": {
+                "expected": null,
+                "records": 0
+              },
+              "2013": {
+                "expected": null,
+                "records": 0
+              },
+              "2014": {
+                "expected": null,
+                "records": 0
+              },
+              "2015": {
+                "expected": null,
+                "records": 0
+              },
+              "2016": {
+                "expected": null,
+                "records": 0
+              },
+              "2017": {
+                "expected": null,
+                "records": 0
+              },
+              "2018": {
+                "expected": null,
+                "records": 0
+              },
+              "2019": {
+                "expected": null,
+                "records": 0
+              },
+              "2020": {
+                "expected": null,
+                "records": 0
+              },
+              "2021": {
+                "expected": null,
+                "records": 0
+              },
+              "2022": {
+                "expected": null,
+                "records": 0
+              },
+              "2023": {
+                "expected": null,
+                "records": 0
+              },
+              "2024": {
+                "expected": null,
+                "records": 0
+              },
+              "2025": {
+                "expected": null,
+                "records": 0
+              },
+              "2026": {
+                "expected": null,
+                "records": 0
+              }
+            },
+            "sanity": {
+              "all_amounts_positive": true,
+              "bar_cache_gaps_gt_5d": [],
+              "ex_dates_not_in_bar_cache": [],
+              "window_amount_max": null,
+              "window_amount_min": null
+            },
+            "symbol": "GLD",
+            "unmatched_alpaca": 0,
+            "unmatched_alpaca_list": [],
+            "unmatched_issuer": 0,
+            "unmatched_issuer_list": [],
+            "verdict": "usable",
+            "years_with_records": []
+          },
+          "HYG": {
+            "alpaca_holes_confirmed_by_narrow_query": [
+              "2016-08-01"
+            ],
+            "alpaca_records_2016plus": 125,
+            "alpaca_special_count": 0,
+            "amount_diff_summary": {
+              "n_diff_gt_1e-4": 0,
+              "n_diff_le_1e-4": 0,
+              "n_exact_equal": 125
+            },
+            "amount_mismatches_gt_0.005": [],
+            "bar_cache_files": [
+              "HYG_1d_2007-01-01_2017-12-31.parquet",
+              "HYG_1d_2018-01-01_2026-07-22.parquet"
+            ],
+            "coverage_gaps": [],
+            "coverage_ok_from_listing": true,
+            "detail": "125/125 Alpaca records match exactly, max |diff| 0.0. Issuer 2016-08-01 (0.383153) absent from Alpaca (hole). Coverage from first cached bar 2007-04-11: 9 ex-dates in 2007 (May-Dec plus the second December; the April nominal ex-date precedes the first bar and the 2007-04-04 inception), 12 every year 2008-2025, 6 in 2026. 68 in-window amounts exceed the 0.5 heuristic ceiling, all in 2007-2013 (0.50-0.81, high-yield-era coupons); all 2016+ amounts match Alpaca. All ex-dates are cached sessions.",
+            "first_cached_bar": "2007-04-11",
+            "gaps": [],
+            "issuer_first_ex": "2007-05-01",
+            "issuer_last_ex": "2026-07-01",
+            "issuer_records": 231,
+            "issuer_records_2016plus": 126,
+            "issuer_records_after_cutoff_excluded": [
+              "2026-08-03",
+              "2026-09-01"
+            ],
+            "issuer_records_in_window": 231,
+            "issuer_records_total_in_file": 233,
+            "last_cached_bar": "2026-07-21",
+            "matched_by_offset": {
+              "exact": 125,
+              "issuer+1bd": 0,
+              "issuer-1bd": 0
+            },
+            "matched_ex_dates": 125,
+            "matched_offset_nonexact": [],
+            "max_abs_amount_diff": 0.0,
+            "n_cached_sessions": 4850,
+            "per_year": {
+              "2007": {
+                "expected": 9,
+                "records": 9
+              },
+              "2008": {
+                "expected": 12,
+                "records": 12
+              },
+              "2009": {
+                "expected": 12,
+                "records": 12
+              },
+              "2010": {
+                "expected": 12,
+                "records": 12
+              },
+              "2011": {
+                "expected": 12,
+                "records": 12
+              },
+              "2012": {
+                "expected": 12,
+                "records": 12
+              },
+              "2013": {
+                "expected": 12,
+                "records": 12
+              },
+              "2014": {
+                "expected": 12,
+                "records": 12
+              },
+              "2015": {
+                "expected": 12,
+                "records": 12
+              },
+              "2016": {
+                "expected": 12,
+                "records": 12
+              },
+              "2017": {
+                "expected": 12,
+                "records": 12
+              },
+              "2018": {
+                "expected": 12,
+                "records": 12
+              },
+              "2019": {
+                "expected": 12,
+                "records": 12
+              },
+              "2020": {
+                "expected": 12,
+                "records": 12
+              },
+              "2021": {
+                "expected": 12,
+                "records": 12
+              },
+              "2022": {
+                "expected": 12,
+                "records": 12
+              },
+              "2023": {
+                "expected": 12,
+                "records": 12
+              },
+              "2024": {
+                "expected": 12,
+                "records": 12
+              },
+              "2025": {
+                "expected": 12,
+                "records": 12
+              },
+              "2026": {
+                "expected": 6,
+                "records": 6
+              }
+            },
+            "sanity": {
+              "all_amounts_positive": true,
+              "bar_cache_gaps_gt_5d": [],
+              "ex_dates_not_in_bar_cache": [],
+              "out_of_range_in_window": [
+                {
+                  "amount": 0.585509,
+                  "ex_date": "2007-06-01"
+                },
+                {
+                  "amount": 0.602618,
+                  "ex_date": "2007-07-02"
+                },
+                {
+                  "amount": 0.630162,
+                  "ex_date": "2007-08-01"
+                },
+                {
+                  "amount": 0.622897,
+                  "ex_date": "2007-09-04"
+                },
+                {
+                  "amount": 0.645244,
+                  "ex_date": "2007-10-01"
+                },
+                {
+                  "amount": 0.679908,
+                  "ex_date": "2007-11-01"
+                },
+                {
+                  "amount": 0.642346,
+                  "ex_date": "2007-12-03"
+                },
+                {
+                  "amount": 0.565046,
+                  "ex_date": "2007-12-27"
+                },
+                {
+                  "amount": 0.663838,
+                  "ex_date": "2008-02-01"
+                },
+                {
+                  "amount": 0.615903,
+                  "ex_date": "2008-03-03"
+                },
+                {
+                  "amount": 0.641537,
+                  "ex_date": "2008-04-01"
+                },
+                {
+                  "amount": 0.567656,
+                  "ex_date": "2008-05-01"
+                },
+                {
+                  "amount": 0.634146,
+                  "ex_date": "2008-06-02"
+                },
+                {
+                  "amount": 0.650602,
+                  "ex_date": "2008-07-01"
+                },
+                {
+                  "amount": 0.663435,
+                  "ex_date": "2008-08-01"
+                },
+                {
+                  "amount": 0.62,
+                  "ex_date": "2008-09-02"
+                },
+                {
+                  "amount": 0.69,
+                  "ex_date": "2008-10-01"
+                },
+                {
+                  "amount": 0.69,
+                  "ex_date": "2008-11-03"
+                },
+                {
+                  "amount": 0.6975,
+                  "ex_date": "2008-12-01"
+                },
+                {
+                  "amount": 0.524328,
+                  "ex_date": "2008-12-29"
+                },
+                {
+                  "amount": 0.753309,
+                  "ex_date": "2009-02-02"
+                },
+                {
+                  "amount": 0.718722,
+                  "ex_date": "2009-03-02"
+                },
+                {
+                  "amount": 0.805538,
+                  "ex_date": "2009-04-01"
+                },
+                {
+                  "amount": 0.590589,
+                  "ex_date": "2009-05-01"
+                },
+                {
+                  "amount": 0.714641,
+                  "ex_date": "2009-06-01"
+                },
+                {
+                  "amount": 0.724742,
+                  "ex_date": "2009-07-01"
+                },
+                {
+                  "amount": 0.7085,
+                  "ex_date": "2009-08-03"
+                },
+                {
+                  "amount": 0.70253,
+                  "ex_date": "2009-09-01"
+                },
+                {
+                  "amount": 0.70458,
+                  "ex_date": "2009-10-01"
+                },
+                {
+                  "amount": 0.70336,
+                  "ex_date": "2009-11-02"
+                },
+                {
+                  "amount": 0.622002,
+                  "ex_date": "2009-12-01"
+                },
+                {
+                  "amount": 0.579882,
+                  "ex_date": "2009-12-29"
+                },
+                {
+                  "amount": 0.662821,
+                  "ex_date": "2010-02-01"
+                },
+                {
+                  "amount": 0.646328,
+                  "ex_date": "2010-03-01"
+                },
+                {
+                  "amount": 0.657779,
+                  "ex_date": "2010-04-01"
+                },
+                {
+                  "amount": 0.640354,
+                  "ex_date": "2010-05-03"
+                },
+                {
+                  "amount": 0.64272,
+                  "ex_date": "2010-06-01"
+                },
+                {
+                  "amount": 0.62327,
+                  "ex_date": "2010-07-01"
+                },
+                {
+                  "amount": 0.59908,
+                  "ex_date": "2010-08-02"
+                },
+                {
+                  "amount": 0.625182,
+                  "ex_date": "2010-09-01"
+                },
+                {
+                  "amount": 0.586951,
+                  "ex_date": "2010-10-01"
+                },
+                {
+                  "amount": 0.601374,
+                  "ex_date": "2010-11-01"
+                },
+                {
+                  "amount": 0.588122,
+                  "ex_date": "2010-12-01"
+                },
+                {
+                  "amount": 0.576649,
+                  "ex_date": "2010-12-28"
+                },
+                {
+                  "amount": 0.588577,
+                  "ex_date": "2011-02-01"
+                },
+                {
+                  "amount": 0.578724,
+                  "ex_date": "2011-03-01"
+                },
+                {
+                  "amount": 0.56962,
+                  "ex_date": "2011-04-01"
+                },
+                {
+                  "amount": 0.572948,
+                  "ex_date": "2011-05-02"
+                },
+                {
+                  "amount": 0.565706,
+                  "ex_date": "2011-06-01"
+                },
+                {
+                  "amount": 0.581518,
+                  "ex_date": "2011-07-01"
+                },
+                {
+                  "amount": 0.550728,
+                  "ex_date": "2011-08-01"
+                },
+                {
+                  "amount": 0.563357,
+                  "ex_date": "2011-09-01"
+                },
+                {
+                  "amount": 0.538266,
+                  "ex_date": "2011-10-03"
+                },
+                {
+                  "amount": 0.526252,
+                  "ex_date": "2011-11-01"
+                },
+                {
+                  "amount": 0.549011,
+                  "ex_date": "2011-12-01"
+                },
+                {
+                  "amount": 0.534717,
+                  "ex_date": "2011-12-27"
+                },
+                {
+                  "amount": 0.506808,
+                  "ex_date": "2012-02-01"
+                },
+                {
+                  "amount": 0.536719,
+                  "ex_date": "2012-03-01"
+                },
+                {
+                  "amount": 0.545118,
+                  "ex_date": "2012-04-02"
+                },
+                {
+                  "amount": 0.508819,
+                  "ex_date": "2012-05-01"
+                },
+                {
+                  "amount": 0.54213,
+                  "ex_date": "2012-06-01"
+                },
+                {
+                  "amount": 0.517894,
+                  "ex_date": "2012-07-02"
+                },
+                {
+                  "amount": 0.5047,
+                  "ex_date": "2012-08-01"
+                },
+                {
+                  "amount": 0.508289,
+                  "ex_date": "2012-09-04"
+                },
+                {
+                  "amount": 0.510521,
+                  "ex_date": "2012-11-01"
+                },
+                {
+                  "amount": 0.505021,
+                  "ex_date": "2012-12-26"
+                },
+                {
+                  "amount": 0.505988,
+                  "ex_date": "2013-03-01"
+                }
+              ],
+              "range": [
+                0.2,
+                0.5
+              ],
+              "window_amount_max": 0.805538,
+              "window_amount_min": 0.275083
+            },
+            "symbol": "HYG",
+            "unmatched_alpaca": 0,
+            "unmatched_alpaca_list": [],
+            "unmatched_issuer": 1,
+            "unmatched_issuer_list": [
+              {
+                "amount": 0.383153,
+                "ex_date": "2016-08-01"
+              }
+            ],
+            "verdict": "usable",
+            "years_with_records": [
+              2007,
+              2008,
+              2009,
+              2010,
+              2011,
+              2012,
+              2013,
+              2014,
+              2015,
+              2016,
+              2017,
+              2018,
+              2019,
+              2020,
+              2021,
+              2022,
+              2023,
+              2024,
+              2025,
+              2026
+            ]
+          },
+          "IEF": {
+            "alpaca_holes_confirmed_by_narrow_query": [
+              "2016-08-01"
+            ],
+            "alpaca_records_2016plus": 125,
+            "alpaca_special_count": 0,
+            "amount_diff_summary": {
+              "n_diff_gt_1e-4": 0,
+              "n_diff_le_1e-4": 5,
+              "n_exact_equal": 120
+            },
+            "amount_mismatches_gt_0.005": [],
+            "bar_cache_files": [
+              "IEF_1d_2007-01-01_2017-12-31.parquet",
+              "IEF_1d_2018-01-01_2026-07-22.parquet",
+              "IEF_1d_2025-06-01_2026-07-17.parquet"
+            ],
+            "coverage_gaps": [],
+            "coverage_ok_from_listing": true,
+            "detail": "125/125 Alpaca records match exactly, max |diff| 5e-6 (Alpaca rounds some rates to 5 decimals). Issuer 2016-08-01 (0.158313) absent from Alpaca (hole). Coverage from 2007-01-03: 12 every year 2007-2025, 6 in 2026. 48 in-window amounts fall outside the 0.1-0.3 heuristic: 2007-2009 rows at 0.30-0.37 (higher-yield era) plus 2009-11-02 = 0.769909 which the issuer file itemizes as 0.260923 income + 0.508986 LT capital gain paid in cash; 2020-08..2021-12 rows at 0.070-0.100 (zero-rate era); 2024-12..2026-07 rows at 0.303-0.317. All are issuer-published and the 2016+ ones match Alpaca exactly, so they are plausible, not errors. All ex-dates are cached sessions.",
+            "first_cached_bar": "2007-01-03",
+            "gaps": [],
+            "issuer_first_ex": "2002-09-03",
+            "issuer_last_ex": "2026-07-01",
+            "issuer_records": 287,
+            "issuer_records_2016plus": 126,
+            "issuer_records_after_cutoff_excluded": [
+              "2026-08-03",
+              "2026-09-01"
+            ],
+            "issuer_records_in_window": 234,
+            "issuer_records_total_in_file": 289,
+            "last_cached_bar": "2026-07-21",
+            "matched_by_offset": {
+              "exact": 125,
+              "issuer+1bd": 0,
+              "issuer-1bd": 0
+            },
+            "matched_ex_dates": 125,
+            "matched_offset_nonexact": [],
+            "max_abs_amount_diff": 5.0000000000050004e-06,
+            "n_cached_sessions": 4917,
+            "per_year": {
+              "2007": {
+                "expected": 12,
+                "records": 12
+              },
+              "2008": {
+                "expected": 12,
+                "records": 12
+              },
+              "2009": {
+                "expected": 12,
+                "records": 12
+              },
+              "2010": {
+                "expected": 12,
+                "records": 12
+              },
+              "2011": {
+                "expected": 12,
+                "records": 12
+              },
+              "2012": {
+                "expected": 12,
+                "records": 12
+              },
+              "2013": {
+                "expected": 12,
+                "records": 12
+              },
+              "2014": {
+                "expected": 12,
+                "records": 12
+              },
+              "2015": {
+                "expected": 12,
+                "records": 12
+              },
+              "2016": {
+                "expected": 12,
+                "records": 12
+              },
+              "2017": {
+                "expected": 12,
+                "records": 12
+              },
+              "2018": {
+                "expected": 12,
+                "records": 12
+              },
+              "2019": {
+                "expected": 12,
+                "records": 12
+              },
+              "2020": {
+                "expected": 12,
+                "records": 12
+              },
+              "2021": {
+                "expected": 12,
+                "records": 12
+              },
+              "2022": {
+                "expected": 12,
+                "records": 12
+              },
+              "2023": {
+                "expected": 12,
+                "records": 12
+              },
+              "2024": {
+                "expected": 12,
+                "records": 12
+              },
+              "2025": {
+                "expected": 12,
+                "records": 12
+              },
+              "2026": {
+                "expected": 6,
+                "records": 6
+              }
+            },
+            "sanity": {
+              "all_amounts_positive": true,
+              "bar_cache_gaps_gt_5d": [],
+              "ex_dates_not_in_bar_cache": [],
+              "out_of_range_in_window": [
+                {
+                  "amount": 0.311091,
+                  "ex_date": "2007-02-01"
+                },
+                {
+                  "amount": 0.321919,
+                  "ex_date": "2007-04-02"
+                },
+                {
+                  "amount": 0.314451,
+                  "ex_date": "2007-05-01"
+                },
+                {
+                  "amount": 0.329226,
+                  "ex_date": "2007-06-01"
+                },
+                {
+                  "amount": 0.313321,
+                  "ex_date": "2007-07-02"
+                },
+                {
+                  "amount": 0.322098,
+                  "ex_date": "2007-08-01"
+                },
+                {
+                  "amount": 0.333602,
+                  "ex_date": "2007-09-04"
+                },
+                {
+                  "amount": 0.31013,
+                  "ex_date": "2007-10-01"
+                },
+                {
+                  "amount": 0.313169,
+                  "ex_date": "2007-12-27"
+                },
+                {
+                  "amount": 0.310872,
+                  "ex_date": "2008-04-01"
+                },
+                {
+                  "amount": 0.307167,
+                  "ex_date": "2008-06-02"
+                },
+                {
+                  "amount": 0.304371,
+                  "ex_date": "2008-08-01"
+                },
+                {
+                  "amount": 0.305,
+                  "ex_date": "2008-10-01"
+                },
+                {
+                  "amount": 0.32,
+                  "ex_date": "2008-11-03"
+                },
+                {
+                  "amount": 0.3125,
+                  "ex_date": "2008-12-01"
+                },
+                {
+                  "amount": 0.369008,
+                  "ex_date": "2008-12-29"
+                },
+                {
+                  "amount": 0.769909,
+                  "ex_date": "2009-11-02"
+                },
+                {
+                  "amount": 0.099876,
+                  "ex_date": "2020-08-03"
+                },
+                {
+                  "amount": 0.088008,
+                  "ex_date": "2020-09-01"
+                },
+                {
+                  "amount": 0.079256,
+                  "ex_date": "2020-10-01"
+                },
+                {
+                  "amount": 0.075943,
+                  "ex_date": "2020-11-02"
+                },
+                {
+                  "amount": 0.079751,
+                  "ex_date": "2020-12-01"
+                },
+                {
+                  "amount": 0.072535,
+                  "ex_date": "2020-12-17"
+                },
+                {
+                  "amount": 0.077553,
+                  "ex_date": "2021-02-01"
+                },
+                {
+                  "amount": 0.069871,
+                  "ex_date": "2021-03-01"
+                },
+                {
+                  "amount": 0.069712,
+                  "ex_date": "2021-04-01"
+                },
+                {
+                  "amount": 0.074471,
+                  "ex_date": "2021-05-03"
+                },
+                {
+                  "amount": 0.078615,
+                  "ex_date": "2021-06-01"
+                },
+                {
+                  "amount": 0.076732,
+                  "ex_date": "2021-07-01"
+                },
+                {
+                  "amount": 0.076119,
+                  "ex_date": "2021-08-02"
+                },
+                {
+                  "amount": 0.080411,
+                  "ex_date": "2021-09-01"
+                },
+                {
+                  "amount": 0.080198,
+                  "ex_date": "2021-10-01"
+                },
+                {
+                  "amount": 0.081436,
+                  "ex_date": "2021-11-01"
+                },
+                {
+                  "amount": 0.087705,
+                  "ex_date": "2021-12-01"
+                },
+                {
+                  "amount": 0.307517,
+                  "ex_date": "2024-12-18"
+                },
+                {
+                  "amount": 0.303674,
+                  "ex_date": "2025-04-01"
+                },
+                {
+                  "amount": 0.313378,
+                  "ex_date": "2025-05-01"
+                },
+                {
+                  "amount": 0.310131,
+                  "ex_date": "2025-06-02"
+                },
+                {
+                  "amount": 0.30321,
+                  "ex_date": "2025-07-01"
+                },
+                {
+                  "amount": 0.308775,
+                  "ex_date": "2025-08-01"
+                },
+                {
+                  "amount": 0.314136,
+                  "ex_date": "2025-09-02"
+                },
+                {
+                  "amount": 0.303792,
+                  "ex_date": "2025-11-03"
+                },
+                {
+                  "amount": 0.312713,
+                  "ex_date": "2025-12-19"
+                },
+                {
+                  "amount": 0.311986,
+                  "ex_date": "2026-02-02"
+                },
+                {
+                  "amount": 0.317166,
+                  "ex_date": "2026-04-01"
+                },
+                {
+                  "amount": 0.312472,
+                  "ex_date": "2026-05-01"
+                },
+                {
+                  "amount": 0.317197,
+                  "ex_date": "2026-06-01"
+                },
+                {
+                  "amount": 0.311059,
+                  "ex_date": "2026-07-01"
+                }
+              ],
+              "range": [
+                0.1,
+                0.3
+              ],
+              "window_amount_max": 0.769909,
+              "window_amount_min": 0.069712
+            },
+            "symbol": "IEF",
+            "unmatched_alpaca": 0,
+            "unmatched_alpaca_list": [],
+            "unmatched_issuer": 1,
+            "unmatched_issuer_list": [
+              {
+                "amount": 0.158313,
+                "ex_date": "2016-08-01"
+              }
+            ],
+            "verdict": "usable",
+            "years_with_records": [
+              2007,
+              2008,
+              2009,
+              2010,
+              2011,
+              2012,
+              2013,
+              2014,
+              2015,
+              2016,
+              2017,
+              2018,
+              2019,
+              2020,
+              2021,
+              2022,
+              2023,
+              2024,
+              2025,
+              2026
+            ]
+          },
+          "LQD": {
+            "alpaca_holes_confirmed_by_narrow_query": [
+              "2016-08-01"
+            ],
+            "alpaca_records_2016plus": 125,
+            "alpaca_special_count": 0,
+            "amount_diff_summary": {
+              "n_diff_gt_1e-4": 0,
+              "n_diff_le_1e-4": 0,
+              "n_exact_equal": 125
+            },
+            "amount_mismatches_gt_0.005": [],
+            "bar_cache_files": [
+              "LQD_1d_2007-01-01_2017-12-31.parquet",
+              "LQD_1d_2018-01-01_2026-07-22.parquet"
+            ],
+            "coverage_gaps": [],
+            "coverage_ok_from_listing": true,
+            "detail": "125/125 Alpaca records match exactly, max |diff| 0.0. Issuer 2016-08-01 (0.322706) absent from Alpaca (hole). Coverage from 2007-01-03: 12 every year 2007-2025, 6 in 2026. 79 in-window amounts exceed the 0.4 heuristic ceiling: 2007-2012 rows 0.40-0.52 and 2024-2026 rows 0.40-0.45, consistent with IG yields in those periods; the 2016+ ones match Alpaca exactly. All ex-dates are cached sessions.",
+            "first_cached_bar": "2007-01-03",
+            "gaps": [],
+            "issuer_first_ex": "2002-09-03",
+            "issuer_last_ex": "2026-07-01",
+            "issuer_records": 287,
+            "issuer_records_2016plus": 126,
+            "issuer_records_after_cutoff_excluded": [
+              "2026-08-03",
+              "2026-09-01"
+            ],
+            "issuer_records_in_window": 234,
+            "issuer_records_total_in_file": 289,
+            "last_cached_bar": "2026-07-21",
+            "matched_by_offset": {
+              "exact": 125,
+              "issuer+1bd": 0,
+              "issuer-1bd": 0
+            },
+            "matched_ex_dates": 125,
+            "matched_offset_nonexact": [],
+            "max_abs_amount_diff": 0.0,
+            "n_cached_sessions": 4917,
+            "per_year": {
+              "2007": {
+                "expected": 12,
+                "records": 12
+              },
+              "2008": {
+                "expected": 12,
+                "records": 12
+              },
+              "2009": {
+                "expected": 12,
+                "records": 12
+              },
+              "2010": {
+                "expected": 12,
+                "records": 12
+              },
+              "2011": {
+                "expected": 12,
+                "records": 12
+              },
+              "2012": {
+                "expected": 12,
+                "records": 12
+              },
+              "2013": {
+                "expected": 12,
+                "records": 12
+              },
+              "2014": {
+                "expected": 12,
+                "records": 12
+              },
+              "2015": {
+                "expected": 12,
+                "records": 12
+              },
+              "2016": {
+                "expected": 12,
+                "records": 12
+              },
+              "2017": {
+                "expected": 12,
+                "records": 12
+              },
+              "2018": {
+                "expected": 12,
+                "records": 12
+              },
+              "2019": {
+                "expected": 12,
+                "records": 12
+              },
+              "2020": {
+                "expected": 12,
+                "records": 12
+              },
+              "2021": {
+                "expected": 12,
+                "records": 12
+              },
+              "2022": {
+                "expected": 12,
+                "records": 12
+              },
+              "2023": {
+                "expected": 12,
+                "records": 12
+              },
+              "2024": {
+                "expected": 12,
+                "records": 12
+              },
+              "2025": {
+                "expected": 12,
+                "records": 12
+              },
+              "2026": {
+                "expected": 6,
+                "records": 6
+              }
+            },
+            "sanity": {
+              "all_amounts_positive": true,
+              "bar_cache_gaps_gt_5d": [],
+              "ex_dates_not_in_bar_cache": [],
+              "out_of_range_in_window": [
+                {
+                  "amount": 0.457487,
+                  "ex_date": "2007-02-01"
+                },
+                {
+                  "amount": 0.450902,
+                  "ex_date": "2007-03-01"
+                },
+                {
+                  "amount": 0.492145,
+                  "ex_date": "2007-04-02"
+                },
+                {
+                  "amount": 0.480138,
+                  "ex_date": "2007-05-01"
+                },
+                {
+                  "amount": 0.496493,
+                  "ex_date": "2007-06-01"
+                },
+                {
+                  "amount": 0.471792,
+                  "ex_date": "2007-07-02"
+                },
+                {
+                  "amount": 0.491974,
+                  "ex_date": "2007-08-01"
+                },
+                {
+                  "amount": 0.487622,
+                  "ex_date": "2007-09-04"
+                },
+                {
+                  "amount": 0.482889,
+                  "ex_date": "2007-10-01"
+                },
+                {
+                  "amount": 0.475743,
+                  "ex_date": "2007-11-01"
+                },
+                {
+                  "amount": 0.456887,
+                  "ex_date": "2007-12-03"
+                },
+                {
+                  "amount": 0.465038,
+                  "ex_date": "2007-12-27"
+                },
+                {
+                  "amount": 0.49364,
+                  "ex_date": "2008-02-01"
+                },
+                {
+                  "amount": 0.448278,
+                  "ex_date": "2008-03-03"
+                },
+                {
+                  "amount": 0.512628,
+                  "ex_date": "2008-04-01"
+                },
+                {
+                  "amount": 0.462645,
+                  "ex_date": "2008-05-01"
+                },
+                {
+                  "amount": 0.473178,
+                  "ex_date": "2008-06-02"
+                },
+                {
+                  "amount": 0.434211,
+                  "ex_date": "2008-07-01"
+                },
+                {
+                  "amount": 0.466146,
+                  "ex_date": "2008-08-01"
+                },
+                {
+                  "amount": 0.456533,
+                  "ex_date": "2008-09-02"
+                },
+                {
+                  "amount": 0.405,
+                  "ex_date": "2008-10-01"
+                },
+                {
+                  "amount": 0.435,
+                  "ex_date": "2008-11-03"
+                },
+                {
+                  "amount": 0.4515,
+                  "ex_date": "2008-12-01"
+                },
+                {
+                  "amount": 0.421502,
+                  "ex_date": "2008-12-29"
+                },
+                {
+                  "amount": 0.490806,
+                  "ex_date": "2009-02-02"
+                },
+                {
+                  "amount": 0.482322,
+                  "ex_date": "2009-03-02"
+                },
+                {
+                  "amount": 0.518715,
+                  "ex_date": "2009-04-01"
+                },
+                {
+                  "amount": 0.4675,
+                  "ex_date": "2009-05-01"
+                },
+                {
+                  "amount": 0.4883,
+                  "ex_date": "2009-06-01"
+                },
+                {
+                  "amount": 0.44466,
+                  "ex_date": "2009-07-01"
+                },
+                {
+                  "amount": 0.49155,
+                  "ex_date": "2009-08-03"
+                },
+                {
+                  "amount": 0.494204,
+                  "ex_date": "2009-09-01"
+                },
+                {
+                  "amount": 0.471656,
+                  "ex_date": "2009-10-01"
+                },
+                {
+                  "amount": 0.483707,
+                  "ex_date": "2009-11-02"
+                },
+                {
+                  "amount": 0.4564,
+                  "ex_date": "2009-12-01"
+                },
+                {
+                  "amount": 0.435239,
+                  "ex_date": "2009-12-29"
+                },
+                {
+                  "amount": 0.451966,
+                  "ex_date": "2010-02-01"
+                },
+                {
+                  "amount": 0.44459,
+                  "ex_date": "2010-03-01"
+                },
+                {
+                  "amount": 0.46869,
+                  "ex_date": "2010-04-01"
+                },
+                {
+                  "amount": 0.45156,
+                  "ex_date": "2010-05-03"
+                },
+                {
+                  "amount": 0.443325,
+                  "ex_date": "2010-06-01"
+                },
+                {
+                  "amount": 0.440028,
+                  "ex_date": "2010-07-01"
+                },
+                {
+                  "amount": 0.43744,
+                  "ex_date": "2010-08-02"
+                },
+                {
+                  "amount": 0.424412,
+                  "ex_date": "2010-09-01"
+                },
+                {
+                  "amount": 0.433672,
+                  "ex_date": "2010-10-01"
+                },
+                {
+                  "amount": 0.431859,
+                  "ex_date": "2010-11-01"
+                },
+                {
+                  "amount": 0.426206,
+                  "ex_date": "2010-12-01"
+                },
+                {
+                  "amount": 0.427685,
+                  "ex_date": "2010-12-28"
+                },
+                {
+                  "amount": 0.427083,
+                  "ex_date": "2011-02-01"
+                },
+                {
+                  "amount": 0.432299,
+                  "ex_date": "2011-03-01"
+                },
+                {
+                  "amount": 0.428731,
+                  "ex_date": "2011-04-01"
+                },
+                {
+                  "amount": 0.427385,
+                  "ex_date": "2011-05-02"
+                },
+                {
+                  "amount": 0.425248,
+                  "ex_date": "2011-06-01"
+                },
+                {
+                  "amount": 0.4264,
+                  "ex_date": "2011-07-01"
+                },
+                {
+                  "amount": 0.420796,
+                  "ex_date": "2011-08-01"
+                },
+                {
+                  "amount": 0.412792,
+                  "ex_date": "2011-09-01"
+                },
+                {
+                  "amount": 0.417813,
+                  "ex_date": "2011-10-03"
+                },
+                {
+                  "amount": 0.402212,
+                  "ex_date": "2011-11-01"
+                },
+                {
+                  "amount": 0.40299,
+                  "ex_date": "2012-03-01"
+                },
+                {
+                  "amount": 0.41072,
+                  "ex_date": "2024-04-01"
+                },
+                {
+                  "amount": 0.414995,
+                  "ex_date": "2024-05-01"
+                },
+                {
+                  "amount": 0.404508,
+                  "ex_date": "2024-06-03"
+                },
+                {
+                  "amount": 0.405248,
+                  "ex_date": "2024-09-03"
+                },
+                {
+                  "amount": 0.411243,
+                  "ex_date": "2024-10-01"
+                },
+                {
+                  "amount": 0.414742,
+                  "ex_date": "2025-03-03"
+                },
+                {
+                  "amount": 0.416781,
+                  "ex_date": "2025-04-01"
+                },
+                {
+                  "amount": 0.431941,
+                  "ex_date": "2025-05-01"
+                },
+                {
+                  "amount": 0.401927,
+                  "ex_date": "2025-07-01"
+                },
+                {
+                  "amount": 0.444155,
+                  "ex_date": "2025-08-01"
+                },
+                {
+                  "amount": 0.406036,
+                  "ex_date": "2025-10-01"
+                },
+                {
+                  "amount": 0.402445,
+                  "ex_date": "2025-11-03"
+                },
+                {
+                  "amount": 0.413481,
+                  "ex_date": "2025-12-01"
+                },
+                {
+                  "amount": 0.436458,
+                  "ex_date": "2025-12-19"
+                },
+                {
+                  "amount": 0.407845,
+                  "ex_date": "2026-02-02"
+                },
+                {
+                  "amount": 0.446478,
+                  "ex_date": "2026-04-01"
+                },
+                {
+                  "amount": 0.424551,
+                  "ex_date": "2026-05-01"
+                },
+                {
+                  "amount": 0.413251,
+                  "ex_date": "2026-06-01"
+                }
+              ],
+              "range": [
+                0.2,
+                0.4
+              ],
+              "window_amount_max": 0.518715,
+              "window_amount_min": 0.234069
+            },
+            "symbol": "LQD",
+            "unmatched_alpaca": 0,
+            "unmatched_alpaca_list": [],
+            "unmatched_issuer": 1,
+            "unmatched_issuer_list": [
+              {
+                "amount": 0.322706,
+                "ex_date": "2016-08-01"
+              }
+            ],
+            "verdict": "usable",
+            "years_with_records": [
+              2007,
+              2008,
+              2009,
+              2010,
+              2011,
+              2012,
+              2013,
+              2014,
+              2015,
+              2016,
+              2017,
+              2018,
+              2019,
+              2020,
+              2021,
+              2022,
+              2023,
+              2024,
+              2025,
+              2026
+            ]
+          },
+          "PDBC": {
+            "alpaca_holes_confirmed_by_narrow_query": [],
+            "alpaca_records_2016plus": 11,
+            "alpaca_special_count": 0,
+            "amount_diff_summary": {
+              "n_diff_gt_1e-4": 0,
+              "n_diff_le_1e-4": 0,
+              "n_exact_equal": 11
+            },
+            "amount_mismatches_gt_0.005": [],
+            "bar_cache_files": [
+              "PDBC_1d_2007-01-01_2017-12-31.parquet",
+              "PDBC_1d_2018-01-01_2026-07-22.parquet",
+              "PDBC_1d_2025-06-01_2026-07-17.parquet"
+            ],
+            "coverage_gaps": [],
+            "coverage_ok_from_listing": true,
+            "detail": "11/11 Alpaca records match exactly, max |diff| 0.0; no unmatched on either side. Irregular annual December payer: years with records 2016-2025 (2 in 2021: 2021-12-03 and 2021-12-20), none 2014-2015 (corroborated in the capture by EDGAR N-CSRS financial highlights) and none in 2026 through the cutoff. All 11 ex-dates are cached sessions (first bar 2014-11-07).",
+            "first_cached_bar": "2014-11-07",
+            "gaps": [],
+            "issuer_first_ex": "2016-12-16",
+            "issuer_last_ex": "2025-12-22",
+            "issuer_records": 11,
+            "issuer_records_2016plus": 11,
+            "issuer_records_after_cutoff_excluded": [],
+            "issuer_records_in_window": 11,
+            "issuer_records_total_in_file": 11,
+            "last_cached_bar": "2026-07-21",
+            "matched_by_offset": {
+              "exact": 11,
+              "issuer+1bd": 0,
+              "issuer-1bd": 0
+            },
+            "matched_ex_dates": 11,
+            "matched_offset_nonexact": [],
+            "max_abs_amount_diff": 0.0,
+            "n_cached_sessions": 2940,
+            "per_year": {
+              "2014": {
+                "expected": null,
+                "records": 0
+              },
+              "2015": {
+                "expected": null,
+                "records": 0
+              },
+              "2016": {
+                "expected": null,
+                "records": 1
+              },
+              "2017": {
+                "expected": null,
+                "records": 1
+              },
+              "2018": {
+                "expected": null,
+                "records": 1
+              },
+              "2019": {
+                "expected": null,
+                "records": 1
+              },
+              "2020": {
+                "expected": null,
+                "records": 1
+              },
+              "2021": {
+                "expected": null,
+                "records": 2
+              },
+              "2022": {
+                "expected": null,
+                "records": 1
+              },
+              "2023": {
+                "expected": null,
+                "records": 1
+              },
+              "2024": {
+                "expected": null,
+                "records": 1
+              },
+              "2025": {
+                "expected": null,
+                "records": 1
+              },
+              "2026": {
+                "expected": null,
+                "records": 0
+              }
+            },
+            "sanity": {
+              "all_amounts_positive": true,
+              "bar_cache_gaps_gt_5d": [],
+              "ex_dates_not_in_bar_cache": [],
+              "window_amount_max": 5.39,
+              "window_amount_min": 0.00128
+            },
+            "symbol": "PDBC",
+            "unmatched_alpaca": 0,
+            "unmatched_alpaca_list": [],
+            "unmatched_issuer": 0,
+            "unmatched_issuer_list": [],
+            "verdict": "usable",
+            "years_with_records": [
+              2016,
+              2017,
+              2018,
+              2019,
+              2020,
+              2021,
+              2022,
+              2023,
+              2024,
+              2025
+            ]
+          },
+          "SPY": {
+            "alpaca_holes_confirmed_by_narrow_query": [
+              "2016-03-18",
+              "2018-06-15"
+            ],
+            "alpaca_records_2016plus": 39,
+            "alpaca_special_count": 0,
+            "amount_diff_summary": {
+              "n_diff_gt_1e-4": 0,
+              "n_diff_le_1e-4": 1,
+              "n_exact_equal": 38
+            },
+            "amount_mismatches_gt_0.005": [],
+            "bar_cache_files": [
+              "SPY_1d_2018-01-01_2026-07-22.parquet",
+              "SPY_1d_2025-06-01_2026-07-17.parquet",
+              "SPY_1d_min_2026-08-14.parquet"
+            ],
+            "coverage_gaps": [],
+            "coverage_ok_from_listing": true,
+            "detail": "All 39 Alpaca records match issuer ex-dates exactly (no \u00b11bd shifts) with |diff|<=1e-7. 3 issuer records unmatched: 2016-03-18 and 2018-06-15 are absent from Alpaca even under narrow per-month queries (Alpaca data holes; issuer XLSX values 1.049604 and 1.245568 stand); 2026-06-18 (1.903516) IS in Alpaca but is returned only when the query end >= its pay date 2026-07-31 because the Alpaca corporate-actions start/end filter selects on process_date, not ex_date. Coverage from first cached bar 2006-09-27 (SPY_1d_min_2026-08-14.parquet) to 2026-07-17: 4 ex-dates every year 2007-2025, 1 in 2006 (Dec; Sep-2006 ex-date 2006-09-15 precedes the first bar), 2 in 2026 (Mar, Jun). Sanity: one in-window amount below the 0.5 heuristic floor, 2010-03-19 = 0.48038 (issuer value, 2010 low-payout quarter; not a data error). All 80 in-window ex-dates fall on cached sessions.",
+            "first_cached_bar": "2006-09-27",
+            "gaps": [],
+            "issuer_first_ex": "1993-03-19",
+            "issuer_last_ex": "2026-06-18",
+            "issuer_records": 135,
+            "issuer_records_2016plus": 42,
+            "issuer_records_after_cutoff_excluded": [],
+            "issuer_records_in_window": 79,
+            "issuer_records_total_in_file": 135,
+            "last_cached_bar": "2026-08-13",
+            "matched_by_offset": {
+              "exact": 39,
+              "issuer+1bd": 0,
+              "issuer-1bd": 0
+            },
+            "matched_ex_dates": 39,
+            "matched_offset_nonexact": [],
+            "max_abs_amount_diff": 1.0000000005838672e-07,
+            "n_cached_sessions": 5000,
+            "per_year": {
+              "2006": {
+                "expected": 1,
+                "records": 1
+              },
+              "2007": {
+                "expected": 4,
+                "records": 4
+              },
+              "2008": {
+                "expected": 4,
+                "records": 4
+              },
+              "2009": {
+                "expected": 4,
+                "records": 4
+              },
+              "2010": {
+                "expected": 4,
+                "records": 4
+              },
+              "2011": {
+                "expected": 4,
+                "records": 4
+              },
+              "2012": {
+                "expected": 4,
+                "records": 4
+              },
+              "2013": {
+                "expected": 4,
+                "records": 4
+              },
+              "2014": {
+                "expected": 4,
+                "records": 4
+              },
+              "2015": {
+                "expected": 4,
+                "records": 4
+              },
+              "2016": {
+                "expected": 4,
+                "records": 4
+              },
+              "2017": {
+                "expected": 4,
+                "records": 4
+              },
+              "2018": {
+                "expected": 4,
+                "records": 4
+              },
+              "2019": {
+                "expected": 4,
+                "records": 4
+              },
+              "2020": {
+                "expected": 4,
+                "records": 4
+              },
+              "2021": {
+                "expected": 4,
+                "records": 4
+              },
+              "2022": {
+                "expected": 4,
+                "records": 4
+              },
+              "2023": {
+                "expected": 4,
+                "records": 4
+              },
+              "2024": {
+                "expected": 4,
+                "records": 4
+              },
+              "2025": {
+                "expected": 4,
+                "records": 4
+              },
+              "2026": {
+                "expected": 2,
+                "records": 2
+              }
+            },
+            "sanity": {
+              "all_amounts_positive": true,
+              "bar_cache_gaps_gt_5d": [],
+              "ex_dates_not_in_bar_cache": [],
+              "out_of_range_in_window": [
+                {
+                  "amount": 0.48038,
+                  "ex_date": "2010-03-19"
+                }
+              ],
+              "range": [
+                0.5,
+                2.0
+              ],
+              "window_amount_max": 1.993368,
+              "window_amount_min": 0.48038
+            },
+            "symbol": "SPY",
+            "unmatched_alpaca": 0,
+            "unmatched_alpaca_list": [],
+            "unmatched_issuer": 3,
+            "unmatched_issuer_list": [
+              {
+                "amount": 1.049604,
+                "ex_date": "2016-03-18"
+              },
+              {
+                "amount": 1.245568,
+                "ex_date": "2018-06-15"
+              },
+              {
+                "amount": 1.903516,
+                "ex_date": "2026-06-18"
+              }
+            ],
+            "verdict": "usable",
+            "years_with_records": [
+              2006,
+              2007,
+              2008,
+              2009,
+              2010,
+              2011,
+              2012,
+              2013,
+              2014,
+              2015,
+              2016,
+              2017,
+              2018,
+              2019,
+              2020,
+              2021,
+              2022,
+              2023,
+              2024,
+              2025,
+              2026
+            ]
+          },
+          "TLT": {
+            "alpaca_holes_confirmed_by_narrow_query": [
+              "2016-08-01"
+            ],
+            "alpaca_records_2016plus": 125,
+            "alpaca_special_count": 0,
+            "amount_diff_summary": {
+              "n_diff_gt_1e-4": 0,
+              "n_diff_le_1e-4": 1,
+              "n_exact_equal": 124
+            },
+            "amount_mismatches_gt_0.005": [],
+            "bar_cache_files": [
+              "TLT_1d_2007-01-01_2017-12-31.parquet",
+              "TLT_1d_2018-01-01_2026-07-22.parquet",
+              "TLT_1d_2025-06-01_2026-07-17.parquet"
+            ],
+            "coverage_gaps": [],
+            "coverage_ok_from_listing": true,
+            "detail": "125/125 Alpaca records match exactly, max |diff| 1e-7. Issuer 2016-08-01 (0.258147) is absent from Alpaca even under a narrow 2016-07-25..2016-08-05 query (Alpaca hole shared by IEF/LQD/HYG on the same date). Coverage from 2007-01-03: 12 ex-dates every year 2007-2025, 6 in 2026 through 2026-07-01. All 234 in-window amounts within 0.15-0.45; all ex-dates are cached sessions. 2 post-cutoff rows (2026-08-03, 2026-09-01) in the CSV were excluded from the comparison.",
+            "first_cached_bar": "2007-01-03",
+            "gaps": [],
+            "issuer_first_ex": "2002-09-03",
+            "issuer_last_ex": "2026-07-01",
+            "issuer_records": 287,
+            "issuer_records_2016plus": 126,
+            "issuer_records_after_cutoff_excluded": [
+              "2026-08-03",
+              "2026-09-01"
+            ],
+            "issuer_records_in_window": 234,
+            "issuer_records_total_in_file": 289,
+            "last_cached_bar": "2026-07-21",
+            "matched_by_offset": {
+              "exact": 125,
+              "issuer+1bd": 0,
+              "issuer-1bd": 0
+            },
+            "matched_ex_dates": 125,
+            "matched_offset_nonexact": [],
+            "max_abs_amount_diff": 1.0000000000287557e-07,
+            "n_cached_sessions": 4917,
+            "per_year": {
+              "2007": {
+                "expected": 12,
+                "records": 12
+              },
+              "2008": {
+                "expected": 12,
+                "records": 12
+              },
+              "2009": {
+                "expected": 12,
+                "records": 12
+              },
+              "2010": {
+                "expected": 12,
+                "records": 12
+              },
+              "2011": {
+                "expected": 12,
+                "records": 12
+              },
+              "2012": {
+                "expected": 12,
+                "records": 12
+              },
+              "2013": {
+                "expected": 12,
+                "records": 12
+              },
+              "2014": {
+                "expected": 12,
+                "records": 12
+              },
+              "2015": {
+                "expected": 12,
+                "records": 12
+              },
+              "2016": {
+                "expected": 12,
+                "records": 12
+              },
+              "2017": {
+                "expected": 12,
+                "records": 12
+              },
+              "2018": {
+                "expected": 12,
+                "records": 12
+              },
+              "2019": {
+                "expected": 12,
+                "records": 12
+              },
+              "2020": {
+                "expected": 12,
+                "records": 12
+              },
+              "2021": {
+                "expected": 12,
+                "records": 12
+              },
+              "2022": {
+                "expected": 12,
+                "records": 12
+              },
+              "2023": {
+                "expected": 12,
+                "records": 12
+              },
+              "2024": {
+                "expected": 12,
+                "records": 12
+              },
+              "2025": {
+                "expected": 12,
+                "records": 12
+              },
+              "2026": {
+                "expected": 6,
+                "records": 6
+              }
+            },
+            "sanity": {
+              "all_amounts_positive": true,
+              "bar_cache_gaps_gt_5d": [],
+              "ex_dates_not_in_bar_cache": [],
+              "out_of_range_in_window": [],
+              "range": [
+                0.15,
+                0.45
+              ],
+              "window_amount_max": 0.406145,
+              "window_amount_min": 0.163003
+            },
+            "symbol": "TLT",
+            "unmatched_alpaca": 0,
+            "unmatched_alpaca_list": [],
+            "unmatched_issuer": 1,
+            "unmatched_issuer_list": [
+              {
+                "amount": 0.258147,
+                "ex_date": "2016-08-01"
+              }
+            ],
+            "verdict": "usable",
+            "years_with_records": [
+              2007,
+              2008,
+              2009,
+              2010,
+              2011,
+              2012,
+              2013,
+              2014,
+              2015,
+              2016,
+              2017,
+              2018,
+              2019,
+              2020,
+              2021,
+              2022,
+              2023,
+              2024,
+              2025,
+              2026
+            ]
+          },
+          "UUP": {
+            "alpaca_holes_confirmed_by_narrow_query": [],
+            "alpaca_records_2016plus": 7,
+            "alpaca_special_count": 1,
+            "amount_diff_summary": {
+              "n_diff_gt_1e-4": 0,
+              "n_diff_le_1e-4": 0,
+              "n_exact_equal": 7
+            },
+            "amount_mismatches_gt_0.005": [],
+            "bar_cache_files": [
+              "UUP_1d_2007-01-01_2017-12-31.parquet",
+              "UUP_1d_2018-01-01_2026-07-22.parquet",
+              "UUP_1d_2025-06-01_2026-07-17.parquet"
+            ],
+            "coverage_gaps": [],
+            "coverage_ok_from_listing": true,
+            "detail": "7/7 Alpaca (2016+) records match exactly, max |diff| 0.0; no unmatched. Irregular December-only payer: years with records 2007, 2008, 2017, 2018, 2019, 2022, 2023, 2024, 2025; none 2009-2016, 2020, 2021, 2026 (pre-2016 years cannot be checked against Alpaca; the 2009-2016 absence rests on the issuer API alone). All 9 ex-dates are cached sessions (first bar 2007-03-01).",
+            "first_cached_bar": "2007-03-01",
+            "gaps": [],
+            "issuer_first_ex": "2007-12-17",
+            "issuer_last_ex": "2025-12-22",
+            "issuer_records": 9,
+            "issuer_records_2016plus": 7,
+            "issuer_records_after_cutoff_excluded": [],
+            "issuer_records_in_window": 9,
+            "issuer_records_total_in_file": 9,
+            "last_cached_bar": "2026-07-21",
+            "matched_by_offset": {
+              "exact": 7,
+              "issuer+1bd": 0,
+              "issuer-1bd": 0
+            },
+            "matched_ex_dates": 7,
+            "matched_offset_nonexact": [],
+            "max_abs_amount_diff": 0.0,
+            "n_cached_sessions": 4878,
+            "per_year": {
+              "2007": {
+                "expected": null,
+                "records": 1
+              },
+              "2008": {
+                "expected": null,
+                "records": 1
+              },
+              "2009": {
+                "expected": null,
+                "records": 0
+              },
+              "2010": {
+                "expected": null,
+                "records": 0
+              },
+              "2011": {
+                "expected": null,
+                "records": 0
+              },
+              "2012": {
+                "expected": null,
+                "records": 0
+              },
+              "2013": {
+                "expected": null,
+                "records": 0
+              },
+              "2014": {
+                "expected": null,
+                "records": 0
+              },
+              "2015": {
+                "expected": null,
+                "records": 0
+              },
+              "2016": {
+                "expected": null,
+                "records": 0
+              },
+              "2017": {
+                "expected": null,
+                "records": 1
+              },
+              "2018": {
+                "expected": null,
+                "records": 1
+              },
+              "2019": {
+                "expected": null,
+                "records": 1
+              },
+              "2020": {
+                "expected": null,
+                "records": 0
+              },
+              "2021": {
+                "expected": null,
+                "records": 0
+              },
+              "2022": {
+                "expected": null,
+                "records": 1
+              },
+              "2023": {
+                "expected": null,
+                "records": 1
+              },
+              "2024": {
+                "expected": null,
+                "records": 1
+              },
+              "2025": {
+                "expected": null,
+                "records": 1
+              },
+              "2026": {
+                "expected": null,
+                "records": 0
+              }
+            },
+            "sanity": {
+              "all_amounts_positive": true,
+              "bar_cache_gaps_gt_5d": [],
+              "ex_dates_not_in_bar_cache": [],
+              "window_amount_max": 1.74553,
+              "window_amount_min": 0.02302
+            },
+            "symbol": "UUP",
+            "unmatched_alpaca": 0,
+            "unmatched_alpaca_list": [],
+            "unmatched_issuer": 0,
+            "unmatched_issuer_list": [],
+            "verdict": "usable",
+            "years_with_records": [
+              2007,
+              2008,
+              2017,
+              2018,
+              2019,
+              2022,
+              2023,
+              2024,
+              2025
+            ]
+          }
+        },
+        "sha256": "6aa224761672f520c0933fa72768cc53a7ab1a63c88e7f7381a2b7e6f3418e0b"
+      }
+    },
+    "end_date": "2026-07-17T00:00:00-04:00",
+    "fallback_reason": null,
+    "listing_entry": {
+      "EEM": {
+        "entry_session": "2008-12-31T00:00:00-05:00",
+        "first_cached_session": "2008-01-02T00:00:00-05:00"
+      },
+      "EFA": {
+        "entry_session": "2008-01-03T00:00:00-05:00",
+        "first_cached_session": "2007-01-03T00:00:00-05:00"
+      },
+      "GLD": {
+        "entry_session": "2008-01-03T00:00:00-05:00",
+        "first_cached_session": "2007-01-03T00:00:00-05:00"
+      },
+      "HYG": {
+        "entry_session": "2008-04-10T00:00:00-04:00",
+        "first_cached_session": "2007-04-11T00:00:00-04:00"
+      },
+      "IEF": {
+        "entry_session": "2008-01-03T00:00:00-05:00",
+        "first_cached_session": "2007-01-03T00:00:00-05:00"
+      },
+      "LQD": {
+        "entry_session": "2008-01-03T00:00:00-05:00",
+        "first_cached_session": "2007-01-03T00:00:00-05:00"
+      },
+      "PDBC": {
+        "entry_session": "2015-11-09T00:00:00-05:00",
+        "first_cached_session": "2014-11-07T00:00:00-05:00"
+      },
+      "SPY": {
+        "entry_session": "2007-09-28T00:00:00-04:00",
+        "first_cached_session": "2006-09-27T00:00:00-04:00"
+      },
+      "TLT": {
+        "entry_session": "2008-01-03T00:00:00-05:00",
+        "first_cached_session": "2007-01-03T00:00:00-05:00"
+      },
+      "UUP": {
+        "entry_session": "2008-02-29T00:00:00-05:00",
+        "first_cached_session": "2007-03-01T00:00:00-05:00"
+      }
+    },
+    "n_sessions": 4981,
+    "overlap_checks": {
+      "EEM": {
+        "max_rel_close_diff": 0.0,
+        "overlap_sessions_checked": 0
+      },
+      "EFA": {
+        "max_rel_close_diff": 0.0,
+        "overlap_sessions_checked": 0
+      },
+      "GLD": {
+        "max_rel_close_diff": 0.0,
+        "overlap_sessions_checked": 0
+      },
+      "HYG": {
+        "max_rel_close_diff": 0.0,
+        "overlap_sessions_checked": 0
+      },
+      "IEF": {
+        "max_rel_close_diff": 0.0,
+        "overlap_sessions_checked": 0
+      },
+      "LQD": {
+        "max_rel_close_diff": 0.0,
+        "overlap_sessions_checked": 0
+      },
+      "PDBC": {
+        "max_rel_close_diff": 0.0,
+        "overlap_sessions_checked": 0
+      },
+      "SPY": {
+        "max_rel_close_diff": 0.0,
+        "overlap_sessions_checked": 2148
+      },
+      "TLT": {
+        "max_rel_close_diff": 0.0,
+        "overlap_sessions_checked": 0
+      },
+      "UUP": {
+        "max_rel_close_diff": 0.0,
+        "overlap_sessions_checked": 0
+      }
+    },
+    "price_convention": "total_return",
+    "registered_cell": "T0",
+    "sample_cutoff": {
+      "end_date": "2026-07-17T00:00:00-04:00",
+      "last_scored_session": "2026-07-08T00:00:00-04:00",
+      "last_session": "2026-07-17T00:00:00-04:00",
+      "n_unscored_trailing_sessions": 7,
+      "rule": "last session before family ratification 2026-07-18"
+    },
+    "source": "twelvedata_parquet_cache_explicit_file_list",
+    "start_date": "2006-09-27",
+    "symbols": [
+      "SPY",
+      "EFA",
+      "EEM",
+      "TLT",
+      "IEF",
+      "LQD",
+      "HYG",
+      "GLD",
+      "PDBC",
+      "UUP"
+    ],
+    "timezone": "America/New_York",
+    "universe": {
+      "asof": "2026-07-17",
+      "name": "TREND_V1_UNIVERSE",
+      "policy": "fixed_registered_list",
+      "registration": "docs/trend_design.md \u00a71"
+    },
+    "universe_policy": "fixed_registered_list"
+  },
+  "metrics": {
+    "annualized_sharpe": 0.04240125941180066,
+    "avg_gross": 0.966832454909768,
+    "avg_net": 0.3866149935103457,
+    "avg_target_gross": 0.9668324549097678,
+    "avg_turnover": 0.04085462953988753,
+    "dsr": null,
+    "gross_annualized_sharpe": 0.1631456483979803,
+    "gross_periodic_sharpe": 0.01027720983674855,
+    "gross_total_return": 0.15628108901187932,
+    "max_target_gross": 1.0000000000000002,
+    "n_obs": 4662,
+    "n_target_rows": 4662,
+    "n_target_symbols": 10,
+    "periodic_sharpe": 0.0026710282780847954,
+    "total_cost": 0.13107768306134374,
+    "total_return": 0.014239773174520298,
+    "trial_count": 1.0
+  },
+  "schema_version": 2,
+  "strategy": "trend_v1"
+}

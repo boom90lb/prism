@@ -1,0 +1,136 @@
+{
+  "band_gamma_risk": 1.0,
+  "cache_files": {
+    "EEM": [
+      "EEM_1d_2007-01-01_2017-12-31.parquet",
+      "EEM_1d_2018-01-01_2026-07-22.parquet"
+    ],
+    "EFA": [
+      "EFA_1d_2007-01-01_2017-12-31.parquet",
+      "EFA_1d_2018-01-01_2026-07-22.parquet"
+    ],
+    "GLD": [
+      "GLD_1d_2007-01-01_2017-12-31.parquet",
+      "GLD_1d_2018-01-01_2026-07-22.parquet"
+    ],
+    "HYG": [
+      "HYG_1d_2007-01-01_2017-12-31.parquet",
+      "HYG_1d_2018-01-01_2026-07-22.parquet"
+    ],
+    "IEF": [
+      "IEF_1d_2007-01-01_2017-12-31.parquet",
+      "IEF_1d_2018-01-01_2026-07-22.parquet"
+    ],
+    "LQD": [
+      "LQD_1d_2007-01-01_2017-12-31.parquet",
+      "LQD_1d_2018-01-01_2026-07-22.parquet"
+    ],
+    "PDBC": [
+      "PDBC_1d_2007-01-01_2017-12-31.parquet",
+      "PDBC_1d_2018-01-01_2026-07-22.parquet"
+    ],
+    "SPY": [
+      "SPY_1d_min_2026-08-14.parquet",
+      "SPY_1d_2018-01-01_2026-07-22.parquet"
+    ],
+    "TLT": [
+      "TLT_1d_2007-01-01_2017-12-31.parquet",
+      "TLT_1d_2018-01-01_2026-07-22.parquet"
+    ],
+    "UUP": [
+      "UUP_1d_2007-01-01_2017-12-31.parquet",
+      "UUP_1d_2018-01-01_2026-07-22.parquet"
+    ]
+  },
+  "construction": {
+    "annualization_bars": 252,
+    "sizing": "inverse_vol",
+    "vol_ewma_bars": 63
+  },
+  "data_convention": "split_adjusted_total_return_dividends_as_cash",
+  "design_trials": 6,
+  "distributions_dir": "data/distributions",
+  "end_date": "2026-07-17T00:00:00-04:00",
+  "execution": {
+    "adv_floor_dollars": 100000.0,
+    "adv_impact_coeff": 0.0,
+    "adv_impact_model": "linear",
+    "borrow_rate_bps_annual": 50.0,
+    "commission_bps": 1.0,
+    "default_order_type": "MOO",
+    "slippage_coeff": 10.0,
+    "spread_bps": 1.0,
+    "trading_days_per_year": 252
+  },
+  "initial_capital": 1.0,
+  "price_convention": "total_return",
+  "price_return_fallback": false,
+  "signal": {
+    "decision_every": 21,
+    "dollar_volume_window": 20,
+    "entry_bars": 252,
+    "lookback_bars": 252,
+    "skip_bars": 21
+  },
+  "spread_accounting": "per_fold_bucket",
+  "spread_schedule": {
+    "buckets": [
+      [
+        500000000.0,
+        1.0
+      ],
+      [
+        100000000.0,
+        2.0
+      ],
+      [
+        25000000.0,
+        5.0
+      ],
+      [
+        0.0,
+        10.0
+      ]
+    ],
+    "name": "SPREAD_BUCKET_SCHEDULE_V1"
+  },
+  "start_date": "2006-09-27",
+  "strategy": "trend_v1",
+  "symbols": [
+    "EEM",
+    "EFA",
+    "GLD",
+    "HYG",
+    "IEF",
+    "LQD",
+    "PDBC",
+    "SPY",
+    "TLT",
+    "UUP"
+  ],
+  "timezone": "America/New_York",
+  "universe": {
+    "asof": "2026-07-17",
+    "name": "TREND_V1_UNIVERSE",
+    "policy": "fixed_registered_list",
+    "registration": "docs/trend_design.md \u00a71"
+  },
+  "walk": {
+    "band_mode": "closed_form",
+    "close_positions_at_fold_end": true,
+    "formation_bars": 312,
+    "max_gross": 1.0,
+    "max_participation": 0.05,
+    "max_symbol_abs_weight": 1.0,
+    "min_test_bars": 20,
+    "mom_decile": 0.1,
+    "mom_decision_every": 21,
+    "mom_lookback_bars": 252,
+    "mom_skip_bars": 21,
+    "no_trade_band": 0.0,
+    "sleeve_mode": "off",
+    "spread_mode": "bucket",
+    "step_bars": null,
+    "test_bars": 63
+  }
+}
