@@ -1,0 +1,206 @@
+# The stage 4 construction experiment (spec section 3.13, decisions D5 and D8).
+#
+# What this file is for. It declares the space the search may occupy: three
+# arms, the inputs frozen across them, and the rules that stop the search and
+# gate promotion. Strict mode is defined against this declaration and nothing
+# else: a run is refused unless its resolved `config_id` equals the resolved
+# `config_id` of a declared arm at a declared capital scenario
+# (`src/prism/registration.py::Registration.check_strict`). There is no free
+# diagnostic outside it. A standardization or weighting alternative is a
+# declared arm or it is not run; adding one after seeing a result is a new
+# registration with its own id, never an edit of this file.
+#
+# What the experiment asks. Whether a calibrated convex constructor, and then
+# that constructor with a declared one-sided uncertainty adjustment, changes
+# the net outcome of the existing 12-1 momentum book against the decile
+# constructor it uses today, on one frozen score panel, one fold geometry, one
+# cost stack and one accounting engine, across six capital scenarios. The
+# comparison is same-sample: it can kill a configuration and it cannot promote
+# one. No arm promotes out of this registration; see [promotion_rule].
+id = "2026-09-construction"
+created = 2026-09-08
+selection_set = "momentum_construction_v1"
+strict = true
+# One attempt is one `arm_id`, so three arms across six capital scenarios spend
+# exactly three. A retry after a crash carries kind = "retry" and spends none,
+# so one failure cannot block the third arm.
+trial_budget = 3
+
+# The component under every arm. `expected_sign` is declared here, once: a
+# calibration file that declares a conflicting sign refuses the run rather than
+# silently winning. `path` and `scoring_basis` restate what the control
+# specification and the component class declare, and a disagreement refuses the
+# registration rather than overriding either.
+[[components]]
+id = "momentum"
+path = "prism.signal.momentum_node:MomentumSignalNode"
+expected_sign = "positive"
+scoring_basis = "price"
+
+# The inputs the arms hold in common. This block is why the sharing the brief
+# requires is structural rather than a promise: the loader refuses a
+# registration in which an arm's calibration file differs from
+# `calibration_family` in any key other than `confidence`, and refuses an arm
+# that names a risk model other than this one.
+#
+# `standardize` through `min_blocks` restate keys of the calibration family for
+# enumerability only. Each restated key must equal the value in the file; a
+# disagreement refuses the registration, and the file, not this restatement, is
+# what the run reads.
+#
+# `risk_aversion = 0.0` is the reference value, so the variance term is not in
+# the objective and the `variance_budget` preference limit of
+# `examples/reference/profiles/experiment_v1.toml` is the only channel through
+# which the risk model acts on the solution (decision D8). `eps` is a declared
+# modeling term for uniqueness and not a license to ignore solver error.
+# `max_at_cap_fraction` is the acceptance check: an arm whose median fraction of
+# names at the per-name cap exceeds it is reported as concentration-dominated
+# and its comparison with the control is labeled as such.
+[shared]
+risk_model = "examples/reference/risk/factor_diagonal.toml"
+calibration_family = "calibrations/shared_slope_point.toml"
+standardize = "rank_normal"
+weighting = "per_date_equal"
+shrink_pseudo_periods = 12.0
+block_periods = 3
+min_training_periods = 12
+min_blocks = 4
+risk_aversion = 0.0
+eps = 1.0e-8
+max_at_cap_fraction = 0.35
+eligibility_exit = "reduce_only"
+
+# Arm 1. The existing decile constructor, under the experiment profile. It is
+# the control the other two are read against, and it is not the reference
+# book's own promotion instrument: that stays under the existing prospective
+# rules with its own profile and its own record.
+[[arms]]
+id = "decile_control"
+profile = "examples/reference/profiles/experiment_v1.toml"
+
+[arms.construction]
+kind = "heuristic"
+to_weights = "decile_long_short"
+decile = 0.10
+
+# Arm 2. The convex constructor on the calibrated shrunk point forecast:
+# `confidence` absent, so `lower` and `upper` both equal `theta_shrunk`.
+[[arms]]
+id = "convex_point"
+profile = "examples/reference/profiles/experiment_v1.toml"
+calibration = "calibrations/shared_slope_point.toml"
+
+[arms.construction]
+kind = "convex"
+
+# Arm 3. The same constructor with the declared 80% one-sided uncertainty
+# adjustment. Its calibration file differs from arm 2's in `confidence` and in
+# nothing else, which the loader checks key by key. On a decision date whose
+# lower endpoint is negative the robust term's maximum sets `a' w = 0` and the
+# arm goes flat; that is a reportable property of the calibration's precision,
+# not a defect to patch and not a reason to widen the arm after seeing it.
+[[arms]]
+id = "convex_p80_one_sided"
+profile = "examples/reference/profiles/experiment_v1.toml"
+calibration = "calibrations/shared_slope_p80.toml"
+confidence = 0.80
+
+[arms.construction]
+kind = "convex"
+
+# `first_decision` and `last_decision` equal the fold table's first `test_start`
+# and last `test_end`, which the loader checks against the table itself.
+# `warmup_bars` is 252 + 21 for the momentum component, which the table's 312
+# formation bars satisfy. `decision_offset_minutes` is added to the session
+# close when `research_vintage` resolves the visibility cutoff.
+[sample]
+history_start = 2020-01-02
+first_decision = 2021-03-30
+last_decision = 2026-06-12
+warmup_bars = 273
+decision_offset_minutes = 0
+
+# Fold geometry is a frozen table, not splitter keyword arguments (decision
+# D7). The table is the one imported from the recorded evidence at stage 2,
+# `results/demotion_b1/folds.json`: 21 folds, 312 formation bars, 63 test bars
+# except the last at 48. Section 3.13 names it `momentum_construction_v1`;
+# shipping a byte-identical second copy under that name would give one geometry
+# two file identities and two chances to drift, so this registration names the
+# imported table itself. The table is content-hashed at run time and the hash is
+# recorded as `fold_geometry` in every result.
+[folds]
+table = "folds/demotion_b1.toml"
+
+# The frozen inputs. `freeze_record` is the record written by
+# `prism evaluate <spec> --freeze-scores`, the step that materializes the score
+# panel the three arms share; nothing else produces it, so stage 4 opens with
+# that command and this registration cannot be run before it exists. It is the
+# one path here that is an output of the run rather than an input to it, and it
+# is checked when a run starts, not when the file is loaded.
+#
+# `capital_scenarios` are US dollars of marked equity at the first evaluated
+# decision, held entirely in cash at that point; each is a separate evaluation
+# of the arm. Under `fold_portfolio = "carry"` the value is never re-imposed and
+# the account compounds from there. Charged dollar costs are not identical
+# across capital levels and cannot be — participation is trade dollars over ADV
+# dollars from current equity, and rounding at the per-sid increment changes
+# filled notional — so what is held identical is this cost stack and the rules
+# that apply it, not the charged dollars.
+[frozen]
+freeze_record = "data/frozen/momentum_construction_v1.freeze.json"
+executable_return = "open_to_open"
+cost_stack = "examples/reference/costs/retail_v1.toml"
+execution_profile = "examples/reference/profiles/execution_alpaca.toml"
+accounting_engine = "canonical"
+visibility_mode = "research_vintage"
+fold_portfolio = "carry"
+cost_refresh = "fold"
+capital_scenarios = [10000, 25000, 50000, 100000, 250000, 1000000]
+capital_unit = "usd_marked_equity_at_first_decision"
+
+[evidence]
+robust_dsr_threshold = 0.95
+min_obs = 20
+
+[sharpe_bootstrap]
+frequency = "daily"
+block_bars = 42
+n_resamples = 2000
+seed = 20260908
+scheme = "circular"
+paired = true
+
+# The set closes when the three declared arms have run. `trial_budget` is the
+# only budget key.
+[stop_rule]
+kind = "structured"
+min_obs = 20
+note = "The set closes when the three declared arms have run; no arm may be added."
+
+# No arm promotes out of this registration, and the rule says so structurally
+# rather than in prose alone: `kind = "none"` is a promotion rule that never
+# promotes, and `prism compare --promotion-check` records that outcome.
+#
+# Why. This is a same-sample construction comparison: three arms on one frozen
+# score panel, one fold geometry and one cost stack, read against each other
+# after the fact. A same-sample comparison can kill a configuration — an arm
+# that loses to the control under identical charged costs is dead — but it can
+# never promote one, because the sample it is read on is the sample the arms
+# were chosen against. The reference book's promotion stays under the existing
+# prospective rules of SPEC.md, with its own profile, its own record, and its
+# own forward evidence; nothing recorded here may be cited for it.
+[promotion_rule]
+kind = "none"
+note = "Same-sample construction comparison; no arm promotes. The reference book's promotion stays under the existing prospective rules."
+
+# The hurdle series and the control. `cash_series` names a row set in the
+# workspace `series` table, served through the same as-of rule as every other
+# table, so the hurdle cannot be built from a value the workspace did not
+# possess at the decision. `control` is the reference book's specification: the
+# decile control arm is that book's construction under the experiment profile.
+[benchmark]
+cash_series = "tbill_3m"
+cash_source = "FRED:DTB3"
+cash_conversion = "discount_to_bond_equivalent_then_daily_accrual"
+day_count = "act/365"
+control = "examples/momentum/reference.toml"

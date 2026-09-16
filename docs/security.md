@@ -22,7 +22,8 @@ is wrong by construction.
 ## 2. Invariants
 
 1. **Env-only.** Credentials enter through the process environment or a
-   gitignored `.env` (loaded in `src/prism/config.py`). Never CLI arguments
+   gitignored `.env` (loaded by `prism.workspace.load_env`, called from each
+   command's `main` -- never at import). Never CLI arguments
    (shell history, `ps`), never tracked files, never code literals.
 2. **Fail-loud on absence (N7).** Every `from_env` constructor raises when a
    required credential is missing (`alpaca.py`, `alpaca_data.py`,

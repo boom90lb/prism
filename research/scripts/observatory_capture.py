@@ -1,7 +1,7 @@
 """Capture-only observatory fetchers (W5) — news flow + EDGAR cadence.
 
 Writes point-in-time expectation-state payloads into the append-only store
-(``prism.io.observatory``). No modeling, no scores, no trial ledger. Capture
+(``research.observatory``). No modeling, no scores, no trial ledger. Capture
 is time-irreversible: an uncaptured day is gone.
 
 Lanes:
@@ -30,7 +30,7 @@ from typing import Any, Callable
 
 import requests
 
-from prism.io.observatory import append_capture
+from research.observatory import append_capture
 
 # Pinned form set for cadence (not a search over free text).
 EDGAR_FORMS = ("10-K", "10-Q", "8-K")
@@ -88,9 +88,7 @@ def fetch_news_flow(
             sleep(max(pause_s, 60.0))
             resp = get(POLYGON_NEWS_URL, params=params, headers=headers, timeout=timeout)
         if resp.status_code != 200:
-            raise RuntimeError(
-                f"Polygon news HTTP {resp.status_code} for {sym}: {resp.text[:200]!r}"
-            )
+            raise RuntimeError(f"Polygon news HTTP {resp.status_code} for {sym}: {resp.text[:200]!r}")
         payload = resp.json()
         status = payload.get("status")
         if status not in (None, "OK", "DELAYED"):
@@ -140,9 +138,7 @@ def fetch_edgar_cadence(
     }
     resp = get(EDGAR_SEARCH_URL, params=params, headers=headers, timeout=timeout)
     if resp.status_code != 200:
-        raise RuntimeError(
-            f"EDGAR search HTTP {resp.status_code} for {day_s}: {resp.text[:200]!r}"
-        )
+        raise RuntimeError(f"EDGAR search HTTP {resp.status_code} for {day_s}: {resp.text[:200]!r}")
     payload = resp.json()
     # Shape: {"hits": {"total": {"value": N, ...}, "hits": [...]}, ...}
     hits = payload.get("hits") or {}
@@ -162,9 +158,7 @@ def fetch_edgar_cadence(
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    p = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
-    )
+    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument(
         "--lane",
         choices=("news", "edgar", "both"),

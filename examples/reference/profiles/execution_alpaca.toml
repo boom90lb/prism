@@ -1,0 +1,64 @@
+# Reference execution profile for the Alpaca paper and live endpoints.
+# Assembled from the three blocks the implementation specification declares for this
+# file (sections 3.9 profile and freshness, 3.7 validation, 3.7 rounding).
+
+# profiles/execution_alpaca.toml  (parses)
+# the [validation] and [rounding] blocks of this same file are declared in section 3.7;
+# the [freshness] block below is the single declaration of the four operating thresholds
+# sections 3.2, 3.10 and 3.11 name
+quantity_increment_default = 1.0
+min_notional = 1.0
+price_convention = "next_open"
+order_types = ["market_on_open", "market_day"]
+default_order_type = "market_on_open"
+sessions = ["regular"]
+
+[order_type_map.market_on_open]
+venue_order_type = "market"
+venue_time_in_force = "opg"
+
+[order_type_map.market_day]
+venue_order_type = "market"
+venue_time_in_force = "day"
+
+[fractional]
+allowed = false
+time_in_force = ["day"]
+short_allowed = false
+
+[capabilities]
+source = "broker"
+max_age_hours = 24
+revalidate_at_submission = true
+
+[freshness]
+max_broker_state_age_seconds = 900
+max_clock_skew_seconds = 30
+max_heartbeat_age_seconds = 900
+stale_carry_sessions = 3
+stale_carry_haircut = 0.0
+
+[[hedges]]
+sid = "SPY"
+risk_measure = "net_exposure"
+limit_name = "net_band"
+direction = "either"
+
+# profiles/execution_alpaca.toml, validation block  (parses)
+[validation]
+limit_tolerance = 1.0e-6      # weight units, fraction of marked equity
+cash_tolerance = 0.01         # dollars
+cost_tolerance_bps = 0.1      # modeled versus recomputed cost, basis points of traded notional
+mode = "blocking"             # blocking | report_only
+
+# profiles/execution_alpaca.toml, rounding block  (parses)
+[rounding]
+tie_rule = "half_to_even"
+zero_crossing_clamp = true
+apply_dust_rule = true
+fractional_increment = 0.001
+off_increment_holding = "leave_residual"   # leave_residual | close_fractional
+scale_schedule = [0.75, 0.5, 0.25]
+repair_max_moves = 200
+repair_min_decrement = 1.0e-6
+min_implemented_gross_fraction = 0.80

@@ -7,6 +7,7 @@ call runs through the shared token bucket (``prism.io.rate_limit``).
 """
 
 import logging
+import os
 import time
 from datetime import datetime
 from pathlib import Path
@@ -15,15 +16,20 @@ from typing import Callable, Optional
 import pandas as pd
 import requests
 
-from prism.config import DATA_DIR, TWELVEDATA_API_KEY
 from prism.io.rate_limit import DataBudgetExhausted, TokenBucket
 from prism.io.store import (
     DEFAULT_OVERLAP_BARS,
     IncrementalBarStore,
     SplitRewriteDetected,
 )
+from prism.workspace import resolve_workspace
 
 logger = logging.getLogger(__name__)
+
+# Environment variable carrying the Twelve Data key. Read at construction --
+# never at import -- and only when the caller passed no key: a command entry
+# point loads ``.env`` and passes the key explicitly (spec §3.1).
+API_KEY_ENV_VAR = "TWELVEDATA_API_KEY"
 
 # Bar DatetimeIndex is localized to America/New_York. The trading-day calendar is
 # ET; sentiment_analysis joins UTC news against (idx + 16h) as the bar close time.
@@ -179,8 +185,14 @@ class DataLoader:
         """Initialize the data loader.
 
         Args:
-            api_key: Twelvedata API key (default: use from config)
-            cache_dir: Directory for caching data (default: use from config)
+            api_key: Twelvedata API key. Commands read it from the
+                environment after loading ``.env`` and pass it here; when
+                omitted it falls back to ``$TWELVEDATA_API_KEY`` read now, at
+                construction, so no credential is captured at import time.
+            cache_dir: Directory for the parquet caches (default: the
+                resolved workspace's ``data/``, which is ``./data`` unless
+                ``PRISM_WORKSPACE`` or a ``[tool.prism].workspace`` says
+                otherwise).
             request_timeout: HTTP request timeout in seconds.
             dividend_negative_cache_ttl_days: How long a cached empty
                 ("no dividends") answer is honored before refetching.
@@ -195,11 +207,11 @@ class DataLoader:
                 a fresh rate-limiter token (it is a real request).
             sleep: Injectable sleep for the 429 backoff (tests).
         """
-        self.api_key = api_key or TWELVEDATA_API_KEY
+        self.api_key = api_key or os.environ.get(API_KEY_ENV_VAR)
         if not self.api_key:
             logger.warning("No Twelvedata API key provided, data fetching will be limited")
 
-        self.cache_dir = cache_dir or DATA_DIR
+        self.cache_dir = Path(cache_dir) if cache_dir is not None else resolve_workspace().data
         self.cache_dir.mkdir(exist_ok=True, parents=True)
         self.request_timeout = float(request_timeout)
         self.dividend_negative_cache_ttl_days = float(dividend_negative_cache_ttl_days)

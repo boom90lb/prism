@@ -31,7 +31,7 @@ import numpy as np
 import pandas as pd
 
 from prism.residual.factors import ResidualStatArbConfig, compute_eligibility
-from prism.signal.base import Signal
+from prism.signal.base import FittedState, OutputKind, ScoringBasis, Signal, Units
 
 
 class MomentumSignalNode(Signal):
@@ -46,6 +46,17 @@ class MomentumSignalNode(Signal):
     (day × symbol bool) threads the point-in-time index gate to the eligibility
     screen.
     """
+
+    # Declarations (§3.3). The score is a trailing price ratio consumed by
+    # `construct_decile_neutral`, which reads only cross-sectional order, so the
+    # emission is a rank score in rank units on the as-traded close panel. It
+    # carries no fitted state and estimates no decay.
+    output_kind: OutputKind = "rank_score"
+    units: Units = "rank"
+    scoring_basis: ScoringBasis = "price"
+    price_scale_invariant: bool = True
+    fitted_state: FittedState = "none"
+    estimated_decay_bars: int | None = None
 
     def __init__(
         self,

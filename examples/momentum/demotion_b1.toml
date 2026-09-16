@@ -1,0 +1,118 @@
+# The recorded B1 momentum evaluation as a specification (spec section 5,
+# stage 2 "Reproduction (Parity) of results/demotion_b1/").
+#
+# Every value here is read off `results/demotion_b1/config.json`, which the
+# certified record carries, and nothing here is chosen. The recorded run was
+# produced by `research/scripts/stat_arb_residual_wfo.py --sleeve_mode
+# momentum_only`, whose walk config is the `walk` block of that file and whose
+# signal config is its `signal` block; the momentum sleeve reads only the
+# subset restated below. `tests/test_demotion_b1_reproduction.py` asserts this
+# file against the recorded configuration field by field, so a value that
+# drifts on either side fails a test rather than forking the reproduction
+# target silently.
+#
+# This is a reproduction arm. It is evaluated with `kind = "reproduction"`,
+# which `attempt_counts` excludes from independent-evidence counts, on the
+# frozen fold table `folds/demotion_b1.toml` imported from the recorded
+# `folds.json`. It is not a new experiment and it may not be cited as one.
+
+[strategy]
+name = "demotion_b1_momentum_only"
+# config.json `universe.membership_file`
+# data/universe/sp500_membership_2026-06-16.parquet, 891 intervals, imported
+# into the reproduction dataset's `membership` table under index id "sp500".
+universe_index = "sp500"
+combination = "position_space"
+# The recorded book has one sleeve, so renormalization is unobservable; it is
+# declared false because that is the recorded driver's behaviour (it sums
+# sleeve rows and caps, and never rescales for a sleeve that dropped out).
+renormalize = false
+
+[[strategy.components]]
+id = "momentum"
+path = "prism.signal.momentum_node:MomentumSignalNode"
+weight = 1.0
+# walk.mom_decision_every = 21 and signal.decision_every = 21. The recorded
+# driver refreshes the momentum row every 21 bars of the fold's test window and
+# emits a row only on a trading decision bar; with both cadences equal, every
+# refresh is emitted on the bar it is computed. The output is consumed for
+# exactly the cadence it is refreshed on, so valid_for_bars equals
+# update_every_bars: the recorded book carries no staleness slack.
+horizon_bars = 21
+update_every_bars = 21
+valid_for_bars = 21
+to_weights = "decile_long_short"
+
+[strategy.components.params]
+# walk.mom_lookback_bars = 252, walk.mom_skip_bars = 21
+lookback_bars = 252
+skip_bars = 21
+horizon_bars = 21
+
+[strategy.components.to_weights_params]
+# walk.mom_decile = 0.10, walk.max_gross = 1.0, walk.max_symbol_abs_weight = 0.35
+decile = 0.10
+max_gross = 1.0
+max_symbol_abs_weight = 0.35
+
+# The screen the recorded run applied is `prism.residual.factors.compute_eligibility`
+# under the recorded `signal` block: min_price 5.0, min_median_dollar_volume
+# 1e6 over a 20-bar window, a full 252-bar (corr_window) trailing return
+# history, and the point-in-time membership gate. It is restated here as the
+# strategy screen because §3.3 puts the screen in the specification; the two
+# agree cell for cell over the recorded panel (Run: 1,621 x 574 = 930,454
+# cells, zero disagreements), which
+# `tests/test_demotion_b1_reproduction.py::test_the_two_eligibility_screens_agree`
+# checks on a slice.
+[strategy.eligibility]
+min_price = 5.0
+min_median_dollar_volume = 1000000.0
+dollar_volume_window = 20
+return_history_bars = 252
+listing_seasoning_bars = 0
+membership_required = true
+exclude_asset_classes = []
+
+[construction]
+kind = "heuristic"
+# The recorded driver bands against the held book and re-caps afterwards,
+# because a per-name blend of held and fresh weights can exceed max_gross
+# (`research/arbitrage/residual_walk_forward.py:239-249`).
+step_order = "construct_band_cap_participation"
+max_gross = 1.0
+max_symbol_abs_weight = 0.35
+
+# walk.band_mode = "closed_form", config.band_gamma_risk = 1.0. The half-width
+# is the Martin (2012) cube-root band from the variance of day-over-day target
+# changes over the fold's formation window and the round-trip cost of that
+# fold's own spread buckets. gamma_risk is pre-registered at 1.0 and never
+# fitted.
+[construction.band]
+mode = "closed_form"
+gamma_risk = 1.0
+
+# walk.max_participation = 0.05, against the same trailing statistic the
+# eligibility screen uses. floor_dollars is 0.0 deliberately: flooring ADV up
+# would loosen the bound for exactly the illiquid names it protects. The base
+# is the scenario's capital, which is what the reproduction engine has -- it
+# marks no equity.
+[construction.participation]
+max_participation = 0.05
+statistic = "median"
+window_bars = 20
+floor_dollars = 0.0
+base = "initial_capital"
+
+# walk.spread_mode = "bucket", config.spread_schedule =
+# SPREAD_BUCKET_SCHEDULE_V1. Each name's half-spread comes from its formation
+# window median dollar volume through that schedule; unknown liquidity lands in
+# the widest step.
+[construction.spread]
+mode = "bucket"
+
+[policy]
+profile = "examples/reference/profiles/paper.toml"
+costs = "examples/reference/costs/retail_v1.toml"
+execution = "examples/reference/profiles/execution_alpaca.toml"
+monitoring = "examples/reference/policies/monitoring.toml"
+recovery = "examples/reference/policies/recovery.toml"

@@ -15,12 +15,13 @@ import pandas as pd
 import pytest
 
 from prism.config import ExecutionConfig, TradingConfig
-from prism.execution import ExecutionModel, Order, OrderType, backtest_target_weights
+from prism.execution import backtest_target_weights
 from prism.execution.costs import (
     commission_dollars,
     daily_borrow_dollars,
     slippage_bps,
 )
+from research.execution_model import ExecutionModel, Order, OrderType
 from research.models.base import BaseModel
 from research.trading import TradingStrategy
 

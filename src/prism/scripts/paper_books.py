@@ -15,13 +15,38 @@ defaults — the momentum spec under CLI defaults must stay field-identical
 to ``CERTIFIED_B1_PAPER_CONFIG`` (G6), which the test suite asserts via
 ``assert_research_paper_bit_identity``. Changing a default here is a
 discovery event, not a refactor.
+
+Two of the three books also carry a *specification file*
+(``BookSpec.specification``, loadable through
+:func:`load_book_specification`): ``examples/momentum/reference.toml`` and
+``examples/trend/reference.toml`` declare the same universe, cadence,
+component parameters, rank-to-weight rule and eligibility screen this
+registry builds, in the engine's own configuration vocabulary
+(``prism.spec``). They are the declaration of record, asserted
+field-by-field against the registry in
+``tests/test_paper_books_specifications.py`` — not a second construction
+path. The CLI keeps building the book from the callables below, because a
+fixed configuration table cannot carry what the flags vary per run
+(``horizon_bars`` tracks ``--decision-every``, the caps track
+``--max-gross`` / ``--max-symbol-weight``) nor what the cycle computes at
+run time (``MomentumSignalNode``'s ``membership_mask``). The ensemble book
+has no specification at all: its ``directional`` construction — a linear
+score-to-weight map with a ``position_size`` slope — is not one of the four
+rank-to-weight rules, and a ``standardized_forecast`` component is not a
+kind position-space combination accepts.
+
+Its node is also no longer in the wheel. At stage 6 the learned ensemble moved
+to the optional ``prism-ensemble`` distribution (engine specification section 2,
+`signal/ensemble_node.py`, Removal), so the registry still carries the book and
+``_ensemble_signal`` imports the package when the book is dispatched. Every
+other book is unaffected by whether it is installed.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import Callable, Sequence
+from typing import TYPE_CHECKING, Callable, Sequence
 
 import pandas as pd
 
@@ -29,9 +54,12 @@ from prism.live.daily import DailyBookConfig
 from prism.live.safety import SafetyConfig
 from prism.residual.factors import ResidualStatArbConfig
 from prism.signal.base import Signal
-from prism.signal.ensemble_node import EnsembleNodeConfig, EnsembleSignalNode
 from prism.signal.momentum_node import MomentumSignalNode
 from prism.signal.trend_node import TREND_V1_UNIVERSE, TrendSignalNode
+
+if TYPE_CHECKING:  # pragma: no cover - import cycle avoidance only
+    from prism.spec import Specification
+    from prism.workspace import Workspace
 
 
 @dataclass(frozen=True)
@@ -64,6 +92,11 @@ class BookSpec:
     silently substitute each other's same-bar orders).
     ``default_decision_every``/``default_max_missing``/``panel_start_years``
     are the CLI defaults the operator may override per run.
+
+    ``specification`` is the workspace-relative path of the book's declaration
+    of record, or ``None`` for a book the configuration vocabulary cannot
+    express. It names a file, not a construction path: the callables above
+    remain the only thing that builds a signal or a ``DailyBookConfig``.
     """
 
     name: str
@@ -75,6 +108,7 @@ class BookSpec:
     build_config: Callable[[BookParams, int], DailyBookConfig]
     describe: Callable[[BookParams, int, int, Signal], str]
     default_universe: tuple[str, ...] = field(default=())
+    specification: str | None = None
 
     def decision_every(self, params: BookParams) -> int:
         return (
@@ -153,6 +187,23 @@ def _trend_describe(params: BookParams, decision_every: int, n_symbols: int, sig
 
 
 def _ensemble_signal(params: BookParams, decision_every: int, score_mask: pd.DataFrame | None) -> Signal:
+    """Construct the learned ensemble node out of the optional strategy package.
+
+    The import is here and not at module scope on purpose. The node left the
+    wheel at stage 6 (engine specification section 2, `signal/ensemble_node.py`,
+    Removal) and lives in the separate ``prism-ensemble`` distribution, so an
+    engine install without it must still dispatch `momentum` and `trend` --
+    which a module-scope import would break for every book at once. An operator
+    who asks for this book without the package gets told what to install.
+    """
+    try:
+        from prism_ensemble import EnsembleNodeConfig, EnsembleSignalNode
+    except ModuleNotFoundError as exc:  # pragma: no cover - exercised without the package
+        raise ModuleNotFoundError(
+            "the ensemble book's signal node is the optional prism-ensemble distribution, "
+            "which is not installed (`pip install prism-ensemble`); the momentum and trend "
+            "books do not need it"
+        ) from exc
     return EnsembleSignalNode(EnsembleNodeConfig(horizon_bars=params.horizon_bars))
 
 
@@ -190,6 +241,7 @@ BOOKS: dict[str, BookSpec] = {
         build_signal=_momentum_signal,
         build_config=_momentum_config,
         describe=_momentum_describe,
+        specification="examples/momentum/reference.toml",
     ),
     "trend": BookSpec(
         name="trend",
@@ -201,6 +253,7 @@ BOOKS: dict[str, BookSpec] = {
         build_config=_trend_config,
         describe=_trend_describe,
         default_universe=tuple(TREND_V1_UNIVERSE),
+        specification="examples/trend/reference.toml",
     ),
     "ensemble": BookSpec(
         name="ensemble",
@@ -213,6 +266,43 @@ BOOKS: dict[str, BookSpec] = {
         describe=_ensemble_describe,
     ),
 }
+
+
+# ------------------------------------------------------- specification files
+
+
+def load_book_specification(book: str, *, workspace: "Workspace | None" = None) -> "Specification":
+    """Load a book's declaration of record through the specification loader.
+
+    The registry entry names a workspace-relative file; this resolves it
+    against ``workspace`` (default: the resolved workspace) and hands it to
+    ``prism.spec.load_spec``, which parses it, resolves its defaults, imports
+    and instantiates its component, and can compute its ``config_id``.
+
+    Raising is the point for a book with no ``specification``: the ensemble
+    book's ``directional`` construction has no rank-to-weight rule and its
+    component emits a ``standardized_forecast``, which position-space
+    combination does not accept, so there is no file to load rather than a
+    file that misdeclares it.
+
+    ``prism.spec`` is imported here rather than at module import: the live
+    paper path pays for the specification loader only when it asks for one.
+    """
+    try:
+        spec = BOOKS[book]
+    except KeyError:
+        raise KeyError(f"unknown book {book!r}; registered books are {sorted(BOOKS)}") from None
+    if spec.specification is None:
+        raise ValueError(
+            f"book {book!r} has no specification file: its construction is not expressible in the "
+            "configuration vocabulary (prism.spec.TO_WEIGHTS_RULES has no rule for the directional "
+            "book's position_size slope). Build it from the registry entry instead."
+        )
+    from prism.spec import load_spec
+    from prism.workspace import resolve_workspace
+
+    ws = workspace if workspace is not None else resolve_workspace()
+    return load_spec(ws.root / spec.specification, workspace=ws)
 
 
 # ----------------------------------------------------------------- assembly
@@ -307,9 +397,7 @@ def build_safety_config(
         kill_switch = None
     else:
         kill_switch = kill_switch_arg
-    resolved_fraction = (
-        max_order_fraction if max_order_fraction is not None else 2.0 * max_symbol_abs_weight
-    )
+    resolved_fraction = max_order_fraction if max_order_fraction is not None else 2.0 * max_symbol_abs_weight
     resolved_orders = max_orders if max_orders is not None else 2 * n_symbols + 10
     return SafetyConfig(
         kill_switch=kill_switch,

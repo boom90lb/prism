@@ -1,0 +1,80 @@
+{
+  "artifacts_present": 231,
+  "artifacts_unavailable": 8,
+  "engine_version": "0.4.0",
+  "imported_at": "2026-09-08T11:35:40.999393+00:00",
+  "records": 32,
+  "records_path": "/home/b90/prism/.claude/worktrees/engine-overhaul/results/history_import/records.jsonl",
+  "registration_paths": [
+    "/home/b90/prism/.claude/worktrees/engine-overhaul/results/history_import/registrations/momentum_v1.toml",
+    "/home/b90/prism/.claude/worktrees/engine-overhaul/results/history_import/registrations/trend_v1.toml",
+    "/home/b90/prism/.claude/worktrees/engine-overhaul/results/history_import/registrations/stat_arb_residual.toml"
+  ],
+  "report_path": "/home/b90/prism/.claude/worktrees/engine-overhaul/results/history_import/report.json",
+  "report_schema": 1,
+  "rows_with_unavailable_output_dir": 8,
+  "run_id_map_path": "/home/b90/prism/.claude/worktrees/engine-overhaul/results/history_import/run_id_map.json",
+  "shared_runs": [
+    {
+      "legacy_run_key": "legacyrun-b5cfc9d8d13bac1a",
+      "selection_set_ids": [
+        "momentum_v1",
+        "stat_arb_residual"
+      ]
+    }
+  ],
+  "source_root": "/home/b90/prism",
+  "sources": [
+    {
+      "declared_budget": 8,
+      "kind": "imported",
+      "legacy_independent_count": 8,
+      "path": "results/momentum_v1_trials.jsonl",
+      "rows": 6,
+      "rows_spent": 6,
+      "selection_set_id": "momentum_v1",
+      "sha256": "6e1cfdf877d5e75a77ec3fd5ccd82d50ae6f2bc1a84207c356cc2ec718eee6d9",
+      "status": "open"
+    },
+    {
+      "declared_budget": 6,
+      "kind": "imported",
+      "legacy_independent_count": 6,
+      "path": "results/trend_v1_trials.jsonl",
+      "rows": 5,
+      "rows_spent": 5,
+      "selection_set_id": "trend_v1",
+      "sha256": "a4c1f245bd730c89203bc354ffea9390dd2a82f83a434267bd4c97e89bf43687",
+      "status": "open"
+    },
+    {
+      "declared_budget": 17,
+      "kind": "imported",
+      "legacy_independent_count": 17,
+      "path": "results/stat_arb_residual_trials.jsonl",
+      "rows": 17,
+      "rows_spent": 17,
+      "selection_set_id": "stat_arb_residual",
+      "sha256": "92a1a5e478e8318cb546b5971038a641d4cb0c9bccd53cb4b2b6142efbde3a96",
+      "status": "closed"
+    },
+    {
+      "declared_budget": null,
+      "kind": "provenance",
+      "legacy_independent_count": null,
+      "path": "data/universe/sp500_density_trials.jsonl",
+      "rows": 4,
+      "rows_spent": null,
+      "selection_set_id": null,
+      "sha256": "a27db9c31705d972b238274b2bb47e2b2032966dab2cbf02d06a645f12ea91fa",
+      "status": null
+    }
+  ],
+  "trial_log_paths": [
+    "/home/b90/prism/.claude/worktrees/engine-overhaul/trials/momentum_v1.jsonl",
+    "/home/b90/prism/.claude/worktrees/engine-overhaul/trials/trend_v1.jsonl",
+    "/home/b90/prism/.claude/worktrees/engine-overhaul/trials/stat_arb_residual.jsonl",
+    "/home/b90/prism/.claude/worktrees/engine-overhaul/trials/provenance.jsonl"
+  ],
+  "workspace_root": "/home/b90/prism/.claude/worktrees/engine-overhaul"
+}

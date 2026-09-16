@@ -1,0 +1,191 @@
+[
+  {
+    "index": 0,
+    "formation_start": "2020-01-02T05:00:00+00:00",
+    "formation_end": "2021-03-29T04:00:00+00:00",
+    "test_start": "2021-03-30T04:00:00+00:00",
+    "test_end": "2021-06-28T04:00:00+00:00",
+    "formation_rows": null,
+    "test_rows": null
+  },
+  {
+    "index": 1,
+    "formation_start": "2020-04-02T04:00:00+00:00",
+    "formation_end": "2021-06-28T04:00:00+00:00",
+    "test_start": "2021-06-29T04:00:00+00:00",
+    "test_end": "2021-09-27T04:00:00+00:00",
+    "formation_rows": null,
+    "test_rows": null
+  },
+  {
+    "index": 2,
+    "formation_start": "2020-07-02T04:00:00+00:00",
+    "formation_end": "2021-09-27T04:00:00+00:00",
+    "test_start": "2021-09-28T04:00:00+00:00",
+    "test_end": "2021-12-27T05:00:00+00:00",
+    "formation_rows": null,
+    "test_rows": null
+  },
+  {
+    "index": 3,
+    "formation_start": "2020-10-01T04:00:00+00:00",
+    "formation_end": "2021-12-27T05:00:00+00:00",
+    "test_start": "2021-12-28T05:00:00+00:00",
+    "test_end": "2022-03-28T04:00:00+00:00",
+    "formation_rows": null,
+    "test_rows": null
+  },
+  {
+    "index": 4,
+    "formation_start": "2020-12-31T05:00:00+00:00",
+    "formation_end": "2022-03-28T04:00:00+00:00",
+    "test_start": "2022-03-29T04:00:00+00:00",
+    "test_end": "2022-06-28T04:00:00+00:00",
+    "formation_rows": null,
+    "test_rows": null
+  },
+  {
+    "index": 5,
+    "formation_start": "2021-04-05T04:00:00+00:00",
+    "formation_end": "2022-06-28T04:00:00+00:00",
+    "test_start": "2022-06-29T04:00:00+00:00",
+    "test_end": "2022-09-27T04:00:00+00:00",
+    "formation_rows": null,
+    "test_rows": null
+  },
+  {
+    "index": 6,
+    "formation_start": "2021-07-02T04:00:00+00:00",
+    "formation_end": "2022-09-27T04:00:00+00:00",
+    "test_start": "2022-09-28T04:00:00+00:00",
+    "test_end": "2022-12-27T05:00:00+00:00",
+    "formation_rows": null,
+    "test_rows": null
+  },
+  {
+    "index": 7,
+    "formation_start": "2021-10-01T04:00:00+00:00",
+    "formation_end": "2022-12-27T05:00:00+00:00",
+    "test_start": "2022-12-28T05:00:00+00:00",
+    "test_end": "2023-03-29T04:00:00+00:00",
+    "formation_rows": null,
+    "test_rows": null
+  },
+  {
+    "index": 8,
+    "formation_start": "2021-12-31T05:00:00+00:00",
+    "formation_end": "2023-03-29T04:00:00+00:00",
+    "test_start": "2023-03-30T04:00:00+00:00",
+    "test_end": "2023-06-29T04:00:00+00:00",
+    "formation_rows": null,
+    "test_rows": null
+  },
+  {
+    "index": 9,
+    "formation_start": "2022-04-01T04:00:00+00:00",
+    "formation_end": "2023-06-29T04:00:00+00:00",
+    "test_start": "2023-06-30T04:00:00+00:00",
+    "test_end": "2023-09-28T04:00:00+00:00",
+    "formation_rows": null,
+    "test_rows": null
+  },
+  {
+    "index": 10,
+    "formation_start": "2022-07-05T04:00:00+00:00",
+    "formation_end": "2023-09-28T04:00:00+00:00",
+    "test_start": "2023-09-29T04:00:00+00:00",
+    "test_end": "2023-12-28T05:00:00+00:00",
+    "formation_rows": null,
+    "test_rows": null
+  },
+  {
+    "index": 11,
+    "formation_start": "2022-10-03T04:00:00+00:00",
+    "formation_end": "2023-12-28T05:00:00+00:00",
+    "test_start": "2023-12-29T05:00:00+00:00",
+    "test_end": "2024-04-01T04:00:00+00:00",
+    "formation_rows": null,
+    "test_rows": null
+  },
+  {
+    "index": 12,
+    "formation_start": "2023-01-03T05:00:00+00:00",
+    "formation_end": "2024-04-01T04:00:00+00:00",
+    "test_start": "2024-04-02T04:00:00+00:00",
+    "test_end": "2024-07-01T04:00:00+00:00",
+    "formation_rows": null,
+    "test_rows": null
+  },
+  {
+    "index": 13,
+    "formation_start": "2023-04-04T04:00:00+00:00",
+    "formation_end": "2024-07-01T04:00:00+00:00",
+    "test_start": "2024-07-02T04:00:00+00:00",
+    "test_end": "2024-09-30T04:00:00+00:00",
+    "formation_rows": null,
+    "test_rows": null
+  },
+  {
+    "index": 14,
+    "formation_start": "2023-07-06T04:00:00+00:00",
+    "formation_end": "2024-09-30T04:00:00+00:00",
+    "test_start": "2024-10-01T04:00:00+00:00",
+    "test_end": "2024-12-30T05:00:00+00:00",
+    "formation_rows": null,
+    "test_rows": null
+  },
+  {
+    "index": 15,
+    "formation_start": "2023-10-04T04:00:00+00:00",
+    "formation_end": "2024-12-30T05:00:00+00:00",
+    "test_start": "2024-12-31T05:00:00+00:00",
+    "test_end": "2025-04-02T04:00:00+00:00",
+    "formation_rows": null,
+    "test_rows": null
+  },
+  {
+    "index": 16,
+    "formation_start": "2024-01-04T05:00:00+00:00",
+    "formation_end": "2025-04-02T04:00:00+00:00",
+    "test_start": "2025-04-03T04:00:00+00:00",
+    "test_end": "2025-07-03T04:00:00+00:00",
+    "formation_rows": null,
+    "test_rows": null
+  },
+  {
+    "index": 17,
+    "formation_start": "2024-04-05T04:00:00+00:00",
+    "formation_end": "2025-07-03T04:00:00+00:00",
+    "test_start": "2025-07-07T04:00:00+00:00",
+    "test_end": "2025-10-02T04:00:00+00:00",
+    "formation_rows": null,
+    "test_rows": null
+  },
+  {
+    "index": 18,
+    "formation_start": "2024-07-08T04:00:00+00:00",
+    "formation_end": "2025-10-02T04:00:00+00:00",
+    "test_start": "2025-10-03T04:00:00+00:00",
+    "test_end": "2026-01-02T05:00:00+00:00",
+    "formation_rows": null,
+    "test_rows": null
+  },
+  {
+    "index": 19,
+    "formation_start": "2024-10-04T04:00:00+00:00",
+    "formation_end": "2026-01-02T05:00:00+00:00",
+    "test_start": "2026-01-05T05:00:00+00:00",
+    "test_end": "2026-04-06T04:00:00+00:00",
+    "formation_rows": null,
+    "test_rows": null
+  },
+  {
+    "index": 20,
+    "formation_start": "2025-01-06T05:00:00+00:00",
+    "formation_end": "2026-04-06T04:00:00+00:00",
+    "test_start": "2026-04-07T04:00:00+00:00",
+    "test_end": "2026-06-12T04:00:00+00:00",
+    "formation_rows": null,
+    "test_rows": null
+  }
+]

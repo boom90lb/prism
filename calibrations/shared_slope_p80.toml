@@ -1,0 +1,41 @@
+# The uncertainty arm's calibration (engine specification §3.4, decision D6).
+#
+# `confidence = 0.80` is the level the brief fixes, and it is the ONLY key that differs
+# from `shared_slope_point.toml`: the endpoints become the one-sided
+# `lower = quantile(0.20)` and `upper = quantile(0.80)` of the resampled shrunk slope, by
+# linear interpolation between order statistics. Everything that decides which folds are
+# excluded is identical to the point arm's file, so a fold is never dropped for one arm and
+# kept for another (D6); `calibration.require_same_exclusion_geometry` checks that rather
+# than assuming it.
+#
+# What the endpoints assert: each is a one-sided directional statement about the shared
+# coefficient under the resampling assumptions -- that the training pool is stationary
+# enough to resample, and that `block_periods` carries the dependence the overlapping
+# labels induce. They are not a simultaneous interval over both endpoints, they say
+# nothing about the coverage of a realized portfolio return, and they are not conformal
+# outcome widths.
+#
+# Every value here is fixed before the run.
+
+kind = "shared_slope"
+standardize = "rank_normal"
+weighting = "per_date_equal"
+shrink_pseudo_periods = 12.0
+expected_sign = "positive"
+confidence = 0.80
+uncertainty = "time_block_bootstrap"
+block_scheme = "circular_moving"
+block_periods = 3
+n_resamples = 2000
+seed = 20260906
+min_training_periods = 12
+min_blocks = 4
+inner_oos_required = false
+executable_return = "open_to_open"
+label_distributions = "credited"
+
+# Identical to the point arm's block, and identical to the risk model file's `scaling`.
+[sigma_h]
+estimator = "ewma_daily"
+window_bars = 63
+scaling = "per_bar_times_h"

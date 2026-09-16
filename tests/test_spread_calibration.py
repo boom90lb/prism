@@ -170,9 +170,9 @@ def test_live_fills_ledger_round_trips_into_calibration(tmp_path) -> None:
         broker=FakeBroker(),
         fills_ledger=tmp_path / "fills.jsonl",
     )
-    decide_and_submit(ctx, "d1", pd.Series({"MEGA": 0.5}), pd.Series({"MEGA": 100.0}))
+    decide_and_submit(ctx, "2026-03-04", pd.Series({"MEGA": 0.5}), pd.Series({"MEGA": 100.0}))
     ctx.broker.open_prices["MEGA"] = 100.10  # next-open fill 10 bps above reference
-    settle(ctx, "d1")
+    settle(ctx, "2026-03-04")
 
     ledger = read_fills_ledger(ctx.fills_ledger)
     table = spread_calibration_table(ledger, _MDV)

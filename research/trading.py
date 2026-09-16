@@ -10,10 +10,10 @@ import numpy as np
 import pandas as pd
 
 from prism.config import RESULTS_DIR, TradingConfig
-from prism.execution import ExecutionModel, Fill, Order, OrderType
 from prism.execution.costs import daily_borrow_dollars
 from prism.execution.target_weights import scale_to_max_gross
 from prism.validation.metrics import calmar_ratio, probabilistic_sharpe_ratio
+from research.execution_model import ExecutionModel, Fill, Order, OrderType
 from research.features import is_label_column
 from research.models.base import BaseModel
 from research.models.ensemble import EnsembleModel

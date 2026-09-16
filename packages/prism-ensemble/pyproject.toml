@@ -1,0 +1,52 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# The optional strategy package of the engine specification's stage 6 Legacy
+# retirement row: "`signal/ensemble_node.py` moves to an optional strategy
+# package, which is what removes xgboost and statsmodels from the core
+# dependency set."
+#
+# It is a separate distribution, not an extra of prism-trading, because an extra
+# of a distribution that no longer contains the code would install two libraries
+# and nothing that uses them. Declaring them here is what lets them leave
+# prism-trading entirely: the engine's own dependency list now has no xgboost and
+# no statsmodels in it, in core or in any extra, and the two libraries arrive only
+# for an operator who asks for this package.
+#
+# The engine never imports this package. `prism.scripts.paper_books` and
+# `prism.scripts.replay_loop` import `prism_ensemble` inside the `ensemble`
+# book's signal factory, so a wheel install without this package runs every
+# other book and refuses only that one, by name.
+[project]
+name = "prism-ensemble"
+version = "0.4.0"
+description = "The learned forecast-ensemble signal node for the Prism engine — an optional strategy package"
+license = "MIT"
+requires-python = ">=3.12"
+authors = [
+    { name = "Brendon Reperttang", email = "boom90lb@alum.mit.edu" },
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "prism-trading>=0.4.0",
+    "statsmodels>=0.14.0",
+    "xgboost>=1.7.0",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/boom90lb/prism"
+"Bug Tracker" = "https://github.com/boom90lb/prism/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["prism_ensemble"]
+
+[tool.black]
+line-length = 119
+target-version = ["py312"]
+
+[tool.isort]
+profile = "black"

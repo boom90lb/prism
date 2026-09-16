@@ -86,119 +86,16 @@ class _ConstModel(BaseModel):
         return {}
 
 
-def test_stat_arb_wfo_main_emits_valid_claim_packet(monkeypatch, tmp_path: Path) -> None:
-    import research.scripts.stat_arb_wfo as mod
-
-    close = pd.DataFrame({"AAA": _bars()["close"], "BBB": _bars()["close"] * 0.99})
-    open_ = pd.DataFrame({"AAA": _bars()["open"], "BBB": _bars()["open"] * 0.99})
-    targets = pd.DataFrame({"AAA": 0.4, "BBB": -0.4}, index=open_.index)
-    portfolio = backtest_target_weights(open_, targets)
-    fake_fold = object()
-    fake_result = SimpleNamespace(
-        folds=(fake_fold,),
-        portfolio=portfolio,
-        pair_trial_sharpes=(0.1, 0.2),
-        summary=portfolio.metrics | {"pair_set_dsr": 0.1},
-    )
-
-    monkeypatch.setattr(mod, "_fetch_matrices", lambda *a, **k: (close, open_))
-    monkeypatch.setattr(mod, "run_stat_arb_walk_forward", lambda *a, **k: fake_result)
-    monkeypatch.setattr(
-        mod,
-        "fold_result_to_dict",
-        lambda _fold: {
-            "fold": 0,
-            "formation_start": close.index[0].isoformat(),
-            "formation_end": close.index[9].isoformat(),
-            "test_start": close.index[10].isoformat(),
-            "test_end": close.index[-1].isoformat(),
-            "selected_pairs": [],
-        },
-    )
-    monkeypatch.setattr(sys, "argv", [
-        "stat_arb_wfo.py",
-        "--symbols",
-        "AAA,BBB",
-        "--formation_bars",
-        "30",
-        "--test_bars",
-        "20",
-        "--output_dir",
-        str(tmp_path),
-    ])
-
-    mod.main()
-
-    packet = validate_claim_packet_dir(tmp_path)
-    assert packet["strategy"] == "pairs_stat_arb_wfo"
-
-
-def test_stat_arb_residual_wfo_main_emits_valid_claim_packet(monkeypatch, tmp_path: Path) -> None:
-    import research.scripts.stat_arb_residual_wfo as mod
-
-    bars = _bars()
-    frames = {
-        "AAA": bars,
-        "BBB": bars.assign(close=bars["close"] * 0.99, open=bars["open"] * 0.99),
-        "CCC": bars.assign(close=bars["close"] * 1.01, open=bars["open"] * 1.01),
-    }
-    closes = pd.DataFrame({s: df["close"] for s, df in frames.items()})
-    opens = pd.DataFrame({s: df["open"] for s, df in frames.items()})
-    targets = pd.DataFrame({"AAA": 0.2, "BBB": -0.1, "CCC": 0.0}, index=opens.index)
-    portfolio = backtest_target_weights(opens, targets)
-    fake_fold = object()
-    fake_result = SimpleNamespace(
-        folds=(fake_fold,),
-        portfolio=portfolio,
-        summary=portfolio.metrics | {
-            "n_folds": 1.0,
-            "n_symbols": 3.0,
-            "oos_periodic_sharpe": 0.1,
-        },
-    )
-
-    monkeypatch.setattr(mod, "_fetch_frames", lambda *a, **k: frames)
-    monkeypatch.setattr(mod, "run_residual_stat_arb_walk_forward", lambda *a, **k: fake_result)
-    monkeypatch.setattr(
-        mod,
-        "residual_fold_to_dict",
-        lambda _fold: {
-            "fold": 0,
-            "formation_start": closes.index[0].isoformat(),
-            "formation_end": closes.index[9].isoformat(),
-            "test_start": closes.index[10].isoformat(),
-            "test_end": closes.index[-1].isoformat(),
-        },
-    )
-    monkeypatch.setattr(sys, "argv", [
-        "stat_arb_residual_wfo.py",
-        "--symbols",
-        "AAA,BBB,CCC",
-        "--n_factors",
-        "1",
-        "--sizing_mode",
-        "strength",
-        "--initial_capital",
-        "1000000",
-        "--adv_impact_model",
-        "sqrt",
-        "--output_dir",
-        str(tmp_path),
-        "--trial_ledger",
-        str(tmp_path / "trials.jsonl"),
-        "--design_trials",
-        "7",
-    ])
-
-    mod.main()
-
-    packet = validate_claim_packet_dir(tmp_path)
-    assert packet["strategy"] == "residual_stat_arb_wfo"
-    assert packet["config"]["initial_capital"] == 1_000_000.0
-    assert packet["config"]["design_trials"] == 7
-    assert packet["config"]["signal"]["sizing_mode"] == "strength"
-    assert packet["config"]["execution"]["adv_impact_model"] == "sqrt"
-    assert (tmp_path / "summary.json").exists()
+# `test_stat_arb_wfo_main_emits_valid_claim_packet` was removed at stage 3b with
+# `research/scripts/stat_arb_wfo.py`, which retired together with the fold
+# geometry it drove (`research/arbitrage/walk_forward.py`).
+#
+# `test_stat_arb_residual_wfo_main_emits_valid_claim_packet` was removed at
+# stage 2 with `research/scripts/stat_arb_residual_wfo.py`, whose recorded case
+# now reproduces through `prism.evaluate.walk_forward_evaluate`
+# (`tests/test_demotion_b1_reproduction.py`). The evaluator writes a
+# `ResultRecord` and a hash-chained trial row rather than a claim packet, so
+# there is no claim-packet smoke left to run for that path.
 
 
 def test_backtest_main_target_weights_emits_root_claim_packet(monkeypatch, tmp_path: Path) -> None:
@@ -253,17 +150,21 @@ def test_backtest_main_target_weights_emits_root_claim_packet(monkeypatch, tmp_p
         return real_backtest_target_weights(*args, **kwargs)
 
     monkeypatch.setattr(mod, "backtest_target_weights", _capture_backtest_target_weights)
-    monkeypatch.setattr(sys, "argv", [
-        "backtest.py",
-        "--training_run",
-        str(training_run),
-        "--symbols",
-        "AAA",
-        "--adv_impact_coeff",
-        "25",
-        "--adv_floor_dollars",
-        "1000",
-    ])
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "backtest.py",
+            "--training_run",
+            str(training_run),
+            "--symbols",
+            "AAA",
+            "--adv_impact_coeff",
+            "25",
+            "--adv_floor_dollars",
+            "1000",
+        ],
+    )
 
     mod.main()
 
@@ -325,15 +226,19 @@ def test_backtest_main_shared_construct_opt_in_emits_claim_packet(monkeypatch, t
         lambda _fold, usable, **kwargs: (usable.index[0], usable.index[-1]),
     )
     monkeypatch.setattr(mod, "_fold_model_data", lambda _fold, symbol, full_df: full_df)
-    monkeypatch.setattr(sys, "argv", [
-        "backtest.py",
-        "--training_run",
-        str(training_run),
-        "--symbols",
-        "AAA",
-        "--construct_style",
-        "shared",
-    ])
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "backtest.py",
+            "--training_run",
+            str(training_run),
+            "--symbols",
+            "AAA",
+            "--construct_style",
+            "shared",
+        ],
+    )
 
     mod.main()
 
@@ -383,17 +288,21 @@ def test_rl_seed_eval_main_emits_member_claim_packet(monkeypatch, tmp_path: Path
     )
     monkeypatch.setattr(mod, "eval_member_seed", _seed_returns)
     out_dir = tmp_path / "out"
-    monkeypatch.setattr(sys, "argv", [
-        "rl_seed_eval.py",
-        "--training_run",
-        str(training_run),
-        "--members",
-        "lstm_ppo",
-        "--seeds",
-        "0,1",
-        "--output_dir",
-        str(out_dir),
-    ])
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "rl_seed_eval.py",
+            "--training_run",
+            str(training_run),
+            "--members",
+            "lstm_ppo",
+            "--seeds",
+            "0,1",
+            "--output_dir",
+            str(out_dir),
+        ],
+    )
 
     mod.main()
 
@@ -421,17 +330,21 @@ def test_rl_seed_eval_rejects_sentiment_before_data_loading(monkeypatch, tmp_pat
 
     monkeypatch.setattr(mod, "DataLoader", _Loader)
     monkeypatch.setattr(mod, "load_training_run", lambda _path: (config, {"AAA": [fold_dir]}))
-    monkeypatch.setattr(sys, "argv", [
-        "rl_seed_eval.py",
-        "--training_run",
-        str(training_run),
-        "--members",
-        "lstm_ppo",
-        "--seeds",
-        "0",
-        "--output_dir",
-        str(tmp_path / "out"),
-    ])
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "rl_seed_eval.py",
+            "--training_run",
+            str(training_run),
+            "--members",
+            "lstm_ppo",
+            "--seeds",
+            "0",
+            "--output_dir",
+            str(tmp_path / "out"),
+        ],
+    )
 
     with pytest.raises(ValueError, match="sentiment is disabled for rl_seed_eval"):
         mod.main()

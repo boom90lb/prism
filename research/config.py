@@ -1,10 +1,11 @@
 """Configuration for the quarantined research stack (SPEC.md §9).
 
 The ensemble-side half of the old ``prism.config``: member/ensemble/training
-dataclasses and the research artifact directories. Production config (data
-directories, API keys for the $0 spine, execution/trading cost dataclasses)
-stays in ``prism.config``; importing it here also runs its ``load_dotenv()``,
-so keys resolve the same way in both halves.
+dataclasses and the research artifact directories. Production cost dataclasses
+stay in ``prism.config``, which since the workspace correction (spec §3.1) reads no
+``.env`` and creates no directory at import; the research half keeps its own
+project-relative artifact directories and loads ``.env`` here, because every
+research driver is run from the checkout.
 
 Dropped in the split as dead public surface (zero importers anywhere):
 ``DEFAULT_MODELS``, ``DEFAULT_ENSEMBLE_CONFIG``, ``DEFAULT_TRADING_CONFIG``.
@@ -14,12 +15,19 @@ import os
 from dataclasses import dataclass
 from typing import List, Optional
 
+import dotenv
+
 from prism.config import PROJECT_DIR
 
+dotenv.load_dotenv()
+
 # Research artifact directories. runs/ fold artifacts reference MODELS_DIR
-# siblings; mlruns/ is the MLflow file-store default.
+# siblings; mlruns/ is the MLflow file-store default; LOGS_DIR is what the
+# research drivers hand to ``prism.logging_utils.configure_logging``, which
+# no longer carries a directory of its own.
 MODELS_DIR = PROJECT_DIR / "models"
 MLRUNS_DIR = PROJECT_DIR / "mlruns"
+LOGS_DIR = PROJECT_DIR / "logs"
 MODELS_DIR.mkdir(exist_ok=True, parents=True)
 
 # API key for the news fetch in research/sentiment_analysis.py.

@@ -2,8 +2,8 @@
 
 A thin, network-gated shell: it parses arguments and connects credentials to
 pieces that are each tested offline — ``DataLoader.fetch_incremental``
-(tests/test_incremental_store.py), ``EnsembleSignalNode``
-(tests/test_signal_node.py), the broker-truth universe reconciliation
+(tests/test_incremental_store.py), the shipped signal nodes
+(tests/test_component_declarations.py), the broker-truth universe reconciliation
 (``resolve_fetch_universe``; tests/test_paper_loop_universe.py), the online
 construction and write-ahead protocol (tests/test_live_daily.py,
 tests/test_live_loop.py), the Alpaca venue mappings
@@ -35,6 +35,17 @@ Credentials: ``APCA_API_KEY_ID`` / ``APCA_API_SECRET_KEY`` (paper endpoint
 by default; ``APCA_API_BASE_URL`` overrides). Bars come from Alpaca's own IEX
 feed by default (``--bar-source``); the Twelve Data spine stays a fallback.
 
+**Exercising the command without trading**: ``--no-submit`` runs the whole
+cycle — credentials, venue reads, mark, score, construct, order diff, safety
+rails — logs every order it would have sent, and sends none
+(``prism.live.no_submit``). Use it for any verification. Until it existed, this
+command had two states, "fails before the credential check" and "trades the
+account", and on 2026-09-09 a step meaning to observe the first performed the
+second. A run that does submit says so on one line
+(``prism.live.loop.SUBMISSION_ANNOUNCEMENT``) naming the endpoint, the account,
+the decision bar and the order count; a run that submits nothing never prints
+it.
+
 Fit policy (explicit, §7.7 model staleness): the signal is refit every run
 on the full trailing panel up to the decision bar. Causal for live use —
 fitting on bars ≤ *t* to decide at *t* sees no future — and at paper-book
@@ -47,11 +58,12 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import sys
 from pathlib import Path
 from typing import Any
 
-from prism.io.loader import DataLoader
+from prism.io.loader import API_KEY_ENV_VAR, DataLoader
 from prism.live import (
     PROFILE_IDS,
     AlpacaBarSource,
@@ -66,8 +78,12 @@ from prism.live import (
     run_daily_cycle,
     spinoff_unrankable_provider,
 )
+from prism.live.authorization import refuse_an_unbindable_record, resolve_endpoint
 from prism.live.daily import warn_if_stale_panel
 from prism.live.lockfile import run_dir_lock
+from prism.live.no_submit import no_submit_session
+from prism.live.safety import require_established_run_dir, sample_run_dir_history
+from prism.scripts import announce_alias
 from prism.scripts.paper_books import (
     BOOKS,
     BookParams,
@@ -77,6 +93,7 @@ from prism.scripts.paper_books import (
     resolve_cli_universe,
     valuation_masked_membership,
 )
+from prism.workspace import load_env, resolve_workspace
 
 logger = logging.getLogger(__name__)
 
@@ -235,12 +252,66 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Per-decision order-count bound. Default 2x universe size + 10 (an order per "
         "name entering plus one per name exiting is the geometric ceiling). 0 disables.",
     )
+    parser.add_argument(
+        "--no-submit",
+        action="store_true",
+        help="Run the entire cycle — credentials, broker reads, mark, score, construct, order "
+        "diff, safety rails — log every order it WOULD submit, and submit nothing. The venue is "
+        "read but never written, and the run directory's durable record is left untouched (writes "
+        "go to a discarded scratch copy, so a rehearsal cannot leave a decision armed for the next "
+        "real session). Use this for any verification of the command: without it, every invocation "
+        "that finds credentials trades.",
+    )
+    parser.add_argument(
+        "--allow-new-run-dir",
+        action="store_true",
+        help="Permit submitting from a --run-dir that carries no prior session (no state.json and "
+        "no equity.jsonl when the process started). Required only for the deliberate first session "
+        "of a new book; an established run directory — every nightly invocation — needs nothing. "
+        "Ignored under --no-submit, which submits nothing wherever it points.",
+    )
+    parser.add_argument(
+        "--workspace",
+        default=None,
+        help="Writable root whose data/ holds the Twelve Data bar cache "
+        "(default: $PRISM_WORKSPACE, else the current directory). Unused with "
+        "--bar-source alpaca, which fetches from the broker's own feed.",
+    )
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
+    announce_alias(
+        "python -m prism.scripts.paper_loop",
+        "prism run --spec <spec> --account paper --broker alpaca",
+    )
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     args = _parse_args(argv)
+    # The provenance rail's evidence, sampled HERE and nowhere later: the writer
+    # lock below creates the run directory, so after that point a directory this
+    # process conjured is indistinguishable from one a month of sessions built.
+    run_dir_history = sample_run_dir_history(args.run_dir)
+    # Credentials come from the project's .env, loaded here rather than at
+    # import (spec §3.1) and before any ``from_env`` constructor below.
+    load_env()
+
+    # §3.10, twice, before a credential is read and before a client exists.
+    #
+    # The mode is an argument, never an inheritance: this entry point *is* the
+    # paper instrument, so its mode is `paper`, and an exported
+    # APCA_API_BASE_URL may set an endpoint but never the mode. A live endpoint
+    # here is refused now rather than at the first request — and rather than at
+    # `AlpacaBroker.from_env` below, which would read the credentials first.
+    resolve_endpoint("paper", from_environment=os.environ.get("APCA_API_BASE_URL"))
+    # And this shell resolves no specification, so it computes no `config_id`
+    # and can bind against no authorization record. A record sitting in the run
+    # directory would look like the controls were in force while nothing
+    # checked them.
+    refuse_an_unbindable_record(
+        args.run_dir,
+        entry_point="the paper-loop entry point",
+        instead="`prism run --spec <spec> --account paper --broker alpaca`",
+    )
 
     # W6 frozen: optional named profile. research_paper is the G6 instrument —
     # pin construction to CERTIFIED_B1_PAPER_CONFIG and refuse silent forks.
@@ -303,7 +374,14 @@ def main(argv: list[str] | None = None) -> int:
     # the morning sweep and any manual invocation, and the write-ahead protocol
     # protects against crashes, not concurrent writers. Held through the whole
     # mutating path (reconcile reads state; the cycle writes it).
-    with run_dir_lock(args.run_dir):
+    # The lock is taken on the REAL run directory even under --no-submit: the
+    # rehearsal mirrors that directory, and a snapshot of a directory another
+    # writer holds would be torn.
+    with run_dir_lock(args.run_dir), no_submit_session(args.run_dir, enabled=args.no_submit) as rehearsal:
+        # Every durable write of this cycle goes here. With --no-submit it is a
+        # scratch mirror of the run directory; otherwise it IS the run directory,
+        # so the trading path and the rehearsed path are one path.
+        work_dir = rehearsal.work_dir
         # Broker truth decides the fetch universe, BEFORE any bar is fetched. The
         # mark step values what the venue holds, and this run directory's persisted
         # state is not that: a fresh run directory persists nothing (every cycle
@@ -311,8 +389,20 @@ def main(argv: list[str] | None = None) -> int:
         # populated one is only a cache of the last reconcile. One broker instance
         # serves the reconciliation and the cycle, so the account is read on the
         # same credentials the orders will use.
-        store = StateStore(args.run_dir / "state.json")
-        broker = AlpacaBroker.from_env(time_in_force=args.tif)
+        store = StateStore(work_dir / "state.json")
+        broker = AlpacaBroker.from_env(mode="paper", time_in_force=args.tif)
+        if args.no_submit:
+            # Reads pass through to the real venue; submissions never leave the
+            # process. Wrapped after construction so the credential resolution and
+            # the endpoint allowlist are the real ones.
+            broker = rehearsal.wrap(broker)
+        else:
+            # The provenance rail, before the first venue read: an invocation that
+            # is not a continuation of an established session does not get to
+            # trade on the strength of finding credentials.
+            require_established_run_dir(
+                run_dir_history, allow_new=args.allow_new_run_dir, entry_point="the paper loop"
+            )
         universe = resolve_fetch_universe(symbols, broker, state=store.load())
         score_universe = list(universe.score)
         symbols = list(universe.fetch)
@@ -321,7 +411,13 @@ def main(argv: list[str] | None = None) -> int:
         # Bars from Alpaca (the broker's own feed) by default so decision and fill
         # share one venue and clock; the Twelve Data spine stays available as a
         # fallback. Both satisfy the duck-typed fetch_incremental read path.
-        loader: Any = AlpacaBarSource.from_env() if args.bar_source == "alpaca" else DataLoader()
+        loader: Any = (
+            AlpacaBarSource.from_env()
+            if args.bar_source == "alpaca"
+            else DataLoader(
+                api_key=os.environ.get(API_KEY_ENV_VAR), cache_dir=resolve_workspace(args.workspace).data
+            )
+        )
         start_date = args.start_date if args.start_date is not None else default_panel_start(spec)
         max_missing = args.max_missing if args.max_missing is not None else spec.default_max_missing
         # ``required``: a held name may not be silently dropped by the max_missing
@@ -363,7 +459,7 @@ def main(argv: list[str] | None = None) -> int:
         # (prism.live.spinoff_mask.spinoff_unrankable_provider) — this shell only
         # connects it. Consulted by run_daily_cycle on refresh sessions only.
         unrankable = (
-            spinoff_unrankable_provider(close, params.lookback_bars, score_universe, args.run_dir)
+            spinoff_unrankable_provider(close, params.lookback_bars, score_universe, work_dir)
             if args.spinoff_mask
             else None
         )
@@ -378,7 +474,7 @@ def main(argv: list[str] | None = None) -> int:
         regime_provider = RegimeTelemetry.from_env() if args.regime else None
 
         safety = build_safety_config(
-            run_dir=args.run_dir,
+            run_dir=work_dir,
             kill_switch_arg=args.kill_switch,
             max_drawdown=args.max_drawdown,
             max_order_fraction=args.max_order_fraction,
@@ -387,12 +483,12 @@ def main(argv: list[str] | None = None) -> int:
             n_symbols=len(symbols),
         )
 
-        args.run_dir.mkdir(parents=True, exist_ok=True)
+        work_dir.mkdir(parents=True, exist_ok=True)
         if resolved_profile is not None:
             if args.profile == "research_paper":
                 # G6: the constructed config must match the certified paper pin.
                 assert_research_paper_bit_identity(config)
-            profile_path = args.run_dir / "profile.json"
+            profile_path = work_dir / "profile.json"
             profile_path.write_text(
                 json.dumps(resolved_profile.to_public_dict(), indent=2, sort_keys=True) + "\n",
                 encoding="utf-8",
@@ -401,12 +497,12 @@ def main(argv: list[str] | None = None) -> int:
         ctx = LiveLoopContext(
             store=store,
             broker=broker,
-            fills_ledger=args.run_dir / "fills.jsonl",
-            equity_ledger=args.run_dir / "equity.jsonl",
-            targets_ledger=args.run_dir / "targets.jsonl",
-            unfilled_ledger=args.run_dir / "unfilled.jsonl",
-            concordance_ledger=args.run_dir / "concordance.jsonl",
-            regime_ledger=args.run_dir / "regime.jsonl",
+            fills_ledger=work_dir / "fills.jsonl",
+            equity_ledger=work_dir / "equity.jsonl",
+            targets_ledger=work_dir / "targets.jsonl",
+            unfilled_ledger=work_dir / "unfilled.jsonl",
+            concordance_ledger=work_dir / "concordance.jsonl",
+            regime_ledger=work_dir / "regime.jsonl",
             # Namespaced client ids: two books sharing one venue account with the
             # bare {bar}:{symbol} scheme silently substitute each other's same-bar
             # orders (duplicate-id == success). Persisted pending orders keep the
@@ -419,9 +515,10 @@ def main(argv: list[str] | None = None) -> int:
 
     held = result.target_weights[result.target_weights.abs() > 1e-9]
     logger.info(
-        "cycle %s: settled %d fills, submitted %d orders, equity %.2f, book %s",
+        "cycle %s: settled %d fills, %s %d orders, equity %.2f, book %s",
         result.decision_bar,
         len(result.settled_fills),
+        "WOULD HAVE submitted" if args.no_submit else "submitted",
         len(result.submitted_orders),
         result.equity,
         {k: round(v, 4) for k, v in held.sort_values().items()},

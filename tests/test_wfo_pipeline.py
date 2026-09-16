@@ -25,9 +25,9 @@ import pandas as pd
 import pytest
 
 from prism.config import ExecutionConfig, TradingConfig
-from prism.execution import ExecutionModel
 from research.baselines import BuyAndHold
 from research.config import EnsembleConfig, ModelConfig
+from research.execution_model import ExecutionModel
 from research.features import forward_return_column, is_label_column
 from research.models.base import BaseModel
 from research.models.ensemble import EnsembleModel
@@ -768,7 +768,7 @@ def test_backtest_wfo_persists_state_and_drops_pending_between_folds(
     """
     import types
 
-    from prism.execution import ExecutionModel
+    from research.execution_model import ExecutionModel
     from research.features import FeatureEngineer
     from research.scripts.backtest import _fold_date_range, run_symbol_wfo
     from research.scripts.training import build_features

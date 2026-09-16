@@ -4,10 +4,10 @@ Replaces the per-script ``logging.basicConfig`` calls with a single
 ``configure_logging`` entry point that installs:
 
   * a **console** handler at INFO (DEBUG when ``--verbose``), and
-  * a **file** handler that always captures DEBUG to ``logs/run_{ts}.log``,
-    wrapped in a ``RotatingFileHandler`` so a runaway RL/sweep run cannot
-    fill the disk (size cap + a few backups), independent of the console
-    verbosity.
+  * a **file** handler that always captures DEBUG to the caller's
+    ``{log_dir}/run_{ts}.log``, wrapped in a ``RotatingFileHandler`` so a
+    runaway RL/sweep run cannot fill the disk (size cap + a few backups),
+    independent of the console verbosity.
 
 Records can carry a per-symbol tag so the file is greppable by ticker and
 MLflow-sliceable: use :func:`get_symbol_logger` to obtain a
@@ -21,8 +21,6 @@ from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Optional, Union
-
-from prism.config import LOGS_DIR
 
 # One log file per run; the timestamp gives natural per-run separation. The
 # RotatingFileHandler size cap is a safety net against a single pathological
@@ -53,9 +51,10 @@ class _SymbolDefaultFilter(logging.Filter):
 
 
 def configure_logging(
+    log_dir: Union[str, Path],
+    *,
     verbose: bool = False,
     run_name: Optional[str] = None,
-    log_dir: Union[str, Path] = LOGS_DIR,
 ) -> Path:
     """Install console + rotating-file logging on the root logger.
 
@@ -64,12 +63,16 @@ def configure_logging(
     calls in the same process (e.g. tests, notebooks) don't stack handlers.
 
     Args:
+        log_dir: directory for the log file (created if missing). Required and
+            caller-supplied: a library module has no writable directory of its
+            own, and the package-relative default this replaced wrote beside
+            the installed package (spec §3.1). Commands pass
+            ``workspace.logs``.
         verbose: console level DEBUG when True, else INFO. The file handler
             always records DEBUG regardless, so ``--verbose`` only changes
             what scrolls past on the terminal, never what's persisted.
         run_name: optional slug embedded in the log filename
             (``run_{run_name}_{ts}.log``); falls back to ``run_{ts}.log``.
-        log_dir: directory for the log file (created if missing).
 
     Returns:
         The path to the run's log file.

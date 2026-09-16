@@ -28,14 +28,15 @@ of only ranking single-symbol directional forecasts.
 Run from the repo root with the `[research]` extra installed
 (`uv sync --extra research`).
 
-```bash
-# Rolling walk-forward evaluation. Prefer this for any reported result.
-python -m research.scripts.stat_arb_wfo --symbols AAPL,MSFT,GOOG,AMZN,META,NVDA \
-    --start_date 2020-01-01 --formation_bars 504 --test_bars 63 --max_pairs 5
+`research/scripts/stat_arb_wfo.py` and the fold geometry it drove
+(`research/arbitrage/walk_forward.py`) **retired at stage 3b of the engine
+overhaul**, after the recorded trend case reproduced through the engine's own
+evaluator (`results/trend_t0_reproduction/report.json`). There is no
+command-line pairs walk-forward any more; the recorded runs below are still
+readable and the tree that produced them is tagged
+`pre-driver-retirement-stage3b`.
 
-```
-
-Walk-forward outputs go to `results/stat_arb_wfo_<ts>/`:
+Recorded walk-forward outputs under `results/stat_arb_wfo_<ts>/`:
 
 - `pairs.json` - selected fixed relationships by fold.
 - `folds.json` - formation/test dates, raw candidates, FDR cutoff, rejection
@@ -125,27 +126,24 @@ are fixed — and in v1 they are frozen at the config defaults.
 
 ### CLI
 
+`research/scripts/stat_arb_residual_wfo.py`, the driver every run below was
+made with, **retired at stage 2 of the engine overhaul**. Its recorded
+momentum case now reproduces through the engine's own evaluator, which writes
+a `ResultRecord` and a hash-chained trial row instead of a claim packet:
+
 ```bash
-# Mechanics smoke on a small cached panel (plumbing only, not a result).
-python -m research.scripts.stat_arb_residual_wfo --symbols AAPL,MSFT,GOOG,AMZN \
-    --n_factors 2 --start_date 2020-01-01
-
-# Broad liquid subset first: top ~100 names by trailing dollar volume.
-python -m research.scripts.stat_arb_residual_wfo --universe data/universe/sp500-2026-06-11.txt \
-    --top_liquid 100 --start_date 2020-01-01
-
-# Full current-S&P run (survivorship-biased universe; see Limitations).
-python -m research.scripts.stat_arb_residual_wfo --universe data/universe/sp500-2026-06-11.txt \
-    --start_date 2020-01-01
-
-# ETF-factor mode: regress on the 11 SPDR sector ETFs instead of PCA factors.
-python -m research.scripts.stat_arb_residual_wfo --universe data/universe/sp500-2026-06-11.txt \
-    --factor_mode etf --start_date 2020-01-01 --end_date 2026-06-10
+python -m prism.scripts.reproduce --case demotion_b1 \
+    --recorded results/demotion_b1 --cache-dir data
 ```
 
-Outputs go to `results/stat_arb_residual_wfo_<ts>/`: `folds.json` (per-fold
-names traded, gross, turnover, cost share, invalid-OU rate, metrics),
-`summary.json`, `config.json`, and the usual returns/equity/weights/costs CSVs.
+The recorded runs themselves are unchanged and still readable:
+`results/demotion_b1/` and its siblings carry `folds.json` (per-fold names
+traded, gross, turnover, cost share, invalid-OU rate, metrics),
+`summary.json`, `config.json`, and the returns/equity/weights/costs CSVs. The
+residual sleeve itself (`research/arbitrage/residual_walk_forward.py`) and the
+fold geometry (`research/arbitrage/walk_forward.py`) retired at stage 3b with
+the trend driver, once the trend case had reproduced against them; both live
+only under the tag `pre-driver-retirement-stage3b` now.
 
 ### Trial ledger and `residual_set_dsr`
 

@@ -1,0 +1,29 @@
+# The reference factor risk model (spec section 3.5). Every setting is declared: the
+# schema is closed, and a shrinkage or a floor that was never declared is
+# indistinguishable in the record from one declared at that value. This file's content
+# enters `config_id` through the `[construction] risk_model` key of section 3.3, which is
+# what makes "the two convex arms share their risk model" checkable rather than asserted.
+kind = "factor_diagonal"
+factor_mode = "pca"                  # or "etf"; omega is estimated under both
+n_factors = 15
+loadings_window_bars = 60
+covariance_window_bars = 252
+omega_shrink = 0.10
+omega_shrink_target = "diagonal"
+eigenvalue_floor_relative = 1.0e-10  # the clip in cone_operator's eigendecomposition (D9)
+eigenvalue_reject_relative = 1.0e-08 # below this, an eigenvalue is indefinite, not PSD-singular
+symmetry_tolerance = 1.0e-12
+residual_shrink = 0.20               # lambda_d, toward the cross-sectional median
+residual_floor_var_annual = 0.09     # (30 percent annual volatility) squared -> 0.0075 over 21 bars
+scaling = "per_bar_times_h"
+horizon_bars = 21
+annualization_bars = 252
+refresh_every_bars = 5
+
+# Holdings excluded from estimation entirely: a name carried at a stale valuation presents a
+# constant return column, for which batched_factor_ols returns a zero loading vector and zero
+# residual variance, so a book of stale names would satisfy any variance budget trivially.
+# They take the declared substitution instead: zero loadings, the residual floor, reduce-only.
+[substitution]
+exclude_valuation_status = ["stale", "unresolved_claim"]
+exclude_halted = true

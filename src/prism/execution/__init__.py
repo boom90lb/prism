@@ -1,5 +1,19 @@
-"""Execution model: order submission, fill timing, transaction costs."""
+"""Execution: cost charging, spread calibration, and the weight-space accounting path.
 
+``ExecutionModel`` and its ``Fill`` / ``Order`` / ``OrderType`` left this
+package at stage 6 (engine specification section 2, `execution/execution_model.py`,
+Removal): the legacy per-order fill engine had no engine consumer, only
+``research/trading.py`` and ``research/scripts/backtest.py``, and it moved to
+``research/execution_model.py`` with them. Its pre-move source is at the tag
+``pre-legacy-retirement-stage6``.
+"""
+
+from prism.execution.cost_model import (
+    CostModel,
+    SpreadSpec,
+    bucket_spread_bps,
+    charge_weights,
+)
 from prism.execution.costs import (
     commission_dollars,
     daily_borrow_dollars,
@@ -11,12 +25,6 @@ from prism.execution.edge import (
     edge_bracketing_diagnostic,
     edge_spread,
     edge_spread_by_symbol,
-)
-from prism.execution.execution_model import (
-    ExecutionModel,
-    Fill,
-    Order,
-    OrderType,
 )
 from prism.execution.spread import (
     DEFAULT_BUCKET_FLOORS,
@@ -34,14 +42,14 @@ __all__ = [
     "DEFAULT_BUCKET_FLOORS",
     "DEFAULT_MIN_OBS",
     "SPREAD_BUCKET_SCHEDULE_V1",
-    "ExecutionModel",
-    "Fill",
-    "Order",
-    "OrderType",
+    "CostModel",
     "PortfolioBacktestResult",
+    "SpreadSpec",
     "arrival_slippage_bps",
     "backtest_target_weights",
+    "bucket_spread_bps",
     "calibrated_bucket_schedule",
+    "charge_weights",
     "commission_dollars",
     "daily_borrow_dollars",
     "edge_bracketing_diagnostic",

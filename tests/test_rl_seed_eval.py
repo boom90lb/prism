@@ -21,8 +21,8 @@ pytest.importorskip("mlflow", reason="needs the [research] extra")
 pytestmark = pytest.mark.research
 
 from prism.config import ExecutionConfig, TradingConfig  # noqa: E402
-from prism.execution import ExecutionModel  # noqa: E402
 from research.config import EnsembleConfig, ModelConfig  # noqa: E402
+from research.execution_model import ExecutionModel  # noqa: E402
 from research.models.base import BaseModel  # noqa: E402
 from research.models.ensemble import EnsembleModel  # noqa: E402
 from research.models.lstm_ppo import LSTMPPO, TradingEnvironment  # noqa: E402

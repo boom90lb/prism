@@ -1,0 +1,20 @@
+# The `balanced` profile of docs/risk_profile_schema.md §1, as a declared file.
+# Certified gross, certified per-name cap: it tightens nothing and loosens
+# nothing, which is what "default deploy after multi-sleeve evidence" means.
+# Its difference from `assertive` is the sleeve mix, which no limit class of
+# §3.7 expresses; see `prism.live.risk_profile.INEXPRESSIBLE_CONTROLS`.
+name = "balanced"
+min_account_status = "undetermined"
+min_regime_scale = 0.5
+
+[[limits]]
+name = "max_gross"
+class = "preference"
+priority = 1
+value = 1.0
+
+[[limits]]
+name = "max_name_weight"
+class = "preference"
+priority = 2
+value = 0.10

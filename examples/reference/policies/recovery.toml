@@ -1,0 +1,18 @@
+# Every response key is a closed enumeration (spec §3.4, §3.7). This file's
+# content enters `config_id` through `policy_ids.recovery` in the authorization
+# record, which is why it carries a declared schema rather than an inferred one.
+on_infeasible = "cancel"
+on_sign_contradiction = "hold"
+on_blocked_obligation = "escalate"
+on_deadline_under_kill_switch = "escalate"
+on_rounding_failure = "scale_batch"
+on_partial_batch = "cancel_accepted"
+preference_response = "record"
+bound_slack = 1.0e-6
+recovery_entry_margin = 0.002
+component_liquidate_priority = 1
+
+[escalation]
+write_alert = true
+exit_code = 3
+require_acknowledgement = true

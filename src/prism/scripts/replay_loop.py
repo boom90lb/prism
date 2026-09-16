@@ -43,7 +43,6 @@ from prism.live.replay import (
 )
 from prism.residual.factors import ResidualStatArbConfig
 from prism.signal.base import Signal
-from prism.signal.ensemble_node import EnsembleNodeConfig, EnsembleSignalNode
 from prism.signal.momentum_node import MomentumSignalNode
 from prism.signal.trend_node import TREND_V1_UNIVERSE, TrendSignalNode
 
@@ -271,6 +270,17 @@ def main(argv: list[str] | None = None) -> int:
     else:
 
         def signal_factory() -> Signal:
+            # The learned ensemble is the optional prism-ensemble distribution
+            # since stage 6, so this import is inside the factory: a replay of
+            # the momentum or trend book must not need it installed.
+            try:
+                from prism_ensemble import EnsembleNodeConfig, EnsembleSignalNode
+            except ModuleNotFoundError as exc:  # pragma: no cover - exercised without the package
+                raise ModuleNotFoundError(
+                    "the ensemble book's signal node is the optional prism-ensemble "
+                    "distribution, which is not installed (`pip install prism-ensemble`)"
+                ) from exc
+
             return EnsembleSignalNode(EnsembleNodeConfig(horizon_bars=args.horizon))
 
     results, broker = replay_daily_cycles(

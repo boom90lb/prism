@@ -1,0 +1,203 @@
+{
+  "capture_command": "PYTHONPATH=src python tests/fixtures/paper_replay/capture.py --run-dir /home/b90/prism/runs/paper_loop_momentum2 --store-dir /home/b90/prism/data/store --legacy-cache-dir /home/b90/prism/data --reconstruction-date 2026-09-08 --min-history 274",
+  "caveats": [
+    "NO PANELS. The bar panels could not be reconstructed for any fixture session: the store covers 2/119 fixture symbols, latest bar 2026-07-06; 119/119 have no bar at session 2026-07-13. The live loop read its bars from Alpaca over the network and persisted none, and no local source reaches these bars. Nothing in this directory can be driven through replay_daily_cycles until a bar source covering 2026-07-13..2026-08-14 for the fixture universe is restored; a parity test must skip on that, never pass.",
+    "Two decision-bearing sessions, not three. The engine specification's 'at least three decision-bearing sessions' is not cuttable from this record: targets.jsonl holds exactly two rows. The fixture set is the two refreshes plus the three hold sessions that follow the second, and nothing here supplies a third refresh.",
+    "Reconstructed panels are not the panels the sessions saw. IncrementalBarStore carries a SplitRewriteDetected path (src/prism/io/store.py:50) precisely because vendors rewrite split-adjusted history wholesale; any panel rebuilt after the fact may sit on a different adjustment basis than the session did. Replay parity against this fixture is a bounded claim about the engine's arithmetic, not an unqualified reproduction of the live session.",
+    "The trimmed universe cannot reproduce the ranking. These sessions scored the full S&P 500 panel (the RUN lines record 502-503 symbols); the fixture universe is only the names the sessions traded, marked or held. That is enough to check settle, mark and order arithmetic against the recorded ledgers, and not enough to re-derive the cross-sectional decile book. Reproducing the decision itself needs the full recorded universe panel.",
+    "Recorded fills are live auction prints; a replay's are modeled. The ledger's fill prices came from Alpaca OPG auctions and the morning sweep; ReplayBroker fills at the next open print exactly (src/prism/live/replay.py:49-58). Parity must therefore be defined on the decided book and the orders, never on fill price or realised equity.",
+    "The recorded sessions are not contiguous. The run directory was deleted and restored from backup history on 2026-07-29 and the sessions 2026-07-18 through 2026-07-29 did not run (runs/paper_loop_momentum2/REATTACHED.md). The equity and concordance ledgers skip that interval; a replay over a continuous calendar will produce marks the record does not have."
+  ],
+  "decision_bearing_bars": [
+    "2026-07-13",
+    "2026-08-11"
+  ],
+  "files": {
+    "concordance.jsonl": {
+      "bytes": 4002,
+      "sha256": "a9e603d5de00e1154fcd84cb598561061b3ae194cd413742f867041eb081ab72"
+    },
+    "equity.jsonl": {
+      "bytes": 1185,
+      "sha256": "c6e28beb750be5d02349d60ce3a159be3fe81a90df63bdd61e124506e034c570"
+    },
+    "fills.jsonl": {
+      "bytes": 45392,
+      "sha256": "7dcacb1575713b7977b1276a1a484d0f14cca5cb4775ad2704191a70f3363ebc"
+    },
+    "spinoff_mask_2026-08-11.json": {
+      "bytes": 8678,
+      "sha256": "a7faa902dc14432056c591ae6893c639d3fb589674b34cd7d1d7de7b5f0fd321"
+    },
+    "state_final.json": {
+      "bytes": 2008,
+      "sha256": "d2fe9910b1bea8ef85b5ccf008ab9f676f68f830ca5ef00d88337042e70789a8"
+    },
+    "targets.jsonl": {
+      "bytes": 8967,
+      "sha256": "79fe581170fe7c108f08c74537016db03a81100019df9e80e99f459d6a2ca570"
+    },
+    "unfilled.jsonl": {
+      "bytes": 38466,
+      "sha256": "7d2464ff1ff710b733fa9ad9c20bb0d1f5b97d7a378e3a0cd04a255e0686c9ac"
+    },
+    "universe.txt": {
+      "bytes": 530,
+      "sha256": "b1f60797f0626d958abc08b875d90167125189c82fdc3cfa581428d2a6af5d69"
+    }
+  },
+  "fixture": "paper_replay",
+  "hold_bars": [
+    "2026-08-12",
+    "2026-08-13",
+    "2026-08-14"
+  ],
+  "panels": {
+    "latest_stored_bar": "2026-07-06",
+    "legacy_cache_probe": {
+      "cache_dir": "/home/b90/prism/data",
+      "latest_cached_bar": "2026-07-07",
+      "symbols_with_a_cache": 119,
+      "symbols_without_a_cache": 0
+    },
+    "min_history_required": 274,
+    "min_trailing_rows_among_stored_symbols": 1634,
+    "per_session_coverage": [
+      {
+        "bar": "2026-07-13",
+        "symbols_missing_a_bar": 119,
+        "symbols_with_a_bar": 0,
+        "universe_size": 119
+      },
+      {
+        "bar": "2026-08-11",
+        "symbols_missing_a_bar": 119,
+        "symbols_with_a_bar": 0,
+        "universe_size": 119
+      },
+      {
+        "bar": "2026-08-12",
+        "symbols_missing_a_bar": 119,
+        "symbols_with_a_bar": 0,
+        "universe_size": 119
+      },
+      {
+        "bar": "2026-08-13",
+        "symbols_missing_a_bar": 119,
+        "symbols_with_a_bar": 0,
+        "universe_size": 119
+      },
+      {
+        "bar": "2026-08-14",
+        "symbols_missing_a_bar": 119,
+        "symbols_with_a_bar": 0,
+        "universe_size": 119
+      }
+    ],
+    "reason": "the store covers 2/119 fixture symbols, latest bar 2026-07-06; 119/119 have no bar at session 2026-07-13",
+    "status": "unavailable",
+    "store_interval": "1d",
+    "symbols_absent_from_store": 117
+  },
+  "purpose": "Baseline for the engine overhaul's replay parity gate (engine spec stage 0). Recorded sessions only \u2014 nothing here is a modeled-fill fixture.",
+  "reconstruction_date": "2026-09-08",
+  "schema_version": 1,
+  "sessions": [
+    {
+      "bar": "2026-07-13",
+      "has_equity_mark": true,
+      "is_trading_session": true,
+      "kind": "decision",
+      "n_concordance": 0,
+      "n_exit_symbols": 0,
+      "n_fills": 119,
+      "n_priced": 98,
+      "n_targets": 98,
+      "n_unfilled": 91,
+      "recorded_equity": 1000000.0
+    },
+    {
+      "bar": "2026-08-11",
+      "has_equity_mark": true,
+      "is_trading_session": true,
+      "kind": "decision",
+      "n_concordance": 1,
+      "n_exit_symbols": 20,
+      "n_fills": 130,
+      "n_priced": 99,
+      "n_targets": 99,
+      "n_unfilled": 94,
+      "recorded_equity": 927895.565
+    },
+    {
+      "bar": "2026-08-12",
+      "has_equity_mark": true,
+      "is_trading_session": true,
+      "kind": "hold",
+      "n_concordance": 1,
+      "n_fills": 0,
+      "n_priced": 0,
+      "n_targets": 0,
+      "n_unfilled": 0
+    },
+    {
+      "bar": "2026-08-13",
+      "has_equity_mark": true,
+      "is_trading_session": true,
+      "kind": "hold",
+      "n_concordance": 1,
+      "n_fills": 0,
+      "n_priced": 0,
+      "n_targets": 0,
+      "n_unfilled": 0
+    },
+    {
+      "bar": "2026-08-14",
+      "has_equity_mark": true,
+      "is_trading_session": true,
+      "kind": "hold",
+      "n_concordance": 1,
+      "n_fills": 0,
+      "n_priced": 0,
+      "n_targets": 0,
+      "n_unfilled": 0
+    }
+  ],
+  "source": {
+    "bar_source": "alpaca (the live loop fetched panels over the network and persisted none)",
+    "files": {
+      "concordance.jsonl": {
+        "bytes": 4002,
+        "sha256": "a9e603d5de00e1154fcd84cb598561061b3ae194cd413742f867041eb081ab72"
+      },
+      "equity.jsonl": {
+        "bytes": 1185,
+        "sha256": "c6e28beb750be5d02349d60ce3a159be3fe81a90df63bdd61e124506e034c570"
+      },
+      "fills.jsonl": {
+        "bytes": 45392,
+        "sha256": "7dcacb1575713b7977b1276a1a484d0f14cca5cb4775ad2704191a70f3363ebc"
+      },
+      "state.json": {
+        "bytes": 2008,
+        "sha256": "d2fe9910b1bea8ef85b5ccf008ab9f676f68f830ca5ef00d88337042e70789a8"
+      },
+      "targets.jsonl": {
+        "bytes": 8967,
+        "sha256": "79fe581170fe7c108f08c74537016db03a81100019df9e80e99f459d6a2ca570"
+      },
+      "unfilled.jsonl": {
+        "bytes": 38466,
+        "sha256": "7d2464ff1ff710b733fa9ad9c20bb0d1f5b97d7a378e3a0cd04a255e0686c9ac"
+      }
+    },
+    "run_dir": "/home/b90/prism/runs/paper_loop_momentum2",
+    "store_dir": "/home/b90/prism/data/store",
+    "traded_commit": "667bb09"
+  },
+  "universe": {
+    "fixture_size": 119,
+    "note": "universe.txt is trimmed to the names these sessions priced, traded or hold. The sessions themselves ranked the full S&P 500 panel.",
+    "recorded_scored_universe_size": 503
+  }
+}

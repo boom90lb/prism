@@ -1,0 +1,886 @@
+{
+  "schema_version": 1,
+  "status": "Tested",
+  "complete": true,
+  "verified_at": "2026-09-16T02:28:52.848658+00:00",
+  "claim": "Installed-wheel first evaluation, private component, comparison API, and offline operating-review journeys execute with asserted outcomes.",
+  "owner": "docs/onboarding.md",
+  "artifact_identity": {
+    "name": "prism-trading",
+    "version": "0.4.0",
+    "wheel_sha256": "ad479c6a006ab28f91b722675e69fb38c95bd7eb0171e95184f9c492a85060fc",
+    "wheel_bytes": 830393,
+    "installed_record_sha256": "6106c44c1bc86137e7440fe34ce9c0840f68d1c1da6a3f86264c6a30aaac0df6",
+    "installed_source_sha256": {
+      "cli.py": "962ee732511674535a835e1f79594c81537c87863de2808bffc93c2ec95bc4d3",
+      "template.py": "5a107089ee2027d89ea50c922f76eace054295d511ad7f1915789ee55da35d8a",
+      "io/events.py": "c79d218de94dbc15a5dbc271e0e8ad8da531ea47e2b1ea8349ced96839b762ec",
+      "evaluate.py": "879d481190e72729e56d812cdffc6fb472998486462753734a36bf1c34a982f5",
+      "live/replay.py": "2eb721a7112ab91bef584397352deb556f2452d5f3fba1f010ab23a722c69063",
+      "validation/compare.py": "dfaad633189f15277a873bcd85926a5bacf9acbb335ee7ca140df912387e1f99"
+    },
+    "python": "3.12.8",
+    "pandas": "3.0.5",
+    "numpy": "2.5.3",
+    "verified_at": "2026-09-16T02:24:56.446128+00:00"
+  },
+  "identity_note": "The candidate was built from this base with pending stage-6 changes. Its wheel SHA256 and installed source hashes identify the executed artifact; subsequent source commit a336d68 records the engine fixes.",
+  "invocation": "prism.cli.main(argv) from the installed wheel inside a verification harness; arguments below match the documented console commands.",
+  "harness": {
+    "path": "/home/b90/prism-artifacts/engine-overhaul-stage6/onboarding/repaired/verify.py",
+    "sha256": "c219e8a5c206324b9f13fc832b93996b92dfdea38418934854531acf54c664d1",
+    "runtime": "3.12.8",
+    "network_guard": "socket.connect, connect_ex and create_connection fail on contact",
+    "environment": "loading disabled; credential-shaped environment variables removed"
+  },
+  "synthetic_input": {
+    "seed": 7,
+    "equities": 12,
+    "etfs": 2,
+    "scenarios": "all",
+    "manifest_sha256": "3bbfa0b657f00a03d7d71dbaf4ea39bde197e925d924ba437e574476c4dbbd4b",
+    "manifest": {
+      "as_of": "2027-12-31T00:00:00-05:00",
+      "assumptions": {
+        "availability": "available_at is empty on every row except a declared bar revision, which carries the instant its source published it; availability otherwise derives from the session table",
+        "availability_non_session_rolls_forward": true,
+        "gap_flag_sessions": 15,
+        "ingestion_model": "every row was stored at 20:00 America/New_York on its own record date -- the announce date where one exists, otherwise the effective date, the interval's opening date, or the bar's own session. A revision declares its own. This is a workspace maintained nightly, so replay_recorded is answerable inside the sample; coverage.first_ingested_at gives the floor each table refuses below.",
+        "membership_removal_announcement": "A removal is a revision of one membership row, so a single-revision fixture cannot make the closed interval invisible before it was announced. The membership row carries the final interval and the membership_remove event carries the announcement date.",
+        "scenario_applied_at_stage": {
+          "costs": 1,
+          "delisting": 3,
+          "distribution": 1,
+          "halt": 1,
+          "membership": 1,
+          "rebase": 3,
+          "recovery": 4,
+          "revision": 3,
+          "rounding": 1,
+          "spinoff": 3,
+          "split": 1,
+          "ticker_reuse": 3
+        },
+        "scenario_cases": "coverage.scenarios carries one ScenarioCase per scenario id: the sids by role, the dates that decide it, and the three-bar window (prior_bar, decision_bar, fill_bar) a session runs over. That is the address the stage 3b adversarial session set is built on.",
+        "scenarios_unapplied_in_universe": [
+          "halt",
+          "split"
+        ],
+        "scenarios_written": [
+          "costs",
+          "delisting",
+          "distribution",
+          "halt",
+          "membership",
+          "rebase",
+          "recovery",
+          "revision",
+          "rounding",
+          "spinoff",
+          "split",
+          "ticker_reuse"
+        ],
+        "scenarios_written_not_applied": [
+          "delisting",
+          "rebase",
+          "recovery",
+          "revision",
+          "spinoff",
+          "ticker_reuse"
+        ],
+        "scenarios_written_not_applied_note": "Rows for these scenarios are written in the final schema and are not applied to accounting at stage 1. They are minted on sids that belong to no index, so no stage 1 evaluation selects them. The stage 3 data layer reads them all -- revision selection, the adjustments table, terminal claims and the two visibility modes -- and stage 3b applies them to accounting through the canonical simulator; the recovery path arrives at stage 4.",
+        "session_table_version": "2006.2027-1",
+        "stage1_unapplied_in_universe": "The split and halt scenarios stay in the equity index. The retained reproduction engine applies no share change for a split and forward-fills a halted session, so a stage 1 evaluation reads the raw split as a price return and cannot see the halt; stage 3 corrects both."
+      },
+      "coverage": {
+        "bar_gaps": [
+          {
+            "flagged": false,
+            "gap_flag_sessions": 15,
+            "missing_sessions": 3,
+            "segment": "2020-04-17/2020-04-21",
+            "sid": "sec_000004"
+          },
+          {
+            "flagged": true,
+            "gap_flag_sessions": 15,
+            "missing_sessions": 20,
+            "segment": "2018-02-05/2018-03-05",
+            "sid": "sec_000023"
+          }
+        ],
+        "first_ingested_at": {
+          "adjustments": "2016-12-28T20:00:00-05:00",
+          "bars": "2006-01-03T20:00:00-05:00",
+          "capabilities": "2006-01-03T20:00:00-05:00",
+          "events": "2013-09-05T20:00:00-04:00",
+          "listings": "2006-01-03T20:00:00-05:00",
+          "membership": "2006-01-03T20:00:00-05:00",
+          "securities": "2006-01-03T20:00:00-05:00"
+        },
+        "gap_flags": [
+          {
+            "flagged": true,
+            "gap_flag_sessions": 15,
+            "missing_sessions": 20,
+            "segment": "2018-02-05/2018-03-05",
+            "sid": "sec_000023"
+          }
+        ],
+        "index_membership": {
+          "synthetic_100": 12,
+          "synthetic_etf_10": 2
+        },
+        "n_sessions": 5533,
+        "scenarios": {
+          "costs": {
+            "dates": {},
+            "decision_bar": "2016-12-27",
+            "expects": "the four sids land one in each step of the reference spread schedule when dollar volume is computed from the view's own close and volume columns, and thin_volume binds a 5 percent participation cap",
+            "fill_bar": "2016-12-28",
+            "prior_bar": "2016-12-23",
+            "scenario": "costs",
+            "sids": {
+              "mid_volume": "sec_000007",
+              "thin_volume": "sec_000008",
+              "wide_volume": "sec_000006",
+              "widest_volume": "sec_000005"
+            },
+            "values": {
+              "dollar_volume_levels": "800000000,200000000,50000000,800000"
+            }
+          },
+          "delisting": {
+            "dates": {
+              "last_session": "2019-03-13",
+              "notice": "2019-03-06",
+              "pay_date": "2019-03-27"
+            },
+            "decision_bar": "2019-03-13",
+            "expects": "both sids stop printing after last_session and marks() carries each stale at its own last close; the 'unknown' claim stays unresolved so a strict claim on it is recorded incomplete, while the 'paid' claim resolves to amount_per_share on pay_date and the last close is never overwritten",
+            "fill_bar": "2019-03-14",
+            "prior_bar": "2019-03-12",
+            "scenario": "delisting",
+            "sids": {
+              "paid": "sec_000021",
+              "unknown": "sec_000022"
+            },
+            "values": {
+              "amount_per_share": "46.7869",
+              "last_close": "44.559"
+            }
+          },
+          "distribution": {
+            "dates": {
+              "announce": "2019-03-06",
+              "ex_date": "2019-03-13",
+              "pay_date": "2019-03-15"
+            },
+            "decision_bar": "2019-03-12",
+            "expects": "entitlement is the signed share count at the close of decision_bar, the bar before the ex-date, so a buyer filled at the ex-date open is not entitled; total_return reinvests on the ex-date while the as-traded close does not",
+            "fill_bar": "2019-03-13",
+            "prior_bar": "2019-03-11",
+            "scenario": "distribution",
+            "sids": {
+              "payer": "sec_000003"
+            },
+            "values": {
+              "amount_per_share": "1.3231"
+            }
+          },
+          "halt": {
+            "dates": {
+              "halt_end": "2020-04-21",
+              "halt_start": "2020-04-17",
+              "last_priced": "2020-04-16",
+              "resumed": "2020-04-22"
+            },
+            "decision_bar": "2020-04-16",
+            "expects": "marks() carries the holding at the close of last_priced with valuation_status 'stale' through the halt, never at zero and never sold; the gap stays below gap_flag_sessions so no coverage flag fires",
+            "fill_bar": "2020-04-17",
+            "prior_bar": "2020-04-15",
+            "scenario": "halt",
+            "sids": {
+              "halted": "sec_000004"
+            },
+            "values": {
+              "halted_sessions": "3"
+            }
+          },
+          "membership": {
+            "dates": {
+              "add_announce": "2013-09-05",
+              "add_effective": "2013-09-12",
+              "last_member_session": "2021-05-24",
+              "remove_effective": "2021-05-25"
+            },
+            "decision_bar": "2013-09-11",
+            "expects": "membership() returns the added sid on and after add_effective and not on the announce date; the removed sid leaves the index on remove_effective and its holding is never sold by the data layer",
+            "fill_bar": "2013-09-12",
+            "prior_bar": "2013-09-10",
+            "scenario": "membership",
+            "sids": {
+              "added": "sec_000010",
+              "removed": "sec_000011"
+            },
+            "values": {}
+          },
+          "rebase": {
+            "dates": {
+              "applies_from": "2006-01-03",
+              "effective": "2016-12-28"
+            },
+            "decision_bar": "2016-12-27",
+            "expects": "validate_bars_revision classifies the revision as a full-series rebase at factor 4.0 and finds the matching adjustments row; applied_share_factor multiplies held shares by 4.0 so equity is continuous across the rewrite, and the same revision with the adjustments row removed is refused",
+            "fill_bar": "2016-12-28",
+            "prior_bar": "2016-12-23",
+            "scenario": "rebase",
+            "sids": {
+              "rebased": "sec_000020"
+            },
+            "values": {
+              "factor": "4.0"
+            }
+          },
+          "recovery": {
+            "dates": {
+              "gap_end": "2018-03-05",
+              "gap_start": "2018-02-05",
+              "last_priced": "2018-02-02"
+            },
+            "decision_bar": "2018-02-02",
+            "expects": "the gap exceeds gap_flag_sessions so a coverage flag naming the sid, the segment and the length is written; the holding is carried stale for the whole gap and the dated capability adds no_new_exposure from gap_end",
+            "fill_bar": "2018-02-05",
+            "prior_bar": "2018-02-01",
+            "scenario": "recovery",
+            "sids": {
+              "gapped": "sec_000023"
+            },
+            "values": {
+              "missing_sessions": "20"
+            }
+          },
+          "revision": {
+            "dates": {
+              "corrected_from": "2014-10-23",
+              "revised_bar": "2014-10-17",
+              "withdrawn_from": "2014-10-29"
+            },
+            "decision_bar": "2014-10-16",
+            "expects": "a decision before corrected_from sees original_close; one on or after it sees corrected_close; one on or after withdrawn_from sees null, not corrected_close, and marks() carries the holding stale at the last surviving priced bar rather than at zero",
+            "fill_bar": "2014-10-17",
+            "prior_bar": "2014-10-15",
+            "scenario": "revision",
+            "sids": {
+              "revised": "sec_000019"
+            },
+            "values": {
+              "corrected_close": "1111.8034",
+              "original_close": "1010.7304"
+            }
+          },
+          "rounding": {
+            "dates": {
+              "increment_change": "2016-12-28"
+            },
+            "decision_bar": "2016-12-27",
+            "expects": "capabilities() returns quantity_increment 1.0 for a decision before increment_change and 5.0 on and after it; the increment is dated, never assumed current",
+            "fill_bar": "2016-12-28",
+            "prior_bar": "2016-12-23",
+            "scenario": "rounding",
+            "sids": {
+              "rounded": "sec_000009"
+            },
+            "values": {
+              "increment_after": "5.0",
+              "increment_before": "1.0"
+            }
+          },
+          "spinoff": {
+            "dates": {
+              "announce": "2018-01-29",
+              "effective": "2018-02-05"
+            },
+            "decision_bar": "2018-02-02",
+            "expects": "the child's first bar, listing and security row all open on the effective date; the parent's close on decision_bar is unchanged by the distribution and the child is a second holding, not a merge",
+            "fill_bar": "2018-02-05",
+            "prior_bar": "2018-02-01",
+            "scenario": "spinoff",
+            "sids": {
+              "child": "sec_000016",
+              "parent": "sec_000015"
+            },
+            "values": {
+              "ratio": "0.25"
+            }
+          },
+          "split": {
+            "dates": {
+              "announce": "2018-01-29",
+              "effective": "2018-02-05"
+            },
+            "decision_bar": "2018-02-02",
+            "expects": "the raw series halves its print on the effective date and applied_share_factor doubles the shares; the split_adjusted_at_ingest series prints continuously and its share count does not move (D3)",
+            "fill_bar": "2018-02-05",
+            "prior_bar": "2018-02-01",
+            "scenario": "split",
+            "sids": {
+              "adjusted": "sec_000002",
+              "raw": "sec_000001"
+            },
+            "values": {
+              "factor": "2.0"
+            }
+          },
+          "ticker_reuse": {
+            "dates": {
+              "cease": "2015-11-20",
+              "notice": "2015-11-13",
+              "reopen": "2015-11-23"
+            },
+            "decision_bar": "2015-11-20",
+            "expects": "resolve('RUSE', on) is single-valued on every date and answers 'first' up to cease and 'second' from reopen; the two sids hold separate bar files and separate marks, so a holding in one is never merged into the other when the ticker changes hands",
+            "fill_bar": "2015-11-23",
+            "prior_bar": "2015-11-19",
+            "scenario": "ticker_reuse",
+            "sids": {
+              "first": "sec_000017",
+              "second": "sec_000018"
+            },
+            "values": {
+              "ticker": "RUSE"
+            }
+          }
+        },
+        "sessions": [
+          "2006-01-03",
+          "2027-12-31"
+        ],
+        "sids_outside_every_index": [
+          "sec_000015",
+          "sec_000016",
+          "sec_000017",
+          "sec_000018",
+          "sec_000019",
+          "sec_000020",
+          "sec_000021",
+          "sec_000022",
+          "sec_000023"
+        ]
+      },
+      "feature_code_sha": null,
+      "feature_params": null,
+      "files": [
+        [
+          "adjustments.parquet",
+          "45ace81e3a9c7918803f6144d8ac877954cb5a9cf6181a95422567144b14f806"
+        ],
+        [
+          "bars/sec_000001_1d.parquet",
+          "cab32173f9d9affde878c3082f7130a7901f592475da10d9e5a0f353108c3a80"
+        ],
+        [
+          "bars/sec_000002_1d.parquet",
+          "8edc7dd5dac00f2f9ea98f89b05c9c158382184aea87f5068d00cccf958ace47"
+        ],
+        [
+          "bars/sec_000003_1d.parquet",
+          "9d5fab279363bae86d9d4673de14e73621dfcddc342ca4a7d6c5cd72a48525b0"
+        ],
+        [
+          "bars/sec_000004_1d.parquet",
+          "d42a86160d39e491fed3ddf33dbb065a5498255070ead203ddee59fef739da8d"
+        ],
+        [
+          "bars/sec_000005_1d.parquet",
+          "876ab9d4986d24cf5e992e82931d41cf97c2eff4cdab5720f16f4a3f795c294b"
+        ],
+        [
+          "bars/sec_000006_1d.parquet",
+          "7ea98a446622a0c4435134672ff12cde9af8d941bec6c186322bfa7984ecae44"
+        ],
+        [
+          "bars/sec_000007_1d.parquet",
+          "ba4f9eca794df2978f46978cdba20aa049260f9d653871e3ff55424532fe94b2"
+        ],
+        [
+          "bars/sec_000008_1d.parquet",
+          "ec3f64b96008fe4ab126a8ccea1b0180cdeaa23be467e46bf27eb5e5b9bdf6a0"
+        ],
+        [
+          "bars/sec_000009_1d.parquet",
+          "73c151f94afc337d6e26318f51d2a157ff2aee70f56ef27027c838bf12d4ed02"
+        ],
+        [
+          "bars/sec_000010_1d.parquet",
+          "4b4c27cdff9125d7be80421369bb0756971bcf787e22043023fb76a6c8016d35"
+        ],
+        [
+          "bars/sec_000011_1d.parquet",
+          "60bd14d19a928f4e49176034dccf9a3982363749939d33a011f8de990c634516"
+        ],
+        [
+          "bars/sec_000012_1d.parquet",
+          "1422e930e8d88e60c2366b2f186188997fe590cbfb9eb2e09fb641358a03525c"
+        ],
+        [
+          "bars/sec_000013_1d.parquet",
+          "147171911b93a7aa9df4328c7a39368f6feb856113977295470f4810ce98759a"
+        ],
+        [
+          "bars/sec_000014_1d.parquet",
+          "21f3a8be4ccf624575a41b63963706481f4c1f42fe883fd8a8a3d7aeeba0b1c9"
+        ],
+        [
+          "bars/sec_000015_1d.parquet",
+          "cedf3ffd760d178c052d60287b262bccfbe05f69a34a35ef69a62ec04c14d1a8"
+        ],
+        [
+          "bars/sec_000016_1d.parquet",
+          "8f8a00505cba38162ab9a92f36c66f4fc307198a04335862092d0b85eeaa298f"
+        ],
+        [
+          "bars/sec_000017_1d.parquet",
+          "8774bf314de9dbef976a809ee856709f984d3da32906af727bc7333c382bce4d"
+        ],
+        [
+          "bars/sec_000018_1d.parquet",
+          "a09fbb96adf8c6a0c580585de7b0c391c0896ecd450aeb2f0160947167e2d135"
+        ],
+        [
+          "bars/sec_000019_1d.parquet",
+          "17f13b8f76e35292a56a18ea2c72d8066044a44bcecfff6eea188e2c5108c9ec"
+        ],
+        [
+          "bars/sec_000020_1d.parquet",
+          "09153eb7644f7bf5582ecd75806db7477bd91554724ef5a38ff88a7aa03053f5"
+        ],
+        [
+          "bars/sec_000021_1d.parquet",
+          "81a24fc4072e0b58ab1b4280f2553b012156c9f0dc9d2d8282a301e3ad9f0098"
+        ],
+        [
+          "bars/sec_000022_1d.parquet",
+          "2578eb501efc7953b227a4171b8bc0edbcd7da29213f19804d94d66187a3fda0"
+        ],
+        [
+          "bars/sec_000023_1d.parquet",
+          "0b6bd1ff76fbb4543b11c8b80babc5c34e9287e78d44b53449ff37ddefee35d3"
+        ],
+        [
+          "capabilities.parquet",
+          "ba7f391ff26ca3518773d8d81edc8a4aefb2527ed38c98ff0b1b04913363565e"
+        ],
+        [
+          "events.parquet",
+          "695a1aeb54d2a5c61fc40bcef9d27bfa9f6ffc5647e1750ab3c02e42012fc296"
+        ],
+        [
+          "listings.parquet",
+          "29e78e2303590bead903de5cbadb72fc9f18d13690ac720ee8868193d8181b6f"
+        ],
+        [
+          "membership.parquet",
+          "053f11d1ab11a40c9f7f12f294865b7d7390d08624d12b9d8a2c5c62db643740"
+        ],
+        [
+          "securities.parquet",
+          "e4d52fec9e37144e803e67d1b0f80c181276d423bfcce77217a6bd889cf0a9ed"
+        ]
+      ],
+      "fit_cutoff": null,
+      "id": "da736df9041f1e3fc8dbb617d087029291e2cce9755f4ee334cc4ce3d0590457",
+      "provenance": "synthetic",
+      "source_priority": {
+        "adjustments": [
+          "synthetic",
+          "synthetic_raw"
+        ],
+        "bars": [
+          "synthetic",
+          "synthetic_raw"
+        ],
+        "capabilities": [
+          "synthetic",
+          "synthetic_raw"
+        ],
+        "events": [
+          "synthetic",
+          "synthetic_raw"
+        ],
+        "listings": [
+          "synthetic",
+          "synthetic_raw"
+        ],
+        "membership": [
+          "synthetic",
+          "synthetic_raw"
+        ],
+        "securities": [
+          "synthetic",
+          "synthetic_raw"
+        ]
+      },
+      "sources": {
+        "synthetic": {
+          "lag_bars": 0,
+          "price_basis": "split_adjusted_at_ingest",
+          "redistributable": true,
+          "revision_policy": "conflict_raise",
+          "sha256": null,
+          "url": null
+        },
+        "synthetic_raw": {
+          "lag_bars": 0,
+          "price_basis": "raw",
+          "redistributable": true,
+          "revision_policy": "conflict_raise",
+          "sha256": null,
+          "url": null
+        }
+      },
+      "transformations": [
+        "synthetic_v1",
+        "seed=7",
+        "scenarios=costs,delisting,distribution,halt,membership,rebase,recovery,revision,rounding,spinoff,split,ticker_reuse",
+        "n_equities=12",
+        "n_etfs=2"
+      ],
+      "universe": "45237cf8786c1dfb548b96741059549d2ba65da9913c24b6c352cd8c4f771a1f",
+      "vintage": "synthetic_v1"
+    }
+  },
+  "commands": [
+    {
+      "argv": [
+        "init",
+        "my-strategy"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "observed_output": "wrote 19 files into my-strategy (pinned to prism-trading==0.4.0)\nnext: cd into it, then `prism data synthetic --seed 7 --scenarios all`\n"
+    },
+    {
+      "argv": [
+        "data",
+        "synthetic",
+        "--seed",
+        "7",
+        "--scenarios",
+        "all",
+        "--equities",
+        "12",
+        "--etfs",
+        "2"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "observed_output": "2026-09-15 19:24:15,916 - prism.logging_utils - INFO - Logging to /home/b90/prism-artifacts/engine-overhaul-stage6/onboarding/repaired/journeys-gn2khbhf/my-strategy/logs/run_data-synthetic_20260915_192415.log\nwrote the synthetic fixture into /home/b90/prism-artifacts/engine-overhaul-stage6/onboarding/repaired/journeys-gn2khbhf/my-strategy/data\n  data_id  da736df9041f1e3fc8dbb617d087029291e2cce9755f4ee334cc4ce3d0590457\n  vintage  synthetic_v1\n  as_of    2027-12-31T00:00:00-05:00\n  scenarios membership, split, distribution, halt, costs, rounding, spinoff, ticker_reuse, revision, rebase, delisting, recovery\n  files    29\n  cases    12 addressable by scenario id in manifest coverage['scenarios']\n    costs         2016-12-27 -> 2016-12-28  sec_000005, sec_000006, sec_000007, sec_000008\n    delisting     2019-03-13 -> 2019-03-14  sec_000021, sec_000022\n    distribution  2019-03-12 -> 2019-03-13  sec_000003\n    halt          2020-04-16 -> 2020-04-17  sec_000004\n    membership    2013-09-11 -> 2013-09-12  sec_000010, sec_000011\n    rebase        2016-12-27 -> 2016-12-28  sec_000020\n    recovery      2018-02-02 -> 2018-02-05  sec_000023\n    revision      2014-10-16 -> 2014-10-17  sec_000019\n    rounding      2016-12-27 -> 2016-12-28  sec_000009\n    spinoff       2018-02-02 -> 2018-02-05  sec_000015, sec_000016\n    split         2018-02-02 -> 2018-02-05  sec_000001, sec_000002\n    ticker_reuse  2015-11-20 -> 2015-11-23  sec_000017, sec_000018\n"
+    },
+    {
+      "argv": [
+        "conform",
+        "specs/book.toml"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "observed_output": "2026-09-15 19:24:18,408 - prism.logging_utils - INFO - Logging to /home/b90/prism-artifacts/engine-overhaul-stage6/onboarding/repaired/journeys-gn2khbhf/my-strategy/logs/run_conform_20260915_192418.log\nprism conform\nspecification  specs/book.toml\ndataset        /home/b90/prism-artifacts/engine-overhaul-stage6/onboarding/repaired/journeys-gn2khbhf/my-strategy/data\nmanifest       da736df9041f1e3fc8dbb617d087029291e2cce9755f4ee334cc4ce3d0590457\nvintage        synthetic_v1\ndecision date  2027-12-31\nuniverse       11 sid(s), 5533 bar(s)\ncheck window   5 decision bar(s) from 2027-11-24 00:00:00-05:00, fit cutoff 2027-11-23 00:00:00-05:00, 21 bar(s) withheld as the future\n\ncomponent 'trailing'  (TrailingReturnRank)\n  declarations  component_id='trailing', output_kind='rank_score', units='rank', scoring_basis='price', price_scale_invariant=True, fitted_state='none', estimated_decay_bars=None, horizon_bars=21, update_every_bars=21, valid_for_bars=21, refit_every_bars=1, training_window_bars=0, required_history=127\n  feature cache not declared\n  PASS 1 fit boundary            fitted_state='none': scored before fit() without raising; fitted on 5507 training bars\n  PASS 2 causality               5 prefix bar(s): unchanged after the full panel was scored first; reference from one freshly constructed component per prefix\n  PASS 3 cache reuse             5 prefix bar(s) rescored with the component's state warm: unchanged\n  PASS 4 history                 a panel below required_history=127 raises; sid 'sec_000001' truncated to 126 bars scores NaN\n  PASS 5 price-scale invariance  every close multiplied by 3.0 leaves the 11 scored name(s) equal to within rtol=1e-09\n  PASS 6 determinism             score is bitwise identical on a rerun; fit determinism does not apply to fitted_state='none'\n  PASS 7 declarations            all 13 declared field(s) present and consistent (estimated_decay_bars=None satisfies presence); checked at fit cutoff 2027-11-23 00:00:00-05:00\n\n1 component(s), 0 failed check(s)\n\nA private plugin is trusted executable code [Q7]. It is imported into this process and runs with the engine's privileges: it can read the workspace, reach the network, and submit orders through any credential this process holds. `prism conform` checks declared behaviour on a sample of real bars, not intent; it is not a sandbox, it does not isolate the component, and a passing report is not a safety verdict. Install only components you or your team wrote and reviewed.\n"
+    },
+    {
+      "argv": [
+        "conform",
+        "specs/etf_core.toml"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "observed_output": "2026-09-15 19:24:19,816 - prism.logging_utils - INFO - Logging to /home/b90/prism-artifacts/engine-overhaul-stage6/onboarding/repaired/journeys-gn2khbhf/my-strategy/logs/run_conform_20260915_192419.log\nprism conform\nspecification  specs/etf_core.toml\ndataset        /home/b90/prism-artifacts/engine-overhaul-stage6/onboarding/repaired/journeys-gn2khbhf/my-strategy/data\nmanifest       da736df9041f1e3fc8dbb617d087029291e2cce9755f4ee334cc4ce3d0590457\nvintage        synthetic_v1\ndecision date  2027-12-31\nuniverse       2 sid(s), 5533 bar(s)\ncheck window   5 decision bar(s) from 2027-11-24 00:00:00-05:00, fit cutoff 2027-11-23 00:00:00-05:00, 21 bar(s) withheld as the future\n\ncomponent 'trailing'  (TrailingReturnRank)\n  declarations  component_id='trailing', output_kind='rank_score', units='rank', scoring_basis='price', price_scale_invariant=True, fitted_state='none', estimated_decay_bars=None, horizon_bars=21, update_every_bars=21, valid_for_bars=21, refit_every_bars=1, training_window_bars=0, required_history=253\n  feature cache not declared\n  PASS 1 fit boundary            fitted_state='none': scored before fit() without raising; fitted on 5507 training bars\n  PASS 2 causality               5 prefix bar(s): unchanged after the full panel was scored first; reference from one freshly constructed component per prefix\n  PASS 3 cache reuse             5 prefix bar(s) rescored with the component's state warm: unchanged\n  PASS 4 history                 a panel below required_history=253 raises; sid 'sec_000013' truncated to 252 bars scores NaN\n  PASS 5 price-scale invariance  every close multiplied by 3.0 leaves the 2 scored name(s) equal to within rtol=1e-09\n  PASS 6 determinism             score is bitwise identical on a rerun; fit determinism does not apply to fitted_state='none'\n  PASS 7 declarations            all 13 declared field(s) present and consistent (estimated_decay_bars=None satisfies presence); checked at fit cutoff 2027-11-23 00:00:00-05:00\n\n1 component(s), 0 failed check(s)\n\nA private plugin is trusted executable code [Q7]. It is imported into this process and runs with the engine's privileges: it can read the workspace, reach the network, and submit orders through any credential this process holds. `prism conform` checks declared behaviour on a sample of real bars, not intent; it is not a sandbox, it does not isolate the component, and a passing report is not a safety verdict. Install only components you or your team wrote and reviewed.\n"
+    },
+    {
+      "argv": [
+        "evaluate",
+        "specs/book.toml",
+        "--engine",
+        "historical_constant_weight",
+        "--smoke"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "observed_output": "2026-09-15 19:24:20,341 - prism.logging_utils - INFO - Logging to /home/b90/prism-artifacts/engine-overhaul-stage6/onboarding/repaired/journeys-gn2khbhf/my-strategy/logs/run_evaluate_20260915_192420.log\nprism evaluate --smoke\nspecification   specs/book.toml\nstrategy        trailing_rank\nengine          historical_constant_weight  (constant_weight: weights are held constant between decisions and re-levered without charge)\ncapital         1.0\ndataset         /home/b90/prism-artifacts/engine-overhaul-stage6/onboarding/repaired/journeys-gn2khbhf/my-strategy/data\nmanifest        da736df9041f1e3fc8dbb617d087029291e2cce9755f4ee334cc4ce3d0590457  vintage synthetic_v1\nspan            2006-01-03 .. 2027-12-31\nuniverse        12 sid(s)\ndecisions       258 bar(s): 2006-07-05 .. 2027-12-17\nreturn bars     5532\n\nsummary\n  total_return         0.262202\n  annualized_return    0.0106638\n  annualized_vol       0.0604932\n  sharpe               0.205595\n  psr                  0.832213\n  max_drawdown         0.170593\n  calmar               0.0625105\n  avg_gross            0.195409\n  avg_net              0\n  avg_turnover         0.00704989\n  total_cost           0.0224242\n\nunexercised scenarios  delisting, rebase, recovery, revision, spinoff, ticker_reuse\n  Rows for these scenarios are written in the final schema and are not applied to accounting at stage 1. They are minted on sids that belong to no index, so no stage 1 evaluation selects them. The stage 3 data layer reads them all -- revision selection, the adjustments table, terminal claims and the two visibility modes -- and stage 3b applies them to accounting through the canonical simulator; the recovery path arrives at stage 4.\n  ... and in the universe but unapplied  halt, split\n  The split and halt scenarios stay in the equity index. The retained reproduction engine applies no share change for a split and forward-fills a halted session, so a stage 1 evaluation reads the raw split as a price return and cannot see the halt; stage 3 corrects both.\n\nNo ResultRecord and no trial-log row were written. The recording protocol, the trial ledger, and the fold table are stage 2's; a smoke run answers no research question and enters no selection set.\n"
+    },
+    {
+      "argv": [
+        "evaluate",
+        "specs/etf_core.toml",
+        "--engine",
+        "historical_constant_weight",
+        "--smoke"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "observed_output": "2026-09-15 19:25:59,433 - prism.logging_utils - INFO - Logging to /home/b90/prism-artifacts/engine-overhaul-stage6/onboarding/repaired/journeys-gn2khbhf/my-strategy/logs/run_evaluate_20260915_192559.log\n2026-09-15 19:26:32,371 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:32,412 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:32,453 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:32,493 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:32,540 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:32,583 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:32,624 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:32,661 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:32,700 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:32,738 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:32,790 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:32,839 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:32,883 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:32,923 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:32,972 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:33,021 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:33,063 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:33,103 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:33,143 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:33,188 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:33,229 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:33,278 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:33,326 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:33,369 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:33,422 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:33,469 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:33,513 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:33,557 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:33,607 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:33,657 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:33,705 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:33,751 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:33,803 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:33,851 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:33,896 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:33,938 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:33,986 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:34,033 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:34,081 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:34,128 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:34,183 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:34,233 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:34,276 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:34,328 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:34,377 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:34,425 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:34,477 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:34,520 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:34,569 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:34,626 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:34,681 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:34,732 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:34,786 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:34,847 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:34,895 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:34,955 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:35,008 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:35,061 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:35,109 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:35,170 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:35,219 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:35,266 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:35,338 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:35,390 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:35,449 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:35,500 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:35,569 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:35,624 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:35,674 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:35,731 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:35,787 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:35,846 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:35,899 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:35,955 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:36,012 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:36,065 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:36,133 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:36,183 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:36,234 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:36,289 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:36,340 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:36,393 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:36,451 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:36,503 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:36,563 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:36,620 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:36,680 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:36,741 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:36,796 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:36,861 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:36,929 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:36,980 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:37,044 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:37,104 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:37,186 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:37,261 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:37,328 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:37,391 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:37,445 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:37,501 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:37,563 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:37,631 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:37,680 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:37,734 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:37,786 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:37,851 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:37,905 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:37,954 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:38,008 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:38,067 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:38,138 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:38,196 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:38,261 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:38,320 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:38,381 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:38,450 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:38,515 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:38,577 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:38,632 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:38,701 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:38,764 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:38,829 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:38,897 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:38,963 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:39,016 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:39,083 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:39,149 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:39,215 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:39,277 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:39,342 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:39,401 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:39,461 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:39,529 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:39,591 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:39,651 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:39,710 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:39,775 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:39,835 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:39,900 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:39,965 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:40,038 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:40,096 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:40,174 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:40,239 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:40,301 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:40,364 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:40,423 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:40,483 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:40,543 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:40,612 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:40,682 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:40,742 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:40,824 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:40,892 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:40,957 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:41,021 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:41,080 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:41,153 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:41,224 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:41,289 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:41,366 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:41,431 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:41,503 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:41,568 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:41,639 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:41,705 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:41,787 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:41,860 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:41,928 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:42,010 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:42,084 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:42,143 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:42,205 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:42,280 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:42,362 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:42,436 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:42,510 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:42,578 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:42,652 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:42,726 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:42,804 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:42,863 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:42,942 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:43,015 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:43,084 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:43,149 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:43,220 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:43,284 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:43,365 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:43,425 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:43,497 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:43,563 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:43,635 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:43,708 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:43,777 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:43,852 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:43,928 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:44,003 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:44,090 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:44,172 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:44,251 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:44,312 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:44,378 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:44,446 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:44,515 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:44,596 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:44,663 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:44,736 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:44,804 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:44,876 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:44,956 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:45,033 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:45,113 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:45,195 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:45,289 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:45,356 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:45,445 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:45,528 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:45,600 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:45,693 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:45,778 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:45,871 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:45,949 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:46,018 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:46,105 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:46,176 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:46,250 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:46,319 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:46,428 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:46,529 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:46,614 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:46,718 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:46,812 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:46,897 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:46,986 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:47,077 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:47,161 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:47,231 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:47,321 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:47,410 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:47,490 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:47,573 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:47,659 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:47,734 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:47,820 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:47,915 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:47,997 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:48,078 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:48,152 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:48,250 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:48,345 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\n2026-09-15 19:26:48,430 - prism.spec - WARNING - top_k_equal_weight: 2 finite score(s) for k=5; spreading max_gross=0.98 over the 2 available\nprism evaluate --smoke\nspecification   specs/etf_core.toml\nstrategy        etf_core_long_only\nengine          historical_constant_weight  (constant_weight: weights are held constant between decisions and re-levered without charge)\ncapital         1.0\ndataset         /home/b90/prism-artifacts/engine-overhaul-stage6/onboarding/repaired/journeys-gn2khbhf/my-strategy/data\nmanifest        da736df9041f1e3fc8dbb617d087029291e2cce9755f4ee334cc4ce3d0590457  vintage synthetic_v1\nspan            2006-01-03 .. 2027-12-31\nuniverse        2 sid(s)\ndecisions       252 bar(s): 2007-01-04 .. 2027-12-17\nreturn bars     5532\n\nsummary\n  total_return         0.86202\n  annualized_return    0.0287235\n  annualized_vol       0.0991916\n  sharpe               0.335088\n  psr                  0.941807\n  max_drawdown         0.370202\n  calmar               0.0775885\n  avg_gross            0.477133\n  avg_net              0.477133\n  avg_turnover         9.03832e-05\n  total_cost           0.000225\n\nunexercised scenarios  delisting, rebase, recovery, revision, spinoff, ticker_reuse\n  Rows for these scenarios are written in the final schema and are not applied to accounting at stage 1. They are minted on sids that belong to no index, so no stage 1 evaluation selects them. The stage 3 data layer reads them all -- revision selection, the adjustments table, terminal claims and the two visibility modes -- and stage 3b applies them to accounting through the canonical simulator; the recovery path arrives at stage 4.\n  ... and in the universe but unapplied  halt, split\n  The split and halt scenarios stay in the equity index. The retained reproduction engine applies no share change for a split and forward-fills a halted session, so a stage 1 evaluation reads the raw split as a price return and cannot see the halt; stage 3 corrects both.\n\nNo ResultRecord and no trial-log row were written. The recording protocol, the trial ledger, and the fold table are stage 2's; a smoke run answers no research question and enters no selection set.\n"
+    },
+    {
+      "argv": [
+        "conform",
+        "specs/private.toml"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "observed_output": "2026-09-15 19:26:48,783 - prism.logging_utils - INFO - Logging to /home/b90/prism-artifacts/engine-overhaul-stage6/onboarding/repaired/journeys-gn2khbhf/my-strategy/logs/run_conform_20260915_192648.log\nprism conform\nspecification  specs/private.toml\ndataset        /home/b90/prism-artifacts/engine-overhaul-stage6/onboarding/repaired/journeys-gn2khbhf/my-strategy/data\nmanifest       da736df9041f1e3fc8dbb617d087029291e2cce9755f4ee334cc4ce3d0590457\nvintage        synthetic_v1\ndecision date  2027-12-31\nuniverse       11 sid(s), 5533 bar(s)\ncheck window   5 decision bar(s) from 2027-11-24 00:00:00-05:00, fit cutoff 2027-11-23 00:00:00-05:00, 21 bar(s) withheld as the future\n\ncomponent 'trailing'  (PrivateReversalRank)\n  declarations  component_id='trailing', output_kind='rank_score', units='rank', scoring_basis='price', price_scale_invariant=True, fitted_state='none', estimated_decay_bars=None, horizon_bars=21, update_every_bars=21, valid_for_bars=21, refit_every_bars=1, training_window_bars=0, required_history=127\n  feature cache not declared\n  PASS 1 fit boundary            fitted_state='none': scored before fit() without raising; fitted on 5507 training bars\n  PASS 2 causality               5 prefix bar(s): unchanged after the full panel was scored first; reference from one freshly constructed component per prefix\n  PASS 3 cache reuse             5 prefix bar(s) rescored with the component's state warm: unchanged\n  PASS 4 history                 a panel below required_history=127 raises; sid 'sec_000001' truncated to 126 bars scores NaN\n  PASS 5 price-scale invariance  every close multiplied by 3.0 leaves the 11 scored name(s) equal to within rtol=1e-09\n  PASS 6 determinism             score is bitwise identical on a rerun; fit determinism does not apply to fitted_state='none'\n  PASS 7 declarations            all 13 declared field(s) present and consistent (estimated_decay_bars=None satisfies presence); checked at fit cutoff 2027-11-23 00:00:00-05:00\n\n1 component(s), 0 failed check(s)\n\nA private plugin is trusted executable code [Q7]. It is imported into this process and runs with the engine's privileges: it can read the workspace, reach the network, and submit orders through any credential this process holds. `prism conform` checks declared behaviour on a sample of real bars, not intent; it is not a sandbox, it does not isolate the component, and a passing report is not a safety verdict. Install only components you or your team wrote and reviewed.\n"
+    },
+    {
+      "argv": [
+        "evaluate",
+        "specs/private.toml",
+        "--engine",
+        "historical_constant_weight",
+        "--smoke"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "observed_output": "2026-09-15 19:26:50,467 - prism.logging_utils - INFO - Logging to /home/b90/prism-artifacts/engine-overhaul-stage6/onboarding/repaired/journeys-gn2khbhf/my-strategy/logs/run_evaluate_20260915_192650.log\nprism evaluate --smoke\nspecification   specs/private.toml\nstrategy        private_reversal_demo\nengine          historical_constant_weight  (constant_weight: weights are held constant between decisions and re-levered without charge)\ncapital         1.0\ndataset         /home/b90/prism-artifacts/engine-overhaul-stage6/onboarding/repaired/journeys-gn2khbhf/my-strategy/data\nmanifest        da736df9041f1e3fc8dbb617d087029291e2cce9755f4ee334cc4ce3d0590457  vintage synthetic_v1\nspan            2006-01-03 .. 2027-12-31\nuniverse        12 sid(s)\ndecisions       258 bar(s): 2006-07-05 .. 2027-12-17\nreturn bars     5532\n\nsummary\n  total_return         -0.300965\n  annualized_return    -0.0161782\n  annualized_vol       0.0605023\n  sharpe               -0.239331\n  psr                  0.131164\n  max_drawdown         0.376738\n  calmar               -0.042943\n  avg_gross            0.195409\n  avg_net              0\n  avg_turnover         0.00704989\n  total_cost           0.0224242\n\nunexercised scenarios  delisting, rebase, recovery, revision, spinoff, ticker_reuse\n  Rows for these scenarios are written in the final schema and are not applied to accounting at stage 1. They are minted on sids that belong to no index, so no stage 1 evaluation selects them. The stage 3 data layer reads them all -- revision selection, the adjustments table, terminal claims and the two visibility modes -- and stage 3b applies them to accounting through the canonical simulator; the recovery path arrives at stage 4.\n  ... and in the universe but unapplied  halt, split\n  The split and halt scenarios stay in the equity index. The retained reproduction engine applies no share change for a split and forward-fills a halted session, so a stage 1 evaluation reads the raw split as a price return and cannot see the halt; stage 3 corrects both.\n\nNo ResultRecord and no trial-log row were written. The recording protocol, the trial ledger, and the fold table are stage 2's; a smoke run answers no research question and enters no selection set.\n"
+    },
+    {
+      "argv": [
+        "compare"
+      ],
+      "exit": 2,
+      "expected_exit": 2,
+      "observed_output": "prism compare: `prism compare` is not delivered until stage 2: a comparison reads ResultRecords, and the record and the trial log arrive with the full evaluator\n"
+    },
+    {
+      "argv": [
+        "run",
+        "--help"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "observed_output": "usage: prism run [-h] --spec SPEC --account {paper,live}\n                 [--broker {synthetic,alpaca}] [--once]\n                 [--stage {decide,submit,sweep}] [--break-lock]\n                 [--reason REASON]\n\noptions:\n  -h, --help            show this help message and exit\n  --spec SPEC\n  --account {paper,live}\n  --broker {synthetic,alpaca}\n  --once                one session, then exit\n  --stage {decide,submit,sweep}\n  --break-lock\n  --reason REASON       why the account lock is being broken; required with\n                        --break-lock, because \u00a73.10 records who broke a lock,\n                        when, and why in the run directory, and a break with\n                        no stated reason records no why\n"
+    },
+    {
+      "argv": [
+        "check",
+        "runs/empty",
+        "--expect-session",
+        "--asof",
+        "2026-09-15"
+      ],
+      "exit": 1,
+      "expected_exit": 1,
+      "observed_output": "2026-09-15 19:28:27,841 - prism.logging_utils - INFO - Logging to /home/b90/prism-artifacts/engine-overhaul-stage6/onboarding/repaired/journeys-gn2khbhf/my-strategy/logs/run_check_20260915_192827.log\nrun-dir  runs/empty\nas-of    2026-09-15\nPASS  python                  3.12.8 (need >= 3.12)\nFAIL  alpaca-credentials      APCA_API_KEY_ID/APCA_API_SECRET_KEY missing \u2014 the paper loop cannot trade; put the *paper* keys in .env (docs/quickstart.md)\nWARN  twelvedata-key          TWELVEDATA_API_KEY missing \u2014 fine for the Alpaca bar source (the loop default), required for the research spine\nPASS  alpaca-endpoint         paper endpoint (https://paper-api.alpaca.markets, the default)\nPASS  authorization           no authorization record in runs/empty \u2014 the pre-authorization paper instrument; a live account requires one\nWARN  universe-file           no --universe-file given \u2014 pass the file the loop will trade\nPASS  data-dir                /home/b90/prism-artifacts/engine-overhaul-stage6/onboarding/repaired/journeys-gn2khbhf/my-strategy/data writable\nPASS  loop-state              runs/empty/state.json absent \u2014 fresh loop\nPASS  kill-switch             runs/empty/KILL_SWITCH absent \u2014 trading enabled\nWARN  equity-ledger           runs/empty/equity.jsonl has no NAV rows \u2014 no cycle has completed in this run directory; fatal if the account already holds a book (see alpaca-account-book)\nPASS  session-table           the bundled session table (version 2006.2027-1) covers through 2027-12-31, 472 day(s) out\nWARN  nightly-log             runs/empty/nightly.log absent \u2014 the loop has never run here, or the wrapper writes elsewhere (ops/paper_loop_nightly.sh owns this log)\nWARN  wrapper-provenance      nightly.log absent \u2014 no session to verify\nWARN  regime-clock            runs/empty/regime.jsonl empty or absent \u2014 precondition (b) clock at 0/21 (run the loop with --regime and FRED_API_KEY to start it)\nWARN  data-freshness          not evaluated offline: each source is compared with its declared publication deadline, at the declared coverage of eligible securities, by prism.live.freshness.check_data_freshness at write-ahead time; a shortfall is S1 for the affected sids\nWARN  broker-state-freshness  not evaluated offline: the age of the last positions-and-cash read is established at write-ahead time by prism.live.freshness.check_broker_state against max_broker_state_age_seconds (S2)\nWARN  clock-health            not evaluated offline: the host clock is compared with Broker.server_time by prism.live.freshness.check_clock against max_clock_skew_seconds, and no server time available is itself the fault (S8)\nFAIL  missed-sessions         runs/empty/equity.jsonl has no NAV rows \u2014 there is no last decision bar to expect sessions after \u2014 and --expect-session asserts one should have been\n\n7 pass, 9 warn, 2 fail\n"
+    },
+    {
+      "argv": [
+        "upgrade-diff",
+        "--sessions",
+        "runs/baseline",
+        "--json",
+        "upgrade-missing.json"
+      ],
+      "exit": 2,
+      "expected_exit": 2,
+      "observed_output": "upgrade-diff: baseline (git:synthetic-onboarding) -> candidate (unknown)\n0/1 session(s) compared, 0 with a different decision\n  2026-09-14: NOT COMPARED \u2014 candidate (unknown): no candidate capture was supplied: the upgraded engine has not been run over these recorded sessions, so there is nothing to compare against\nThis report does not say the upgrade changes nothing: it says nothing at all about the sessions above.\n  note: Synthetic capture; upgrade-report mechanics only.\nwrote upgrade-missing.json\n"
+    },
+    {
+      "argv": [
+        "upgrade-diff",
+        "--sessions",
+        "runs/baseline",
+        "--candidate",
+        "runs/candidate",
+        "--json",
+        "upgrade-equal.json"
+      ],
+      "exit": 0,
+      "expected_exit": 0,
+      "observed_output": "upgrade-diff: baseline (git:synthetic-onboarding) -> candidate (git:synthetic-onboarding)\n1/1 session(s) compared, 0 with a different decision\n  note: Synthetic capture; upgrade-report mechanics only.\nwrote upgrade-equal.json\n"
+    },
+    {
+      "argv": [
+        "replay",
+        "runs/baseline",
+        "--upgrade-diff",
+        "--candidate",
+        "runs/candidate",
+        "--json",
+        "upgrade-changed.json"
+      ],
+      "exit": 1,
+      "expected_exit": 1,
+      "observed_output": "upgrade-diff: baseline (git:synthetic-onboarding) -> candidate (git:synthetic-onboarding)\n1/1 session(s) compared, 1 with a different decision\n  2026-09-14: +0 -0 ~1 names, max |\u0394w| 0.100000, gross |\u0394w| 0.100000\n  note: Synthetic capture; upgrade-report mechanics only.\nwrote upgrade-changed.json\n"
+    }
+  ],
+  "config_ids": {
+    "reference": "c1b327221bd17d2adf4cd609da27e0c2cbe0e532848cbfb07e00b4ad0fde66f6",
+    "private": "6debeaf0cd09ab575eb221f6ce2fd9ac02c76a1e73a5ce2f2038a48c091cc5ce"
+  },
+  "smoke_writes_no_trial_rows_or_records": true,
+  "comparison_api": {
+    "status": "Tested",
+    "command": "python compare_records.py results/run-333d02e707af4c6f/record.json results/run-14401bdc29584ed1/record.json --out comparison-two-arms.json",
+    "checks": [
+      "comparison interval exactly matches committed construction comparison",
+      "is_evidence_row is false",
+      "writes_trial_row is false",
+      "engineering-channel records are refused"
+    ],
+    "comparison": {
+      "difference": 0.005804596637678579,
+      "lower": -0.03671615541323037,
+      "upper": 0.04622124273219694,
+      "p_value_two_sided": 0.789,
+      "n_periods": 1056
+    },
+    "negative_case": "record synthetic-onboarding-refusal is on the engineering channel, which no promotion or comparison may cite (\u00a73.12)",
+    "inputs": {
+      "results/run-333d02e707af4c6f/record.json": "037a28f79f6932fb7fbd83f38766626b457954534af602957570021fc4fb9f07",
+      "results/run-333d02e707af4c6f/returns.csv": "2fdcc517177cbeb842e6bd7f8b639024c439a98ff38c0608904937b9526397c4",
+      "results/run-14401bdc29584ed1/record.json": "5c8d8854806675c20cb71de10ab20a691a4248ec79f321a89ed016412a35ea95",
+      "results/run-14401bdc29584ed1/returns.csv": "7a72efd819d45477847cc7b8f66f839e4881a69f271f48b8bc3dc7fbbf2294de"
+    },
+    "output_sha256": "9586fbab9de7e4998726f879b948e003227297022c140e253bb1751dd9c61fe8",
+    "does_not_prove": [
+      "superiority",
+      "equivalence",
+      "prospective edge",
+      "paper performance"
+    ]
+  },
+  "upgrade_reports": {
+    "upgrade-missing": {
+      "baseline": "baseline (git:synthetic-onboarding)",
+      "candidate": "candidate (unknown)",
+      "complete": false,
+      "identical": true,
+      "notes": [
+        "Synthetic capture; upgrade-report mechanics only."
+      ],
+      "sessions": [
+        {
+          "bar": "2026-09-14",
+          "baseline_refreshed": null,
+          "candidate_refreshed": null,
+          "comparable": false,
+          "differs": false,
+          "entered": [],
+          "exited": [],
+          "gross_weight_difference": 0.0,
+          "max_weight_difference": 0.0,
+          "moved": [],
+          "order_changes": [],
+          "orders_compared": false,
+          "reason": "candidate (unknown): no candidate capture was supplied: the upgraded engine has not been run over these recorded sessions, so there is nothing to compare against",
+          "refresh_changed": false
+        }
+      ],
+      "sessions_compared": 0,
+      "sessions_differing": 0,
+      "sessions_requested": 1,
+      "tolerances": {
+        "share": 1e-09,
+        "weight": 1e-09
+      }
+    },
+    "upgrade-equal": {
+      "baseline": "baseline (git:synthetic-onboarding)",
+      "candidate": "candidate (git:synthetic-onboarding)",
+      "complete": true,
+      "identical": true,
+      "notes": [
+        "Synthetic capture; upgrade-report mechanics only."
+      ],
+      "sessions": [
+        {
+          "bar": "2026-09-14",
+          "baseline_refreshed": true,
+          "candidate_refreshed": true,
+          "comparable": true,
+          "differs": false,
+          "entered": [],
+          "exited": [],
+          "gross_weight_difference": 0.0,
+          "max_weight_difference": 0.0,
+          "moved": [],
+          "order_changes": [],
+          "orders_compared": false,
+          "reason": null,
+          "refresh_changed": false
+        }
+      ],
+      "sessions_compared": 1,
+      "sessions_differing": 0,
+      "sessions_requested": 1,
+      "tolerances": {
+        "share": 1e-09,
+        "weight": 1e-09
+      }
+    },
+    "upgrade-changed": {
+      "baseline": "baseline (git:synthetic-onboarding)",
+      "candidate": "candidate (git:synthetic-onboarding)",
+      "complete": true,
+      "identical": false,
+      "notes": [
+        "Synthetic capture; upgrade-report mechanics only."
+      ],
+      "sessions": [
+        {
+          "bar": "2026-09-14",
+          "baseline_refreshed": true,
+          "candidate_refreshed": true,
+          "comparable": true,
+          "differs": true,
+          "entered": [],
+          "exited": [],
+          "gross_weight_difference": 0.1,
+          "max_weight_difference": 0.1,
+          "moved": [
+            {
+              "baseline": 0.1,
+              "candidate": 0.2,
+              "difference": 0.1,
+              "sid": "DEMO"
+            }
+          ],
+          "order_changes": [],
+          "orders_compared": false,
+          "reason": null,
+          "refresh_changed": false
+        }
+      ],
+      "sessions_compared": 1,
+      "sessions_differing": 1,
+      "sessions_requested": 1,
+      "tolerances": {
+        "share": 1e-09,
+        "weight": 1e-09
+      }
+    }
+  },
+  "prior_attempts": [
+    {
+      "status": "Run",
+      "outcome": "Worktree interpreter outside checkout could not import prism; installed-wheel environment used for final proof."
+    },
+    {
+      "status": "Run",
+      "outcome": "Source duplicate and 100-equity/10-ETF installed fixture attempts stopped for runtime; final walkthrough explicitly uses 12 equities and 2 ETFs."
+    },
+    {
+      "status": "Run",
+      "outcome": "Earlier installed-wheel smoke failed on pandas 3.0.5 with ValueError: assignment destination is read-only in distribution_amounts (src/prism/io/events.py). Root repaired the owned mutable buffer with copy=True, rebuilt the wheel, and the complete journeys above then passed."
+    }
+  ],
+  "does_not_prove": [
+    "market edge",
+    "paper operation",
+    "decision parity on recorded paper sessions",
+    "an upgrade has produced a candidate capture",
+    "PyPI installation or publication",
+    "availability of the private record/returns inputs from a fresh clone",
+    "all CLI handlers are implemented",
+    "all synthetic scenarios are exercised by each configuration",
+    "live authorization or approval of operating changes"
+  ],
+  "checkout_base_commit": "f9a8a3a3a3d900ee8140d6e7690d58cef135b299"
+}

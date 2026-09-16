@@ -33,7 +33,6 @@ import numpy as np
 import pandas as pd
 
 from prism.config import RESULTS_DIR
-from prism.execution import ExecutionModel
 from prism.execution.target_weights import (
     PortfolioBacktestResult,
     backtest_target_weights,
@@ -54,6 +53,8 @@ from prism.validation.trials import (
     validate_claim_packet_dir,
 )
 from research.baselines import TSMOM, BuyAndHold, MACrossover
+from research.config import LOGS_DIR
+from research.execution_model import ExecutionModel
 from research.features import FeatureEngineer, forward_return_column
 from research.models.base import BaseModel
 from research.models.ensemble import EnsembleModel
@@ -1103,7 +1104,7 @@ def _plot_equity(
 def main():
     require_mlflow("research/scripts/backtest.py")
     args = parse_args()
-    configure_logging(verbose=args.verbose, run_name="backtest")
+    configure_logging(LOGS_DIR, verbose=args.verbose, run_name="backtest")
 
     training_run_dir = Path(args.training_run)
     if not training_run_dir.is_dir():

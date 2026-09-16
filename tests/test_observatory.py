@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from prism.io.observatory import append_capture, count_captures, iter_captures
+from research.observatory import append_capture, count_captures, iter_captures
 
 
 def test_append_and_read_jsonl(tmp_path):

@@ -1,0 +1,2605 @@
+{
+  "artifacts": [
+    {
+      "artifact_status": "present",
+      "path": "/home/b90/prism/.claude/worktrees/engine-overhaul/results/run-12516ddb55c34cd7/returns.csv",
+      "sha256": "3032c8baa48d37a26003c7217467bcc5ec8b764eb6155ce9a84ecd8638c8dd9d"
+    },
+    {
+      "artifact_status": "present",
+      "path": "/home/b90/prism/.claude/worktrees/engine-overhaul/results/run-12516ddb55c34cd7/equity.csv",
+      "sha256": "f6064f340c1875556c2e352e20f0bc4276eeb612a6a2eb470416183ffdacf6e6"
+    },
+    {
+      "artifact_status": "present",
+      "path": "/home/b90/prism/.claude/worktrees/engine-overhaul/results/run-12516ddb55c34cd7/costs.csv",
+      "sha256": "d9f1fffe9eebd4bc787ca56bd6db2577c73e01a44847a2d4be132fc019aee79b"
+    },
+    {
+      "artifact_status": "present",
+      "path": "/home/b90/prism/.claude/worktrees/engine-overhaul/results/run-12516ddb55c34cd7/target_weights.csv",
+      "sha256": "cf565578938443e5a166d2b090d1b9e5ecbbdd8055c8cc50bb917a16e157243e"
+    },
+    {
+      "artifact_status": "present",
+      "path": "/home/b90/prism/.claude/worktrees/engine-overhaul/results/run-12516ddb55c34cd7/folds.json",
+      "sha256": "d4e446807920297a0678114a31350cfcef43fb8772f1450fc5c15c96b6bfc859"
+    },
+    {
+      "artifact_status": "present",
+      "path": "/home/b90/prism/.claude/worktrees/engine-overhaul/examples/momentum/demotion_b1.toml",
+      "sha256": "ac3c81c8ab9a65cca0702ebcb104eb1313591a7f4a099d8fcebb4234900fc696"
+    }
+  ],
+  "conventions": {
+    "cash_and_financing": "the reproduction engine models neither interest on uninvested cash nor financing; borrow is charged by the execution stack on short notional only",
+    "excess_return_definition": "unavailable",
+    "executable_return": "next_open_to_open",
+    "execution_profile": {
+      "path": "/home/b90/prism/.claude/worktrees/engine-overhaul/examples/reference/profiles/execution_alpaca.toml",
+      "sha256": "99285cf9f1f036935f879884a6d9cbfbfff54d774e56bbccd128c04c9ffa538e"
+    },
+    "hurdle_conversion": "unavailable",
+    "hurdle_series_id": "unavailable",
+    "price_basis": "as_traded_close",
+    "returns": "price plus cash distributions, credited on the ex-date at the fill open",
+    "scoring_basis": {
+      "momentum": "price"
+    }
+  },
+  "costs": {
+    "calibration_source": "unavailable",
+    "cost_refresh": {
+      "cadence": "once",
+      "charged": {
+        "fallback_bps": 1.0,
+        "max_bps": 10.0,
+        "mean_bps": 3.0749128919860627,
+        "min_bps": 1.0,
+        "mode": "bucket",
+        "n_names": 574
+      },
+      "note": "each fold's cost inputs are estimated on that fold's formation window and recorded above; the cadence says which of them the accounting engine charged. Under 'once' the first window prices the whole stitched simulation, which is causal for every test bar in it; under 'fold' each fold's test bars carry their own buckets",
+      "per_fold": [
+        {
+          "band": {
+            "kind": "per_name",
+            "max": 0.0011111901527652006,
+            "median": 0.0007704562203671559,
+            "n_positive": 136
+          },
+          "end": "2021-03-29",
+          "fold": 0,
+          "spread_bps": {
+            "buckets": {
+              "1": 82,
+              "10": 33,
+              "2": 314,
+              "5": 145
+            },
+            "max": 10.0,
+            "mean": 3.0749128919860627,
+            "min": 1.0,
+            "n_names": 574
+          },
+          "start": "2020-01-02"
+        },
+        {
+          "band": {
+            "kind": "per_name",
+            "max": 0.0013599894175073996,
+            "median": 0.0008819522087180918,
+            "n_positive": 212
+          },
+          "end": "2021-06-28",
+          "fold": 1,
+          "spread_bps": {
+            "buckets": {
+              "1": 89,
+              "10": 30,
+              "2": 308,
+              "5": 147
+            },
+            "max": 10.0,
+            "mean": 3.0313588850174216,
+            "min": 1.0,
+            "n_names": 574
+          },
+          "start": "2020-04-02"
+        },
+        {
+          "band": {
+            "kind": "per_name",
+            "max": 0.0017134792947518399,
+            "median": 0.0008819522087180918,
+            "n_positive": 249
+          },
+          "end": "2021-09-27",
+          "fold": 2,
+          "spread_bps": {
+            "buckets": {
+              "1": 85,
+              "10": 28,
+              "2": 310,
+              "5": 151
+            },
+            "max": 10.0,
+            "mean": 3.0313588850174216,
+            "min": 1.0,
+            "n_names": 574
+          },
+          "start": "2020-07-02"
+        },
+        {
+          "band": {
+            "kind": "per_name",
+            "max": 0.0017134792947518399,
+            "median": 0.0008819522087180918,
+            "n_positive": 275
+          },
+          "end": "2021-12-27",
+          "fold": 3,
+          "spread_bps": {
+            "buckets": {
+              "1": 88,
+              "10": 29,
+              "2": 315,
+              "5": 142
+            },
+            "max": 10.0,
+            "mean": 2.9930313588850175,
+            "min": 1.0,
+            "n_names": 574
+          },
+          "start": "2020-10-01"
+        },
+        {
+          "band": {
+            "kind": "per_name",
+            "max": 0.0017134792947518399,
+            "median": 0.0008819522087180918,
+            "n_positive": 309
+          },
+          "end": "2022-03-28",
+          "fold": 4,
+          "spread_bps": {
+            "buckets": {
+              "1": 94,
+              "10": 27,
+              "2": 329,
+              "5": 124
+            },
+            "max": 10.0,
+            "mean": 2.8606271777003482,
+            "min": 1.0,
+            "n_names": 574
+          },
+          "start": "2020-12-31"
+        },
+        {
+          "band": {
+            "kind": "per_name",
+            "max": 0.0015875596503568104,
+            "median": 0.0008810059073382868,
+            "n_positive": 305
+          },
+          "end": "2022-06-28",
+          "fold": 5,
+          "spread_bps": {
+            "buckets": {
+              "1": 95,
+              "10": 27,
+              "2": 333,
+              "5": 119
+            },
+            "max": 10.0,
+            "mean": 2.832752613240418,
+            "min": 1.0,
+            "n_names": 574
+          },
+          "start": "2021-04-05"
+        },
+        {
+          "band": {
+            "kind": "per_name",
+            "max": 0.001741973230587535,
+            "median": 0.0008736446615366736,
+            "n_positive": 314
+          },
+          "end": "2022-09-27",
+          "fold": 6,
+          "spread_bps": {
+            "buckets": {
+              "1": 96,
+              "10": 28,
+              "2": 322,
+              "5": 128
+            },
+            "max": 10.0,
+            "mean": 2.8919860627177703,
+            "min": 1.0,
+            "n_names": 574
+          },
+          "start": "2021-07-02"
+        },
+        {
+          "band": {
+            "kind": "per_name",
+            "max": 0.0016597748882317522,
+            "median": 0.0008693974619728426,
+            "n_positive": 303
+          },
+          "end": "2022-12-27",
+          "fold": 7,
+          "spread_bps": {
+            "buckets": {
+              "1": 99,
+              "10": 27,
+              "2": 328,
+              "5": 120
+            },
+            "max": 10.0,
+            "mean": 2.8310104529616726,
+            "min": 1.0,
+            "n_names": 574
+          },
+          "start": "2021-10-01"
+        },
+        {
+          "band": {
+            "kind": "per_name",
+            "max": 0.0015761727356059544,
+            "median": 0.0008693974619728426,
+            "n_positive": 292
+          },
+          "end": "2023-03-29",
+          "fold": 8,
+          "spread_bps": {
+            "buckets": {
+              "1": 97,
+              "10": 26,
+              "2": 333,
+              "5": 118
+            },
+            "max": 10.0,
+            "mean": 2.8101045296167246,
+            "min": 1.0,
+            "n_names": 574
+          },
+          "start": "2021-12-31"
+        },
+        {
+          "band": {
+            "kind": "per_name",
+            "max": 0.001572528914440152,
+            "median": 0.000868464631361692,
+            "n_positive": 304
+          },
+          "end": "2023-06-29",
+          "fold": 9,
+          "spread_bps": {
+            "buckets": {
+              "1": 91,
+              "10": 27,
+              "2": 327,
+              "5": 129
+            },
+            "max": 10.0,
+            "mean": 2.8919860627177703,
+            "min": 1.0,
+            "n_names": 574
+          },
+          "start": "2022-04-01"
+        },
+        {
+          "band": {
+            "kind": "per_name",
+            "max": 0.0015615334735247417,
+            "median": 0.000868464631361692,
+            "n_positive": 300
+          },
+          "end": "2023-09-28",
+          "fold": 10,
+          "spread_bps": {
+            "buckets": {
+              "1": 83,
+              "10": 26,
+              "2": 334,
+              "5": 131
+            },
+            "max": 10.0,
+            "mean": 2.902439024390244,
+            "min": 1.0,
+            "n_names": 574
+          },
+          "start": "2022-07-05"
+        },
+        {
+          "band": {
+            "kind": "per_name",
+            "max": 0.0016396668474742773,
+            "median": 0.0008573446453045145,
+            "n_positive": 303
+          },
+          "end": "2023-12-28",
+          "fold": 11,
+          "spread_bps": {
+            "buckets": {
+              "1": 85,
+              "10": 25,
+              "2": 333,
+              "5": 131
+            },
+            "max": 10.0,
+            "mean": 2.8850174216027873,
+            "min": 1.0,
+            "n_names": 574
+          },
+          "start": "2022-10-03"
+        },
+        {
+          "band": {
+            "kind": "per_name",
+            "max": 0.0016396668474742773,
+            "median": 0.0008572801772652931,
+            "n_positive": 303
+          },
+          "end": "2024-04-01",
+          "fold": 12,
+          "spread_bps": {
+            "buckets": {
+              "1": 92,
+              "10": 22,
+              "2": 337,
+              "5": 123
+            },
+            "max": 10.0,
+            "mean": 2.789198606271777,
+            "min": 1.0,
+            "n_names": 574
+          },
+          "start": "2023-01-03"
+        },
+        {
+          "band": {
+            "kind": "per_name",
+            "max": 0.0016396668474742773,
+            "median": 0.0008572801772652931,
+            "n_positive": 292
+          },
+          "end": "2024-07-01",
+          "fold": 13,
+          "spread_bps": {
+            "buckets": {
+              "1": 93,
+              "10": 23,
+              "2": 348,
+              "5": 110
+            },
+            "max": 10.0,
+            "mean": 2.7334494773519165,
+            "min": 1.0,
+            "n_names": 574
+          },
+          "start": "2023-04-04"
+        },
+        {
+          "band": {
+            "kind": "per_name",
+            "max": 0.0015577814639355513,
+            "median": 0.0008572801772652931,
+            "n_positive": 286
+          },
+          "end": "2024-09-30",
+          "fold": 14,
+          "spread_bps": {
+            "buckets": {
+              "1": 97,
+              "10": 22,
+              "2": 343,
+              "5": 112
+            },
+            "max": 10.0,
+            "mean": 2.7229965156794425,
+            "min": 1.0,
+            "n_names": 574
+          },
+          "start": "2023-07-06"
+        },
+        {
+          "band": {
+            "kind": "per_name",
+            "max": 0.0017145603545305863,
+            "median": 0.0008572801772652931,
+            "n_positive": 288
+          },
+          "end": "2024-12-30",
+          "fold": 15,
+          "spread_bps": {
+            "buckets": {
+              "1": 102,
+              "10": 21,
+              "2": 350,
+              "5": 101
+            },
+            "max": 10.0,
+            "mean": 2.642857142857143,
+            "min": 1.0,
+            "n_names": 574
+          },
+          "start": "2023-10-04"
+        },
+        {
+          "band": {
+            "kind": "per_name",
+            "max": 0.0014656141755406704,
+            "median": 0.0008572801772652931,
+            "n_positive": 308
+          },
+          "end": "2025-04-02",
+          "fold": 16,
+          "spread_bps": {
+            "buckets": {
+              "1": 113,
+              "10": 16,
+              "2": 350,
+              "5": 95
+            },
+            "max": 10.0,
+            "mean": 2.5226480836236935,
+            "min": 1.0,
+            "n_names": 574
+          },
+          "start": "2024-01-04"
+        },
+        {
+          "band": {
+            "kind": "per_name",
+            "max": 0.001461666340355543,
+            "median": 0.0008572801772652931,
+            "n_positive": 305
+          },
+          "end": "2025-07-03",
+          "fold": 17,
+          "spread_bps": {
+            "buckets": {
+              "1": 118,
+              "10": 17,
+              "2": 361,
+              "5": 78
+            },
+            "max": 10.0,
+            "mean": 2.4390243902439024,
+            "min": 1.0,
+            "n_names": 574
+          },
+          "start": "2024-04-05"
+        },
+        {
+          "band": {
+            "kind": "per_name",
+            "max": 0.001457671385179587,
+            "median": 0.0008515288582769556,
+            "n_positive": 302
+          },
+          "end": "2025-10-02",
+          "fold": 18,
+          "spread_bps": {
+            "buckets": {
+              "1": 128,
+              "10": 17,
+              "2": 355,
+              "5": 74
+            },
+            "max": 10.0,
+            "mean": 2.4006968641114983,
+            "min": 1.0,
+            "n_names": 574
+          },
+          "start": "2024-07-08"
+        },
+        {
+          "band": {
+            "kind": "per_name",
+            "max": 0.0014981302260212396,
+            "median": 0.0008455764648341609,
+            "n_positive": 309
+          },
+          "end": "2026-01-02",
+          "fold": 19,
+          "spread_bps": {
+            "buckets": {
+              "1": 135,
+              "10": 16,
+              "2": 357,
+              "5": 66
+            },
+            "max": 10.0,
+            "mean": 2.332752613240418,
+            "min": 1.0,
+            "n_names": 574
+          },
+          "start": "2024-10-04"
+        },
+        {
+          "band": {
+            "kind": "per_name",
+            "max": 0.0013422689697972982,
+            "median": 0.0008455764648341609,
+            "n_positive": 302
+          },
+          "end": "2026-04-06",
+          "fold": 20,
+          "spread_bps": {
+            "buckets": {
+              "1": 147,
+              "10": 14,
+              "2": 358,
+              "5": 55
+            },
+            "max": 10.0,
+            "mean": 2.226480836236934,
+            "min": 1.0,
+            "n_names": 574
+          },
+          "start": "2025-01-06"
+        }
+      ],
+      "windows": [
+        {
+          "end": "2021-03-29",
+          "fold": 0,
+          "start": "2020-01-02"
+        },
+        {
+          "end": "2021-06-28",
+          "fold": 1,
+          "start": "2020-04-02"
+        },
+        {
+          "end": "2021-09-27",
+          "fold": 2,
+          "start": "2020-07-02"
+        },
+        {
+          "end": "2021-12-27",
+          "fold": 3,
+          "start": "2020-10-01"
+        },
+        {
+          "end": "2022-03-28",
+          "fold": 4,
+          "start": "2020-12-31"
+        },
+        {
+          "end": "2022-06-28",
+          "fold": 5,
+          "start": "2021-04-05"
+        },
+        {
+          "end": "2022-09-27",
+          "fold": 6,
+          "start": "2021-07-02"
+        },
+        {
+          "end": "2022-12-27",
+          "fold": 7,
+          "start": "2021-10-01"
+        },
+        {
+          "end": "2023-03-29",
+          "fold": 8,
+          "start": "2021-12-31"
+        },
+        {
+          "end": "2023-06-29",
+          "fold": 9,
+          "start": "2022-04-01"
+        },
+        {
+          "end": "2023-09-28",
+          "fold": 10,
+          "start": "2022-07-05"
+        },
+        {
+          "end": "2023-12-28",
+          "fold": 11,
+          "start": "2022-10-03"
+        },
+        {
+          "end": "2024-04-01",
+          "fold": 12,
+          "start": "2023-01-03"
+        },
+        {
+          "end": "2024-07-01",
+          "fold": 13,
+          "start": "2023-04-04"
+        },
+        {
+          "end": "2024-09-30",
+          "fold": 14,
+          "start": "2023-07-06"
+        },
+        {
+          "end": "2024-12-30",
+          "fold": 15,
+          "start": "2023-10-04"
+        },
+        {
+          "end": "2025-04-02",
+          "fold": 16,
+          "start": "2024-01-04"
+        },
+        {
+          "end": "2025-07-03",
+          "fold": 17,
+          "start": "2024-04-05"
+        },
+        {
+          "end": "2025-10-02",
+          "fold": 18,
+          "start": "2024-07-08"
+        },
+        {
+          "end": "2026-01-02",
+          "fold": 19,
+          "start": "2024-10-04"
+        },
+        {
+          "end": "2026-04-06",
+          "fold": 20,
+          "start": "2025-01-06"
+        }
+      ]
+    },
+    "dollar_volume_statistics": {
+      "impact": "unavailable",
+      "participation": {
+        "base": "initial_capital",
+        "floor_dollars": 0.0,
+        "max_participation": 0.05,
+        "statistic": "median",
+        "window_bars": 20
+      },
+      "spread": {
+        "bound": "inclusive_lower",
+        "mode": "bucket",
+        "schedule": [
+          [
+            500000000.0,
+            1.0
+          ],
+          [
+            100000000.0,
+            2.0
+          ],
+          [
+            25000000.0,
+            5.0
+          ],
+          [
+            0.0,
+            10.0
+          ]
+        ],
+        "statistic": "dollar_volume.spread_bucket",
+        "unknown_liquidity": "widest_step",
+        "window": "fold_formation"
+      }
+    },
+    "stack": {
+      "adv_floor_dollars": 100000.0,
+      "adv_impact_coeff": 0.0,
+      "adv_impact_model": "linear",
+      "borrow_rate_bps_annual": 50.0,
+      "commission_bps": 1.0,
+      "default_order_type": "MOO",
+      "slippage_coeff": 10.0,
+      "spread_bps": 1.0,
+      "trading_days_per_year": 252
+    }
+  },
+  "coverage": {
+    "bias_status": "unquantified",
+    "membership_coverage": 1.0,
+    "missing_securities": [],
+    "n_universe": 574,
+    "provisional_sid_count": "unavailable",
+    "quarantined_sid_count": "unavailable",
+    "terminal_outcomes": "unavailable",
+    "unavailable_reason": "terminal outcomes, the provisional and quarantined sid counts and a quantified survivorship bias come from the security master and the events table (io/security_master.py, io/events.py), which arrive at stage 3",
+    "untested_conclusions": [
+      "The reproduction engine holds weights constant between decision bars; the canonical fixed-share simulator arrives at stage 3 and is what a forward claim rests on."
+    ]
+  },
+  "data": {
+    "lag_assumptions": {
+      "legacy_cache": 0,
+      "universe_build": 0
+    },
+    "manifest_id": "bedf8c4c0f0c2195ce5aace938f4ad38e23e6b69b57075080073004692d46eef",
+    "observed": {
+      "manifest_vintage_label": "demotion_b1_2026-06-16",
+      "provenance": "market",
+      "view_mode": "research_vintage"
+    },
+    "score_panel": null,
+    "unavailable_reason": "canonical data layer arrives at stage 3",
+    "vintage": "unavailable",
+    "visibility_mode": "unavailable"
+  },
+  "evaluation": {
+    "accounting_engine": "historical_constant_weight",
+    "calibration": {
+      "confidence": null,
+      "file_id": null,
+      "fit_per_fold": [
+        {
+          "fit": null,
+          "fold": 0
+        },
+        {
+          "fit": null,
+          "fold": 1
+        },
+        {
+          "fit": null,
+          "fold": 2
+        },
+        {
+          "fit": null,
+          "fold": 3
+        },
+        {
+          "fit": null,
+          "fold": 4
+        },
+        {
+          "fit": null,
+          "fold": 5
+        },
+        {
+          "fit": null,
+          "fold": 6
+        },
+        {
+          "fit": null,
+          "fold": 7
+        },
+        {
+          "fit": null,
+          "fold": 8
+        },
+        {
+          "fit": null,
+          "fold": 9
+        },
+        {
+          "fit": null,
+          "fold": 10
+        },
+        {
+          "fit": null,
+          "fold": 11
+        },
+        {
+          "fit": null,
+          "fold": 12
+        },
+        {
+          "fit": null,
+          "fold": 13
+        },
+        {
+          "fit": null,
+          "fold": 14
+        },
+        {
+          "fit": null,
+          "fold": 15
+        },
+        {
+          "fit": null,
+          "fold": 16
+        },
+        {
+          "fit": null,
+          "fold": 17
+        },
+        {
+          "fit": null,
+          "fold": 18
+        },
+        {
+          "fit": null,
+          "fold": 19
+        },
+        {
+          "fit": null,
+          "fold": 20
+        }
+      ],
+      "hook": "none",
+      "note": "the shared-slope estimator (calibration.py::fit_calibration) arrives at stage 4; stage 2 calls the hook once per fold on that fold's training window and records what it returns (\u00a73.4)",
+      "sha256": null
+    },
+    "capital": 1.0,
+    "components": [
+      {
+        "component_id": "momentum",
+        "fit_cutoff": null,
+        "fit_window": null,
+        "fits": [
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null,
+            "fold": 0
+          },
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null,
+            "fold": 1
+          },
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null,
+            "fold": 2
+          },
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null,
+            "fold": 3
+          },
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null,
+            "fold": 4
+          },
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null,
+            "fold": 5
+          },
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null,
+            "fold": 6
+          },
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null,
+            "fold": 7
+          },
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null,
+            "fold": 8
+          },
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null,
+            "fold": 9
+          },
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null,
+            "fold": 10
+          },
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null,
+            "fold": 11
+          },
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null,
+            "fold": 12
+          },
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null,
+            "fold": 13
+          },
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null,
+            "fold": 14
+          },
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null,
+            "fold": 15
+          },
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null,
+            "fold": 16
+          },
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null,
+            "fold": 17
+          },
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null,
+            "fold": 18
+          },
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null,
+            "fold": 19
+          },
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null,
+            "fold": 20
+          }
+        ],
+        "fitted_state_ref": null
+      }
+    ],
+    "construction": {
+      "band": {
+        "estimated_on": "fold_formation_window",
+        "gamma_risk": 1.0,
+        "mode": "closed_form",
+        "width": 0.0
+      },
+      "kind": "heuristic",
+      "max_gross": 1.0,
+      "max_symbol_abs_weight": 0.35,
+      "participation": {
+        "base": "initial_capital",
+        "floor_dollars": 0.0,
+        "max_participation": 0.05,
+        "statistic": "median",
+        "window_bars": 20
+      },
+      "spread": {
+        "mode": "bucket"
+      },
+      "step_order": "construct_band_cap_participation"
+    },
+    "excluded_folds": [],
+    "fold_geometry": {
+      "convention": "inclusive_session_dates",
+      "first_decision": "2021-03-30T04:00:00+00:00",
+      "folds": [
+        {
+          "index": 0,
+          "test": {
+            "end": "2021-06-28T04:00:00+00:00",
+            "start": "2021-03-30T04:00:00+00:00"
+          },
+          "train": {
+            "end": "2021-03-29T04:00:00+00:00",
+            "start": "2020-01-02T05:00:00+00:00"
+          }
+        },
+        {
+          "index": 1,
+          "test": {
+            "end": "2021-09-27T04:00:00+00:00",
+            "start": "2021-06-29T04:00:00+00:00"
+          },
+          "train": {
+            "end": "2021-06-28T04:00:00+00:00",
+            "start": "2020-04-02T04:00:00+00:00"
+          }
+        },
+        {
+          "index": 2,
+          "test": {
+            "end": "2021-12-27T05:00:00+00:00",
+            "start": "2021-09-28T04:00:00+00:00"
+          },
+          "train": {
+            "end": "2021-09-27T04:00:00+00:00",
+            "start": "2020-07-02T04:00:00+00:00"
+          }
+        },
+        {
+          "index": 3,
+          "test": {
+            "end": "2022-03-28T04:00:00+00:00",
+            "start": "2021-12-28T05:00:00+00:00"
+          },
+          "train": {
+            "end": "2021-12-27T05:00:00+00:00",
+            "start": "2020-10-01T04:00:00+00:00"
+          }
+        },
+        {
+          "index": 4,
+          "test": {
+            "end": "2022-06-28T04:00:00+00:00",
+            "start": "2022-03-29T04:00:00+00:00"
+          },
+          "train": {
+            "end": "2022-03-28T04:00:00+00:00",
+            "start": "2020-12-31T05:00:00+00:00"
+          }
+        },
+        {
+          "index": 5,
+          "test": {
+            "end": "2022-09-27T04:00:00+00:00",
+            "start": "2022-06-29T04:00:00+00:00"
+          },
+          "train": {
+            "end": "2022-06-28T04:00:00+00:00",
+            "start": "2021-04-05T04:00:00+00:00"
+          }
+        },
+        {
+          "index": 6,
+          "test": {
+            "end": "2022-12-27T05:00:00+00:00",
+            "start": "2022-09-28T04:00:00+00:00"
+          },
+          "train": {
+            "end": "2022-09-27T04:00:00+00:00",
+            "start": "2021-07-02T04:00:00+00:00"
+          }
+        },
+        {
+          "index": 7,
+          "test": {
+            "end": "2023-03-29T04:00:00+00:00",
+            "start": "2022-12-28T05:00:00+00:00"
+          },
+          "train": {
+            "end": "2022-12-27T05:00:00+00:00",
+            "start": "2021-10-01T04:00:00+00:00"
+          }
+        },
+        {
+          "index": 8,
+          "test": {
+            "end": "2023-06-29T04:00:00+00:00",
+            "start": "2023-03-30T04:00:00+00:00"
+          },
+          "train": {
+            "end": "2023-03-29T04:00:00+00:00",
+            "start": "2021-12-31T05:00:00+00:00"
+          }
+        },
+        {
+          "index": 9,
+          "test": {
+            "end": "2023-09-28T04:00:00+00:00",
+            "start": "2023-06-30T04:00:00+00:00"
+          },
+          "train": {
+            "end": "2023-06-29T04:00:00+00:00",
+            "start": "2022-04-01T04:00:00+00:00"
+          }
+        },
+        {
+          "index": 10,
+          "test": {
+            "end": "2023-12-28T05:00:00+00:00",
+            "start": "2023-09-29T04:00:00+00:00"
+          },
+          "train": {
+            "end": "2023-09-28T04:00:00+00:00",
+            "start": "2022-07-05T04:00:00+00:00"
+          }
+        },
+        {
+          "index": 11,
+          "test": {
+            "end": "2024-04-01T04:00:00+00:00",
+            "start": "2023-12-29T05:00:00+00:00"
+          },
+          "train": {
+            "end": "2023-12-28T05:00:00+00:00",
+            "start": "2022-10-03T04:00:00+00:00"
+          }
+        },
+        {
+          "index": 12,
+          "test": {
+            "end": "2024-07-01T04:00:00+00:00",
+            "start": "2024-04-02T04:00:00+00:00"
+          },
+          "train": {
+            "end": "2024-04-01T04:00:00+00:00",
+            "start": "2023-01-03T05:00:00+00:00"
+          }
+        },
+        {
+          "index": 13,
+          "test": {
+            "end": "2024-09-30T04:00:00+00:00",
+            "start": "2024-07-02T04:00:00+00:00"
+          },
+          "train": {
+            "end": "2024-07-01T04:00:00+00:00",
+            "start": "2023-04-04T04:00:00+00:00"
+          }
+        },
+        {
+          "index": 14,
+          "test": {
+            "end": "2024-12-30T05:00:00+00:00",
+            "start": "2024-10-01T04:00:00+00:00"
+          },
+          "train": {
+            "end": "2024-09-30T04:00:00+00:00",
+            "start": "2023-07-06T04:00:00+00:00"
+          }
+        },
+        {
+          "index": 15,
+          "test": {
+            "end": "2025-04-02T04:00:00+00:00",
+            "start": "2024-12-31T05:00:00+00:00"
+          },
+          "train": {
+            "end": "2024-12-30T05:00:00+00:00",
+            "start": "2023-10-04T04:00:00+00:00"
+          }
+        },
+        {
+          "index": 16,
+          "test": {
+            "end": "2025-07-03T04:00:00+00:00",
+            "start": "2025-04-03T04:00:00+00:00"
+          },
+          "train": {
+            "end": "2025-04-02T04:00:00+00:00",
+            "start": "2024-01-04T05:00:00+00:00"
+          }
+        },
+        {
+          "index": 17,
+          "test": {
+            "end": "2025-10-02T04:00:00+00:00",
+            "start": "2025-07-07T04:00:00+00:00"
+          },
+          "train": {
+            "end": "2025-07-03T04:00:00+00:00",
+            "start": "2024-04-05T04:00:00+00:00"
+          }
+        },
+        {
+          "index": 18,
+          "test": {
+            "end": "2026-01-02T05:00:00+00:00",
+            "start": "2025-10-03T04:00:00+00:00"
+          },
+          "train": {
+            "end": "2025-10-02T04:00:00+00:00",
+            "start": "2024-07-08T04:00:00+00:00"
+          }
+        },
+        {
+          "index": 19,
+          "test": {
+            "end": "2026-04-06T04:00:00+00:00",
+            "start": "2026-01-05T05:00:00+00:00"
+          },
+          "train": {
+            "end": "2026-01-02T05:00:00+00:00",
+            "start": "2024-10-04T04:00:00+00:00"
+          }
+        },
+        {
+          "index": 20,
+          "test": {
+            "end": "2026-06-12T04:00:00+00:00",
+            "start": "2026-04-07T04:00:00+00:00"
+          },
+          "train": {
+            "end": "2026-04-06T04:00:00+00:00",
+            "start": "2025-01-06T05:00:00+00:00"
+          }
+        }
+      ],
+      "last_decision": "2026-06-12T04:00:00+00:00",
+      "n_folds": 21,
+      "sha256": "fec02ca011e8c66309ab9e414403d1a6412a10569ff47bac775fa754ef3384f8",
+      "source": "results/demotion_b1/folds.json",
+      "table_id": "demotion_b1",
+      "timezone": "America/New_York"
+    },
+    "fold_portfolio": "reset",
+    "folds": [
+      {
+        "boundary_decisions": [
+          "2021-03-30",
+          "2021-06-25",
+          "2021-06-28"
+        ],
+        "calibration": null,
+        "components": [
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null
+          }
+        ],
+        "excluded": false,
+        "exclusion_reason": null,
+        "fold": 0,
+        "metrics": {
+          "annualized_sharpe": -0.11113094544863744,
+          "avg_gross": 0.9682539682539683,
+          "avg_net": 0.0,
+          "avg_turnover": 0.047619047619047616,
+          "dsr": null,
+          "gross_annualized_sharpe": -0.05658788632185568,
+          "gross_periodic_sharpe": -0.0035647017720577064,
+          "gross_total_return": -0.0037340458451737835,
+          "n_obs": 63,
+          "periodic_sharpe": -0.007000591538585238,
+          "total_cost": 0.0017160282953761219,
+          "total_return": -0.005439555376676952,
+          "trial_count": null
+        },
+        "n_decisions": 63,
+        "n_test_bars": 63,
+        "test": {
+          "end": "2021-06-28",
+          "start": "2021-03-30"
+        },
+        "train": {
+          "end": "2021-03-29",
+          "start": "2020-01-02"
+        },
+        "turnover": {
+          "boundary": 2.0,
+          "cost_boundary": 0.0007523119392684609,
+          "cost_interior": 0.0009637163561076604,
+          "cost_total": 0.0017160282953761219,
+          "interior": 1.0,
+          "n_boundary_bars": 2,
+          "n_interior_bars": 61,
+          "total": 3.0
+        }
+      },
+      {
+        "boundary_decisions": [
+          "2021-06-29",
+          "2021-09-24",
+          "2021-09-27"
+        ],
+        "calibration": null,
+        "components": [
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null
+          }
+        ],
+        "excluded": false,
+        "exclusion_reason": null,
+        "fold": 1,
+        "metrics": {
+          "annualized_sharpe": 1.206308466473945,
+          "avg_gross": 0.9682539682539683,
+          "avg_net": 0.0,
+          "avg_turnover": 0.05072463768115942,
+          "dsr": null,
+          "gross_annualized_sharpe": 1.261926161209701,
+          "gross_periodic_sharpe": 0.0794938760830303,
+          "gross_total_return": 0.03840376369068599,
+          "n_obs": 63,
+          "periodic_sharpe": 0.07599029063623228,
+          "total_cost": 0.001765981036396916,
+          "total_return": 0.036574608565407285,
+          "trial_count": null
+        },
+        "n_decisions": 63,
+        "n_test_bars": 63,
+        "test": {
+          "end": "2021-09-27",
+          "start": "2021-06-29"
+        },
+        "train": {
+          "end": "2021-06-28",
+          "start": "2020-04-02"
+        },
+        "turnover": {
+          "boundary": 2.0,
+          "cost_boundary": 0.0007305728088336784,
+          "cost_interior": 0.0010354082275632374,
+          "cost_total": 0.001765981036396916,
+          "interior": 1.1956521739130435,
+          "n_boundary_bars": 2,
+          "n_interior_bars": 61,
+          "total": 3.1956521739130435
+        }
+      },
+      {
+        "boundary_decisions": [
+          "2021-09-28",
+          "2021-12-23",
+          "2021-12-27"
+        ],
+        "calibration": null,
+        "components": [
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null
+          }
+        ],
+        "excluded": false,
+        "exclusion_reason": null,
+        "fold": 2,
+        "metrics": {
+          "annualized_sharpe": -1.1955792272510584,
+          "avg_gross": 0.9682539682539683,
+          "avg_net": -0.0005713124325539611,
+          "avg_turnover": 0.05289010105107108,
+          "dsr": null,
+          "gross_annualized_sharpe": -1.1056563247801334,
+          "gross_periodic_sharpe": -0.06964980168747369,
+          "gross_total_return": -0.02253845005669075,
+          "n_obs": 63,
+          "periodic_sharpe": -0.07531441209478756,
+          "total_cost": 0.001827469892359771,
+          "total_return": -0.024326193325314827,
+          "trial_count": null
+        },
+        "n_decisions": 63,
+        "n_test_bars": 63,
+        "test": {
+          "end": "2021-12-27",
+          "start": "2021-09-28"
+        },
+        "train": {
+          "end": "2021-09-27",
+          "start": "2020-07-02"
+        },
+        "turnover": {
+          "boundary": 2.0,
+          "cost_boundary": 0.0007345749285047879,
+          "cost_interior": 0.0010928949638549829,
+          "cost_total": 0.001827469892359771,
+          "interior": 1.332076366217478,
+          "n_boundary_bars": 2,
+          "n_interior_bars": 61,
+          "total": 3.332076366217478
+        }
+      },
+      {
+        "boundary_decisions": [
+          "2021-12-28",
+          "2022-03-25",
+          "2022-03-28"
+        ],
+        "calibration": null,
+        "components": [
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null
+          }
+        ],
+        "excluded": false,
+        "exclusion_reason": null,
+        "fold": 3,
+        "metrics": {
+          "annualized_sharpe": 0.07384101100145664,
+          "avg_gross": 0.9682539682539681,
+          "avg_net": -8.53594091353667e-18,
+          "avg_turnover": 0.05572441742654508,
+          "dsr": null,
+          "gross_annualized_sharpe": 0.13776318318881722,
+          "gross_periodic_sharpe": 0.008678264822339155,
+          "gross_total_return": 0.0023434322327018364,
+          "n_obs": 63,
+          "periodic_sharpe": 0.004651546468272351,
+          "total_cost": 0.001855271903540351,
+          "total_return": 0.00048791269531656134,
+          "trial_count": null
+        },
+        "n_decisions": 63,
+        "n_test_bars": 63,
+        "test": {
+          "end": "2022-03-28",
+          "start": "2021-12-28"
+        },
+        "train": {
+          "end": "2021-12-27",
+          "start": "2020-10-01"
+        },
+        "turnover": {
+          "boundary": 2.0,
+          "cost_boundary": 0.0007194951030057413,
+          "cost_interior": 0.0011357768005346095,
+          "cost_total": 0.001855271903540351,
+          "interior": 1.5106382978723403,
+          "n_boundary_bars": 2,
+          "n_interior_bars": 61,
+          "total": 3.5106382978723403
+        }
+      },
+      {
+        "boundary_decisions": [
+          "2022-03-29",
+          "2022-06-27",
+          "2022-06-28"
+        ],
+        "calibration": null,
+        "components": [
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null
+          }
+        ],
+        "excluded": false,
+        "exclusion_reason": null,
+        "fold": 4,
+        "metrics": {
+          "annualized_sharpe": 0.9557706874885126,
+          "avg_gross": 0.9682539682539683,
+          "avg_net": 2.3129646346357427e-18,
+          "avg_turnover": 0.04964539007092199,
+          "dsr": null,
+          "gross_annualized_sharpe": 1.0209920685808023,
+          "gross_periodic_sharpe": 0.06431645485795728,
+          "gross_total_return": 0.025783338427492142,
+          "n_obs": 63,
+          "periodic_sharpe": 0.060207894035710405,
+          "total_cost": 0.0016916231937169016,
+          "total_return": 0.02404783013269407,
+          "trial_count": null
+        },
+        "n_decisions": 63,
+        "n_test_bars": 63,
+        "test": {
+          "end": "2022-06-28",
+          "start": "2022-03-29"
+        },
+        "train": {
+          "end": "2022-03-28",
+          "start": "2020-12-31"
+        },
+        "turnover": {
+          "boundary": 1.9999999999999998,
+          "cost_boundary": 0.0006897078689631881,
+          "cost_interior": 0.0010019153247537132,
+          "cost_total": 0.0016916231937169016,
+          "interior": 1.127659574468085,
+          "n_boundary_bars": 2,
+          "n_interior_bars": 61,
+          "total": 3.127659574468085
+        }
+      },
+      {
+        "boundary_decisions": [
+          "2022-06-29",
+          "2022-09-26",
+          "2022-09-27"
+        ],
+        "calibration": null,
+        "components": [
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null
+          }
+        ],
+        "excluded": false,
+        "exclusion_reason": null,
+        "fold": 5,
+        "metrics": {
+          "annualized_sharpe": 0.039379309739508775,
+          "avg_gross": 0.9682539682539683,
+          "avg_net": 3.1114881394504636e-18,
+          "avg_turnover": 0.04593042890915231,
+          "dsr": null,
+          "gross_annualized_sharpe": 0.08933155697595753,
+          "gross_periodic_sharpe": 0.005627359142585257,
+          "gross_total_return": 0.0008300729935484252,
+          "n_obs": 63,
+          "periodic_sharpe": 0.002480663342193427,
+          "total_cost": 0.0016125376346403965,
+          "total_return": -0.0007818491979162401,
+          "trial_count": null
+        },
+        "n_decisions": 63,
+        "n_test_bars": 63,
+        "test": {
+          "end": "2022-09-27",
+          "start": "2022-06-29"
+        },
+        "train": {
+          "end": "2022-06-28",
+          "start": "2021-04-05"
+        },
+        "turnover": {
+          "boundary": 2.0,
+          "cost_boundary": 0.0007099206349206349,
+          "cost_interior": 0.000902616999719761,
+          "cost_total": 0.0016125376346403965,
+          "interior": 0.8936170212765957,
+          "n_boundary_bars": 2,
+          "n_interior_bars": 61,
+          "total": 2.8936170212765955
+        }
+      },
+      {
+        "boundary_decisions": [
+          "2022-09-28",
+          "2022-12-23",
+          "2022-12-27"
+        ],
+        "calibration": null,
+        "components": [
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null
+          }
+        ],
+        "excluded": false,
+        "exclusion_reason": null,
+        "fold": 6,
+        "metrics": {
+          "annualized_sharpe": 0.7656230473219154,
+          "avg_gross": 0.9682539682539683,
+          "avg_net": -0.0003293156820127851,
+          "avg_turnover": 0.04597128913039197,
+          "dsr": null,
+          "gross_annualized_sharpe": 0.8152730117255538,
+          "gross_periodic_sharpe": 0.05135737237258241,
+          "gross_total_return": 0.024899477154923577,
+          "n_obs": 63,
+          "periodic_sharpe": 0.04822971860079107,
+          "total_cost": 0.0016270976700791862,
+          "total_return": 0.023233788005824207,
+          "trial_count": null
+        },
+        "n_decisions": 63,
+        "n_test_bars": 63,
+        "test": {
+          "end": "2022-12-27",
+          "start": "2022-09-28"
+        },
+        "train": {
+          "end": "2022-09-27",
+          "start": "2021-07-02"
+        },
+        "turnover": {
+          "boundary": 2.0,
+          "cost_boundary": 0.0007075548848380341,
+          "cost_interior": 0.0009195427852411521,
+          "cost_total": 0.0016270976700791862,
+          "interior": 0.8961912152146942,
+          "n_boundary_bars": 2,
+          "n_interior_bars": 61,
+          "total": 2.896191215214694
+        }
+      },
+      {
+        "boundary_decisions": [
+          "2022-12-28",
+          "2023-03-28",
+          "2023-03-29"
+        ],
+        "calibration": null,
+        "components": [
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null
+          }
+        ],
+        "excluded": false,
+        "exclusion_reason": null,
+        "fold": 7,
+        "metrics": {
+          "annualized_sharpe": -2.6006266649215464,
+          "avg_gross": 0.9682539682539683,
+          "avg_net": 8.8112938462314e-18,
+          "avg_turnover": 0.04993386243386243,
+          "dsr": null,
+          "gross_annualized_sharpe": -2.543256449039106,
+          "gross_periodic_sharpe": -0.16021009724806404,
+          "gross_total_return": -0.07399193351792843,
+          "n_obs": 63,
+          "periodic_sharpe": -0.16382408115013605,
+          "total_cost": 0.001771261160714286,
+          "total_return": -0.07563591166588235,
+          "trial_count": null
+        },
+        "n_decisions": 63,
+        "n_test_bars": 63,
+        "test": {
+          "end": "2023-03-29",
+          "start": "2022-12-28"
+        },
+        "train": {
+          "end": "2022-12-27",
+          "start": "2021-10-01"
+        },
+        "turnover": {
+          "boundary": 1.9999999999999998,
+          "cost_boundary": 0.0007276289682539681,
+          "cost_interior": 0.001043632192460318,
+          "cost_total": 0.001771261160714286,
+          "interior": 1.1458333333333333,
+          "n_boundary_bars": 2,
+          "n_interior_bars": 61,
+          "total": 3.145833333333333
+        }
+      },
+      {
+        "boundary_decisions": [
+          "2023-03-30",
+          "2023-06-28",
+          "2023-06-29"
+        ],
+        "calibration": null,
+        "components": [
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null
+          }
+        ],
+        "excluded": false,
+        "exclusion_reason": null,
+        "fold": 8,
+        "metrics": {
+          "annualized_sharpe": 0.38279011154860304,
+          "avg_gross": 0.9682539682539683,
+          "avg_net": 1.0463411442399788e-18,
+          "avg_turnover": 0.05555555555555555,
+          "dsr": null,
+          "gross_annualized_sharpe": 0.4758369143800088,
+          "gross_periodic_sharpe": 0.02997490809699613,
+          "gross_total_return": 0.008945981777600753,
+          "n_obs": 63,
+          "periodic_sharpe": 0.02411351046410184,
+          "total_cost": 0.001893700396825397,
+          "total_return": 0.007035449363479218,
+          "trial_count": null
+        },
+        "n_decisions": 63,
+        "n_test_bars": 63,
+        "test": {
+          "end": "2023-06-29",
+          "start": "2023-03-30"
+        },
+        "train": {
+          "end": "2023-03-29",
+          "start": "2021-12-31"
+        },
+        "turnover": {
+          "boundary": 2.0,
+          "cost_boundary": 0.0007442956349206349,
+          "cost_interior": 0.0011494047619047623,
+          "cost_total": 0.001893700396825397,
+          "interior": 1.4999999999999998,
+          "n_boundary_bars": 2,
+          "n_interior_bars": 61,
+          "total": 3.5
+        }
+      },
+      {
+        "boundary_decisions": [
+          "2023-06-30",
+          "2023-09-27",
+          "2023-09-28"
+        ],
+        "calibration": null,
+        "components": [
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null
+          }
+        ],
+        "excluded": false,
+        "exclusion_reason": null,
+        "fold": 9,
+        "metrics": {
+          "annualized_sharpe": 0.007834830331888906,
+          "avg_gross": 0.9682539682539683,
+          "avg_net": 4.763605735618851e-18,
+          "avg_turnover": 0.04927248677248677,
+          "dsr": null,
+          "gross_annualized_sharpe": 0.09759680198020199,
+          "gross_periodic_sharpe": 0.0061480206379721574,
+          "gross_total_return": 0.001151562016408647,
+          "n_obs": 63,
+          "periodic_sharpe": 0.0004935479195848499,
+          "total_cost": 0.001737493799603175,
+          "total_return": -0.0005874485983184963,
+          "trial_count": null
+        },
+        "n_decisions": 63,
+        "n_test_bars": 63,
+        "test": {
+          "end": "2023-09-28",
+          "start": "2023-06-30"
+        },
+        "train": {
+          "end": "2023-06-29",
+          "start": "2022-04-01"
+        },
+        "turnover": {
+          "boundary": 2.0,
+          "cost_boundary": 0.0007401289682539682,
+          "cost_interior": 0.0009973648313492064,
+          "cost_total": 0.001737493799603175,
+          "interior": 1.1041666666666665,
+          "n_boundary_bars": 2,
+          "n_interior_bars": 61,
+          "total": 3.1041666666666665
+        }
+      },
+      {
+        "boundary_decisions": [
+          "2023-09-29",
+          "2023-12-27",
+          "2023-12-28"
+        ],
+        "calibration": null,
+        "components": [
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null
+          }
+        ],
+        "excluded": false,
+        "exclusion_reason": null,
+        "fold": 10,
+        "metrics": {
+          "annualized_sharpe": -0.617409178336183,
+          "avg_gross": 0.9682539682539683,
+          "avg_net": -4.625929269271485e-18,
+          "avg_turnover": 0.046957671957671955,
+          "dsr": null,
+          "gross_annualized_sharpe": -0.5623050341943764,
+          "gross_periodic_sharpe": -0.035421887653285494,
+          "gross_total_return": -0.018148617497139696,
+          "n_obs": 63,
+          "periodic_sharpe": -0.038893122453482566,
+          "total_cost": 0.0016047247023809525,
+          "total_return": -0.01971959402166812,
+          "trial_count": null
+        },
+        "n_decisions": 63,
+        "n_test_bars": 63,
+        "test": {
+          "end": "2023-12-28",
+          "start": "2023-09-29"
+        },
+        "train": {
+          "end": "2023-09-28",
+          "start": "2022-07-05"
+        },
+        "turnover": {
+          "boundary": 2.0,
+          "cost_boundary": 0.0006786706349206349,
+          "cost_interior": 0.0009260540674603173,
+          "cost_total": 0.0016047247023809525,
+          "interior": 0.9583333333333333,
+          "n_boundary_bars": 2,
+          "n_interior_bars": 61,
+          "total": 2.958333333333333
+        }
+      },
+      {
+        "boundary_decisions": [
+          "2023-12-29",
+          "2024-03-28",
+          "2024-04-01"
+        ],
+        "calibration": null,
+        "components": [
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null
+          }
+        ],
+        "excluded": false,
+        "exclusion_reason": null,
+        "fold": 11,
+        "metrics": {
+          "annualized_sharpe": 2.4190721209509984,
+          "avg_gross": 0.9682539682539683,
+          "avg_net": 8.591011500075616e-18,
+          "avg_turnover": 0.04894179894179894,
+          "dsr": null,
+          "gross_annualized_sharpe": 2.489369486943398,
+          "gross_periodic_sharpe": 0.1568155377096353,
+          "gross_total_return": 0.06585074726204954,
+          "n_obs": 63,
+          "periodic_sharpe": 0.15238721989442627,
+          "total_cost": 0.0017018601190476193,
+          "total_return": 0.06403377833723156,
+          "trial_count": null
+        },
+        "n_decisions": 63,
+        "n_test_bars": 63,
+        "test": {
+          "end": "2024-04-01",
+          "start": "2023-12-29"
+        },
+        "train": {
+          "end": "2023-12-28",
+          "start": "2022-10-03"
+        },
+        "turnover": {
+          "boundary": 2.0,
+          "cost_boundary": 0.0006901289682539681,
+          "cost_interior": 0.001011731150793651,
+          "cost_total": 0.0017018601190476193,
+          "interior": 1.0833333333333333,
+          "n_boundary_bars": 2,
+          "n_interior_bars": 61,
+          "total": 3.083333333333333
+        }
+      },
+      {
+        "boundary_decisions": [
+          "2024-04-02",
+          "2024-06-28",
+          "2024-07-01"
+        ],
+        "calibration": null,
+        "components": [
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null
+          }
+        ],
+        "excluded": false,
+        "exclusion_reason": null,
+        "fold": 12,
+        "metrics": {
+          "annualized_sharpe": 0.5611084160981763,
+          "avg_gross": 0.9682539682539683,
+          "avg_net": -2.0926822884799576e-18,
+          "avg_turnover": 0.04828042328042328,
+          "dsr": null,
+          "gross_annualized_sharpe": 0.6327734617186556,
+          "gross_periodic_sharpe": 0.03986098133211934,
+          "gross_total_return": 0.014479228583424986,
+          "n_obs": 63,
+          "periodic_sharpe": 0.03534650779859823,
+          "total_cost": 0.0017618427579365083,
+          "total_return": 0.012693518471649679,
+          "trial_count": null
+        },
+        "n_decisions": 63,
+        "n_test_bars": 63,
+        "test": {
+          "end": "2024-07-01",
+          "start": "2024-04-02"
+        },
+        "train": {
+          "end": "2024-04-01",
+          "start": "2023-01-03"
+        },
+        "turnover": {
+          "boundary": 2.0,
+          "cost_boundary": 0.0007599206349206348,
+          "cost_interior": 0.0010019221230158732,
+          "cost_total": 0.0017618427579365083,
+          "interior": 1.0416666666666665,
+          "n_boundary_bars": 2,
+          "n_interior_bars": 61,
+          "total": 3.0416666666666665
+        }
+      },
+      {
+        "boundary_decisions": [
+          "2024-07-02",
+          "2024-09-27",
+          "2024-09-30"
+        ],
+        "calibration": null,
+        "components": [
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null
+          }
+        ],
+        "excluded": false,
+        "exclusion_reason": null,
+        "fold": 13,
+        "metrics": {
+          "annualized_sharpe": -0.12913391001600105,
+          "avg_gross": 0.9682539682539683,
+          "avg_net": 0.0,
+          "avg_turnover": 0.050264550264550255,
+          "dsr": null,
+          "gross_annualized_sharpe": -0.05188956838069353,
+          "gross_periodic_sharpe": -0.0032687355612808482,
+          "gross_total_return": -0.00224986229420987,
+          "n_obs": 63,
+          "periodic_sharpe": -0.008134671707803133,
+          "total_cost": 0.0017881448412698417,
+          "total_return": -0.004034271898060604,
+          "trial_count": null
+        },
+        "n_decisions": 63,
+        "n_test_bars": 63,
+        "test": {
+          "end": "2024-09-30",
+          "start": "2024-07-02"
+        },
+        "train": {
+          "end": "2024-07-01",
+          "start": "2023-04-04"
+        },
+        "turnover": {
+          "boundary": 1.9999999999999998,
+          "cost_boundary": 0.0007745039682539682,
+          "cost_interior": 0.0010136408730158732,
+          "cost_total": 0.0017881448412698417,
+          "interior": 1.1666666666666665,
+          "n_boundary_bars": 2,
+          "n_interior_bars": 61,
+          "total": 3.166666666666666
+        }
+      },
+      {
+        "boundary_decisions": [
+          "2024-10-01",
+          "2024-12-27",
+          "2024-12-30"
+        ],
+        "calibration": null,
+        "components": [
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null
+          }
+        ],
+        "excluded": false,
+        "exclusion_reason": null,
+        "fold": 14,
+        "metrics": {
+          "annualized_sharpe": 1.628310968780903,
+          "avg_gross": 0.9682539682539683,
+          "avg_net": 1.8723999423241726e-18,
+          "avg_turnover": 0.04761904761904761,
+          "dsr": null,
+          "gross_annualized_sharpe": 1.7245393454463116,
+          "gross_periodic_sharpe": 0.10863576748088213,
+          "gross_total_return": 0.03129815102432998,
+          "n_obs": 63,
+          "periodic_sharpe": 0.10257394953506971,
+          "total_cost": 0.0017780753968253972,
+          "total_return": 0.029467871827212555,
+          "trial_count": null
+        },
+        "n_decisions": 63,
+        "n_test_bars": 63,
+        "test": {
+          "end": "2024-12-30",
+          "start": "2024-10-01"
+        },
+        "train": {
+          "end": "2024-09-30",
+          "start": "2023-07-06"
+        },
+        "turnover": {
+          "boundary": 2.0,
+          "cost_boundary": 0.0007932539682539682,
+          "cost_interior": 0.0009848214285714284,
+          "cost_total": 0.0017780753968253972,
+          "interior": 0.9999999999999999,
+          "n_boundary_bars": 2,
+          "n_interior_bars": 61,
+          "total": 2.9999999999999996
+        }
+      },
+      {
+        "boundary_decisions": [
+          "2024-12-31",
+          "2025-04-01",
+          "2025-04-02"
+        ],
+        "calibration": null,
+        "components": [
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null
+          }
+        ],
+        "excluded": false,
+        "exclusion_reason": null,
+        "fold": 15,
+        "metrics": {
+          "annualized_sharpe": -0.326705283750541,
+          "avg_gross": 0.9682539682539683,
+          "avg_net": -1.5529905403982845e-17,
+          "avg_turnover": 0.04697116942014901,
+          "dsr": null,
+          "gross_annualized_sharpe": -0.27098029967321713,
+          "gross_periodic_sharpe": -0.017070154360311663,
+          "gross_total_return": -0.010205809097687202,
+          "n_obs": 63,
+          "periodic_sharpe": -0.020580498400350544,
+          "total_cost": 0.001721068767643112,
+          "total_return": -0.01190761869764878,
+          "trial_count": null
+        },
+        "n_decisions": 63,
+        "n_test_bars": 63,
+        "test": {
+          "end": "2025-04-02",
+          "start": "2024-12-31"
+        },
+        "train": {
+          "end": "2024-12-30",
+          "start": "2023-10-04"
+        },
+        "turnover": {
+          "boundary": 2.0,
+          "cost_boundary": 0.0007833900226757369,
+          "cost_interior": 0.0009376787449673745,
+          "cost_total": 0.001721068767643112,
+          "interior": 0.9591836734693877,
+          "n_boundary_bars": 2,
+          "n_interior_bars": 61,
+          "total": 2.9591836734693877
+        }
+      },
+      {
+        "boundary_decisions": [
+          "2025-04-03",
+          "2025-07-02",
+          "2025-07-03"
+        ],
+        "calibration": null,
+        "components": [
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null
+          }
+        ],
+        "excluded": false,
+        "exclusion_reason": null,
+        "fold": 16,
+        "metrics": {
+          "annualized_sharpe": -0.6340608258748649,
+          "avg_gross": 0.9682539682539683,
+          "avg_net": -3.799870471187292e-18,
+          "avg_turnover": 0.048590864917395525,
+          "dsr": null,
+          "gross_annualized_sharpe": -0.5692196596065799,
+          "gross_periodic_sharpe": -0.03585746811161545,
+          "gross_total_return": -0.016637113378745183,
+          "n_obs": 63,
+          "periodic_sharpe": -0.039942077651264785,
+          "total_cost": 0.0017629263269933828,
+          "total_return": -0.018372194376765072,
+          "trial_count": null
+        },
+        "n_decisions": 63,
+        "n_test_bars": 63,
+        "test": {
+          "end": "2025-07-03",
+          "start": "2025-04-03"
+        },
+        "train": {
+          "end": "2025-04-02",
+          "start": "2024-01-04"
+        },
+        "turnover": {
+          "boundary": 2.0,
+          "cost_boundary": 0.0007782879818594103,
+          "cost_interior": 0.0009846383451339719,
+          "cost_total": 0.0017629263269933828,
+          "interior": 1.0612244897959182,
+          "n_boundary_bars": 2,
+          "n_interior_bars": 61,
+          "total": 3.061224489795918
+        }
+      },
+      {
+        "boundary_decisions": [
+          "2025-07-07",
+          "2025-10-01",
+          "2025-10-02"
+        ],
+        "calibration": null,
+        "components": [
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null
+          }
+        ],
+        "excluded": false,
+        "exclusion_reason": null,
+        "fold": 17,
+        "metrics": {
+          "annualized_sharpe": 1.346650073024877,
+          "avg_gross": 0.9682539682539683,
+          "avg_net": 7.159176250063013e-19,
+          "avg_turnover": 0.05247813411078717,
+          "dsr": null,
+          "gross_annualized_sharpe": 1.4257598681895434,
+          "gross_periodic_sharpe": 0.08981442953632766,
+          "gross_total_return": 0.03520696158085368,
+          "n_obs": 63,
+          "periodic_sharpe": 0.08483098086311416,
+          "total_cost": 0.001881751816372808,
+          "total_return": 0.03325353225818084,
+          "trial_count": null
+        },
+        "n_decisions": 63,
+        "n_test_bars": 63,
+        "test": {
+          "end": "2025-10-02",
+          "start": "2025-07-07"
+        },
+        "train": {
+          "end": "2025-07-03",
+          "start": "2024-04-05"
+        },
+        "turnover": {
+          "boundary": 2.0,
+          "cost_boundary": 0.000780328798185941,
+          "cost_interior": 0.001101423018186867,
+          "cost_total": 0.001881751816372808,
+          "interior": 1.3061224489795917,
+          "n_boundary_bars": 2,
+          "n_interior_bars": 61,
+          "total": 3.3061224489795915
+        }
+      },
+      {
+        "boundary_decisions": [
+          "2025-10-03",
+          "2025-12-31",
+          "2026-01-02"
+        ],
+        "calibration": null,
+        "components": [
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null
+          }
+        ],
+        "excluded": false,
+        "exclusion_reason": null,
+        "fold": 18,
+        "metrics": {
+          "annualized_sharpe": 0.16438860702930416,
+          "avg_gross": 0.9713313896987362,
+          "avg_net": -0.003077421444768394,
+          "avg_turnover": 0.05247813411078717,
+          "dsr": null,
+          "gross_annualized_sharpe": 0.2313344984515362,
+          "gross_periodic_sharpe": 0.01457270363268146,
+          "gross_total_return": 0.005138452639792623,
+          "n_obs": 63,
+          "periodic_sharpe": 0.010355508870758649,
+          "total_cost": 0.0019896802258318295,
+          "total_return": 0.003143175485191829,
+          "trial_count": null
+        },
+        "n_decisions": 63,
+        "n_test_bars": 63,
+        "test": {
+          "end": "2026-01-02",
+          "start": "2025-10-03"
+        },
+        "train": {
+          "end": "2025-10-02",
+          "start": "2024-07-08"
+        },
+        "turnover": {
+          "boundary": 2.010204081632653,
+          "cost_boundary": 0.000861045166365866,
+          "cost_interior": 0.0011286350594659632,
+          "cost_total": 0.0019896802258318295,
+          "interior": 1.2959183673469385,
+          "n_boundary_bars": 2,
+          "n_interior_bars": 61,
+          "total": 3.3061224489795915
+        }
+      },
+      {
+        "boundary_decisions": [
+          "2026-01-05",
+          "2026-04-02",
+          "2026-04-06"
+        ],
+        "calibration": null,
+        "components": [
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null
+          }
+        ],
+        "excluded": false,
+        "exclusion_reason": null,
+        "fold": 19,
+        "metrics": {
+          "annualized_sharpe": 1.750576966002564,
+          "avg_gross": 0.9682539682539683,
+          "avg_net": -2.7535293269473127e-18,
+          "avg_turnover": 0.048590864917395525,
+          "dsr": null,
+          "gross_annualized_sharpe": 1.7914095390142737,
+          "gross_periodic_sharpe": 0.11284819372620543,
+          "gross_total_return": 0.07662791457658868,
+          "n_obs": 63,
+          "periodic_sharpe": 0.11027598340287516,
+          "total_cost": 0.0018588446943403215,
+          "total_return": 0.07464004333444185,
+          "trial_count": null
+        },
+        "n_decisions": 63,
+        "n_test_bars": 63,
+        "test": {
+          "end": "2026-04-06",
+          "start": "2026-01-05"
+        },
+        "train": {
+          "end": "2026-01-02",
+          "start": "2024-10-04"
+        },
+        "turnover": {
+          "boundary": 2.0,
+          "cost_boundary": 0.0008191043083900225,
+          "cost_interior": 0.0010397403859502988,
+          "cost_total": 0.0018588446943403215,
+          "interior": 1.0612244897959182,
+          "n_boundary_bars": 2,
+          "n_interior_bars": 61,
+          "total": 3.061224489795918
+        }
+      },
+      {
+        "boundary_decisions": [
+          "2026-04-07",
+          "2026-06-11",
+          "2026-06-12"
+        ],
+        "calibration": null,
+        "components": [
+          {
+            "component_id": "momentum",
+            "fit_cutoff": null,
+            "fit_rows": 0,
+            "fit_scope": "fold_train",
+            "fit_window": null,
+            "fitted_state_ref": null
+          }
+        ],
+        "excluded": false,
+        "exclusion_reason": null,
+        "fold": 20,
+        "metrics": {
+          "annualized_sharpe": 3.209526706861308,
+          "avg_gross": 0.9583333333333334,
+          "avg_net": -1.1564823173178713e-18,
+          "avg_turnover": 0.056666666666666664,
+          "dsr": null,
+          "gross_annualized_sharpe": 3.255278884239297,
+          "gross_periodic_sharpe": 0.20506329466326184,
+          "gross_total_return": 0.11410199931198206,
+          "n_obs": 48,
+          "periodic_sharpe": 0.2021811783946458,
+          "total_cost": 0.0016115492063492063,
+          "total_return": 0.11231494092049865,
+          "trial_count": null
+        },
+        "n_decisions": 48,
+        "n_test_bars": 48,
+        "test": {
+          "end": "2026-06-12",
+          "start": "2026-04-07"
+        },
+        "train": {
+          "end": "2026-04-06",
+          "start": "2025-01-06"
+        },
+        "turnover": {
+          "boundary": 2.0,
+          "cost_boundary": 0.000845920634920635,
+          "cost_interior": 0.0007656285714285713,
+          "cost_total": 0.0016115492063492063,
+          "interior": 0.72,
+          "n_boundary_bars": 2,
+          "n_interior_bars": 46,
+          "total": 2.7199999999999998
+        }
+      }
+    ],
+    "risk_model": {
+      "path": null,
+      "sha256": null
+    },
+    "train_only_transforms": {
+      "calibration": false,
+      "fits": true,
+      "note": "every fit is taken on its fold's formation window and nothing outside it; each fold's cutoff and window are recorded per component below"
+    }
+  },
+  "flags": {
+    "evidence_tier": "net_edge",
+    "exploratory": false,
+    "fill_source": "simulated",
+    "prospective": null,
+    "run_channel": "evidence",
+    "synthetic": false
+  },
+  "ids": {
+    "arm_id": "demotion_b1_bucket_spread",
+    "config_id": "59d215f9e7a6f1fcfaa3c4a3631838a2957d9d4bd6ce60c742c00a6b4813bc46",
+    "data_id": "bedf8c4c0f0c2195ce5aace938f4ad38e23e6b69b57075080073004692d46eef",
+    "kind": "reproduction",
+    "registration_hash": null,
+    "registration_id": null,
+    "reproduces": [
+      {
+        "reason": "stage 2 Parity reproduction of the certified record at /home/b90/prism/results/demotion_b1, under its own recorded configuration and its own frozen fold table",
+        "run_id": "legacy:demotion_b1"
+      }
+    ],
+    "run_id": "run-12516ddb55c34cd7",
+    "selection_set_ids": [
+      "stat_arb_residual"
+    ],
+    "supersedes": []
+  },
+  "legacy": {
+    "legacy_code_commit": null,
+    "legacy_ledger_config_hash": null,
+    "legacy_packet_config_hash": null,
+    "legacy_run_key": null,
+    "source_ledger": null
+  },
+  "performance": {
+    "binding_conditions": {},
+    "cost": {
+      "boundary": 0.015820746826763883,
+      "interior": 0.021138187011479594,
+      "total": 0.036958933838243474
+    },
+    "drawdown": {
+      "max_drawdown": 0.13999581002068906
+    },
+    "exposures": {
+      "avg_gross": 0.9680381326842662,
+      "avg_net": -0.0001916033044633901
+    },
+    "gross": {
+      "periodic_sharpe": 0.033218762589563744,
+      "total_return": 0.32382710070534326
+    },
+    "net": {
+      "periodic_sharpe": 0.029320118792967125,
+      "total_return": 0.27579902407593404
+    },
+    "periodic_returns_path": "/home/b90/prism/.claude/worktrees/engine-overhaul/results/run-12516ddb55c34cd7/returns.csv",
+    "repair": {
+      "attempted": 0,
+      "dropped_batch": 0,
+      "no_action": 0,
+      "note": "batch rounding repair belongs to portfolio/rounding.py::round_batch (\u00a73.7); the historical_constant_weight engine holds weights, not shares, so no batch is rounded and every outcome count is zero rather than absent",
+      "scaled_batch": 0,
+      "succeeded": 0
+    },
+    "sample": {
+      "n_excluded_folds": 0,
+      "n_folds": 21,
+      "n_obs": 1308
+    },
+    "sharpe": {
+      "annualized": 0.4654424564223739,
+      "periodic": 0.029320118792967125,
+      "se_method": "none_reported",
+      "se_note": "the studentized block-bootstrap interval is computed by 'prism compare' over the recorded return path (validation/compare.py); this record reports the point estimate"
+    },
+    "tails": {
+      "excess_kurtosis": 2.1506001614483408,
+      "max": 0.028247899480051377,
+      "min": -0.03979584790649246,
+      "p05": -0.011920756528270118,
+      "p95": 0.01072609535485397,
+      "skew": -0.4909510078031478
+    },
+    "turnover": {
+      "average": 0.04997684418958918,
+      "boundary": 42.01020408163265,
+      "interior": 23.35950811834999,
+      "total": 65.36971219998264
+    },
+    "violations": []
+  },
+  "record_schema": 1,
+  "selection": {
+    "attempt_basis": "arm_id",
+    "dependence_adjustment": {
+      "method": "unavailable",
+      "value": "unavailable"
+    },
+    "excluded_rows": {
+      "imported": 17,
+      "reproduction": 7
+    },
+    "legacy_independent_count": null,
+    "n_independent": 0,
+    "n_intervals": 0,
+    "n_trials_observed": 2,
+    "unobserved_search_note": "the trial log records the runs that were appended; the hash chain detects change relative to a trusted copy only and does not prove the search was exhaustive (\u00a73.12)"
+  },
+  "status": {
+    "incomplete_reasons": [],
+    "status": "finished"
+  },
+  "versions": {
+    "engine": "0.4.0",
+    "numpy": "2.4.6",
+    "pandas": "2.3.3",
+    "python": "3.12.8",
+    "solver": "unavailable"
+  },
+  "warnings": [
+    "accounting_engine=historical_constant_weight: weights are held constant between decision bars and rebalanced implicitly by price drift; there are no share quantities, no partial fills and no per-bar holding costs. The canonical fixed-share simulator arrives at stage 3 (\u00a73.8)."
+  ]
+}

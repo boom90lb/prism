@@ -203,3 +203,6 @@ docs/dev/
 
 # Lean 4 formal verification build artifacts
 formal/.lake/
+
+# Trial-log append locks are process state, never evidence.
+trials/*.lock

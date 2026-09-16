@@ -1,0 +1,70 @@
+registration 2026-09-construction  sha256 121607c59e55
+selection set momentum_construction_v1  arms decile_control, convex_point, convex_p80_one_sided
+held fixed: accounting_engine=canonical, cost_refresh={cadence, charged, note, per_fold, windows} (see the record), data_id=bedf8c4c0f0c2195ce5aace938f4ad38e23e6b69b57075080073004692d46eef, executable_return=next_open_fill_marked_close_to_close, vintage=demotion_b1_2026-06-16, visibility_mode=research_vintage
+differs by design: capital, engine
+promotion check: no arm promotes (rule kind='none')
+excluded folds (shared across every arm: True): 0, 1, 2, 3
+
+   capital arm                      sharpe  ann.ret     cost  turnover  at_cap   ex_sd  repair none/scale/drop  flat
+--------------------------------------------------------------------------------------------------------------------
+    10,000 convex_p80_one_sided     0.9150   0.0576   0.0105     16.04   0.000  0.0166        44/0/4    18
+    25,000 convex_p80_one_sided     0.4435   0.0279   0.0111     17.26   0.000  0.0332        48/0/3    18
+    50,000 convex_p80_one_sided     0.3969   0.0250   0.0114     18.29   0.000  0.0332        50/0/1    18
+   100,000 convex_p80_one_sided     0.4939   0.0311   0.0109     16.69   0.000  0.0166        47/0/1    18
+   250,000 convex_p80_one_sided     0.6911   0.0435   0.0112     17.62   0.000  0.0166        48/0/0    18
+ 1,000,000 convex_p80_one_sided     0.8103   0.0510   0.0076      8.30   0.000  0.0000        34/0/0    18
+    10,000 convex_point             0.4331   0.0273   0.0190     30.25   0.000  0.0332        48/1/2     0
+    25,000 convex_point             0.3490   0.0220   0.0196     31.96   0.000  0.0332        50/0/1     0
+    50,000 convex_point             0.3961   0.0250   0.0197     31.92   0.000  0.0332        51/0/0     0
+   100,000 convex_point             0.3973   0.0250   0.0197     32.05   0.000  0.0332        51/0/0     0
+   250,000 convex_point             0.3436   0.0216   0.0196     31.67   0.000  0.0332        50/0/1     0
+ 1,000,000 convex_point             0.3981   0.0251   0.0198     32.13   0.000  0.0332        51/0/0     0
+    10,000 decile_control           0.5253   0.0331   0.0198     28.97   0.000     nan        51/0/0     0
+    25,000 decile_control           0.6232   0.0393   0.0209     31.63   0.000     nan        51/0/0     0
+    50,000 decile_control           0.6151   0.0387   0.0210     31.86   0.000     nan        51/0/0     0
+   100,000 decile_control           0.6789   0.0428   0.0209     31.64   0.000     nan        51/0/0     0
+   250,000 decile_control           0.6541   0.0412   0.0209     31.72   0.000     nan        51/0/0     0
+ 1,000,000 decile_control           0.6562   0.0413   0.0209     31.75   0.000     nan        51/0/0     0
+
+studentized Sharpe differences, circular_moving blocks of 42 bars, 2000 resamples, seed 20260908, hac_lags 41, decision interval 21 bars, studentized_circular_block_bootstrap
+  the statistic is the per-bar (periodic) Sharpe difference; the annualized column is the same interval scaled by sqrt(252)
+   capital difference                                       diff    lower    upper      p  diff/yr  lower/yr  upper/yr
+----------------------------------------------------------------------------------------------------------------------
+    10,000 decile_control_minus_convex_point              0.0058  -0.0367   0.0462  0.789   0.0921   -0.5829    0.7337
+    10,000 decile_control_minus_convex_p80_one_sided     -0.0246  -0.0763   0.0204  0.297  -0.3898   -1.2115    0.3241
+    10,000 convex_point_minus_convex_p80_one_sided       -0.0304  -0.0931   0.0169  0.262  -0.4819   -1.4772    0.2689
+    25,000 decile_control_minus_convex_point              0.0173  -0.0262   0.0587  0.422   0.2743   -0.4154    0.9324
+    25,000 decile_control_minus_convex_p80_one_sided      0.0113  -0.0372   0.0573  0.635   0.1797   -0.5911    0.9092
+    25,000 convex_point_minus_convex_p80_one_sided       -0.0060  -0.0565   0.0348  0.781  -0.0945   -0.8969    0.5525
+    50,000 decile_control_minus_convex_point              0.0138  -0.0271   0.0516  0.483   0.2190   -0.4301    0.8185
+    50,000 decile_control_minus_convex_p80_one_sided      0.0137  -0.0317   0.0565  0.532   0.2182   -0.5038    0.8968
+    50,000 convex_point_minus_convex_p80_one_sided       -0.0000  -0.0408   0.0367  0.999  -0.0008   -0.6480    0.5826
+   100,000 decile_control_minus_convex_point              0.0177  -0.0222   0.0543  0.369   0.2817   -0.3516    0.8628
+   100,000 decile_control_minus_convex_p80_one_sided      0.0117  -0.0363   0.0553  0.601   0.1850   -0.5758    0.8777
+   100,000 convex_point_minus_convex_p80_one_sided       -0.0061  -0.0482   0.0317  0.753  -0.0966   -0.7655    0.5025
+   250,000 decile_control_minus_convex_point              0.0196  -0.0192   0.0545  0.314   0.3105   -0.3047    0.8657
+   250,000 decile_control_minus_convex_p80_one_sided     -0.0023  -0.0489   0.0398  0.919  -0.0370   -0.7769    0.6317
+   250,000 convex_point_minus_convex_p80_one_sided       -0.0219  -0.0641   0.0177  0.308  -0.3475   -1.0172    0.2807
+ 1,000,000 decile_control_minus_convex_point              0.0163  -0.0240   0.0533  0.412   0.2582   -0.3807    0.8461
+ 1,000,000 decile_control_minus_convex_p80_one_sided     -0.0097  -0.0686   0.0412  0.727  -0.1541   -1.0895    0.6541
+ 1,000,000 convex_point_minus_convex_p80_one_sided       -0.0260  -0.0937   0.0309  0.435  -0.4122   -1.4876    0.4912
+
+intervals computed: 18
+warning: run-333d02e707af4c6f: fill_source=simulated; fills are not actual fills
+warning: run-14401bdc29584ed1: fill_source=simulated; fills are not actual fills
+warning: run-5a5815c739884864: fill_source=simulated; fills are not actual fills
+warning: run-43b46ffd0ca540cc: fill_source=simulated; fills are not actual fills
+warning: run-65b547d60430489a: fill_source=simulated; fills are not actual fills
+warning: run-dfd3fd1ca94c4951: fill_source=simulated; fills are not actual fills
+warning: run-db3d07c54ed44d6d: fill_source=simulated; fills are not actual fills
+warning: run-4abd973ed2e74c6e: fill_source=simulated; fills are not actual fills
+warning: run-622556098faa4ce4: fill_source=simulated; fills are not actual fills
+warning: run-c5b78400515646ae: fill_source=simulated; fills are not actual fills
+warning: run-0938dc29825a42bd: fill_source=simulated; fills are not actual fills
+warning: run-b7f767900994465c: fill_source=simulated; fills are not actual fills
+warning: run-a98c057929f7487d: fill_source=simulated; fills are not actual fills
+warning: run-9e276ec5bbe44142: fill_source=simulated; fills are not actual fills
+warning: run-2b827ba469d948da: fill_source=simulated; fills are not actual fills
+warning: run-d202fb12311c4f12: fill_source=simulated; fills are not actual fills
+warning: run-77236172637d4b3d: fill_source=simulated; fills are not actual fills
+warning: run-67294001d7024146: fill_source=simulated; fills are not actual fills

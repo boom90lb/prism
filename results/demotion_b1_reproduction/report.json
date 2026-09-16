@@ -1,0 +1,126 @@
+{
+  "arms": {
+    "bucket": {
+      "arm_id": "bucket_spread",
+      "config_id": "59d215f9e7a6f1fcfaa3c4a3631838a2957d9d4bd6ce60c742c00a6b4813bc46",
+      "data_id": "bedf8c4c0f0c2195ce5aace938f4ad38e23e6b69b57075080073004692d46eef",
+      "differences": {
+        "annualized_return": {
+          "absolute": 0.0,
+          "recorded": 0.048045335752954665,
+          "relative": 0.0,
+          "reproduced": 0.048045335752954665
+        },
+        "annualized_vol": {
+          "absolute": 6.938893903907228e-17,
+          "recorded": 0.11507946745850657,
+          "relative": 6.029654166073665e-16,
+          "reproduced": 0.11507946745850664
+        },
+        "avg_gross": {
+          "absolute": 1.1102230246251565e-16,
+          "recorded": 0.9680381326842661,
+          "relative": 1.1468794328862096e-16,
+          "reproduced": 0.9680381326842662
+        },
+        "avg_turnover": {
+          "absolute": 2.0816681711721685e-17,
+          "recorded": 0.049976844189589156,
+          "relative": 4.165265344236777e-16,
+          "reproduced": 0.04997684418958918
+        },
+        "max_drawdown": {
+          "absolute": 0.0,
+          "recorded": 0.13999581002068906,
+          "relative": 0.0,
+          "reproduced": 0.13999581002068906
+        },
+        "oos_periodic_sharpe": {
+          "absolute": 1.0408340855860843e-17,
+          "recorded": 0.029320118792967115,
+          "relative": 3.549897232461911e-16,
+          "reproduced": 0.029320118792967125
+        },
+        "sharpe": {
+          "absolute": 1.6653345369377348e-16,
+          "recorded": 0.46544245642237375,
+          "relative": 3.577960097878347e-16,
+          "reproduced": 0.4654424564223739
+        },
+        "total_cost": {
+          "absolute": 1.3877787807814457e-17,
+          "recorded": 0.03695893383824346,
+          "relative": 3.754921034398005e-16,
+          "reproduced": 0.036958933838243474
+        },
+        "total_return": {
+          "absolute": -2.220446049250313e-16,
+          "recorded": 0.27579902407593426,
+          "relative": -8.050956875898769e-16,
+          "reproduced": 0.27579902407593404
+        }
+      },
+      "fold_table_sha256": "fec02ca011e8c66309ab9e414403d1a6412a10569ff47bac775fa754ef3384f8",
+      "metrics": {
+        "annualized_return": 0.048045335752954665,
+        "annualized_vol": 0.11507946745850664,
+        "avg_gross": 0.9680381326842662,
+        "avg_net": -0.0001916033044633901,
+        "avg_turnover": 0.04997684418958918,
+        "calmar": 0.34319124083681046,
+        "max_drawdown": 0.13999581002068906,
+        "oos_periodic_sharpe": 0.029320118792967125,
+        "psr": 0.8535988550575018,
+        "sharpe": 0.4654424564223739,
+        "total_cost": 0.036958933838243474,
+        "total_return": 0.27579902407593404
+      },
+      "n_folds": 21,
+      "n_obs": 1308,
+      "record": "/home/b90/prism/.claude/worktrees/engine-overhaul/results/run-12516ddb55c34cd7/record.json",
+      "run_id": "run-12516ddb55c34cd7",
+      "seconds": 198.0,
+      "spec": "/home/b90/prism/.claude/worktrees/engine-overhaul/examples/momentum/demotion_b1.toml",
+      "trial_log": "/home/b90/prism/.claude/worktrees/engine-overhaul/trials/stat_arb_residual.jsonl"
+    },
+    "flat": {
+      "arm_id": "flat_spread",
+      "config_id": "9cab2e1f15a58fc684e8378e664a386ac131775ca3fc3261ca92472bf171622d",
+      "data_id": "bedf8c4c0f0c2195ce5aace938f4ad38e23e6b69b57075080073004692d46eef",
+      "differences": null,
+      "fold_table_sha256": "fec02ca011e8c66309ab9e414403d1a6412a10569ff47bac775fa754ef3384f8",
+      "metrics": {
+        "annualized_return": 0.05019532469513277,
+        "annualized_vol": 0.11507922656418682,
+        "avg_gross": 0.9680381326842662,
+        "avg_net": -0.0001916033044633901,
+        "avg_turnover": 0.04997684418958918,
+        "calmar": 0.3595541291621814,
+        "max_drawdown": 0.13960436169123103,
+        "oos_periodic_sharpe": 0.030442151271261333,
+        "psr": 0.8625642715728444,
+        "sharpe": 0.4832541698253976,
+        "total_cost": 0.02632029466235169,
+        "total_return": 0.28944210270120574
+      },
+      "n_folds": 21,
+      "n_obs": 1308,
+      "record": "/home/b90/prism/.claude/worktrees/engine-overhaul/results/run-454b33cf8a0742d0/record.json",
+      "run_id": "run-454b33cf8a0742d0",
+      "seconds": 194.5,
+      "spec": "/home/b90/prism/.claude/worktrees/engine-overhaul/examples/momentum/demotion_b1_flat_spread.toml",
+      "trial_log": "/home/b90/prism/.claude/worktrees/engine-overhaul/trials/stat_arb_residual.jsonl"
+    }
+  },
+  "reference": {
+    "annualized_return": 0.048045335752954665,
+    "annualized_vol": 0.11507946745850657,
+    "avg_gross": 0.9680381326842661,
+    "avg_turnover": 0.049976844189589156,
+    "max_drawdown": 0.13999581002068906,
+    "oos_periodic_sharpe": 0.029320118792967115,
+    "sharpe": 0.46544245642237375,
+    "total_cost": 0.03695893383824346,
+    "total_return": 0.27579902407593426
+  }
+}

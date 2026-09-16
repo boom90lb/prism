@@ -19,6 +19,12 @@ thing that ran:
 * ``equity-ledger`` — how many sessions since the last NAV mark. A dark loop
   cannot hide from this; it is the one check that stays true when the log,
   the scheduler, and the sweep all look fine.
+* ``missed-sessions`` — which sessions the exchange held that this book did
+  not decide, read off the bundled session table (§3.11). A holiday is not a
+  missed run, and the weekday age above cannot tell the two apart; it stays as
+  the cross-check that needs no table.
+* ``session-table`` — warns when that table ends within ninety days, because
+  past its coverage end no session question can be answered at all.
 * ``regime-clock`` — consecutive clean sessions on the handoff §8
   precondition-(b) clock (docs/regime_step.md §4).
 * ``nightly-log`` — the last wrapper verdict, and whether a *successful* one
@@ -60,6 +66,9 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Mapping, Sequence
 
+from prism.scripts import announce_alias
+from prism.workspace import load_env, resolve_workspace
+
 logger = logging.getLogger(__name__)
 
 # The decile construct needs a non-degenerate cross-section: below ~100 names
@@ -98,18 +107,28 @@ def check_python() -> CheckResult:
     return _result("python", ok, f"{sys.version.split()[0]} (need >= 3.12)")
 
 
-def check_env_credentials(env: dict[str, str]) -> list[CheckResult]:
-    """Presence checks only — values are never printed (docs/security.md §2)."""
+def check_env_credentials(env: dict[str, str], *, mode: str = "paper") -> list[CheckResult]:
+    """Presence checks only — values are never printed (docs/security.md §2).
+
+    ``mode`` is the ``--account paper|live`` the operator named. The endpoint
+    check is a **refusal** under the wrong mode, not a warning (§3.10): an
+    environment variable may set an endpoint but never the mode, so an endpoint
+    off the mode's allowlist means this shell would point the loop somewhere the
+    operator did not select, and a doctor that reports that as a warning has
+    already failed at its one job.
+    """
     results = []
     alpaca = bool(env.get("APCA_API_KEY_ID")) and bool(env.get("APCA_API_SECRET_KEY"))
     results.append(
         _result(
             "alpaca-credentials",
             alpaca,
-            "APCA_API_KEY_ID/APCA_API_SECRET_KEY present"
-            if alpaca
-            else "APCA_API_KEY_ID/APCA_API_SECRET_KEY missing — the paper loop cannot trade; "
-            "put the *paper* keys in .env (docs/quickstart.md)",
+            (
+                "APCA_API_KEY_ID/APCA_API_SECRET_KEY present"
+                if alpaca
+                else "APCA_API_KEY_ID/APCA_API_SECRET_KEY missing — the paper loop cannot trade; "
+                "put the *paper* keys in .env (docs/quickstart.md)"
+            ),
         )
     )
     twelve = bool(env.get("TWELVEDATA_API_KEY"))
@@ -117,26 +136,85 @@ def check_env_credentials(env: dict[str, str]) -> list[CheckResult]:
         _result(
             "twelvedata-key",
             twelve,
-            "TWELVEDATA_API_KEY present"
-            if twelve
-            else "TWELVEDATA_API_KEY missing — fine for the Alpaca bar source (the loop "
-            "default), required for the research spine",
+            (
+                "TWELVEDATA_API_KEY present"
+                if twelve
+                else "TWELVEDATA_API_KEY missing — fine for the Alpaca bar source (the loop "
+                "default), required for the research spine"
+            ),
             warn=True,
         )
     )
-    base = env.get("APCA_API_BASE_URL", "")
-    live = "paper" not in base and bool(base)
-    results.append(
-        _result(
-            "alpaca-endpoint",
-            not live,
-            f"LIVE endpoint configured ({base}) — real money; unset APCA_API_BASE_URL for paper"
-            if live
-            else (f"paper endpoint ({base})" if base else "paper endpoint (default)"),
-            warn=True,
-        )
-    )
+    results.append(check_endpoint_mode(env, mode=mode))
     return results
+
+
+def check_endpoint_mode(env: Mapping[str, str], *, mode: str = "paper") -> CheckResult:
+    """The resolved endpoint against ``mode``'s allowlist — a FAIL, not a WARN.
+
+    The comparison is the one ``AlpacaBroker`` makes when it is constructed
+    (``prism.live.authorization.resolve_endpoint``), so the doctor reports
+    exactly the verdict the loop will reach rather than a second opinion.
+    """
+    from prism.live.authorization import AuthorizationRefused, resolve_endpoint
+
+    base = env.get("APCA_API_BASE_URL", "")
+    try:
+        resolved = resolve_endpoint(mode, from_environment=base or None)
+    except AuthorizationRefused as exc:
+        return _result("alpaca-endpoint", False, f"{exc}")
+    where = f"({resolved})" if base else f"({resolved}, the default)"
+    return _result("alpaca-endpoint", True, f"{mode} endpoint {where}")
+
+
+def check_authorization(run_dir: Path, *, mode: str = "paper", host: str | None = None) -> CheckResult:
+    """The §3.10 authorization record for this run directory, read as the loop reads it.
+
+    Offline: the account id is the venue's answer and is checked when the client
+    binds, so what is checkable here is the record's own consistency — schema,
+    mode, endpoint allowlist, execution host, expiry. Under ``paper`` an absent
+    record is the pre-authorization paper instrument and passes with a note;
+    under ``live`` it is state S4b, where every broker write is refused.
+    """
+    from prism.live.authorization import (
+        AuthorizationRefused,
+        execution_host,
+        load_authorization,
+    )
+
+    try:
+        record = load_authorization(run_dir)
+    except AuthorizationRefused as exc:
+        return _result("authorization", False, f"{exc}")
+    if record is None:
+        if mode == "live":
+            return _result(
+                "authorization",
+                False,
+                f"no authorization record in {run_dir} under --account live: state S4b permits nothing "
+                "and every broker write is refused, C0 included (§3.10)",
+            )
+        return _result(
+            "authorization",
+            True,
+            f"no authorization record in {run_dir} — the pre-authorization paper instrument; a live "
+            "account requires one",
+        )
+    problems = []
+    if record.mode != mode:
+        problems.append(f"record mode {record.mode!r} != --account {mode!r}")
+    this_host = execution_host() if host is None else host
+    if record.execution_host != this_host:
+        problems.append(f"execution_host {record.execution_host!r} != this host {this_host!r}")
+    if problems:
+        return _result("authorization", False, "; ".join(problems) + " (§3.10)")
+    expiry = f", expires {record.expires_at}" if record.expires_at else ", no expiry (paper)"
+    return _result(
+        "authorization",
+        True,
+        f"{record.mode} grant for account {record.account_name!r} at {record.endpoint}, scope "
+        f"{record.scope.to_dict()}{expiry}",
+    )
 
 
 def _read_universe(path: Path | None) -> list[str]:
@@ -288,6 +366,65 @@ def check_equity_ledger(run_dir: Path, *, today: date | None = None) -> CheckRes
     return _result("equity-ledger", True, detail)
 
 
+def check_missed_sessions(run_dir: Path, *, today: date | None = None) -> CheckResult:
+    """Scheduler liveness against the bundled session table — a holiday is not a miss.
+
+    This is the §3.11 missed-run check, and it is a *different* question from
+    ``equity-ledger`` above. That one asks "how old is the newest NAV mark?" in
+    holiday-blind weekdays, which only ever over-counts and therefore cannot say
+    which sessions were expected. This one asks "which sessions did the exchange
+    hold that this book did not decide?" and answers with dates. The weekday age
+    stays as a cross-check, because it needs no table and so cannot be wrong
+    about a year the table does not cover; ``prism check --expect-session`` is
+    the freshness authority (§3.11).
+
+    Fails loud rather than counting weekdays when the table cannot answer: a
+    calendar that guesses about a year it does not hold is silently wrong exactly
+    when nobody is watching.
+    """
+    from prism.live.freshness import check_scheduler
+
+    today = today or date.today()
+    ledger = run_dir / "equity.jsonl"
+    last = _last_ledger_bar(ledger)
+    if last is None:
+        # Mirrors check_equity_ledger: a genuinely fresh run directory has no
+        # NAV history and that is legitimate, not a scheduler fault.
+        return _result(
+            "missed-sessions",
+            False,
+            f"{ledger} has no NAV rows — there is no last decision bar to expect sessions after",
+            warn=True,
+        )
+    try:
+        verdict = check_scheduler(last_decision_bar=last, as_of=today, source=str(ledger))
+    except ValueError as exc:
+        # SessionTableRangeError (the table does not cover this year) and
+        # FreshnessError (the ledger's bar is not a date) are both ValueErrors,
+        # and both mean the same thing here: this check has no answer, and says
+        # so instead of falling back to weekday arithmetic.
+        return _result("missed-sessions", False, f"{exc}")
+    if verdict.missed:
+        return _result("missed-sessions", False, verdict.detail())
+    return _result("missed-sessions", True, verdict.detail())
+
+
+def check_session_table(*, today: date | None = None) -> CheckResult:
+    """The bundled session table's remaining coverage (§3.11: warn within ninety days).
+
+    The table is what every session question is answered from, so its running
+    out is an engine fault rather than a book fault: past its coverage end the
+    missed-run check cannot be evaluated at all, because the table refuses
+    instead of guessing. That is a FAIL; ninety days out is the WARN.
+    """
+    from prism.live.freshness import session_table_horizon
+
+    horizon = session_table_horizon(as_of=today or date.today())
+    if horizon.exhausted:
+        return _result("session-table", False, horizon.detail())
+    return _result("session-table", not horizon.warn, horizon.detail(), warn=True)
+
+
 def check_regime_clock(run_dir: Path) -> CheckResult:
     """Consecutive clean sessions on the handoff §8 precondition-(b) clock.
 
@@ -344,9 +481,13 @@ def check_nightly_log(run_dir: Path, *, today: date | None = None) -> CheckResul
             "(ops/paper_loop_nightly.sh owns this log)",
             warn=True,
         )
-    verdicts = [m for m in (_LOG_VERDICT.match(ln.strip()) for ln in log.read_text(encoding="utf-8").splitlines()) if m]
+    verdicts = [
+        m for m in (_LOG_VERDICT.match(ln.strip()) for ln in log.read_text(encoding="utf-8").splitlines()) if m
+    ]
     if not verdicts:
-        return _result("nightly-log", False, f"{log}: no EXIT/SKIP verdict lines — a truncated or foreign log", warn=True)
+        return _result(
+            "nightly-log", False, f"{log}: no EXIT/SKIP verdict lines — a truncated or foreign log", warn=True
+        )
     last = verdicts[-1]
     kind = last.group("verdict")
     code = int(last.group("code") or 0)
@@ -481,9 +622,9 @@ def check_account_book(
        cannot hide among them.
     """
     held_names = {str(s) for s, q in held.items() if float(q) != 0.0}
-    persisted = {
-        str(s) for s, q in getattr(state, "positions", {}).items() if float(q) != 0.0
-    } if state is not None else set()
+    persisted = (
+        {str(s) for s, q in getattr(state, "positions", {}).items() if float(q) != 0.0} if state is not None else set()
+    )
     off_universe = sorted(held_names - {str(s).upper() for s in universe})
     trailer = f"; {len(off_universe)} off-universe (valuation/exit only): {off_universe[:10]}" if off_universe else ""
 
@@ -597,7 +738,7 @@ def check_alpaca_account(universe_file: Path | None = None, run_dir: Path | None
     return results
 
 
-def check_twelvedata_quote() -> CheckResult:
+def check_twelvedata_quote(api_key: str | None, cache_dir: Path) -> CheckResult:
     """Network probe: one bar for SPY (1 credit of the daily 800).
 
     WARN, never FAIL. The live loop reads Alpaca's own feed by default, so a
@@ -608,7 +749,7 @@ def check_twelvedata_quote() -> CheckResult:
     """
     from prism.io.loader import DataLoader
 
-    loader = DataLoader()
+    loader = DataLoader(api_key=api_key, cache_dir=cache_dir)
     if not loader.api_key:
         return _result("twelvedata-quote", False, "no key to probe", warn=True)
     df = loader.fetch_historical_data("SPY", "1d", force_refresh=True)
@@ -628,33 +769,45 @@ def run_checks(
     run_dir: Path,
     universe_file: Path | None,
     data_dir: Path | None = None,
+    workspace: str | None = None,
     env: dict[str, str] | None = None,
     network: bool = False,
     today: date | None = None,
+    mode: str = "paper",
 ) -> list[CheckResult]:
-    from prism.config import DATA_DIR
+    """Run the offline checks, plus the venue/vendor probes when ``network``.
 
+    ``data_dir`` defaults to the resolved workspace's ``data/`` -- the same
+    bar cache the loop writes. The Twelve Data key comes from ``env`` (the
+    process environment by default, after the command loaded ``.env``), so
+    the probe and the ``twelvedata-key`` check always report the same key.
+    """
+    data_dir = data_dir or resolve_workspace(workspace).data
     env = dict(os.environ) if env is None else env
     results = [check_python()]
-    results.extend(check_env_credentials(env))
+    results.extend(check_env_credentials(env, mode=mode))
+    results.append(check_authorization(run_dir, mode=mode))
     results.append(check_universe_file(universe_file))
-    results.append(check_data_dir(data_dir or DATA_DIR))
+    results.append(check_data_dir(data_dir))
     results.append(check_loop_state(run_dir))
     results.append(check_kill_switch(run_dir))
     # Health: the durable record of work done. Offline, because a dark loop must
     # be detectable without credentials — the alerting path cannot depend on the
     # same venue reachability whose absence it has to report.
     results.append(check_equity_ledger(run_dir, today=today))
+    results.append(check_missed_sessions(run_dir, today=today))
+    results.append(check_session_table(today=today))
     results.append(check_nightly_log(run_dir, today=today))
     results.append(check_wrapper_provenance(run_dir))
     results.append(check_regime_clock(run_dir))
     if network:
         results.extend(check_alpaca_account(universe_file, run_dir))
-        results.append(check_twelvedata_quote())
+        results.append(check_twelvedata_quote(env.get("TWELVEDATA_API_KEY"), data_dir))
     return results
 
 
 def main(argv: list[str] | None = None) -> int:
+    announce_alias("prism-doctor", "prism check")
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s %(message)s")
     parser = argparse.ArgumentParser(description="Preflight checks for the prism paper loop.")
     parser.add_argument(
@@ -674,16 +827,39 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Also probe Alpaca (free account read) and Twelve Data (1 credit).",
     )
+    parser.add_argument(
+        "--account",
+        choices=("paper", "live"),
+        default="paper",
+        help="The mode the checks are run for (§3.10). The endpoint check is a refusal under the "
+        "wrong mode; `prism run --account` has no default, and this legacy alias defaults to paper "
+        "because it is the paper loop's doctor.",
+    )
+    parser.add_argument(
+        "--workspace",
+        default=None,
+        help="Writable root whose data/ is the bar cache to check "
+        "(default: $PRISM_WORKSPACE, else the current directory).",
+    )
     args = parser.parse_args(argv)
+
+    # Credentials come from the project's .env, loaded here rather than at
+    # import (spec §3.1): the credential checks below read os.environ and must
+    # see what the loop will see.
+    load_env()
 
     run_dir = args.run_dir
     if run_dir is None:
         active = Path("runs/ACTIVE_RUN_DIR")
-        run_dir = Path(
-            active.read_text(encoding="utf-8").strip() if active.exists() else "runs/paper_loop_momentum"
-        )
+        run_dir = Path(active.read_text(encoding="utf-8").strip() if active.exists() else "runs/paper_loop_momentum")
 
-    results = run_checks(run_dir=run_dir, universe_file=args.universe_file, network=args.network)
+    results = run_checks(
+        run_dir=run_dir,
+        universe_file=args.universe_file,
+        workspace=args.workspace,
+        network=args.network,
+        mode=args.account,
+    )
     # Name the run directory: "which book did you just certify as healthy?" was
     # the unasked question behind the 2026-07-23 outage (ACTIVE_RUN_DIR had been
     # pointed at a directory that had never completed a cycle).

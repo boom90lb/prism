@@ -7,12 +7,23 @@ spread-calibration data. The binding invariant is N2 crash-safety — a daily
 loop restarts between the decision (close *t*) and the fill (open *t+1*),
 and nothing important may live only in memory:
 
-* ``state``  — the durable loop state (positions, cash, pending orders,
-  last processed bar), atomic-write JSON, schema-versioned, fail-loud.
+* ``state``  — the durable loop state at schema version 3 (the canonical
+  ``PortfolioState``, the fills marker, the per-component schedule and fit
+  references, the bar markers), atomic-write JSON, schema-versioned,
+  fail-loud, with the v1 and v2 documents migrated forward explicitly.
+* ``reconcile`` — the venue against the book: positions and cash adopted,
+  orders and executions compared and never adopted, and the cost, turnover
+  and variance reads that are recorded and gate nothing (§3.11).
 * ``broker`` — the Broker contract (idempotent submit keyed by
   ``client_order_id``) plus the Order/Fill types.
 * ``ledgers`` — the one JSONL append/read discipline every run-dir ledger
   rides: fsynced appends, torn-tail tolerance, monotone idempotency.
+* ``authorization`` — the §3.10 authorization record, the action classes and
+  the operating states: what the account owner approved, and the intersection
+  rule that turns the states, the scope flags and the per-input-class freshness
+  into the set of actions this process may take. Every answer is a refusal or a
+  permission; a control that cannot verify its precondition never warns and
+  proceeds.
 * ``lockfile`` — the run directory's advisory writer lock (the write-ahead
   protocol survives crashes, not two concurrent writers).
 * ``alpaca_transport`` — the shared Alpaca REST session: one auth/timeout/
@@ -51,7 +62,23 @@ from prism.live.alpaca import (
     AlpacaBroker,
 )
 from prism.live.alpaca_data import DATA_BASE_URL, DEFAULT_FEED, AlpacaBarSource
-from prism.live.broker import Broker, DuplicateOrder, Fill, Order, OrderRejected
+from prism.live.authorization import (
+    ActionClass,
+    ActionContext,
+    AuthorizationGate,
+    AuthorizationRecord,
+    AuthorizationRefused,
+    InputFreshness,
+    OperatingState,
+    ProcessIdentity,
+    Scope,
+    SessionIntent,
+    classify_order,
+    load_authorization,
+    permitted_classes,
+    resolve_endpoint,
+)
+from prism.live.broker import Broker, DuplicateOrder, Fill, Order, OrderRejected, transmits_to_venue
 from prism.live.daily import (
     DailyBookConfig,
     DailyCycleResult,
@@ -61,7 +88,10 @@ from prism.live.daily import (
     run_daily_cycle,
 )
 from prism.live.loop import (
+    SUBMISSION_ANNOUNCEMENT,
     LiveLoopContext,
+    announce_submission,
+    cancel_orders,
     decide_and_submit,
     read_concordance_ledger,
     read_equity_ledger,
@@ -73,6 +103,22 @@ from prism.live.loop import (
     targets_to_orders,
 )
 from prism.live.monitor import book_concordance, paper_monitor_read
+from prism.live.no_submit import (
+    NO_SUBMIT,
+    WOULD_SUBMIT,
+    NoSubmitBroker,
+    NoSubmitSession,
+    VenueWriteRefused,
+    mirror_run_dir,
+    no_submit_session,
+)
+from prism.live.reconcile import (
+    ReconcileItem,
+    ReconcileSettings,
+    Reconciliation,
+    reconcile,
+    reconcile_loop_state,
+)
 from prism.live.regime_step import ABSENT_BLOCKS, REGIME_BLOCKS, RegimeTelemetry
 from prism.live.replay import (
     ReplayBroker,
@@ -91,7 +137,16 @@ from prism.live.risk_profile import (
     resolve_risk_profile,
     validate_profile_payload,
 )
-from prism.live.safety import SafetyConfig, SafetyViolation, check_orders, halt_reason
+from prism.live.safety import (
+    SESSION_HISTORY_FILES,
+    RunDirHistory,
+    SafetyConfig,
+    SafetyViolation,
+    check_orders,
+    halt_reason,
+    require_established_run_dir,
+    sample_run_dir_history,
+)
 from prism.live.spinoff_mask import (
     CORPORATE_ACTIONS_URL,
     fetch_spinoffs,
@@ -99,7 +154,7 @@ from prism.live.spinoff_mask import (
     spinoff_unrankable,
     spinoff_unrankable_provider,
 )
-from prism.live.state import LoopState, StateStore
+from prism.live.state import ComponentState, LoopState, StateStore
 
 __all__ = [
     "ABSENT_BLOCKS",
@@ -107,47 +162,82 @@ __all__ = [
     "DATA_BASE_URL",
     "DEFAULT_FEED",
     "LIVE_BASE_URL",
+    "NO_SUBMIT",
+    "NoSubmitBroker",
+    "NoSubmitSession",
     "PAPER_BASE_URL",
     "REGIME_BLOCKS",
+    "ActionClass",
+    "ActionContext",
     "AlpacaAPIError",
     "AlpacaBarSource",
     "AlpacaBroker",
+    "AuthorizationGate",
+    "AuthorizationRecord",
+    "AuthorizationRefused",
     "Broker",
     "CERTIFIED_B1_PAPER_CONFIG",
+    "ComponentState",
     "DailyBookConfig",
     "DailyCycleResult",
     "DuplicateOrder",
     "Fill",
     "HedgePolicy",
     "HeldUniverse",
+    "InputFreshness",
     "LiveLoopContext",
+    "OperatingState",
     "OrderRejected",
     "LoopState",
     "Order",
     "PROFILE_IDS",
+    "ProcessIdentity",
+    "ReconcileItem",
+    "ReconcileSettings",
+    "Reconciliation",
     "RegimeTelemetry",
     "ReplayBroker",
     "RiskProfile",
+    "RunDirHistory",
+    "SESSION_HISTORY_FILES",
+    "SUBMISSION_ANNOUNCEMENT",
     "SafetyConfig",
     "SafetyViolation",
+    "Scope",
+    "SessionIntent",
     "SleeveBand",
     "StateStore",
+    "VenueWriteRefused",
+    "WOULD_SUBMIT",
     "align_replay_panels",
+    "announce_submission",
     "assert_research_paper_bit_identity",
     "book_concordance",
     "book_config_matches_certified_paper",
+    "cancel_orders",
     "check_orders",
+    "classify_order",
     "decide_and_submit",
     "fetch_spinoffs",
     "halt_reason",
     "fetch_universe_panels",
+    "load_authorization",
     "load_local_bar_panels",
+    "mirror_run_dir",
+    "no_submit_session",
     "paper_monitor_read",
+    "permitted_classes",
     "read_concordance_ledger",
+    "reconcile",
+    "reconcile_loop_state",
     "read_equity_ledger",
     "read_fills_ledger",
+    "require_established_run_dir",
+    "resolve_endpoint",
     "resolve_fetch_universe",
     "resolve_risk_profile",
+    "sample_run_dir_history",
+    "transmits_to_venue",
     "validate_profile_payload",
     "read_regime_ledger",
     "read_targets_ledger",

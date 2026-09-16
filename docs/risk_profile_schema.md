@@ -94,6 +94,37 @@ Composition instruments (doctrine table — `docs/v040_program.md` §8):
 | Multi-book routing | book prefixes | enable flags from policy |
 | Claim packets | profile id recorded | every GO/deploy claim names profile |
 
+### 3.1 Declared profile files (engine spec §3.13, added 2026-09-08)
+
+Each id is also a **file** of the reference project, and the id stays accepted
+as an alias naming the file it maps to. `prism.live.risk_profile.PROFILE_FILES`
+is that map:
+
+| Profile id | File |
+|---|---|
+| `research_paper` | `examples/reference/profiles/paper.toml` |
+| `conservative` | `examples/reference/profiles/conservative.toml` |
+| `balanced` | `examples/reference/profiles/balanced.toml` |
+| `assertive` | `examples/reference/profiles/assertive.toml` |
+
+A file carries exactly the §3.13 top-level keys — `name`,
+`min_account_status`, and the optional `cash_buffer`, `long_only`,
+`min_regime_scale` — plus the `[[limits]]` array of §3.7.
+`load_declared_profile` enforces tighten-only **at load**: this is the
+reference project's rule, declared in its files, and the engine holds no
+universal threshold. The registry in `risk_profile.py` remains the
+construction path; `assert_declared_matches_resolved` is the receipt that the
+file and the code agree, run for every id by `tests/test_risk_profile.py`.
+
+**Controls no limit class expresses.** The four classes of §3.7 range over one
+account's holdings, so the §2 sleeve capital bands and the `de_gross.armed`
+flag have no limit form. They are *reported*, not dropped:
+`risk_profile.INEXPRESSIBLE_CONTROLS` names each one with the reason and where
+it still binds, and a test fails if a field of `DailyBookConfig` or
+`HedgePolicy` is neither expressible nor reported. The de-gross **bound** did
+find a home: §3.7 puts it on `regime_scale`, declared as the file's
+`min_regime_scale`, which the three non-paper files set to the ratified 0.5.
+
 **G6 soft gate (met):** this schema + `tests/test_risk_profile.py` + paper
 loop `--profile research_paper` pin without bit-breaking certified B1.
 No counted trial spent.

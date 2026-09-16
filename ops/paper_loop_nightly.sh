@@ -43,8 +43,9 @@ ts() { date "+%Y-%m-%dT%H:%M:%S%z"; }
 # shellcheck source=ops/_alert.sh
 . "$REPO/ops/_alert.sh"
 
-# prism.config's load_dotenv() will read $REPO/.env on import; source it
-# here as well so the credential gate below can decide without Python.
+# The Python entry points load $REPO/.env themselves (prism.workspace.load_env,
+# called from each command's main); source it here as well so the credential
+# gate below can decide without Python.
 set -a
 # shellcheck disable=SC1091
 [ -f "$REPO/.env" ] && . "$REPO/.env"
@@ -75,14 +76,52 @@ if [ -n "${FRED_API_KEY:-}" ]; then
     REGIME_STATE=on
 fi
 
+# ---------------------------------------------------------------------------
+# THE RELEASE SWITCH — the section 7 migration row "the working tree is the
+# live system" -> "a pinned installed release". ONE line, and it is the account
+# owner's act, not a deployment detail: changing it changes which code trades.
+#
+#   checkout      the editable .venv of this working tree. What runs today, and
+#                 the default until the owner switches, so nothing about this
+#                 session changes by upgrading the wrapper alone.
+#   <name>        $PRISM_RELEASE_ROOT/<name> — a pinned installed release
+#                 (default root: $REPO/releases). Switch by editing this line
+#                 to e.g. PRISM_RELEASE="${PRISM_RELEASE:-prism-0.3.4}".
+#   /abs/path     that release root, wherever it lives.
+#
+# Both paths work; the wrapper takes the release to run and nothing else in this
+# file changes with it. Review the upgrade first — `prism upgrade-diff` reports
+# what the new release would decide differently over recorded sessions — and
+# repoint the scheduler yourself; neither is done here.
+PRISM_RELEASE="${PRISM_RELEASE:-checkout}"
+PRISM_RELEASE_ROOT="${PRISM_RELEASE_ROOT:-$REPO/releases}"
+case "$PRISM_RELEASE" in
+    checkout) RELEASE_ROOT="$REPO"; PY="$REPO/.venv/bin/python3" ;;
+    /*)       RELEASE_ROOT="$PRISM_RELEASE"; PY="$PRISM_RELEASE/bin/python3" ;;
+    *)        RELEASE_ROOT="$PRISM_RELEASE_ROOT/$PRISM_RELEASE"; PY="$RELEASE_ROOT/bin/python3" ;;
+esac
+# Fail loud, never fall back: a wrapper that quietly reverted to the checkout
+# after the owner pinned a release would trade code nobody approved.
+if [ ! -x "$PY" ]; then
+    echo "$(ts) FAIL: PRISM_RELEASE=$PRISM_RELEASE resolves to $PY, which is not an executable interpreter; refusing to run rather than falling back to the checkout" >>"$LOG"
+    alert "$LOG" "$LOG_DIR" \
+        "prism session refused (release $PRISM_RELEASE unusable)" \
+        "PRISM_RELEASE=$PRISM_RELEASE resolved to $PY under root $RELEASE_ROOT. Install the release there, or set PRISM_RELEASE=checkout to run the working tree."
+    exit 4
+fi
+# cd to $REPO for both paths: --run-dir and --universe-file are repo-relative,
+# and the package lives under src/, so a repo cwd cannot shadow an installed
+# release's own prism.
 cd "$REPO" || exit 1
-PY="$REPO/.venv/bin/python3"
+# Which engine actually ran, beside the wrapper and the commit. Never fatal:
+# an unreadable version is a provenance gap, not a reason to skip a session.
+ENGINE_VERSION="$("$PY" -c 'import importlib.metadata as m; print(m.version("prism-trading"))' 2>/dev/null || echo unknown)"
 # Provenance stamp: which file drove this session, from which commit. The
 # doctor FAILs the next health read if wrapper= is absent or is not the
 # repo's ops/paper_loop_nightly.sh - a drifted copy cannot run green.
 COMMIT="$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo unknown)"
 [ -n "$(git -C "$REPO" status --porcelain -uno 2>/dev/null)" ] && COMMIT="${COMMIT}+dirty"
-echo "$(ts) RUN: book=momentum universe=$UNIVERSE regime=$REGIME_STATE wrapper=$SELF commit=$COMMIT" >>"$LOG"
+echo "$(ts) RUN: book=momentum universe=$UNIVERSE regime=$REGIME_STATE wrapper=$SELF commit=$COMMIT release=$PRISM_RELEASE engine=$ENGINE_VERSION" >>"$LOG"
 # shellcheck disable=SC2086
 "$PY" -m prism.scripts.paper_loop \
     --book momentum \

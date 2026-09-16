@@ -148,10 +148,13 @@ def anytime_monitor_read(
 ) -> dict[str, float | int | bool | str]:
     """Anytime-valid monitor verdict on whether mean per-period net return beats ``hurdle``.
 
-    Runs :func:`anytime_confidence_sequence` and reads it against ``hurdle`` (a
-    *per-period* net-return bar — 0.0 tests "does the book make money net"; pass a
-    periodic T-bill/cost hurdle to test economic viability, consistent with
-    ``after_cost_hurdle_periodic`` in :mod:`prism.validation.metrics`):
+    Runs :func:`anytime_confidence_sequence` and reads it against ``hurdle``, which is
+    a *per-period net return* in the units of ``returns`` — 0.0 tests "does the book
+    make money net", and the declared cash series' per-period accrual tests it against
+    its opportunity cost (§3.13 ``[benchmark].cash_series``). Returns are compared with
+    returns here, as in :mod:`prism.validation.compare` (§3.12 **[Q21]**);
+    ``after_cost_hurdle_periodic`` in :mod:`prism.validation.metrics` restates a yield
+    in *Sharpe* units and is therefore not what this argument takes:
 
     * ``edge_confirmed`` — the whole sequence is above ``hurdle`` (lower > hurdle):
       the strategy beats the bar at level ``1 − alpha``, valid at this stopping time.
@@ -164,9 +167,7 @@ def anytime_monitor_read(
     daily-inspected PSR read lacks. Returns a JSON-friendly dict so it can be
     logged beside the rolling-PSR read or embedded in a monitor artifact.
     """
-    lower, upper = anytime_confidence_sequence(
-        returns, alpha=alpha, bound=bound, opt_horizon=opt_horizon
-    )
+    lower, upper = anytime_confidence_sequence(returns, alpha=alpha, bound=bound, opt_horizon=opt_horizon)
     arr = _finite(returns)
     n = int(arr.size)
     mean = float(np.clip(arr, -bound, bound).mean()) if n else float("nan")

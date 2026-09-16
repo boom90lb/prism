@@ -181,32 +181,9 @@ class TestDecileNeutralConstruct:
                 construct_decile_neutral(self._score_frame(), decile=bad)
 
 
-@pytest.mark.research
-class TestResearchParity:
-    """The production node/construct must reproduce the research WFO reference
-    bit-for-bit (promoted, never imported by the live path — N8)."""
-
-    def test_momentum_score_matches_research(self):
-        from research.arbitrage.residual_walk_forward import _momentum_scores
-        from research.arbitrage.walk_forward import StatArbWalkForwardConfig
-
-        closes, volumes = _panel()
-        config = _small_config()
-        node = MomentumSignalNode(config, lookback_bars=LOOKBACK, skip_bars=SKIP)
-        got = node.score(closes, volumes)
-
-        wf = StatArbWalkForwardConfig(mom_lookback_bars=LOOKBACK, mom_skip_bars=SKIP)
-        ref = _momentum_scores(closes, volumes, config, wf, None)
-        ref_last = pd.Series(ref[-1], index=closes.columns, dtype=float)
-        pd.testing.assert_series_equal(got, ref_last, check_names=False)
-
-    def test_decile_construct_matches_research(self):
-        from research.arbitrage.residual_walk_forward import _momentum_row
-
-        rng = np.random.default_rng(5)
-        row = rng.normal(size=50)
-        row[[4, 11, 23]] = np.nan
-        frame = pd.DataFrame([row], columns=[f"S{i}" for i in range(50)])
-        got = construct_decile_neutral(frame, decile=0.10, max_symbol_abs_weight=1.0).iloc[0].to_numpy()
-        ref = _momentum_row(np.where(np.isfinite(row), row, np.nan), 0.10)
-        np.testing.assert_allclose(got, ref)
+# The research-parity class that lived here compared MomentumSignalNode and
+# construct_decile_neutral against research/arbitrage/residual_walk_forward.py's
+# _momentum_scores and _momentum_row. Those were deleted at stage 3b with the
+# rest of the residual walk-forward, so there is no second implementation left
+# to compare against; the node's behaviour is pinned by the recorded momentum
+# reproduction in tests/test_demotion_b1_reproduction.py instead.

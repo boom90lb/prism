@@ -9,7 +9,7 @@ time-series block structure that PurgedWalkForward already enforces.
 This module instead implements the natural block-cross-conformal variant
 (Foygel-Barber et al. 2021 family) by treating the caller's existing
 PurgedWalkForward meta-folds as the leave-block-out mechanism. An OOF
-prediction vector — the score path in ``prism.signal.ensemble_node``, or
+prediction vector — the score path in ``prism_ensemble``, or
 ``EnsembleModel._compute_oof_positions`` on the legacy research path —
 yields one out-of-sample prediction per training row, computed
 from a model that did not see that row. The residuals against the ideal

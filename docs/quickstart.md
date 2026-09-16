@@ -6,7 +6,7 @@ account, with every fill, NAV mark, and book-versus-target divergence
 recorded to append-only ledgers.
 
 It does not claim you will make money. The project's own evidence bar
-(`SPEC.md` §10) has never been cleared by any configuration: the first
+(`SPEC.md` §6) has never been cleared by any configuration: the first
 candidate was certified uneconomic and archived, and the momentum candidate's
 verdict is unreadable before mid-2027. Prism is a harness for finding out
 honestly. Nothing here is investment advice; the license is MIT, no warranty.
@@ -124,7 +124,7 @@ What accumulates in the run directory:
   decision before anything is persisted or submitted.
 - **Real money is out of scope here.** It requires explicitly setting
   `APCA_API_BASE_URL` to the live endpoint, and the repo's own doctrine is
-  that no configuration has cleared the deployment bar (`SPEC.md` §10).
+  that no configuration has cleared the deployment bar (`SPEC.md` §6).
   Whole-share sizing also sets a measured account floor: ~$100k holds the
   ~100-name book faithfully; $10k trades a structurally different portfolio
   (`docs/account_size_floor.md`).

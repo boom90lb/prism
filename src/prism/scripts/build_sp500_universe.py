@@ -38,13 +38,13 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import time
 from pathlib import Path
 
 import pandas as pd
 
-from prism.config import DATA_DIR
-from prism.io.loader import DataLoader
+from prism.io.loader import API_KEY_ENV_VAR, DataLoader
 from prism.io.universe_sp500 import (
     QUARANTINE_TABLE,
     RENAME_TABLE,
@@ -62,6 +62,8 @@ from prism.io.universe_sp500 import (
     write_universe_file,
 )
 from prism.logging_utils import configure_logging, get_symbol_logger
+from prism.scripts import announce_alias
+from prism.workspace import Workspace, load_env, resolve_workspace
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +74,11 @@ def parse_args() -> argparse.Namespace:
                    help="As-of date; names the artifacts and closes still-open membership intervals.")
     p.add_argument("--start_date", type=str, default="1990-01-01", help="Price-history start for the pull.")
     p.add_argument("--end_date", type=str, default=None)
-    p.add_argument("--out_dir", type=str, default=str(DATA_DIR / "universe"))
+    p.add_argument("--workspace", type=str, default=None,
+                   help="Writable root (default: $PRISM_WORKSPACE, else the current directory). "
+                        "The price cache is {workspace}/data and the logs are {workspace}/logs.")
+    p.add_argument("--out_dir", type=str, default=None,
+                   help="Output directory for the universe artifacts (default: {workspace}/data/universe).")
     p.add_argument("--wiki_url", type=str, default=WIKI_URL)
     p.add_argument("--html_file", type=str, default=None,
                    help="Read the Wikipedia HTML from a local file instead of the network "
@@ -93,15 +99,16 @@ def _to_vendor(ticker: str) -> str:
     return normalize_ticker(RENAME_TABLE.get(t, t))
 
 
-def _write_current_members(membership: pd.DataFrame, asof: str, path: Path) -> None:
+def _write_current_members(membership: pd.DataFrame, asof: str, path: Path, data_dir: Path) -> None:
     """Current members (intervals open at ``asof``) that have a local bar cache.
 
     The live loop's universe file: a fetchable-today proxy, NOT survivorship-free
     (backtests use the pit files). Quarantined symbols are excluded even when a
-    stale cache lingers on disk.
+    stale cache lingers on disk. ``data_dir`` is the workspace's bar cache --
+    the same directory the pull below writes into.
     """
     current = members_active_between(membership, asof, asof)
-    cached = {p.name.split("_1d_")[0] for p in DATA_DIR.glob("*_1d_*.parquet")}
+    cached = {p.name.split("_1d_")[0] for p in data_dir.glob("*_1d_*.parquet")}
     names = [s for s in current if s in cached and s not in QUARANTINE_TABLE]
     header = (
         f"# Current S&P 500 members as of {asof} with local price data (fetchable\n"
@@ -120,7 +127,13 @@ def _load_tables(args: argparse.Namespace) -> tuple[list[str], pd.DataFrame]:
 
 
 def _pull_prices(
-    symbols: list[str], start: str, end: str | None, *, rate_per_min: float = 7.0, consec_empty_warn: int = 15
+    symbols: list[str],
+    start: str,
+    end: str | None,
+    *,
+    loader: DataLoader,
+    rate_per_min: float = 7.0,
+    consec_empty_warn: int = 15,
 ) -> list[str]:
     """Fetch each symbol (paced under the API rate limit); return those with bars.
 
@@ -134,7 +147,6 @@ def _pull_prices(
     genuine gaps -- that is flagged loudly so the coverage number is not
     silently undercounted.
     """
-    loader = DataLoader()
     available: list[str] = []
     min_interval = 60.0 / max(rate_per_min, 0.1)
     last = 0.0
@@ -165,9 +177,14 @@ def _pull_prices(
 
 
 def main() -> None:
+    announce_alias("prism-build-universe", "prism data universe")
     args = parse_args()
-    configure_logging(verbose=args.verbose)
-    out_dir = Path(args.out_dir)
+    # Entry-point duties, in order: the workspace is created before the first
+    # write, and ``.env`` is loaded before the vendor key is read (spec §3.1).
+    workspace: Workspace = resolve_workspace(args.workspace).ensure()
+    load_env()
+    configure_logging(workspace.logs, verbose=args.verbose)
+    out_dir = Path(args.out_dir) if args.out_dir else workspace.data / "universe"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     current, changes = _load_tables(args)
@@ -212,14 +229,17 @@ def main() -> None:
         # wrong instrument, and pulling it would re-create the bad cache the
         # quarantine exists to keep out (docs/data_integrity_diagnostic.md §6).
         fetchable = [s for s in pull if normalize_ticker(s) not in QUARANTINE_TABLE]
-        available = _pull_prices(fetchable, args.start_date, args.end_date, rate_per_min=args.rate_per_min)
+        loader = DataLoader(api_key=os.environ.get(API_KEY_ENV_VAR), cache_dir=workspace.data)
+        available = _pull_prices(
+            fetchable, args.start_date, args.end_date, loader=loader, rate_per_min=args.rate_per_min
+        )
         coverage = compute_coverage(pull, available, asof=args.asof)
         coverage_path = out_dir / f"sp500_coverage_{args.asof}.json"
         coverage_path.write_text(json.dumps(coverage.to_dict(), indent=2))
         resolved_path = out_dir / f"sp500_pit_resolved_{args.asof}.txt"
         write_universe_file(coverage.resolved, resolved_path, asof=args.asof, source="wikipedia+twelvedata_resolved")
         current_path = out_dir / "sp500_current.txt"
-        _write_current_members(membership, args.asof, current_path)
+        _write_current_members(membership, args.asof, current_path, workspace.data)
         result["coverage_file"] = str(coverage_path)
         result["coverage_fraction"] = coverage.coverage_fraction
         result["n_resolved"] = coverage.n_resolved

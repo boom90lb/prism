@@ -1,0 +1,13 @@
+# Monitoring is telemetry. `response = "report"` is the only supported value in
+# this version: a deterioration detector that changes exposure needs its own
+# specification, and the loader refuses any other value rather than implying one.
+evidence_window_periods = 21
+statistic = "mean_net_return"
+alpha = 0.05
+hurdle = 0.0
+opt_horizon = 252
+min_periods = 6
+reset_policy = "never"
+readers = ["anytime", "paper_monitor"]
+response = "report"
+report_every_session = true

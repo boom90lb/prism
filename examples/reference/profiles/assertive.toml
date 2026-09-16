@@ -1,0 +1,22 @@
+# The `assertive` profile of docs/risk_profile_schema.md §1, as a declared file.
+# "Higher risk *within* pins" is a sleeve-mix statement, not a leverage one:
+# the holding-state limits here are identical to `balanced.toml`, because a
+# profile may never exceed the certified gross (schema §1 hard rule 1, §5
+# non-goal "no assertive = higher leverage than certified"). The mix that makes
+# it assertive — equity 0.5-0.6, trend 0.3-0.4 — has no limit class in §3.7 and
+# is recorded in `prism.live.risk_profile.INEXPRESSIBLE_CONTROLS`.
+name = "assertive"
+min_account_status = "undetermined"
+min_regime_scale = 0.5
+
+[[limits]]
+name = "max_gross"
+class = "preference"
+priority = 1
+value = 1.0
+
+[[limits]]
+name = "max_name_weight"
+class = "preference"
+priority = 2
+value = 0.10

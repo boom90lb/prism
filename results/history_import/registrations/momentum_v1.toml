@@ -1,0 +1,15 @@
+# registrations/imported/momentum_v1.toml — written by prism.history_import (§3.13).
+# An imported registration never admits a run: it records the set's spent rows, remaining
+# budget, status and clock so the migration loses none of them.
+id = "momentum_v1"
+kind = "imported"
+imported_at = 2026-09-08
+source_ledger = "results/momentum_v1_trials.jsonl"
+source_sha256 = "6e1cfdf877d5e75a77ec3fd5ccd82d50ae6f2bc1a84207c356cc2ec718eee6d9"
+rows_imported = 6
+declared_budget = 8
+rows_spent = 6
+status = "open"
+legacy_independent_count = 8
+registration_doc = "docs/momentum_m_series_read_2026-09-03.md"
+clock_conditions = ["M6 reads on data through 2027-06 or later"]

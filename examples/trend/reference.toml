@@ -1,0 +1,67 @@
+# The paper loop's `--book trend` as a specification (spec section 3.3,
+# `examples/trend/reference.toml`).
+#
+# The declaration of record for the book that
+# `python -m prism.scripts.paper_loop --book trend` trades under CLI defaults.
+# Every value reproduces a default of `prism.scripts.paper_books.BookParams`
+# or of `BOOKS["trend"]`; `tests/test_paper_books_specifications.py` asserts
+# the two field by field.
+#
+# The CLI still constructs the book from the registry: `horizon_bars` tracks
+# `--decision-every` and the rank-to-weight caps track `--max-gross` /
+# `--max-symbol-weight`, and a fixed configuration table cannot carry a
+# per-run override. See `paper_books.load_book_specification`.
+
+[strategy]
+name = "trend_v1"
+combination = "position_space"
+renormalize = false
+# Pinned at trend_v1 ratification; the same tuple as
+# `prism.signal.trend_node.TREND_V1_UNIVERSE` and
+# `BOOKS["trend"].default_universe`, which the CLI uses when neither
+# --universe-file nor --symbols is given.
+universe_list = ["SPY", "EFA", "EEM", "TLT", "IEF", "LQD", "HYG", "GLD", "PDBC", "UUP"]
+universe_as_of = "2026-07-17"
+universe_registration = "docs/trend_design.md section 1"
+
+[[strategy.components]]
+id = "trend"
+path = "prism.signal.trend_node:TrendSignalNode"
+weight = 1.0
+horizon_bars = 21
+update_every_bars = 21
+valid_for_bars = 21
+to_weights = "sign_inverse_vol"
+
+[strategy.components.params]
+lookback_bars = 252
+skip_bars = 21
+horizon_bars = 21
+
+# `annualization_bars` is the `construct_inverse_vol_targets` default the live
+# path takes (`prism.live.daily._construct_raw_book` passes no override).
+[strategy.components.to_weights_params]
+vol_ewma_bars = 63
+annualization_bars = 252
+max_gross = 1.0
+max_symbol_abs_weight = 0.10
+
+# `TrendSignalNode` applies no eligibility screen at all: the universe is the
+# pinned ten-ETF list and a name without lookback history simply scores NaN.
+# Every field is therefore left at its declared default, which the loader
+# resolves into the specification before hashing.
+[strategy.eligibility]
+
+[construction]
+kind = "heuristic"
+step_order = "construct_cap_band_participation"
+
+[construction.band]
+mode = "off"
+
+[policy]
+profile = "examples/reference/profiles/paper.toml"
+costs = "examples/reference/costs/retail_v1.toml"
+execution = "examples/reference/profiles/execution_alpaca.toml"
+monitoring = "examples/reference/policies/monitoring.toml"
+recovery = "examples/reference/policies/recovery.toml"

@@ -1,0 +1,207 @@
+{
+  "config_id": "215f50542d0ffe2ec54a662cf721d7d202e3e68e4b0b3ff2d0f06e35956ff54d",
+  "copied_dataset_files": 579,
+  "copied_tracked_input_files": 232,
+  "data_id": "bedf8c4c0f0c2195ce5aace938f4ad38e23e6b69b57075080073004692d46eef",
+  "direct_url": {
+    "archive_info": {},
+    "url": "file:///home/b90/prism-artifacts/engine-overhaul-stage6/owner-migration/final/private-project/vendor/prism_trading-0.4.0-py3-none-any.whl"
+  },
+  "distribution": "prism-trading",
+  "distribution_id": "sha256:db11e3f95768a04e1cd6951114bb4cdaea2a21e2d7cd10838bc1c6ec3c443e5b",
+  "engineering_rows": 2,
+  "fold_table_sha256": "fec02ca011e8c66309ab9e414403d1a6412a10569ff47bac775fa754ef3384f8",
+  "history": {
+    "data/universe/sp500_density_trials.jsonl": {
+      "bytes": 23328,
+      "rows": 4,
+      "sha256": "a27db9c31705d972b238274b2bb47e2b2032966dab2cbf02d06a645f12ea91fa"
+    },
+    "results/history_import/records.jsonl": {
+      "bytes": 167001,
+      "rows": 32,
+      "sha256": "6a39dd6c46c909c705648c51c3737b830184c7b96ac5fa45fed4eb4fa6318da3"
+    },
+    "results/momentum_v1_trials.jsonl": {
+      "bytes": 38376,
+      "rows": 6,
+      "sha256": "6e1cfdf877d5e75a77ec3fd5ccd82d50ae6f2bc1a84207c356cc2ec718eee6d9"
+    },
+    "results/stat_arb_residual_trials.jsonl": {
+      "bytes": 98123,
+      "rows": 17,
+      "sha256": "92a1a5e478e8318cb546b5971038a641d4cb0c9bccd53cb4b2b6142efbde3a96"
+    },
+    "results/trend_v1_trials.jsonl": {
+      "bytes": 14264,
+      "rows": 5,
+      "sha256": "a4c1f245bd730c89203bc354ffea9390dd2a82f83a434267bd4c97e89bf43687"
+    },
+    "trials/exploratory.jsonl": {
+      "bytes": 16164,
+      "rows": 23,
+      "sha256": "e121bab7478226526ac1ae6628d34d29e6d9072f9cd9ba9999d99518d27340aa"
+    },
+    "trials/momentum_construction_v1.jsonl": {
+      "bytes": 54746,
+      "rows": 74,
+      "sha256": "9586aa8464122bf9a38f2f22bdf4a18a7071fd44d593d54654194201cb63a67b"
+    },
+    "trials/momentum_v1.jsonl": {
+      "bytes": 4561,
+      "rows": 7,
+      "sha256": "f79d5444117551070a586fa594e0252e75c62f31e4627907cd9354e1ca87e1a9"
+    },
+    "trials/provenance.jsonl": {
+      "bytes": 3481,
+      "rows": 5,
+      "sha256": "344a0f692930feb61e6c80f9c01f84a5c8ea884c35d8461809c1332b7a11f52a"
+    },
+    "trials/stat_arb_residual.jsonl": {
+      "bytes": 20136,
+      "rows": 28,
+      "sha256": "bfd8dbf7408eb57cdc120d61daac267daee0a77717267fa6c2d92f4fca22ee78"
+    },
+    "trials/trend_v1.jsonl": {
+      "bytes": 5316,
+      "rows": 8,
+      "sha256": "347a7acdbc62b43fd73202d16ee26380f5a40f61763ba0e6ecd229f22606c8c7"
+    }
+  },
+  "history_files_unchanged": 11,
+  "import_file": "/home/b90/prism-artifacts/engine-overhaul-stage6/owner-migration/final/private-project/.venv/lib/python3.12/site-packages/prism/__init__.py",
+  "installed_record_sha256": "db11e3f95768a04e1cd6951114bb4cdaea2a21e2d7cd10838bc1c6ec3c443e5b",
+  "metrics": {
+    "annualized_return": {
+      "absolute_difference": 0.0,
+      "recorded": 0.048045335752954665,
+      "reproduced": 0.048045335752954665
+    },
+    "annualized_vol": {
+      "absolute_difference": 6.938893903907228e-17,
+      "recorded": 0.11507946745850657,
+      "reproduced": 0.11507946745850664
+    },
+    "avg_gross": {
+      "absolute_difference": 1.1102230246251565e-16,
+      "recorded": 0.9680381326842661,
+      "reproduced": 0.9680381326842662
+    },
+    "avg_turnover": {
+      "absolute_difference": 2.0816681711721685e-17,
+      "recorded": 0.049976844189589156,
+      "reproduced": 0.04997684418958918
+    },
+    "max_drawdown": {
+      "absolute_difference": 0.0,
+      "recorded": 0.13999581002068906,
+      "reproduced": 0.13999581002068906
+    },
+    "oos_periodic_sharpe": {
+      "absolute_difference": 1.0408340855860843e-17,
+      "recorded": 0.029320118792967115,
+      "reproduced": 0.029320118792967125
+    },
+    "sharpe": {
+      "absolute_difference": 1.6653345369377348e-16,
+      "recorded": 0.46544245642237375,
+      "reproduced": 0.4654424564223739
+    },
+    "total_cost": {
+      "absolute_difference": 1.3877787807814457e-17,
+      "recorded": 0.03695893383824346,
+      "reproduced": 0.036958933838243474
+    },
+    "total_return": {
+      "absolute_difference": -2.220446049250313e-16,
+      "recorded": 0.27579902407593426,
+      "reproduced": 0.27579902407593404
+    }
+  },
+  "n_folds": 21,
+  "n_observations": 1308,
+  "native_history": {
+    "trials/exploratory.jsonl": {
+      "attempt_counts": {
+        "attempt_basis": "config_id",
+        "excluded_rows": {
+          "reproduction": 5
+        },
+        "n_independent": 5,
+        "n_trials_observed": 7
+      },
+      "rows": 23
+    },
+    "trials/momentum_construction_v1.jsonl": {
+      "attempt_counts": {
+        "attempt_basis": "arm_id",
+        "excluded_rows": {},
+        "n_independent": 3,
+        "n_trials_observed": 3
+      },
+      "rows": 74
+    },
+    "trials/momentum_v1.jsonl": {
+      "attempt_counts": {
+        "attempt_basis": "arm_id",
+        "excluded_rows": {
+          "imported": 6
+        },
+        "n_independent": 0,
+        "n_trials_observed": 1
+      },
+      "rows": 7
+    },
+    "trials/provenance.jsonl": {
+      "attempt_counts": {
+        "attempt_basis": "arm_id",
+        "excluded_rows": {},
+        "n_independent": 1,
+        "n_trials_observed": 1
+      },
+      "rows": 5
+    },
+    "trials/stat_arb_residual.jsonl": {
+      "attempt_counts": {
+        "attempt_basis": "arm_id",
+        "excluded_rows": {
+          "imported": 17,
+          "reproduction": 10
+        },
+        "n_independent": 0,
+        "n_trials_observed": 3
+      },
+      "rows": 28
+    },
+    "trials/trend_v1.jsonl": {
+      "attempt_counts": {
+        "attempt_basis": "arm_id",
+        "excluded_rows": {
+          "imported": 5,
+          "reproduction": 2
+        },
+        "n_independent": 0,
+        "n_trials_observed": 2
+      },
+      "rows": 8
+    }
+  },
+  "native_ledger_chains_verified": 6,
+  "offline_guard": "socket connection, address lookup, bind and .env opens refused by Python audit hook",
+  "private_lock_sha256": "919f7c8ff21b3cee5e01a0f4dd5eda73d933a9f114d060283f23816d89676787",
+  "project": "/home/b90/prism-artifacts/engine-overhaul-stage6/owner-migration/final/private-project",
+  "record": "/home/b90/prism-artifacts/engine-overhaul-stage6/owner-migration/final/private-project/results/run-f4c613fb26574d41/record.json",
+  "relative_and_absolute_tolerance": 1e-09,
+  "run_id": "run-f4c613fb26574d41",
+  "scope": "Full historical B1 bucket reproduction from installed wheel; no new research claim or operating session",
+  "seconds": 286.0808048350009,
+  "source": "/home/b90/prism/.claude/worktrees/engine-overhaul",
+  "source_commit": "f9a8a3a3a3d900ee8140d6e7690d58cef135b299",
+  "source_dirty": true,
+  "source_tracked_diff_sha256": "fd8c5c2314a20971d2f671d63727a4ab3dc0a9e63063eb32197492fb59ba2589",
+  "status": "Tested",
+  "trial_rows_appended": 0,
+  "version": "0.4.0",
+  "wheel": "/home/b90/prism-artifacts/engine-overhaul-stage6/release/final-candidate/prism_trading-0.4.0-py3-none-any.whl",
+  "wheel_sha256": "ad479c6a006ab28f91b722675e69fb38c95bd7eb0171e95184f9c492a85060fc"
+}

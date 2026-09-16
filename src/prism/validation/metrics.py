@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import logging
 import math
+import warnings
 from itertools import combinations
 from typing import Union
 
@@ -107,9 +108,7 @@ def _psr_from_stats(sr: float, n: int, sr_benchmark: float, g3: float, g4: float
     """
     denom_sq = 1.0 - g3 * sr + ((g4 - 1.0) / 4.0) * sr * sr
     if denom_sq <= 0.0 or not np.isfinite(denom_sq):
-        logger.debug(
-            f"PSR denominator non-positive (SR={sr:.3f}, skew={g3:.3f}, kurt={g4:.3f}); returning NaN"
-        )
+        logger.debug(f"PSR denominator non-positive (SR={sr:.3f}, skew={g3:.3f}, kurt={g4:.3f}); returning NaN")
         return float("nan")
     z = (sr - sr_benchmark) * math.sqrt(n - 1) / math.sqrt(denom_sq)
     return float(norm.cdf(z))
@@ -164,9 +163,7 @@ def expected_max_sharpe(trial_sharpes: ArrayLike) -> float:
     sr_std = arr.std(ddof=1)
     if not np.isfinite(sr_std) or sr_std < _STD_FLOOR:
         return 0.0
-    z = (1.0 - EULER_GAMMA) * norm.ppf(1.0 - 1.0 / N) + EULER_GAMMA * norm.ppf(
-        1.0 - 1.0 / (N * math.e)
-    )
+    z = (1.0 - EULER_GAMMA) * norm.ppf(1.0 - 1.0 / N) + EULER_GAMMA * norm.ppf(1.0 - 1.0 / (N * math.e))
     return float(sr_std * z)
 
 
@@ -219,9 +216,7 @@ def expected_max_sharpe_with_n(trial_sharpes: ArrayLike, n_trials: int) -> float
     sr_std = arr.std(ddof=1)
     if not np.isfinite(sr_std) or sr_std < _STD_FLOOR:
         return 0.0
-    z = (1.0 - EULER_GAMMA) * norm.ppf(1.0 - 1.0 / N) + EULER_GAMMA * norm.ppf(
-        1.0 - 1.0 / (N * math.e)
-    )
+    z = (1.0 - EULER_GAMMA) * norm.ppf(1.0 - 1.0 / N) + EULER_GAMMA * norm.ppf(1.0 - 1.0 / (N * math.e))
     return float(sr_std * z)
 
 
@@ -296,9 +291,7 @@ def probability_backtest_overfitting(
         raise ValueError(f"n_splits must be even and ≥ 2, got {n_splits}")
     slice_len = T // n_splits
     if slice_len < 2:
-        logger.warning(
-            f"PBO: T={T} too small for n_splits={n_splits} (need slice_len ≥ 2); returning NaN"
-        )
+        logger.warning(f"PBO: T={T} too small for n_splits={n_splits} (need slice_len ≥ 2); returning NaN")
         return float("nan")
 
     # Pre-slice indices.
@@ -349,16 +342,24 @@ def _block_sharpe(block: np.ndarray) -> np.ndarray:
 
 
 # ---------------------------------------------------------------------------
-# Fundamental law of active management (Grinold 1989; Clarke-de Silva-Thorley
-# 2002) — breadth accounting per SPEC.md N6 and law 3a.
+# Breadth accounting (Grinold 1989; Clarke-de Silva-Thorley 2002) — SPEC.md N6.
 #
-# The one load-bearing law for this project: IR = IC * sqrt(BR). These are
-# *diagnostic* functions. The IR ceiling IC*sqrt(N_eff) is a MAXIMUM achievable
-# information ratio, NOT a promotion threshold — a realized Sharpe below it is the
-# normal case. It is used two ways (SPEC.md §10): a realized Sharpe *above* the
-# ceiling is a falsification signal (leak/overfit); the ceiling must clear the
-# after-cost hurdle for the edge to be viable. All quantities are PERIODIC at the
-# input frequency (e.g. daily); annualize both sides consistently or not at all.
+# IR = IC * sqrt(BR) holds under the law's own assumptions, and these are
+# *diagnostic* functions built on it. |IC| * sqrt(N_eff) is the information-ratio
+# ceiling that identity implies for the declared IC and the declared breadth
+# estimator. It is model-dependent — it moves with the covariance universe, the
+# weighting, the horizon and the estimator — and it is not a Sharpe ceiling the
+# world enforces. A realized number above it motivates investigation (a leak, a
+# bug, a mis-estimated IC, a breadth estimate on the wrong covariance) and
+# establishes none of those.
+#
+# The diagnostic carries no hurdle and no viability verdict. Whether a book clears
+# an after-cost bar is a comparison of return series and lives in
+# `prism.validation.compare` (engine specification §3.12): returns are compared
+# with returns, and no Sharpe number is compared with a yield.
+#
+# All quantities are PERIODIC at one common input frequency (e.g. daily);
+# annualize both sides consistently or not at all.
 # ---------------------------------------------------------------------------
 
 
@@ -418,11 +419,18 @@ def effective_breadth_from_cov(cov: Union[np.ndarray, pd.DataFrame]) -> float:
 
 
 def information_ratio_ceiling(information_coefficient: float, effective_breadth_value: float) -> float:
-    """Maximum achievable periodic IR: ``|IC| * sqrt(N_eff)`` (FLAM upper bound).
+    """Periodic IR implied by the law: ``|IC| * sqrt(N_eff)``.
 
-    This is a ceiling, not a target. ``IC`` is a *periodic* information
-    coefficient (rank IC at the decision horizon); ``N_eff`` is effective breadth
-    at the same cross-section. Returns NaN on non-finite / negative-breadth input.
+    A ceiling under the fundamental law's assumptions, not a target and not a
+    threshold. It is model-dependent: it is only as good as the ``IC`` estimate and
+    the breadth estimator behind ``N_eff``, so it must be reported with the
+    covariance universe, weighting, horizon and estimator that produced it. ``IC``
+    is a *periodic* information coefficient (rank IC at the decision horizon);
+    ``N_eff`` is effective breadth on the same cross-section. Returns NaN on
+    non-finite / negative-breadth input.
+
+    The function is unchanged from the pre-overhaul engine; only this docstring is
+    corrected (engine specification §3.12 migration row for SPEC.md N6).
     """
     ic = float(information_coefficient)
     br = float(effective_breadth_value)
@@ -462,21 +470,24 @@ def after_cost_hurdle_periodic(
     periodic_vol: float,
     periods_per_year: int = 252,
 ) -> float:
-    """Convert an annual return hurdle into a periodic *Sharpe* hurdle.
-
-    SPEC.md §10: the after-cost hurdle is a stated, real-terms choice, never
-    an implicit nominal zero — anchored at minimum to the prevailing T-bill
-    yield (the cash book's opportunity cost). Comparing a strategy's periodic
-    Sharpe against this hurdle is equivalent to requiring its mean periodic
-    return to beat the hurdle's periodic return at the strategy's own realized
-    vol:
+    """Unit conversion: an annual return hurdle expressed in Sharpe units.
 
         hurdle_sharpe = (annual_hurdle_return / periods_per_year) / periodic_vol
 
-    ``annual_hurdle_return`` is a fraction (0.053 for a 5.3% bill yield —
-    nominal or real per the recorded basis); ``periodic_vol`` is the
-    strategy's realized periodic return std. Returns NaN for non-finite
-    inputs or a non-positive vol (no returns stream to hold to the bar).
+    This is arithmetic, not a viability test. It restates a yield in the units of
+    a Sharpe *at one stated vol*; it does not establish that a book clears the
+    hurdle, and the number it returns is not something to compare a realized
+    Sharpe against as evidence. The evidential read is on return series: subtract
+    the declared cash series from the net return series and read the excess-return
+    Sharpe with its studentized interval
+    (:func:`prism.validation.compare.excess_sharpe_interval`, §3.12 **[Q21]**).
+
+    Kept because recorded evidence and the reproduced research drivers call it
+    (``research/scripts/trend_wfo.py``), and because a stated hurdle beats an
+    implicit nominal zero (SPEC.md §10). ``annual_hurdle_return`` is a fraction
+    (0.053 for a 5.3% bill yield — nominal or real per the recorded basis);
+    ``periodic_vol`` is the strategy's realized periodic return std. Returns NaN
+    for non-finite inputs or a non-positive vol.
     """
     if periods_per_year < 1:
         raise ValueError(f"periods_per_year must be >= 1, got {periods_per_year}")
@@ -487,6 +498,68 @@ def after_cost_hurdle_periodic(
     return hurdle / periods_per_year / vol
 
 
+def breadth_diagnostic(
+    realized_periodic_sharpe: float,
+    information_coefficient: float,
+    effective_breadth_value: float,
+) -> dict[str, float]:
+    """Breadth accounting per SPEC.md N6, with no hurdle and no verdict.
+
+    Reports three numbers and one flag, all periodic at one common frequency:
+
+    * ``ir_ceiling`` = ``|IC| * sqrt(N_eff)`` — the information ratio the fundamental
+      law implies for the declared IC and the declared breadth estimator.
+    * ``breadth_ratio`` = ``realized / (|IC| * sqrt(N_eff))`` — the share of that
+      implied ceiling the book realized. It is a ratio against a model, not a
+      fraction of an enforced maximum, and it moves with the covariance universe,
+      the weighting, the horizon and the estimator behind ``N_eff``; report those
+      alongside it or the ratio means nothing.
+    * ``exceeds_diagnostic`` — whether ``realized > ir_ceiling``. Exceeding the
+      diagnostic **motivates investigation** (a leak, a bug, a mis-estimated IC, a
+      breadth estimate on the wrong covariance) and **establishes none of them**. It
+      is not a falsification, and staying below it is not evidence of anything: for
+      any real book it is the ordinary case.
+
+    The diagnostic deliberately carries no ``after_cost_hurdle``, no ``viable`` flag
+    and no ``viability_margin``. Whether a book clears an after-cost bar is a
+    comparison of return series and lives in :mod:`prism.validation.compare`
+    (engine specification §3.12 **[Q19], [Q21]**): returns are compared with returns,
+    and a Sharpe number is never compared with a yield.
+
+    Returns a JSON-friendly dict of floats (``exceeds_diagnostic`` as 1.0/0.0/NaN) so
+    it can be embedded in a record. Non-finite or negative-breadth input propagates to
+    NaN rather than to a misleading False.
+    """
+    ceiling = information_ratio_ceiling(information_coefficient, effective_breadth_value)
+    realized = float(realized_periodic_sharpe)
+    if np.isfinite(ceiling) and np.isfinite(realized):
+        exceeds = float(realized > ceiling)
+    else:
+        exceeds = float("nan")
+    if np.isfinite(ceiling) and np.isfinite(realized) and abs(ceiling) > _STD_FLOOR:
+        breadth_ratio = realized / ceiling
+    else:
+        breadth_ratio = float("nan")
+    return {
+        "n_eff": float(effective_breadth_value),
+        "information_coefficient": float(information_coefficient),
+        "ir_ceiling": ceiling,
+        "realized": realized,
+        "breadth_ratio": breadth_ratio,
+        "exceeds_diagnostic": exceeds,
+    }
+
+
+#: Message the legacy alias carries, so a caller reading it knows what it is for.
+LEGACY_DIAGNOSTIC_NOTE = (
+    "fundamental_law_diagnostic is a legacy alias kept only to read recorded artifacts such as "
+    "results/demotion_b1/breadth_diagnostic.json. Its after_cost_hurdle, viable and viability_margin "
+    "fields infer viability from a ceiling, which the engine specification (§3.12 [Q19]) drops. New "
+    "code calls breadth_diagnostic and reads return-versus-hurdle through prism.validation.compare. "
+    "The alias is removed no earlier than stage 6 under the deprecation policy."
+)
+
+
 def fundamental_law_diagnostic(
     realized_periodic_sharpe: float,
     information_coefficient: float,
@@ -494,24 +567,31 @@ def fundamental_law_diagnostic(
     *,
     after_cost_hurdle: float = 0.0,
 ) -> dict[str, float]:
-    """Breadth-accounting diagnostic per SPEC.md N6 / §10.
+    """Legacy breadth diagnostic, kept to read recorded artifacts (§3.12 [Q19]).
 
-    Reports the FLAM ceiling beside the realized number and evaluates the two
-    gates the ceiling actually supports (never "is realized below the ceiling",
-    which is trivially true for any real strategy):
+    Deprecated. This is the pre-overhaul shape, preserved field for field so a
+    recorded artifact written by it stays readable and reproducible:
+    ``results/demotion_b1/breadth_diagnostic.json`` carries exactly these keys. Its
+    ``after_cost_hurdle``, ``viable`` and ``viability_margin`` fields read viability
+    off a model-dependent ceiling, which the engine specification drops; its
+    ``falsification`` field states as a verdict what is only a prompt to investigate.
 
-    * ``ir_ceiling`` = ``|IC| * sqrt(N_eff)`` — maximum achievable periodic IR.
-    * ``falsification`` — True iff ``realized > ceiling``: a realized Sharpe that
-      *exceeds* the achievable maximum signals leakage / overfit / a bug, and the
-      claim must be rejected, not celebrated.
-    * ``viability_margin`` = ``ceiling - after_cost_hurdle`` — the edge is worth
-      pursuing only when this is positive with margin; a ceiling below the
-      after-cost hurdle means no attainable IC/breadth combination clears cost.
+    New code calls :func:`breadth_diagnostic`, which reports the breadth ratio, the
+    realized value and whether the realized exceeds the diagnostic, and nothing else;
+    the after-cost read is a comparison of return series in
+    :mod:`prism.validation.compare`. Emits :class:`DeprecationWarning`; removed no
+    earlier than stage 6.
 
-    All inputs are periodic at one common frequency. Returns a JSON-friendly dict
-    of floats (``falsification`` as 1.0/0.0/NaN) so it can be embedded in a claim
-    packet. NaN inputs propagate to NaN gates rather than a misleading False.
+    Reports the FLAM ceiling beside the realized number:
+
+    * ``ir_ceiling`` = ``|IC| * sqrt(N_eff)``.
+    * ``falsification`` — 1.0 iff ``realized > ceiling``.
+    * ``viability_margin`` = ``ceiling - after_cost_hurdle``.
+
+    All inputs are periodic at one common frequency. Returns a JSON-friendly dict of
+    floats. NaN inputs propagate to NaN gates rather than a misleading False.
     """
+    warnings.warn(LEGACY_DIAGNOSTIC_NOTE, DeprecationWarning, stacklevel=2)
     ceiling = information_ratio_ceiling(information_coefficient, effective_breadth_value)
     realized = float(realized_periodic_sharpe)
     hurdle = float(after_cost_hurdle)

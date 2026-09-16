@@ -23,7 +23,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from prism.signal.base import Signal
+from prism.signal.base import FittedState, OutputKind, ScoringBasis, Signal, Units
 
 # Pinned at trend_v1 ratification (docs/trend_design.md §1). Recorded here as
 # the node's default membership hint; callers may pass a different column set
@@ -48,6 +48,17 @@ class TrendSignalNode(Signal):
     ``lookback_bars`` / ``skip_bars`` default to the pinned 252 / 21 window.
     ``horizon_bars`` tags the forward holding period (does not enter the score).
     """
+
+    # Declarations (§3.3). Sign-consumed by `construct_inverse_vol_targets`, so
+    # the emission is a rank score in rank units. The basis is the recorded one:
+    # the driver scores on a reinvested (total-return) close while costs, dollar
+    # volume, and fills stay on the as-traded panel.
+    output_kind: OutputKind = "rank_score"
+    units: Units = "rank"
+    scoring_basis: ScoringBasis = "total_return"
+    price_scale_invariant: bool = True
+    fitted_state: FittedState = "none"
+    estimated_decay_bars: int | None = None
 
     def __init__(
         self,

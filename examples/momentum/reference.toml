@@ -1,0 +1,81 @@
+# The paper loop's `--book momentum` as a specification (spec section 3.3,
+# `examples/momentum/reference.toml`).
+#
+# This file is the declaration of record for the book that
+# `python -m prism.scripts.paper_loop --book momentum` trades under CLI
+# defaults. Every value here reproduces a default of
+# `prism.scripts.paper_books.BookParams` or of the registry entry
+# `BOOKS["momentum"]`; `tests/test_paper_books_specifications.py` asserts the
+# two field by field, so a default that drifts on either side fails a test
+# rather than forking the promotion instrument silently.
+#
+# The CLI still constructs the book from the registry, not from this file: the
+# momentum node takes a runtime `membership_mask` and a `horizon_bars` that
+# tracks `--decision-every`, neither of which a fixed configuration table can
+# supply. See the stage 1 report and `paper_books.load_book_specification`.
+
+[strategy]
+name = "momentum_12_1"
+# The live invocation names the point-in-time snapshot on the command line
+# (`--universe-file data/universe/sp500_current.txt`); the index it snapshots
+# is the universe of record.
+universe_index = "sp500"
+combination = "position_space"
+renormalize = false
+
+[[strategy.components]]
+id = "momentum"
+path = "prism.signal.momentum_node:MomentumSignalNode"
+weight = 1.0
+# 21 sessions is the B1 monthly cadence: `BOOKS["momentum"].default_decision_every`,
+# which the CLI threads into the node's `horizon_bars` and into
+# `DailyBookConfig.decision_every`. The output is consumed for exactly the
+# cadence it is refreshed on, so `valid_for_bars` equals `update_every_bars`;
+# the live book carries no staleness slack.
+horizon_bars = 21
+update_every_bars = 21
+valid_for_bars = 21
+to_weights = "decile_long_short"
+
+[strategy.components.params]
+lookback_bars = 252
+skip_bars = 21
+horizon_bars = 21
+
+[strategy.components.to_weights_params]
+decile = 0.10
+max_gross = 1.0
+max_symbol_abs_weight = 0.10
+
+# The screen `MomentumSignalNode` actually applies, which is
+# `prism.residual.factors.compute_eligibility` under a default
+# `ResidualStatArbConfig`: `return_history_bars` is that config's `corr_window`.
+# `exclude_asset_classes` is empty because the default config's `etf_symbols`
+# is empty, so no column is excluded by asset class today.
+# `membership_required` is true: a name outside the universe file is either
+# absent from the scored panel or masked ineligible as a valuation-only extra.
+[strategy.eligibility]
+min_price = 5.0
+min_median_dollar_volume = 1000000.0
+dollar_volume_window = 20
+return_history_bars = 252
+listing_seasoning_bars = 0
+membership_required = true
+exclude_asset_classes = []
+
+[construction]
+kind = "heuristic"
+# `prism.live.daily._construct_book`: score, construct (the cap is inside the
+# construct), online no-trade band, participation gate.
+step_order = "construct_cap_band_participation"
+
+# `--band` defaults to 0.0, so the online hysteresis is off.
+[construction.band]
+mode = "off"
+
+[policy]
+profile = "examples/reference/profiles/paper.toml"
+costs = "examples/reference/costs/retail_v1.toml"
+execution = "examples/reference/profiles/execution_alpaca.toml"
+monitoring = "examples/reference/policies/monitoring.toml"
+recovery = "examples/reference/policies/recovery.toml"

@@ -1,7 +1,7 @@
 # Prism
 
 Prism is a cross-sectional systematic trading engine for US equities at a
-daily-to-weekly horizon: **score → residualize → construct → execute**,
+daily-bar resolution: **score → residualize → construct → execute**,
 conditioned by a regime layer, and gated by an evaluation harness built to
 produce honest out-of-sample numbers. The harness — purged walk-forward
 validation, next-open fills with realistic costs, deflation-adjusted metrics,
@@ -14,7 +14,7 @@ invariants, the trial-ledger rules, research direction, deployment gate, and
 working rules. Read it first. [`ARCHITECTURE.md`](ARCHITECTURE.md) is the
 call graph; [`MARKETS.md`](MARKETS.md) the market-structure analysis.
 
-## Status (2026-09-02)
+## Status (2026-09-15)
 
 - **Live paper book:** monthly 12−1 cross-sectional momentum on the S&P 500
   ([design](docs/momentum_design.md)), trading an Alpaca paper account
@@ -25,8 +25,17 @@ call graph; [`MARKETS.md`](MARKETS.md) the market-structure analysis.
 - **Certified negative:** daily residual reversion on the S&P cross-section
   is uneconomic at retail cost
   ([cert 001](docs/certifications/001-residual-reversion-daily-negative.md)).
-- **Registered, unrun:** the momentum fragility reads M1–M5 and the trend
-  sleeve reads T0–T4. They are the next research work.
+- **Completed registered reads:** momentum M1–M5 survived their kill rule
+  ([read](docs/momentum_m_series_read_2026-09-03.md)); trend T0–T4 did not
+  earn portfolio admission ([read](docs/trend_t_series_read_2026-09-03.md)).
+  M6 and T5 remain on their prospective clocks.
+- **Engine 0.4.0:** distribution `prism-trading`, import `prism`. Private
+  projects can use the installed engine, specification and dataset formats,
+  evaluation APIs, and replay reports without a fork. Publication and the
+  operating-contract migration remain pending. The
+  [24 operating changes](docs/engine_overhaul_operating_changes.md) require
+  owner review before operational adoption; recorded decision parity is
+  incomplete because the session bar panels are unavailable.
 - **Nothing is authorized for real money.** The gate is `SPEC.md` §6.
 
 ## Method
@@ -63,66 +72,75 @@ backtest look better than the strategy is. The short version — details in
 
 ## Running it
 
-To go from a clone to a nightly paper loop on a free Alpaca paper account,
-see [`docs/quickstart.md`](docs/quickstart.md). Credential rules:
-[`docs/security.md`](docs/security.md). What a $0 setup does and does not
-reproduce: [`docs/free_tier_profile.md`](docs/free_tier_profile.md).
+Start with the [four onboarding journeys](docs/onboarding.md): a first
+evaluation, a private signal, interpreting a comparison, and the operating
+workflow. They identify the commands and Python APIs available in this release,
+including the CLI commands that still refuse unsupported paths. Use Python
+≥ 3.12 and [uv](https://github.com/astral-sh/uv).
 
-For the research side (Python ≥ 3.12, [uv](https://github.com/astral-sh/uv)):
+- [Depending on a release](docs/depending_on_prism.md): exact pins,
+  lockfiles, fresh installation, artifact hashes, and dependency provenance.
+- [Versions and upgrades](docs/versioning.md): compatibility, deprecation,
+  and decision comparisons before adoption.
+- [Contributing](docs/contributing.md): engine and reference-policy changes,
+  tests, and the distinction between merging code and authorizing an account.
+- [Public limitations](docs/limitations.md): coverage, deflation, null results,
+  calibration shortfalls, rounding excesses, and missing decision parity.
+- [Research archive](docs/research_archive.md): preserved tags, reproduction
+  inputs, trial history, and retained legacy experiments.
+- [Owner migration demonstration](docs/owner_migration.md): a private project
+  pinned to a wheel, with the existing research history preserved.
+
+For engine development:
 
 ```bash
 git clone https://github.com/boom90lb/prism.git
 cd prism
-uv sync --extra research   # Linux only; bare `uv sync` elsewhere (core + dev)
-uv run pytest -q -m "not research"
+uv sync --extra construction   # core + dev and the optional solver tests
+uv run --extra construction pytest -q -m "not research"
 ```
 
-API keys go in a gitignored `.env` (Twelve Data for research bars, Alpaca and
-FRED for the live loop and regime fetch; see `docs/security.md` §1 for the
-inventory). Research entry points run as modules from the repo root:
+The optional `research` extra contains the archived heavy model stack and is
+Linux-only. It is unnecessary for the onboarding examples. Existing registered
+cases reproduce through the installed engine's evaluator; start with
+`python -m prism.scripts.reproduce --help` and the archive's data notes.
 
-```bash
-# Train per-symbol purged-WFO models, then backtest the run
-python -m research.scripts.training --symbols AAPL,MSFT,GOOG --start_date 2018-01-01
-python -m research.scripts.backtest --training_run runs/{run_name}
-
-# Hyperparameter sweep → trial Sharpes for honest deflation
-python -m research.scripts.sweep --symbols AAPL,MSFT
-
-# The B1 evidence path: momentum-sleeve walk-forward over a universe file
-python -m research.scripts.stat_arb_residual_wfo --help
-```
-
-Each script's `--help` is authoritative for flags; the backtest writes a
-`claim_packet.json` plus target/fill/cost/equity artifacts under `results/`,
-and the packet is what to read first. Operational sharp edges (vendor tiers,
-interval strings, which ensemble members actually contribute, per-bar compute
-cost) are collected in [`docs/operations.md`](docs/operations.md).
+The [paper quickstart](docs/quickstart.md) documents the earlier operating path.
+Read the onboarding operating journey and [security rules](docs/security.md)
+before using it: evaluation directories must be outside live credential
+ancestry, and an existing account needs its owner's operating decisions.
+[Operations](docs/operations.md) and the [free-tier profile](docs/free_tier_profile.md)
+describe vendor and data constraints.
 
 ## Layout
 
 ```
 src/prism/     the shipped package — production import path (JAX/torch-free, SPEC N8)
-  io/          bars + dividends loader, caching, point-in-time universe, capture store
-  signal/      the Signal contract and its nodes (momentum, trend, ensemble, residual)
+  io/          causal datasets, bars, events, sessions, security master, PIT universe
+  signal/      the Signal contract and its nodes (momentum, trend, residual)
   residual/    factor model, causal s-scores, hedged book construction
-  portfolio/   book construction: caps, no-trade bands, inverse-vol
-  execution/   target-weight accounting, costs, participation gate, spread calibration
+  portfolio/   heuristic/convex construction, limits, obligations, rounding, recovery
+  execution/   canonical portfolio accounting, simulation, costs, participation
   regime/      curve / vol / liquidity regime state from free sources
   live/        nightly loop: durable order state, broker adapter, safety rails
   validation/  purged WFO, metrics, capacity, claim packets, joint-crash diagnostic
-  conformal/   EnbPI + ACI prediction bands
+  composition.py   component updates, score combination, position blending
+  evaluate.py      purged walk-forward evaluation and result recording
   scripts/     prism-doctor, paper_loop / paper_sweep / paper_monitor, replay
 ops/           scheduled paper-session wrappers + alerting (docs/operations.md)
 research/      quarantined research tree (imports prism; never the reverse — SPEC N8)
+packages/      optional strategy distributions, including prism-ensemble
+examples/      reference specifications, profiles, policies, and cost stacks
+trials/        append-only selection-set ledgers and imported history
 formal/        Lean 4 machine-checked kernel invariants (see formal/README.md)
 tests/         offline suite; the slim subset runs without the [research] extra
 ```
 
 Configuration is split at the production/research boundary:
-`src/prism/config.py` (directories, keys, cost dataclasses) and
-`research/config.py` (ensemble members, training, MLflow). Both fail fast on
-invalid values at construction.
+`src/prism/config.py` (cost dataclasses) and `research/config.py` (ensemble
+members, training, MLflow). Both fail fast on invalid values at construction.
+Writable directories come from `prism.workspace.resolve_workspace()`, not from
+either config module: importing `prism` creates nothing and reads no `.env`.
 
 ## License
 

@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from prism.signal import EnsembleNodeConfig, EnsembleSignalNode, build_features
+from prism_ensemble import EnsembleNodeConfig, EnsembleSignalNode, build_features
 
 _SYMBOLS = ("AAA", "BBB", "CCC", "DDD")
 

@@ -2,7 +2,7 @@
 
 Provides EnbPI-style (block-cross-conformal) calibration over out-of-fold
 predictions plus an online ACI quantile adapter. Production consumer:
-``prism.signal.ensemble_node`` (score band). The legacy research stack
+``prism_ensemble`` (score band). The legacy research stack
 (``research.models.ensemble``, ``research.trading``) attaches the same
 primitives at its position output.
 """

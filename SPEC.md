@@ -95,7 +95,7 @@ the certification under `docs/` remain as the research record.
   timestamp is required. The registration is the commit that adds the doc.
 - **Every evaluated configuration is a ledger row**, including NaN and
   degenerate outcomes, appended by the run itself (`--trial_ledger`,
-  `research/scripts/stat_arb_residual_wfo.py` pattern) with config hash,
+  `research/scripts/trend_wfo.py` pattern) with config hash,
   sample, and periodic Sharpe; the claim packet carries the code commit.
   Ledgers are append-only; editing or deleting rows is falsification.
 - **A claim deflates against its own selection set** — the effective

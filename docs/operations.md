@@ -59,6 +59,45 @@ Escalation is a seam, not a choice: export `PRISM_ALERT_CMD` in `.env` and it
 is invoked as `"$PRISM_ALERT_CMD" "<subject>" "<body>"`. The repo does not pick
 a transport, and a failing transport never fails the session.
 
+### Exercising the commands without trading
+
+**Every verification of `paper_loop` or `paper_sweep` uses `--no-submit`.** Both
+commands otherwise had exactly two states — "fails before the credential check"
+and "trades the account" — with nothing between them, and on 2026-09-09 a step
+meaning to observe the first performed the second: it ran the command against a
+throwaway `--run-dir` to see whether it still parsed, found the credentials in
+`.env`, and sent 116 market-on-open orders to the paper account. (They were
+cancelled and the account restored; the record is in the incident notes.)
+
+Under `--no-submit` the command does everything a real session does — resolves
+credentials, reads the venue's account, positions and cash, marks, scores,
+constructs the book, diffs the orders, runs the safety rails — logs each order
+it would have sent as a `NO-SUBMIT WOULD SUBMIT #n …` line, and sends none. Its
+durable writes go to a discarded scratch copy of the run directory, so a
+rehearsal cannot leave a decision persisted for the next real session to
+resume, and pointing it at the live run directory changes nothing there. It
+closes with an unmissable `NOTHING WAS SENT TO THE VENUE` banner.
+
+**A run that does trade says so on one line**, at WARNING, before the first
+order leaves the process:
+
+```
+*** SUBMITTING ORDERS TO THE VENUE *** endpoint=… account=… decision_bar=… orders=N — this run is trading: …
+```
+
+Grepping `SUBMITTING ORDERS TO THE VENUE` in any session log answers "did this
+run trade, and against which account?". A run that offers no order — a
+rehearsal, a replay, a resume whose orders the venue already holds — never
+prints it.
+
+**Submitting from a run directory with no prior session is refused.** A paper
+session is a continuation: its run directory carries `state.json` and
+`equity.jsonl` from the sessions before it, and both scheduled wrappers point at
+one that does, so the rail is inert for them. An invocation pointed at a
+directory that carries neither — the incident's shape — is refused before any
+venue read, and must say which case it is: `--no-submit` to rehearse, or
+`--allow-new-run-dir` for the deliberate first session of a new book.
+
 **Health is read from the durable record of work done, never from an exit
 code.** `prism-doctor` (offline; `--network` adds venue reconciliation) is the
 signal:
@@ -147,8 +186,9 @@ deletions: a retired run directory is recoverable only from the backup repo's
 
 ## Data vendor (Twelve Data)
 
-- The key goes in a gitignored `.env`: `TWELVEDATA_API_KEY=...`
-  (loaded by `src/prism/config.py`).
+- The key goes in a gitignored `.env`: `TWELVEDATA_API_KEY=...` (loaded by
+  `prism.workspace.load_env` at the command entry point and passed to
+  `DataLoader`).
 - **Interval strings.** The vendor expects `1day`/`1week`/`1month`; the
   project keeps the short forms (`1d`, `1wk`, `1mo`) everywhere and
   normalizes only at the request boundary (`DataLoader._to_vendor_interval`).

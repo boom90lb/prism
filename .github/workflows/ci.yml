@@ -26,10 +26,10 @@ jobs:
         with:
           python-version: "3.12"
           cache-suffix: core
-      - name: Install core + dev group (no research extra)
-        run: uv sync
+      - name: Install core + dev group and construction tests (no research extra)
+        run: uv sync --extra construction
       - name: Core tests + N8 import contract
-        run: uv run pytest -q -m "not research"
+        run: uv run --extra construction pytest -q -m "not research"
       - name: Build wheel + sdist
         run: uv build
       - name: Slim wheel-install smoke
@@ -40,7 +40,7 @@ jobs:
             echo "research heavyweight leaked into the slim install" >&2
             exit 1
           fi
-          /tmp/slim/bin/python -c "import prism, prism.io.loader, prism.signal.ensemble_node, prism.residual.factors, prism.portfolio.construct, prism.live.daily, prism.regime.fetch, prism.validation.metrics"
+          /tmp/slim/bin/python -c "import prism, prism.io.loader, prism.signal.momentum_node, prism.composition, prism.residual.factors, prism.portfolio.construct, prism.live.daily, prism.regime.fetch, prism.validation.metrics"
 
   full:
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
@@ -54,6 +54,6 @@ jobs:
           python-version: "3.12"
           cache-suffix: full
       - name: Install with research extra
-        run: uv sync --extra research
+        run: uv sync --extra research --extra construction
       - name: Full suite
-        run: uv run pytest -q
+        run: uv run --extra research --extra construction pytest -q

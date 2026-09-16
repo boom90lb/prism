@@ -1,0 +1,457 @@
+{
+  "engine_version": "0.4.0",
+  "entries": [
+    {
+      "kind": "imported",
+      "legacy_ledger_config_hash": "301c449b9173",
+      "legacy_packet_config_hash": "000b74941cfd",
+      "legacy_run_key": "legacyrun-b5cfc9d8d13bac1a",
+      "line": 1,
+      "run_id": "imported-5dd3c5f1b69baa4f",
+      "selection_set_id": "momentum_v1",
+      "selection_set_ids": [
+        "momentum_v1",
+        "stat_arb_residual"
+      ],
+      "source_path": "results/momentum_v1_trials.jsonl"
+    },
+    {
+      "kind": "imported",
+      "legacy_ledger_config_hash": "e60721b3698b",
+      "legacy_packet_config_hash": "3e5c23be9c91",
+      "legacy_run_key": "legacyrun-e44e213ccbb8255d",
+      "line": 2,
+      "run_id": "imported-c888568da7bd80dc",
+      "selection_set_id": "momentum_v1",
+      "selection_set_ids": [
+        "momentum_v1"
+      ],
+      "source_path": "results/momentum_v1_trials.jsonl"
+    },
+    {
+      "kind": "imported",
+      "legacy_ledger_config_hash": "f921f22503f7",
+      "legacy_packet_config_hash": "ad164addcd27",
+      "legacy_run_key": "legacyrun-079bffeaf51d6eb9",
+      "line": 3,
+      "run_id": "imported-7dd0d8a4e1b59bb3",
+      "selection_set_id": "momentum_v1",
+      "selection_set_ids": [
+        "momentum_v1"
+      ],
+      "source_path": "results/momentum_v1_trials.jsonl"
+    },
+    {
+      "kind": "imported",
+      "legacy_ledger_config_hash": "f5d523ff29b1",
+      "legacy_packet_config_hash": "809746a28858",
+      "legacy_run_key": "legacyrun-d6665507d985d8b3",
+      "line": 4,
+      "run_id": "imported-496638aa8d647058",
+      "selection_set_id": "momentum_v1",
+      "selection_set_ids": [
+        "momentum_v1"
+      ],
+      "source_path": "results/momentum_v1_trials.jsonl"
+    },
+    {
+      "kind": "imported",
+      "legacy_ledger_config_hash": "52b2c7bb82c8",
+      "legacy_packet_config_hash": "a46735a61c49",
+      "legacy_run_key": "legacyrun-5568dc6f1c69aaf8",
+      "line": 5,
+      "run_id": "imported-23aa23eaa152ddc6",
+      "selection_set_id": "momentum_v1",
+      "selection_set_ids": [
+        "momentum_v1"
+      ],
+      "source_path": "results/momentum_v1_trials.jsonl"
+    },
+    {
+      "kind": "imported",
+      "legacy_ledger_config_hash": "56bff2b1e452",
+      "legacy_packet_config_hash": "4361ecfeef54",
+      "legacy_run_key": "legacyrun-2f9db5f7d4affcc5",
+      "line": 6,
+      "run_id": "imported-d04c39b1617fa749",
+      "selection_set_id": "momentum_v1",
+      "selection_set_ids": [
+        "momentum_v1"
+      ],
+      "source_path": "results/momentum_v1_trials.jsonl"
+    },
+    {
+      "kind": "imported",
+      "legacy_ledger_config_hash": "bc72b7e6edc4",
+      "legacy_packet_config_hash": "bc92b505f26f",
+      "legacy_run_key": "legacyrun-f0c6e8851103661f",
+      "line": 1,
+      "run_id": "imported-d0042c6440681515",
+      "selection_set_id": "trend_v1",
+      "selection_set_ids": [
+        "trend_v1"
+      ],
+      "source_path": "results/trend_v1_trials.jsonl"
+    },
+    {
+      "kind": "imported",
+      "legacy_ledger_config_hash": "13562bf3442f",
+      "legacy_packet_config_hash": "29c0be7a030f",
+      "legacy_run_key": "legacyrun-d39c5c026e7cb1b0",
+      "line": 2,
+      "run_id": "imported-575a90ce7debdbb4",
+      "selection_set_id": "trend_v1",
+      "selection_set_ids": [
+        "trend_v1"
+      ],
+      "source_path": "results/trend_v1_trials.jsonl"
+    },
+    {
+      "kind": "imported",
+      "legacy_ledger_config_hash": "5047b4a66e98",
+      "legacy_packet_config_hash": "1196725d6b2e",
+      "legacy_run_key": "legacyrun-4dd90e61e39fbaba",
+      "line": 3,
+      "run_id": "imported-b267099fd739db9a",
+      "selection_set_id": "trend_v1",
+      "selection_set_ids": [
+        "trend_v1"
+      ],
+      "source_path": "results/trend_v1_trials.jsonl"
+    },
+    {
+      "kind": "imported",
+      "legacy_ledger_config_hash": "e1f78dfe008d",
+      "legacy_packet_config_hash": "ec4443c8ee09",
+      "legacy_run_key": "legacyrun-1f432e065cb4b253",
+      "line": 4,
+      "run_id": "imported-989acf5114064ba1",
+      "selection_set_id": "trend_v1",
+      "selection_set_ids": [
+        "trend_v1"
+      ],
+      "source_path": "results/trend_v1_trials.jsonl"
+    },
+    {
+      "kind": "imported",
+      "legacy_ledger_config_hash": "4b0cb0ddef6c",
+      "legacy_packet_config_hash": "72ed0e5b74dd",
+      "legacy_run_key": "legacyrun-e890c09f4ebf9d24",
+      "line": 5,
+      "run_id": "imported-6a5bcbde1215a7b4",
+      "selection_set_id": "trend_v1",
+      "selection_set_ids": [
+        "trend_v1"
+      ],
+      "source_path": "results/trend_v1_trials.jsonl"
+    },
+    {
+      "kind": "imported",
+      "legacy_ledger_config_hash": "ffd1711e535d",
+      "legacy_packet_config_hash": "unavailable",
+      "legacy_run_key": "legacyrun-26f6ca36322235fe",
+      "line": 1,
+      "run_id": "imported-a5d10158bd597b01",
+      "selection_set_id": "stat_arb_residual",
+      "selection_set_ids": [
+        "stat_arb_residual"
+      ],
+      "source_path": "results/stat_arb_residual_trials.jsonl"
+    },
+    {
+      "kind": "imported",
+      "legacy_ledger_config_hash": "14df1b6865c3",
+      "legacy_packet_config_hash": "unavailable",
+      "legacy_run_key": "legacyrun-b6212215f19f1092",
+      "line": 2,
+      "run_id": "imported-fa9bd163897b9308",
+      "selection_set_id": "stat_arb_residual",
+      "selection_set_ids": [
+        "stat_arb_residual"
+      ],
+      "source_path": "results/stat_arb_residual_trials.jsonl"
+    },
+    {
+      "kind": "imported",
+      "legacy_ledger_config_hash": "37340bda8300",
+      "legacy_packet_config_hash": "unavailable",
+      "legacy_run_key": "legacyrun-c5b626fba4b97f27",
+      "line": 3,
+      "run_id": "imported-bc5faa45b1fa2af6",
+      "selection_set_id": "stat_arb_residual",
+      "selection_set_ids": [
+        "stat_arb_residual"
+      ],
+      "source_path": "results/stat_arb_residual_trials.jsonl"
+    },
+    {
+      "kind": "imported",
+      "legacy_ledger_config_hash": "a2c5538e70b1",
+      "legacy_packet_config_hash": "unavailable",
+      "legacy_run_key": "legacyrun-28791be797bfef66",
+      "line": 4,
+      "run_id": "imported-563a7432ab75ca57",
+      "selection_set_id": "stat_arb_residual",
+      "selection_set_ids": [
+        "stat_arb_residual"
+      ],
+      "source_path": "results/stat_arb_residual_trials.jsonl"
+    },
+    {
+      "kind": "imported",
+      "legacy_ledger_config_hash": "4ae714948ad0",
+      "legacy_packet_config_hash": "2d82642f884d",
+      "legacy_run_key": "legacyrun-b2ef214654ef5ecd",
+      "line": 5,
+      "run_id": "imported-7394ad2323b158ee",
+      "selection_set_id": "stat_arb_residual",
+      "selection_set_ids": [
+        "stat_arb_residual"
+      ],
+      "source_path": "results/stat_arb_residual_trials.jsonl"
+    },
+    {
+      "kind": "imported",
+      "legacy_ledger_config_hash": "6318e5bc6a74",
+      "legacy_packet_config_hash": "daef8b33bf3c",
+      "legacy_run_key": "legacyrun-9ba97cbf24f422e2",
+      "line": 6,
+      "run_id": "imported-3c27cddd0e523c25",
+      "selection_set_id": "stat_arb_residual",
+      "selection_set_ids": [
+        "stat_arb_residual"
+      ],
+      "source_path": "results/stat_arb_residual_trials.jsonl"
+    },
+    {
+      "kind": "imported",
+      "legacy_ledger_config_hash": "68745eb839bf",
+      "legacy_packet_config_hash": "0635cc171d2c",
+      "legacy_run_key": "legacyrun-d4aebb79138d4041",
+      "line": 7,
+      "run_id": "imported-90bf6ab34d9dec2d",
+      "selection_set_id": "stat_arb_residual",
+      "selection_set_ids": [
+        "stat_arb_residual"
+      ],
+      "source_path": "results/stat_arb_residual_trials.jsonl"
+    },
+    {
+      "kind": "imported",
+      "legacy_ledger_config_hash": "a7b1255b2791",
+      "legacy_packet_config_hash": "c55633bc890a",
+      "legacy_run_key": "legacyrun-92ac274804c50bb6",
+      "line": 8,
+      "run_id": "imported-a87c131d872f631a",
+      "selection_set_id": "stat_arb_residual",
+      "selection_set_ids": [
+        "stat_arb_residual"
+      ],
+      "source_path": "results/stat_arb_residual_trials.jsonl"
+    },
+    {
+      "kind": "imported",
+      "legacy_ledger_config_hash": "fc8428fcaaf4",
+      "legacy_packet_config_hash": "d4c93af68855",
+      "legacy_run_key": "legacyrun-4c43ce16ee006b49",
+      "line": 9,
+      "run_id": "imported-fd09f2d646358c90",
+      "selection_set_id": "stat_arb_residual",
+      "selection_set_ids": [
+        "stat_arb_residual"
+      ],
+      "source_path": "results/stat_arb_residual_trials.jsonl"
+    },
+    {
+      "kind": "imported",
+      "legacy_ledger_config_hash": "6e3d67aff6a9",
+      "legacy_packet_config_hash": "ecdf9092e8f4",
+      "legacy_run_key": "legacyrun-f4f8c775a1642db3",
+      "line": 10,
+      "run_id": "imported-0bc8e383958f1dc6",
+      "selection_set_id": "stat_arb_residual",
+      "selection_set_ids": [
+        "stat_arb_residual"
+      ],
+      "source_path": "results/stat_arb_residual_trials.jsonl"
+    },
+    {
+      "kind": "imported",
+      "legacy_ledger_config_hash": "af40e9897bd8",
+      "legacy_packet_config_hash": "46fd44f19602",
+      "legacy_run_key": "legacyrun-50afdc51889b1030",
+      "line": 11,
+      "run_id": "imported-38767663cd13766e",
+      "selection_set_id": "stat_arb_residual",
+      "selection_set_ids": [
+        "stat_arb_residual"
+      ],
+      "source_path": "results/stat_arb_residual_trials.jsonl"
+    },
+    {
+      "kind": "imported",
+      "legacy_ledger_config_hash": "c64ad7e6517b",
+      "legacy_packet_config_hash": "b537f394a538",
+      "legacy_run_key": "legacyrun-21d660ac920291d7",
+      "line": 12,
+      "run_id": "imported-732d4505899dcf43",
+      "selection_set_id": "stat_arb_residual",
+      "selection_set_ids": [
+        "stat_arb_residual"
+      ],
+      "source_path": "results/stat_arb_residual_trials.jsonl"
+    },
+    {
+      "kind": "imported",
+      "legacy_ledger_config_hash": "50264b62231a",
+      "legacy_packet_config_hash": "d47ea00c7a28",
+      "legacy_run_key": "legacyrun-b1843bc150be95f1",
+      "line": 13,
+      "run_id": "imported-05e4a2a7fb2cbf03",
+      "selection_set_id": "stat_arb_residual",
+      "selection_set_ids": [
+        "stat_arb_residual"
+      ],
+      "source_path": "results/stat_arb_residual_trials.jsonl"
+    },
+    {
+      "kind": "imported",
+      "legacy_ledger_config_hash": "5a7af991432e",
+      "legacy_packet_config_hash": "1f32d827c521",
+      "legacy_run_key": "legacyrun-c168aade89e60f65",
+      "line": 14,
+      "run_id": "imported-3b9ebed8f9782034",
+      "selection_set_id": "stat_arb_residual",
+      "selection_set_ids": [
+        "stat_arb_residual"
+      ],
+      "source_path": "results/stat_arb_residual_trials.jsonl"
+    },
+    {
+      "kind": "imported",
+      "legacy_ledger_config_hash": "9bae5fae6801",
+      "legacy_packet_config_hash": "9a876fba0196",
+      "legacy_run_key": "legacyrun-5c9ea077c220d128",
+      "line": 15,
+      "run_id": "imported-720bdd126d716e5c",
+      "selection_set_id": "stat_arb_residual",
+      "selection_set_ids": [
+        "stat_arb_residual"
+      ],
+      "source_path": "results/stat_arb_residual_trials.jsonl"
+    },
+    {
+      "kind": "imported",
+      "legacy_ledger_config_hash": "301c449b9173",
+      "legacy_packet_config_hash": "000b74941cfd",
+      "legacy_run_key": "legacyrun-b5cfc9d8d13bac1a",
+      "line": 16,
+      "run_id": "imported-5dbd9b4a97915c3b",
+      "selection_set_id": "stat_arb_residual",
+      "selection_set_ids": [
+        "momentum_v1",
+        "stat_arb_residual"
+      ],
+      "source_path": "results/stat_arb_residual_trials.jsonl"
+    },
+    {
+      "kind": "imported",
+      "legacy_ledger_config_hash": "5307535e65bf",
+      "legacy_packet_config_hash": "e77aa678b157",
+      "legacy_run_key": "legacyrun-85e1f35b93634878",
+      "line": 17,
+      "run_id": "imported-e672e8465b839669",
+      "selection_set_id": "stat_arb_residual",
+      "selection_set_ids": [
+        "stat_arb_residual"
+      ],
+      "source_path": "results/stat_arb_residual_trials.jsonl"
+    },
+    {
+      "kind": "provenance",
+      "legacy_ledger_config_hash": "fb05d60ac75e",
+      "legacy_packet_config_hash": "unavailable",
+      "legacy_run_key": "legacyrun-219b6a98751fa74f",
+      "line": 1,
+      "run_id": "imported-ac067ccd1b371065",
+      "selection_set_id": null,
+      "selection_set_ids": [],
+      "source_path": "data/universe/sp500_density_trials.jsonl"
+    },
+    {
+      "kind": "provenance",
+      "legacy_ledger_config_hash": "624508247be5",
+      "legacy_packet_config_hash": "unavailable",
+      "legacy_run_key": "legacyrun-fbb7f00457e82bbf",
+      "line": 2,
+      "run_id": "imported-f20988c1f60cbe65",
+      "selection_set_id": null,
+      "selection_set_ids": [],
+      "source_path": "data/universe/sp500_density_trials.jsonl"
+    },
+    {
+      "kind": "provenance",
+      "legacy_ledger_config_hash": "bc288a3258d2",
+      "legacy_packet_config_hash": "unavailable",
+      "legacy_run_key": "legacyrun-a7f8fa4a614448ee",
+      "line": 3,
+      "run_id": "imported-d488e028e3334c69",
+      "selection_set_id": null,
+      "selection_set_ids": [],
+      "source_path": "data/universe/sp500_density_trials.jsonl"
+    },
+    {
+      "kind": "provenance",
+      "legacy_ledger_config_hash": "f4d214381249",
+      "legacy_packet_config_hash": "unavailable",
+      "legacy_run_key": "legacyrun-617ca0bc16a4fe69",
+      "line": 4,
+      "run_id": "imported-af25232bfb80b9c6",
+      "selection_set_id": null,
+      "selection_set_ids": [],
+      "source_path": "data/universe/sp500_density_trials.jsonl"
+    }
+  ],
+  "imported_at": "2026-09-08T11:35:40.999393+00:00",
+  "key": [
+    "source_path",
+    "line",
+    "legacy_ledger_config_hash"
+  ],
+  "run_id_map_schema": 1,
+  "source_root": "/home/b90/prism",
+  "sources": [
+    {
+      "kind": "imported",
+      "path": "results/momentum_v1_trials.jsonl",
+      "rows": 6,
+      "selection_set_id": "momentum_v1",
+      "sha256": "6e1cfdf877d5e75a77ec3fd5ccd82d50ae6f2bc1a84207c356cc2ec718eee6d9",
+      "trial_log": "/home/b90/prism/.claude/worktrees/engine-overhaul/trials/momentum_v1.jsonl"
+    },
+    {
+      "kind": "imported",
+      "path": "results/trend_v1_trials.jsonl",
+      "rows": 5,
+      "selection_set_id": "trend_v1",
+      "sha256": "a4c1f245bd730c89203bc354ffea9390dd2a82f83a434267bd4c97e89bf43687",
+      "trial_log": "/home/b90/prism/.claude/worktrees/engine-overhaul/trials/trend_v1.jsonl"
+    },
+    {
+      "kind": "imported",
+      "path": "results/stat_arb_residual_trials.jsonl",
+      "rows": 17,
+      "selection_set_id": "stat_arb_residual",
+      "sha256": "92a1a5e478e8318cb546b5971038a641d4cb0c9bccd53cb4b2b6142efbde3a96",
+      "trial_log": "/home/b90/prism/.claude/worktrees/engine-overhaul/trials/stat_arb_residual.jsonl"
+    },
+    {
+      "kind": "provenance",
+      "path": "data/universe/sp500_density_trials.jsonl",
+      "rows": 4,
+      "selection_set_id": null,
+      "sha256": "a27db9c31705d972b238274b2bb47e2b2032966dab2cbf02d06a645f12ea91fa",
+      "trial_log": "/home/b90/prism/.claude/worktrees/engine-overhaul/trials/provenance.jsonl"
+    }
+  ]
+}

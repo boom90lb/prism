@@ -6,6 +6,12 @@ only fill at open ``t+1``. The simulation is sequential rather than a pure
 ``shift(1)`` so callers can suppress small rebalances, drop selected pending
 targets at fold boundaries, and carry already-filled exposure into the next
 fold.
+
+The charged cost row is not computed here: ``backtest_target_weights`` is the
+``historical_constant_weight`` reproduction engine and it calls
+:func:`prism.execution.cost_model.charge_weights`, which holds the arithmetic
+this module carried as ``_cost_values`` before the stage 2 extraction (spec
+section 3.6). The move is Parity and ``tests/test_cost_model.py`` holds it so.
 """
 
 from __future__ import annotations
@@ -17,6 +23,7 @@ import numpy as np
 import pandas as pd
 
 from prism.config import ExecutionConfig
+from prism.execution.cost_model import charge_weights
 from prism.validation.metrics import (
     calmar_ratio,
     periodic_sharpe,
@@ -138,68 +145,6 @@ def _empty_costs(index: pd.Index) -> pd.DataFrame:
     )
 
 
-def _cost_values(
-    trade: np.ndarray,
-    weights: np.ndarray,
-    execution: ExecutionConfig,
-    *,
-    cost_multiplier: float,
-    dividend_return: float,
-    dollar_volume: np.ndarray | None = None,
-    initial_capital: float = 1.0,
-    spread_bps_per_name: np.ndarray | None = None,
-) -> dict[str, float]:
-    trade_abs = np.abs(trade)
-    if spread_bps_per_name is None:
-        commission_spread = float(
-            trade_abs.sum()
-            * (execution.commission_bps + execution.spread_bps)
-            / 10_000.0
-            * cost_multiplier
-        )
-    else:
-        # Per-bucket spread (r2_design.md §3, I-9): commission stays scalar, the
-        # spread is priced per name. None must reproduce the flat computation
-        # bit-for-bit (frozen-v1 parity).
-        commission_spread = float(
-            (trade_abs * (execution.commission_bps + spread_bps_per_name)).sum()
-            / 10_000.0
-            * cost_multiplier
-        )
-    impact = float(
-        np.square(trade_abs).sum()
-        * execution.slippage_coeff
-        / 10_000.0
-        * cost_multiplier
-    )
-    if execution.adv_impact_coeff > 0.0 and dollar_volume is not None:
-        valid = np.isfinite(dollar_volume)
-        adv = np.where(valid, np.maximum(dollar_volume, execution.adv_floor_dollars), np.nan)
-        participation = trade_abs * float(initial_capital) / adv
-        if execution.adv_impact_model == "sqrt":
-            participation = np.sqrt(participation)
-        adv_bps = execution.adv_impact_coeff * participation
-        impact += float(np.nansum(trade_abs * adv_bps / 10_000.0) * cost_multiplier)
-    short_gross = float(np.abs(np.minimum(weights, 0.0)).sum())
-    borrow = float(
-        short_gross
-        * execution.borrow_rate_bps_annual
-        / 10_000.0
-        / execution.trading_days_per_year
-    )
-    total = commission_spread + impact + borrow
-    return {
-        "commission_spread": commission_spread,
-        "impact": impact,
-        "borrow": borrow,
-        "total": total,
-        "turnover": float(trade_abs.sum()),
-        "gross": float(np.abs(weights).sum()),
-        "net": float(weights.sum()),
-        "dividend_return": float(dividend_return),
-    }
-
-
 def _dividend_frame(
     dividends: pd.DataFrame | Mapping[str, pd.Series] | None,
     index: pd.Index,
@@ -269,9 +214,7 @@ def backtest_target_weights(
     if rebalance_band_weight < 0:
         raise ValueError(f"rebalance_band_weight must be >= 0, got {rebalance_band_weight}")
     if rebalance_cost_multiplier < 0:
-        raise ValueError(
-            f"rebalance_cost_multiplier must be >= 0, got {rebalance_cost_multiplier}"
-        )
+        raise ValueError(f"rebalance_cost_multiplier must be >= 0, got {rebalance_cost_multiplier}")
     if max_gross_exposure is not None and max_gross_exposure <= 0:
         raise ValueError(f"max_gross_exposure must be > 0, got {max_gross_exposure}")
 
@@ -341,12 +284,15 @@ def backtest_target_weights(
         trade = current - previous
 
         next_pos = pos + 1
-        open_ret = np.divide(
-            prices_arr[next_pos],
-            prices_arr[pos],
-            out=np.ones(len(symbols), dtype=float),
-            where=prices_arr[pos] != 0.0,
-        ) - 1.0
+        open_ret = (
+            np.divide(
+                prices_arr[next_pos],
+                prices_arr[pos],
+                out=np.ones(len(symbols), dtype=float),
+                where=prices_arr[pos] != 0.0,
+            )
+            - 1.0
+        )
         open_ret = np.nan_to_num(open_ret, nan=0.0, posinf=0.0, neginf=0.0)
         dividend_by_name = np.divide(
             divs_arr[next_pos],
@@ -355,10 +301,8 @@ def backtest_target_weights(
             where=prices_arr[pos] != 0.0,
         )
         dividend_by_name = np.nan_to_num(dividend_by_name, nan=0.0, posinf=0.0, neginf=0.0)
-        dividend_return = float(
-            (current * dividend_by_name).sum()
-        )
-        cost = _cost_values(
+        dividend_return = float((current * dividend_by_name).sum())
+        cost = charge_weights(
             trade,
             current,
             execution,

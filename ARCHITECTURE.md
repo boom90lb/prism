@@ -42,8 +42,12 @@ is a reconciliation cache, never the authority for holdings
 
 **The residual/stat-arb batch path** exercises the same spine offline:
 `src/prism/residual/` (factor model, causal s-scores) plus the shared
-construction and execution modules, driven by
-`research/scripts/stat_arb_residual_wfo.py` — the momentum evidence path.
+construction and execution modules. Its momentum evidence path, the recorded
+B1 record in `results/demotion_b1/`, is now evaluated by
+`src/prism/evaluate.py::walk_forward_evaluate` and run by
+`src/prism/scripts/reproduce.py`; the research driver that produced it,
+`research/scripts/stat_arb_residual_wfo.py`, retired at stage 2 once that
+reproduction was recorded.
 
 **The legacy directional path** (`research/scripts/training.py` →
 `backtest.py`) runs the demoted per-symbol forecaster ensemble through the
@@ -57,11 +61,12 @@ the production book.
 range-keyed parquet cache and returns tz-aware (America/New_York) frames;
 dividends are fetched separately and credited as cash in the backtest, never
 back-adjusted into prices. Credential-bearing URLs pass through a redactor
-before any log line (`docs/security.md` §2.4). `observatory.py` is the
-append-only capture store for point-in-time membership and expectation data:
-compressed JSONL with capture timestamps and verbatim payloads. Capture runs
-unconditionally; modeling over captured data is a separate registration
-(`SPEC.md` §4).
+before any log line (`docs/security.md` §2.4). The append-only capture store
+for point-in-time expectation data — compressed JSONL with capture timestamps
+and verbatim payloads — left this package at stage 6 and is now
+`research/observatory.py`, beside the capture CLI that was always its only
+importer. Capture runs unconditionally; modeling over captured data is a
+separate registration (`SPEC.md` §4).
 
 ### Validation — `src/prism/validation/`
 `PurgedWalkForward` yields train/test index pairs with purge and embargo; one
@@ -75,13 +80,18 @@ stress diagnostic.
 The typed Signal contract (`SPEC.md` §7.1) and its nodes: `momentum_node.py`
 (the production book's alpha since v0.3.2 — strictly trailing 12−1 momentum
 feeding a decile long/short construct), `trend_node.py` (default-off ETF
-trend), `ensemble_node.py` (the JAX-free XGBoost + ARIMA blend, one node
-among several), and the residual-reversion node (archived sleeve; its
-machinery remains as the live book's eligibility screen).
+trend), and the residual-reversion node (archived sleeve; its machinery
+remains as the live book's eligibility screen). The XGBoost + ARIMA blend
+left this package at stage 6: it is the optional `prism-ensemble`
+distribution under `packages/prism-ensemble/`, which is what took xgboost and
+statsmodels out of the engine's dependency set. The `ensemble` book still
+dispatches when that package is installed.
 
 ### Construction and execution — `src/prism/portfolio/`, `src/prism/execution/`
 `portfolio/` builds books: caps, the single-step online no-trade band, and
-the inverse-vol construct for the trend sleeve. `execution/target_weights.py`
+the inverse-vol construct for the trend sleeve. The legacy per-order fill
+engine left this package at stage 6 with its only two consumers and is now
+`research/execution_model.py`. `execution/target_weights.py`
 is the accounting path: close-time targets fill at the next open, small
 rebalances are suppressed by band, fold-last pending targets are dropped,
 and spread, commission, impact, borrow, and dividend contributions are

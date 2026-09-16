@@ -13,6 +13,23 @@ convergence: the legacy forecaster stack (research.models.prophet was the
 only prophet importer; its matplotlib arrived transitively) is quarantined
 under research/, so N8's prophet/matplotlib clause now binds the whole
 production closure, live/ included.
+
+`xgboost` and `statsmodels` joined with the stage 6 legacy retirement. They were
+the learned ensemble node's two members, declared as the `[ensemble]` extra and
+imported lazily inside it; at stage 6 the node moved to the separate
+`prism-ensemble` distribution and they left this project's dependency list
+entirely. Both are installed in the dev environment, because the strategy
+package's own tests run from this checkout, so without them in this set the
+probe would pass on a machine that had a module-level import of either.
+
+`cvxpy` and `clarabel` joined with the stage 4 convex constructor. They are the
+declared ``construction`` extra, not core dependencies, and
+``prism.portfolio.convex`` imports them inside ``ConvexProgram._cvxpy`` for
+exactly that reason. Naming them here is what makes that a guarantee rather than
+a convention: without them in this set the probe passes on any machine where the
+extra happens to be installed -- which is every machine that can run stage 4 --
+and a module-level import would be caught only by a deployment that had already
+broken.
 """
 
 from __future__ import annotations
@@ -26,6 +43,10 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 FORBIDDEN_ROOTS = {
+    "cvxpy",
+    "clarabel",
+    "xgboost",
+    "statsmodels",
     "jax",
     "flax",
     "distrax",
@@ -64,6 +85,4 @@ def test_prism_import_closure_is_research_free():
     assert proc.returncode == 0, f"import probe failed:\n{proc.stderr}"
     roots = set(json.loads(proc.stdout.strip().splitlines()[-1]))
     leaked = roots & FORBIDDEN_ROOTS
-    assert not leaked, (
-        f"core import closure pulled forbidden modules: {sorted(leaked)} (SPEC N8)"
-    )
+    assert not leaked, f"core import closure pulled forbidden modules: {sorted(leaked)} (SPEC N8)"

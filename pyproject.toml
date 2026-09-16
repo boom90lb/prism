@@ -3,8 +3,8 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "prism"
-version = "0.3.4"
+name = "prism-trading"
+version = "0.4.0"
 description = "Prism — a cross-sectional systematic trading engine (score → residualize → construct → execute), evaluated under a purged-WFO, cost-realistic, deflation-adjusted honesty harness"
 readme = "README.md"
 license = "MIT"
@@ -20,21 +20,48 @@ classifiers = [
 # Core = the production import path (SPEC N8): no JAX/torch/mlflow, and —
 # since the R1 vocabulary convergence quarantined the legacy forecaster
 # stack — no prophet/matplotlib either (tests/test_import_hygiene.py pins
-# the closure). xgboost/statsmodels stay core: prism.signal.ensemble_node
-# uses them.
+# the closure).
+#
+# The stage 1 dependency audit (engine spec §5, stage 1) resolved the four
+# questioned packages by what the wheel actually imports (Run, `grep -rn`
+# over src/prism):
+#   scikit-learn, tqdm — no module under src/prism imports either; they left
+#     core for [research], whose research/models/ tree is the only importer.
+#   xgboost, statsmodels — imported lazily inside signal/ensemble_node.py
+#     (three call sites) and never at module scope, so the production import
+#     path did not need them installed; they moved behind [ensemble] under
+#     that existing lazy-import guard at stage 1.
+#   scipy — newly declared: validation/metrics.py imports scipy.stats at
+#     module scope on the production path, so it was an undeclared core
+#     dependency that happened to arrive transitively.
+#
+# At stage 6 xgboost and statsmodels left the engine's own dependency list, core
+# and extras alike, with the learned node they served: signal/ensemble_node.py is
+# now the separate prism-ensemble distribution under packages/prism-ensemble/,
+# which declares them (engine spec §2, `signal/ensemble_node.py`, Removal). The
+# claim was checked, not assumed — no module on the production import path names
+# either package (Run, `grep -rn "xgboost\|statsmodels" src/prism`: no hits) —
+# and tests/test_import_hygiene.py now holds both in FORBIDDEN_ROOTS, so the
+# closure is probed rather than trusted. They stay in [research] below, which is
+# not the engine: research/models/xgboost_model.py and research/models/arima.py
+# import them, and that tree ships no wheel.
 dependencies = [
     "numpy>=1.24.0",
     "pandas>=2.0.0",
-    "scikit-learn>=1.2.0",
-    "statsmodels>=0.14.0",
-    "xgboost>=1.7.0",
+    "scipy>=1.10.0",
     "pyarrow>=10.0.0",
-    "tqdm>=4.64.0",
     "python-dotenv>=1.0.0",
     "requests>=2.30.0",
 ]
 
 [project.optional-dependencies]
+# The convex constructor of section 3.7, declared here at stage 1 and first
+# installed at stage 4. Nothing in the stage 1 exit uses a solver.
+construction = [
+    "cvxpy>=1.5.0",
+    "clarabel>=0.9.0",
+]
+
 # Everything the quarantined research/ tree (the legacy forecaster stack,
 # RL members, mlflow tracking, batch WFO CLIs) needs on top of the core.
 # `transformers` rides here because it drags torch; the FinBERT sentiment
@@ -42,6 +69,10 @@ dependencies = [
 # was the only prophet importer, and it drags matplotlib transitively).
 research = [
     "prophet>=1.1.0",
+    "scikit-learn>=1.2.0",
+    "statsmodels>=0.14.0",
+    "xgboost>=1.7.0",
+    "tqdm>=4.64.0",
     "jax[cuda12]>=0.5.3",
     "flax>=0.10.5",
     "distrax>=0.1.5",
@@ -59,6 +90,14 @@ research = [
 [dependency-groups]
 dev = [
     "pytest>=7.0.0",
+    # The two prism-ensemble members. They are no longer a dependency of this
+    # distribution in any form (they left with the node at stage 6), but
+    # tests/test_signal_node.py and tests/test_component_declarations.py
+    # exercise the strategy package from this checkout, so a bare `uv sync`
+    # (core + dev, SPEC.md:157) must still install them. Nothing the wheel
+    # ships imports either one.
+    "statsmodels>=0.14.0",
+    "xgboost>=1.7.0",
     "black>=22.10.0",
     "isort>=5.10.0",
     "mypy>=1.0.0",
@@ -73,9 +112,10 @@ dev = [
 
 # The batch WFO / sweep / stat-arb CLIs are quarantined under research/
 # (SPEC §9), ship no entry points, and run as modules from the repo root
-# (`python -m research.scripts.training`). Only the production-side periodic
-# universe builder gets a console script.
+# (`python -m research.scripts.training`). `prism` is the command surface of
+# section 3.14; the two older scripts stay as aliases through stage 6.
 [project.scripts]
+prism = "prism.cli:main"
 prism-build-universe = "prism.scripts.build_sp500_universe:main"
 prism-doctor = "prism.scripts.doctor:main"
 
@@ -99,7 +139,11 @@ python_files = "test_*.py"
 # src-layout: make `prism` importable from the source tree so tests do not
 # depend on a (possibly stale) editable install. "." exposes the quarantined
 # top-level `research` package (SPEC §9), which ships no wheel.
-pythonpath = ["src", "."]
+# packages/prism-ensemble exposes the optional strategy package the stage 6
+# retirement moved the learned ensemble node into; it is a separate
+# distribution (packages/prism-ensemble/pyproject.toml) and is deliberately not
+# part of this wheel.
+pythonpath = ["src", ".", "packages/prism-ensemble"]
 markers = [
     "research: needs the [research] extra (torch/jax/mlflow heavy deps)",
 ]

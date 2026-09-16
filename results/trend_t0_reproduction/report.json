@@ -1,0 +1,121 @@
+{
+  "arms": {
+    "bucket": {
+      "arm_id": "bucket_spread",
+      "config_id": "1b98927bd85bbf94d59d5ee16bcb5bb5fa43b09ba1137be58de7479b29c5be34",
+      "data_id": "b705acbfe8363749b3b92cf7d9dc4e904a3290f28698ba65998381040f19234b",
+      "differences": {
+        "annualized_return": {
+          "absolute": 0.0,
+          "recorded": 0.0007645807869265386,
+          "relative": 0.0,
+          "reproduced": 0.0007645807869265386
+        },
+        "annualized_vol": {
+          "absolute": 0.0,
+          "recorded": 0.058672558952025396,
+          "relative": 0.0,
+          "reproduced": 0.058672558952025396
+        },
+        "avg_gross": {
+          "absolute": 0.0,
+          "recorded": 0.966832454909768,
+          "relative": 0.0,
+          "reproduced": 0.966832454909768
+        },
+        "avg_net": {
+          "absolute": 0.0,
+          "recorded": 0.3866149935103457,
+          "relative": 0.0,
+          "reproduced": 0.3866149935103457
+        },
+        "avg_turnover": {
+          "absolute": 0.0,
+          "recorded": 0.04085462953988753,
+          "relative": 0.0,
+          "reproduced": 0.04085462953988753
+        },
+        "calmar": {
+          "absolute": 0.0,
+          "recorded": 0.003868892993946888,
+          "relative": 0.0,
+          "reproduced": 0.003868892993946888
+        },
+        "max_drawdown": {
+          "absolute": 0.0,
+          "recorded": 0.19762262438448686,
+          "relative": 0.0,
+          "reproduced": 0.19762262438448686
+        },
+        "oos_periodic_sharpe": {
+          "absolute": 0.0,
+          "recorded": 0.0026710282780847954,
+          "relative": 0.0,
+          "reproduced": 0.0026710282780847954
+        },
+        "psr": {
+          "absolute": 0.0,
+          "recorded": 0.5722947668747193,
+          "relative": 0.0,
+          "reproduced": 0.5722947668747193
+        },
+        "sharpe": {
+          "absolute": 0.0,
+          "recorded": 0.04240125941180066,
+          "relative": 0.0,
+          "reproduced": 0.04240125941180066
+        },
+        "total_cost": {
+          "absolute": 0.0,
+          "recorded": 0.13107768306134374,
+          "relative": 0.0,
+          "reproduced": 0.13107768306134374
+        },
+        "total_return": {
+          "absolute": 0.0,
+          "recorded": 0.014239773174520298,
+          "relative": 0.0,
+          "reproduced": 0.014239773174520298
+        }
+      },
+      "fold_table_sha256": "c17447526a06363f8edb33f9921b81e5d707769bad3ce84230d3acf276b0884c",
+      "metrics": {
+        "annualized_return": 0.0007645807869265386,
+        "annualized_vol": 0.058672558952025396,
+        "avg_gross": 0.966832454909768,
+        "avg_net": 0.3866149935103457,
+        "avg_turnover": 0.04085462953988753,
+        "calmar": 0.003868892993946888,
+        "max_drawdown": 0.19762262438448686,
+        "oos_periodic_sharpe": 0.0026710282780847954,
+        "psr": 0.5722947668747193,
+        "sharpe": 0.04240125941180066,
+        "total_cost": 0.13107768306134374,
+        "total_return": 0.014239773174520298
+      },
+      "n_folds": 74,
+      "n_obs": 4662,
+      "record": "/home/b90/prism/.claude/worktrees/engine-overhaul/results/run-c5b414d936ef43e1/record.json",
+      "run_id": "run-c5b414d936ef43e1",
+      "seconds": 144.9,
+      "spec": "/home/b90/prism/.claude/worktrees/engine-overhaul/examples/trend/trend_t0.toml",
+      "trial_log": "/home/b90/prism/.claude/worktrees/engine-overhaul/trials/trend_v1.jsonl"
+    }
+  },
+  "case": "trend_t0",
+  "compared_arm": "bucket",
+  "reference": {
+    "annualized_return": 0.0007645807869265386,
+    "annualized_vol": 0.058672558952025396,
+    "avg_gross": 0.966832454909768,
+    "avg_net": 0.3866149935103457,
+    "avg_turnover": 0.04085462953988753,
+    "calmar": 0.003868892993946888,
+    "max_drawdown": 0.19762262438448686,
+    "oos_periodic_sharpe": 0.0026710282780847954,
+    "psr": 0.5722947668747193,
+    "sharpe": 0.04240125941180066,
+    "total_cost": 0.13107768306134374,
+    "total_return": 0.014239773174520298
+  }
+}

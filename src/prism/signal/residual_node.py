@@ -38,7 +38,7 @@ import pandas as pd
 
 from prism.residual.factors import ResidualStatArbConfig, compute_returns
 from prism.residual.residual import compute_residual_signal_panel
-from prism.signal.base import Signal
+from prism.signal.base import FittedState, OutputKind, ScoringBasis, Signal, Units
 
 
 class ResidualSignalNode(Signal):
@@ -50,6 +50,19 @@ class ResidualSignalNode(Signal):
     never the estimation. ``membership_mask`` (optional, day × symbol bool)
     is the point-in-time universe gate, threaded to the eligibility screen.
     """
+
+    # Declarations (§3.3). The emission is the standardized expected residual
+    # move over `horizon_bars`, in horizon-sigma units, on the as-traded close
+    # panel. Every estimate is a trailing-window refit at the decision bar, so
+    # no state crosses the train/score boundary. The rescale property holds
+    # within the eligible region: the estimation is computed on returns, while
+    # the screen deliberately gates on absolute price and dollar volume.
+    output_kind: OutputKind = "standardized_forecast"
+    units: Units = "sigma_h"
+    scoring_basis: ScoringBasis = "price"
+    price_scale_invariant: bool = True
+    fitted_state: FittedState = "none"
+    estimated_decay_bars: int | None = None
 
     def __init__(
         self,

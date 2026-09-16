@@ -25,6 +25,20 @@ failure modes:
   exiting a capped position are the extremes), so a guard at twice that is
   slack against rounding yet catches every order-of-magnitude corruption.
 
+* **The run-directory provenance rail** (:func:`require_established_run_dir`)
+  answers "is this invocation the continuation of a session that already
+  exists?" — checked once, before the first venue read, on the state of the run
+  directory as it was when the process started. A paper session is a
+  *continuation*: its run directory carries the durable record of the sessions
+  before it, and every ordinary invocation — the nightly wrapper included —
+  points at one that does. An invocation pointed at a directory with no such
+  record is either the deliberate first session of a new book or an accident,
+  and on 2026-09-09 it was an accident: a verification step passed a throwaway
+  ``--run-dir``, found credentials, constructed a whole book from flat and sent
+  116 orders. The rail cannot tell the two apart, so it refuses and makes the
+  operator say which: ``--no-submit`` to exercise the command without trading,
+  ``--allow-new-run-dir`` to start a book here for real.
+
 The rails protect the *account*, not the strategy: they never liquidate, never
 re-decide, and never move a ratified statistic. Auto-liquidation is a policy
 decision that belongs to an owner, not a rail.
@@ -124,3 +138,66 @@ def check_orders(orders: list[Order], equity: float, config: SafetyConfig) -> No
                 f"(bound {bound:.2f}); worst {[(s, round(n, 2)) for s, n in worst]}; "
                 "refusing before the write-ahead persist — check equity/price corruption"
             )
+
+
+# ---------------------------------------------------------------------- provenance
+
+#: What makes a run directory an *established* session: the durable record a
+#: previous cycle left behind. ``state.json`` is the write-ahead protocol's own
+#: document and ``equity.jsonl`` the NAV ledger every session appends to, so a
+#: directory carrying either has been run before. Presence of one is enough —
+#: a book halted on its first night writes the equity ledger and no pending
+#: state, and that session is no less real for it.
+SESSION_HISTORY_FILES: tuple[str, ...] = ("state.json", "equity.jsonl")
+
+
+@dataclass(frozen=True)
+class RunDirHistory:
+    """What a run directory looked like *before* this process touched it.
+
+    Sampled at the top of an entry point, because by the time the writer lock is
+    taken the directory exists whether it did a moment ago or not
+    (``prism.live.lockfile.run_dir_lock`` creates it) — so a check made later
+    could no longer tell a continuation from a fresh directory this very process
+    conjured.
+    """
+
+    path: Path
+    existed: bool
+    session_files: tuple[str, ...]
+
+    @property
+    def established(self) -> bool:
+        """True when a previous session left its durable record here."""
+        return bool(self.session_files)
+
+
+def sample_run_dir_history(run_dir: Path | str) -> RunDirHistory:
+    """Record ``run_dir``'s prior-session evidence, before anything creates it."""
+    path = Path(run_dir)
+    existed = path.is_dir()
+    found = tuple(name for name in SESSION_HISTORY_FILES if (path / name).is_file()) if existed else ()
+    return RunDirHistory(path=path, existed=existed, session_files=found)
+
+
+def require_established_run_dir(history: RunDirHistory, *, allow_new: bool, entry_point: str) -> None:
+    """Refuse to trade from a run directory that carries no prior session.
+
+    ``allow_new`` is the operator's explicit statement that a new book really
+    does start here; it is the only way past, and it is deliberately not
+    something an automated caller stumbles into. Callers that submit nothing
+    (``--no-submit``) must not call this at all: rehearsing against a throwaway
+    directory is precisely the use this rail exists to make available.
+    """
+    if history.established or allow_new:
+        return
+    absent = ", ".join(SESSION_HISTORY_FILES)
+    state = "does not exist" if not history.existed else "holds no prior session record"
+    raise SafetyViolation(
+        f"{entry_point} refuses to submit from {history.path}: that directory {state} "
+        f"({absent} absent when this process started), so this invocation is not the continuation "
+        "of an established paper session — it is what an accidental or exploratory invocation looks "
+        "like, and one of those traded the paper account on 2026-09-09. Nothing has been read from the "
+        "venue and nothing has been sent. Re-run with --no-submit to exercise the whole command "
+        "without trading, or with --allow-new-run-dir if a new book genuinely starts here."
+    )

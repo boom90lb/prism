@@ -306,9 +306,7 @@ def _ranked_signal(n_sym: int = 10) -> ConstSignal:
 
 
 def test_decile_neutral_book_is_balanced_long_short(ctx) -> None:
-    config = DailyBookConfig(
-        book="decile_neutral", decile=0.2, max_symbol_abs_weight=1.0, min_order_notional=1.0
-    )
+    config = DailyBookConfig(book="decile_neutral", decile=0.2, max_symbol_abs_weight=1.0, min_order_notional=1.0)
     result = run_daily_cycle(ctx, _ranked_signal(), *_decile_panels(), config)
     tw = result.target_weights
     assert tw.abs().sum() == pytest.approx(1.0)  # raw gross 1.0
@@ -342,9 +340,7 @@ def test_inverse_vol_book_honors_score_signs(ctx) -> None:
         min_order_notional=1.0,
     )
     # LOW long, HIGH short — signs from scores; LOW should get larger |w|.
-    result = run_daily_cycle(
-        ctx, ConstSignal({"LOW": 0.2, "HIGH": -0.2}, required=5), close, volume, config
-    )
+    result = run_daily_cycle(ctx, ConstSignal({"LOW": 0.2, "HIGH": -0.2}, required=5), close, volume, config)
     tw = result.target_weights
     assert tw["LOW"] > 0.0
     assert tw["HIGH"] < 0.0
@@ -394,9 +390,7 @@ def test_monthly_cadence_refreshes_then_holds(ctx) -> None:
 
 
 def test_decile_book_exits_a_name_that_leaves_the_decile(ctx) -> None:
-    config = DailyBookConfig(
-        book="decile_neutral", decile=0.2, max_symbol_abs_weight=1.0, min_order_notional=1.0
-    )
+    config = DailyBookConfig(book="decile_neutral", decile=0.2, max_symbol_abs_weight=1.0, min_order_notional=1.0)
     # Cycle 1 on 10 names: S8,S9 long; S0,S1 short.
     run_daily_cycle(ctx, _ranked_signal(10), *_decile_panels(n=26, n_sym=10), config)
     # Cycle 2: S9's momentum reshuffles to mid-pack — it drops out of the top
@@ -425,10 +419,13 @@ def test_state_v1_migrates_to_v2(tmp_path) -> None:
         encoding="utf-8",
     )
     state = StateStore(path).load()
-    assert state.schema_version == STATE_SCHEMA_VERSION == 2
+    # v1 -> v2 (the cadence anchor) then v2 -> v3 (the canonical book): two
+    # declared hops, no silent reset of a real position.
+    assert state.schema_version == STATE_SCHEMA_VERSION == 3
     assert state.last_refresh_bar is None  # a v1 book loads unanchored
     assert state.positions == {"AAA": 3.0}  # positions preserved, not reset
     assert state.last_settled_bar == "2026-07-06"
+    assert state.fills_marker == "2026-07-06"  # initialized from last_settled_bar (D4)
 
 
 # ---------------------------------------------------------------------------
@@ -549,9 +546,7 @@ class RecordingScale:
         return self.value
 
 
-_DECILE_CONFIG = DailyBookConfig(
-    book="decile_neutral", decile=0.2, max_symbol_abs_weight=1.0, min_order_notional=1.0
-)
+_DECILE_CONFIG = DailyBookConfig(book="decile_neutral", decile=0.2, max_symbol_abs_weight=1.0, min_order_notional=1.0)
 
 
 def test_regime_read_every_cycle_including_non_refresh(ctx, tmp_path) -> None:
@@ -615,9 +610,7 @@ def test_raising_provider_is_contained_named_and_loud(ctx, tmp_path, caplog) -> 
 
 
 def test_empty_provider_result_is_a_named_provider_failure(ctx) -> None:
-    result = run_daily_cycle(
-        ctx, ConstSignal({"AAA": 1.0, "BBB": -1.0}), *_panels(), _CONFIG, regime=lambda bar: {}
-    )
+    result = run_daily_cycle(ctx, ConstSignal({"AAA": 1.0, "BBB": -1.0}), *_panels(), _CONFIG, regime=lambda bar: {})
     assert result.regime["failures"] == [{"block": "provider", "error": "RuntimeError"}]
     assert len(result.submitted_orders) == 2  # the cycle still decided
 

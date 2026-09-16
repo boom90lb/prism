@@ -1,0 +1,309 @@
+{
+  "capture": {
+    "decision_bearing_sessions": [
+      "2026-07-13",
+      "2026-08-11"
+    ],
+    "dir": "tests/fixtures/paper_replay",
+    "panels_status": "unavailable",
+    "recorded_scored_universe_size": 503,
+    "sessions": 5,
+    "traded_commit": "667bb09",
+    "universe_size": 119
+  },
+  "capture_caveats": [
+    "NO PANELS. The bar panels could not be reconstructed for any fixture session: the store covers 2/119 fixture symbols, latest bar 2026-07-06; 119/119 have no bar at session 2026-07-13. The live loop read its bars from Alpaca over the network and persisted none, and no local source reaches these bars. Nothing in this directory can be driven through replay_daily_cycles until a bar source covering 2026-07-13..2026-08-14 for the fixture universe is restored; a parity test must skip on that, never pass.",
+    "Two decision-bearing sessions, not three. The engine specification's 'at least three decision-bearing sessions' is not cuttable from this record: targets.jsonl holds exactly two rows. The fixture set is the two refreshes plus the three hold sessions that follow the second, and nothing here supplies a third refresh.",
+    "Reconstructed panels are not the panels the sessions saw. IncrementalBarStore carries a SplitRewriteDetected path (src/prism/io/store.py:50) precisely because vendors rewrite split-adjusted history wholesale; any panel rebuilt after the fact may sit on a different adjustment basis than the session did. Replay parity against this fixture is a bounded claim about the engine's arithmetic, not an unqualified reproduction of the live session.",
+    "The trimmed universe cannot reproduce the ranking. These sessions scored the full S&P 500 panel (the RUN lines record 502-503 symbols); the fixture universe is only the names the sessions traded, marked or held. That is enough to check settle, mark and order arithmetic against the recorded ledgers, and not enough to re-derive the cross-sectional decile book. Reproducing the decision itself needs the full recorded universe panel.",
+    "Recorded fills are live auction prints; a replay's are modeled. The ledger's fill prices came from Alpaca OPG auctions and the morning sweep; ReplayBroker fills at the next open print exactly (src/prism/live/replay.py:49-58). Parity must therefore be defined on the decided book and the orders, never on fill price or realised equity.",
+    "The recorded sessions are not contiguous. The run directory was deleted and restored from backup history on 2026-07-29 and the sessions 2026-07-18 through 2026-07-29 did not run (runs/paper_loop_momentum2/REATTACHED.md). The equity and concordance ledgers skip that interval; a replay over a continuous calendar will produce marks the record does not have."
+  ],
+  "checks": [
+    {
+      "check": "capture-integrity",
+      "detail": "8 recorded ledger(s) hash to the digests the capture wrote",
+      "evidence": {
+        "digests": {
+          "concordance.jsonl": "a9e603d5de00e1154fcd84cb598561061b3ae194cd413742f867041eb081ab72",
+          "equity.jsonl": "c6e28beb750be5d02349d60ce3a159be3fe81a90df63bdd61e124506e034c570",
+          "fills.jsonl": "7dcacb1575713b7977b1276a1a484d0f14cca5cb4775ad2704191a70f3363ebc",
+          "spinoff_mask_2026-08-11.json": "a7faa902dc14432056c591ae6893c639d3fb589674b34cd7d1d7de7b5f0fd321",
+          "state_final.json": "d2fe9910b1bea8ef85b5ccf008ab9f676f68f830ca5ef00d88337042e70789a8",
+          "targets.jsonl": "79fe581170fe7c108f08c74537016db03a81100019df9e80e99f459d6a2ca570",
+          "unfilled.jsonl": "7d2464ff1ff710b733fa9ad9c20bb0d1f5b97d7a378e3a0cd04a255e0686c9ac",
+          "universe.txt": "b1f60797f0626d958abc08b875d90167125189c82fdc3cfa581428d2a6af5d69"
+        },
+        "files_checked": 8
+      },
+      "verdict": "PASS"
+    },
+    {
+      "check": "recorded-extraction",
+      "detail": "5/5 session(s) recovered, per-session target counts equal to the counts the capture recorded independently",
+      "evidence": {
+        "engine_version_of_record": "git:667bb09",
+        "target_counts": {
+          "2026-07-13": 98,
+          "2026-08-11": 99,
+          "2026-08-12": 0,
+          "2026-08-13": 0,
+          "2026-08-14": 0
+        }
+      },
+      "verdict": "PASS"
+    },
+    {
+      "check": "extraction-parity",
+      "detail": "5/5 session(s) compared, 0 differing at the declared tolerance, orders compared on 2 decision session(s)",
+      "evidence": {
+        "order_sets_compared": [
+          "2026-07-13",
+          "2026-08-11"
+        ],
+        "sessions_compared": 5,
+        "sessions_differing": 0
+      },
+      "verdict": "PASS"
+    },
+    {
+      "check": "order-sizing-parity",
+      "detail": "209 recorded parent order(s) over 2 decision session(s) rebuilt from the recorded decision inputs, 0 differing at the declared share tolerance",
+      "evidence": {
+        "orders_compared": 209,
+        "orders_differing": 0,
+        "per_session": {
+          "2026-07-13": {
+            "differences": {},
+            "names_priced_from_the_order_ledger": [],
+            "opening_positions": 0,
+            "orders_differing": 0,
+            "orders_rebuilt": 98,
+            "orders_recorded": 98,
+            "verdict": "PASS"
+          },
+          "2026-08-11": {
+            "differences": {},
+            "names_priced_from_the_order_ledger": [
+              "ALB",
+              "BG",
+              "BKR",
+              "BRO",
+              "CASY",
+              "CMG",
+              "CSCO",
+              "DASH",
+              "GEV",
+              "GIS",
+              "GNRC",
+              "IP",
+              "JBL",
+              "MPWR",
+              "PNR",
+              "POOL",
+              "PWR",
+              "ROST",
+              "VRSK",
+              "ZBRA"
+            ],
+            "opening_positions": 98,
+            "orders_differing": 0,
+            "orders_rebuilt": 111,
+            "orders_recorded": 111,
+            "verdict": "PASS"
+          }
+        }
+      },
+      "verdict": "PASS"
+    },
+    {
+      "check": "refutation",
+      "detail": "a 10x-tolerance weight move on ABT and a one-share order change on ABT at 2026-08-11 are both reported as differences",
+      "evidence": {
+        "perturbed_order_name": "ABT",
+        "perturbed_session": "2026-08-11",
+        "perturbed_weight_name": "ABT",
+        "sessions_reported_differing": [
+          "2026-08-11"
+        ]
+      },
+      "verdict": "PASS"
+    },
+    {
+      "check": "decision-parity",
+      "detail": "the candidate side cannot be produced: 0 of 5 session(s) can be compared end to end. the store covers 2/119 fixture symbols, latest bar 2026-07-06; 119/119 have no bar at session 2026-07-13. The new path was never run over these sessions, so this report says nothing about whether it would decide the same thing.",
+      "evidence": {
+        "coverage": {
+          "capture_probe": {
+            "latest_stored_bar": "2026-07-06",
+            "legacy_cache_probe": {
+              "cache_dir": "/home/b90/prism/data",
+              "latest_cached_bar": "2026-07-07",
+              "symbols_with_a_cache": 119,
+              "symbols_without_a_cache": 0
+            },
+            "min_history_required": 274,
+            "min_trailing_rows_among_stored_symbols": 1634,
+            "per_session_coverage": [
+              {
+                "bar": "2026-07-13",
+                "symbols_missing_a_bar": 119,
+                "symbols_with_a_bar": 0,
+                "universe_size": 119
+              },
+              {
+                "bar": "2026-08-11",
+                "symbols_missing_a_bar": 119,
+                "symbols_with_a_bar": 0,
+                "universe_size": 119
+              },
+              {
+                "bar": "2026-08-12",
+                "symbols_missing_a_bar": 119,
+                "symbols_with_a_bar": 0,
+                "universe_size": 119
+              },
+              {
+                "bar": "2026-08-13",
+                "symbols_missing_a_bar": 119,
+                "symbols_with_a_bar": 0,
+                "universe_size": 119
+              },
+              {
+                "bar": "2026-08-14",
+                "symbols_missing_a_bar": 119,
+                "symbols_with_a_bar": 0,
+                "universe_size": 119
+              }
+            ],
+            "reason": "the store covers 2/119 fixture symbols, latest bar 2026-07-06; 119/119 have no bar at session 2026-07-13",
+            "status": "unavailable",
+            "store_interval": "1d",
+            "symbols_absent_from_store": 117
+          },
+          "exists": true,
+          "latest_cached_bar": "2026-07-06",
+          "per_session": {
+            "2026-07-13": 0,
+            "2026-08-11": 0,
+            "2026-08-12": 0,
+            "2026-08-13": 0,
+            "2026-08-14": 0
+          },
+          "probed": true,
+          "store_dir": "/home/b90/prism/data/store",
+          "symbols_requested": 119,
+          "symbols_with_a_cache": 2
+        },
+        "sessions_compared": 0,
+        "sessions_requested": 5,
+        "shortfall": {
+          "2026-07-13": "0/119 symbols have a bar",
+          "2026-08-11": "0/119 symbols have a bar",
+          "2026-08-12": "0/119 symbols have a bar",
+          "2026-08-13": "0/119 symbols have a bar",
+          "2026-08-14": "0/119 symbols have a bar"
+        },
+        "what_would_close_it": {
+          "adjustment_basis": "the split-adjustment basis the vendor served on those dates. A panel rebuilt today may sit on a different basis after a vendor back-rewrite (io/store.py carries SplitRewriteDetected for exactly this), so a rebuilt panel makes replay parity a bounded claim about arithmetic rather than an unqualified reproduction of the session.",
+          "bar_source": "any source that can serve daily open and close bars for these dates offline. The live loop read them from Alpaca and persisted none, and the local store (/home/b90/prism/data/store) holds 15 symbols with a latest bar of 2026-07-06, which reaches neither the universe nor the dates. Restoring them means a vendor pull into the bar store, not a code change.",
+          "dates": "2025-06-09 through 2026-08-14 inclusive: the 274 trailing sessions of history the signal requires before the first decision bar 2026-07-13 (252 lookback + 21 skip + 1), plus the 25 sessions from 2026-07-13 to the last captured session 2026-08-14.",
+          "missing_input": "daily OHLCV bars for the sessions the capture covers",
+          "symbols": "the roughly 503 symbols the sessions actually scored, not the 119 the capture trimmed to. The trimmed set is the names these sessions priced, traded or held; the cross-sectional decile ranking cannot be re-derived from it, because a decile boundary is a property of the whole scored panel. data/universe/sp500_pit_resolved_2026-07-17.txt is the closest point-in-time membership list in the tree.",
+          "third_decision_session": "the specification asks for at least three decision-bearing sessions and this capture has two: targets.jsonl holds exactly two rows. A third refresh must come from a session the loop actually runs, which the observation window supplies."
+        }
+      },
+      "verdict": "NOT COMPARED"
+    }
+  ],
+  "declared_tolerance": {
+    "cheapest_recorded_reference_price": 13.55,
+    "share_absolute": 0.0,
+    "share_rationale": "Zero. Orders leave this engine as whole shares (paper_books.BookParams.whole_shares is True for every shipped book), so one share of difference is a different order and there is no rounding band that makes two order sets the same. A nonzero share tolerance would hide exactly the class of difference this gate exists to find.",
+    "smallest_recorded_equity": 927895.565,
+    "weight_absolute": 1e-09,
+    "weight_rationale": "Absolute, per name, on the decided book. Set far below one share of the cheapest name in the capture at the capture's own equity, so no weight difference inside the tolerance can change a single share of any order. It is a float-arithmetic band, not an economic allowance: a difference this gate tolerates is one that cannot reach the venue.",
+    "weight_tolerance_in_dollars_at_smallest_recorded_equity": 0.000927895565,
+    "weight_tolerance_in_shares_of_the_cheapest_name": 6.84793774907749e-05
+  },
+  "exit_code": 2,
+  "gate": "engine overhaul stage 5 replay parity gate",
+  "gate_module": "prism.live.parity_gate",
+  "generated_at": "2026-09-09T10:05:09+00:00",
+  "sessions": [
+    {
+      "bar": "2026-07-13",
+      "decision_parity": "NOT COMPARED",
+      "decision_parity_reason": "the candidate side cannot be produced: 0 of 5 session(s) can be compared end to end. the store covers 2/119 fixture symbols, latest bar 2026-07-06; 119/119 have no bar at session 2026-07-13. The new path was never run over these sessions, so this report says nothing about whether it would decide the same thing.",
+      "kind": "decision",
+      "max_weight_difference": 0.0,
+      "order_parity": "PASS",
+      "orders_differing": 0,
+      "orders_rebuilt": 98,
+      "orders_recorded": 98,
+      "target_parity": "PASS",
+      "targets_recorded": 98
+    },
+    {
+      "bar": "2026-08-11",
+      "decision_parity": "NOT COMPARED",
+      "decision_parity_reason": "the candidate side cannot be produced: 0 of 5 session(s) can be compared end to end. the store covers 2/119 fixture symbols, latest bar 2026-07-06; 119/119 have no bar at session 2026-07-13. The new path was never run over these sessions, so this report says nothing about whether it would decide the same thing.",
+      "kind": "decision",
+      "max_weight_difference": 0.0,
+      "order_parity": "PASS",
+      "orders_differing": 0,
+      "orders_rebuilt": 111,
+      "orders_recorded": 111,
+      "target_parity": "PASS",
+      "targets_recorded": 99
+    },
+    {
+      "bar": "2026-08-12",
+      "decision_parity": "NOT COMPARED",
+      "decision_parity_reason": "the candidate side cannot be produced: 0 of 5 session(s) can be compared end to end. the store covers 2/119 fixture symbols, latest bar 2026-07-06; 119/119 have no bar at session 2026-07-13. The new path was never run over these sessions, so this report says nothing about whether it would decide the same thing.",
+      "kind": "hold",
+      "max_weight_difference": 0.0,
+      "order_parity": "no orders recorded",
+      "orders_differing": null,
+      "orders_rebuilt": null,
+      "orders_recorded": null,
+      "target_parity": "PASS",
+      "targets_recorded": 0
+    },
+    {
+      "bar": "2026-08-13",
+      "decision_parity": "NOT COMPARED",
+      "decision_parity_reason": "the candidate side cannot be produced: 0 of 5 session(s) can be compared end to end. the store covers 2/119 fixture symbols, latest bar 2026-07-06; 119/119 have no bar at session 2026-07-13. The new path was never run over these sessions, so this report says nothing about whether it would decide the same thing.",
+      "kind": "hold",
+      "max_weight_difference": 0.0,
+      "order_parity": "no orders recorded",
+      "orders_differing": null,
+      "orders_rebuilt": null,
+      "orders_recorded": null,
+      "target_parity": "PASS",
+      "targets_recorded": 0
+    },
+    {
+      "bar": "2026-08-14",
+      "decision_parity": "NOT COMPARED",
+      "decision_parity_reason": "the candidate side cannot be produced: 0 of 5 session(s) can be compared end to end. the store covers 2/119 fixture symbols, latest bar 2026-07-06; 119/119 have no bar at session 2026-07-13. The new path was never run over these sessions, so this report says nothing about whether it would decide the same thing.",
+      "kind": "hold",
+      "max_weight_difference": 0.0,
+      "order_parity": "no orders recorded",
+      "orders_differing": null,
+      "orders_rebuilt": null,
+      "orders_recorded": null,
+      "target_parity": "PASS",
+      "targets_recorded": 0
+    }
+  ],
+  "verdict": "INCOMPLETE",
+  "what_would_close_decision_parity": {
+    "adjustment_basis": "the split-adjustment basis the vendor served on those dates. A panel rebuilt today may sit on a different basis after a vendor back-rewrite (io/store.py carries SplitRewriteDetected for exactly this), so a rebuilt panel makes replay parity a bounded claim about arithmetic rather than an unqualified reproduction of the session.",
+    "bar_source": "any source that can serve daily open and close bars for these dates offline. The live loop read them from Alpaca and persisted none, and the local store (/home/b90/prism/data/store) holds 15 symbols with a latest bar of 2026-07-06, which reaches neither the universe nor the dates. Restoring them means a vendor pull into the bar store, not a code change.",
+    "dates": "2025-06-09 through 2026-08-14 inclusive: the 274 trailing sessions of history the signal requires before the first decision bar 2026-07-13 (252 lookback + 21 skip + 1), plus the 25 sessions from 2026-07-13 to the last captured session 2026-08-14.",
+    "missing_input": "daily OHLCV bars for the sessions the capture covers",
+    "symbols": "the roughly 503 symbols the sessions actually scored, not the 119 the capture trimmed to. The trimmed set is the names these sessions priced, traded or held; the cross-sectional decile ranking cannot be re-derived from it, because a decile boundary is a property of the whole scored panel. data/universe/sp500_pit_resolved_2026-07-17.txt is the closest point-in-time membership list in the tree.",
+    "third_decision_session": "the specification asks for at least three decision-bearing sessions and this capture has two: targets.jsonl holds exactly two rows. A third refresh must come from a session the loop actually runs, which the observation window supplies."
+  }
+}

@@ -38,6 +38,7 @@ from prism.validation.walk_forward import PurgedWalkForward
 from research.config import (
     DEFAULT_MODEL_WEIGHTS,
     DEFAULT_TRAINING_CONFIG,
+    LOGS_DIR,
     EnsembleConfig,
     ModelConfig,
     TrainingConfig,
@@ -621,7 +622,7 @@ def main():
     args = parse_args()
     model_names = parse_model_names(args.models)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    configure_logging(verbose=args.verbose, run_name="training")
+    configure_logging(LOGS_DIR, verbose=args.verbose, run_name="training")
 
     gpu_available = False
     if args.gpu:

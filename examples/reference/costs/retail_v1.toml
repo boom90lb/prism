@@ -1,0 +1,80 @@
+# Every component of this file is an assumption: no fill-based calibration
+# record exists yet, and these are the ExecutionConfig defaults plus the
+# pre-registered bucket schedule. `class = "calibrated"` requires a named
+# calibration record, and the first one is a stage 5 reconciliation output.
+commission_bps = 1.0
+borrow_bps_annual = 50.0
+cash_income_bps_annual = 0.0
+financing_bps_annual = 0.0
+short_proceeds = "collateral_no_rebate"
+holding_cost_settlement = "per_bar"
+trading_days_per_year = 252
+
+# `bound = "inclusive_lower"`: each step is an inclusive lower bound on the
+# declared liquidity statistic, steps descending. `unknown_liquidity =
+# "widest_step"`: a missing, NaN, or non-positive statistic takes the last
+# step, never the cheapest.
+[spread]
+mode = "bucket"
+statistic = "dollar_volume.spread_bucket"
+bound = "inclusive_lower"
+unknown_liquidity = "widest_step"
+schedule = [[500000000.0, 1.0], [100000000.0, 2.0], [25000000.0, 5.0], [0.0, 10.0]]
+
+[impact]
+quadratic_notional_coeff = 10.0
+participation_model = "sqrt"
+participation_coeff = 0.0
+statistic = "dollar_volume.impact"
+
+# The three uses of a dollar-volume statistic each name their own estimator,
+# window, refresh cadence, and floor. `window = "formation"` is legal only with
+# `refresh = "fold"` under an evaluation that declares a fold table.
+[dollar_volume.spread_bucket]
+estimator = "median"
+window = "trailing"
+window_bars = 20
+refresh = "decision"
+floor_dollars = 0.0
+source = "close_times_volume"
+
+[dollar_volume.participation]
+estimator = "median"
+window = "trailing"
+window_bars = 20
+refresh = "decision"
+floor_dollars = 0.0
+base = "current_equity"
+source = "close_times_volume"
+
+[dollar_volume.impact]
+estimator = "same_bar"
+window = "trailing"
+window_bars = 1
+refresh = "bar"
+floor_dollars = 100000.0
+source = "close_times_volume"
+
+[source.commission]
+class = "assumption"
+reference = "src/prism/config.py::ExecutionConfig.commission_bps"
+
+[source.spread]
+class = "assumption"
+reference = "docs/r2_design.md section 3"
+
+[source.impact]
+class = "assumption"
+reference = "src/prism/config.py::ExecutionConfig.slippage_coeff"
+
+[source.borrow]
+class = "assumption"
+reference = "src/prism/config.py::ExecutionConfig.borrow_rate_bps_annual"
+
+[source.financing]
+class = "assumption"
+reference = "no rate established; zero is a stated placeholder"
+
+[source.cash_income]
+class = "assumption"
+reference = "no rate established; zero is a stated placeholder"

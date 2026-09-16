@@ -1,0 +1,3646 @@
+{
+  "instrument": "research/scripts/solver_profile.py",
+  "question": "What does the stage 4 convex constructor cost in time and memory at 500, 1,000 and 3,000 names, under DPP and non-DPP compilation, and does 3,000 names run at all (spec stage 4, Q15)?",
+  "generated": "2026-09-08",
+  "environment": {
+    "cpu_model": "Intel(R) Core(TM) i9-10900K CPU @ 3.70GHz",
+    "cpu_count_logical": 12,
+    "cpu_count_affinity": 12,
+    "memory_total_mib": 15992.62890625,
+    "memory_available_mib_at_start": 9338.3203125,
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.35",
+    "python": "3.12.8",
+    "cvxpy": "1.9.2",
+    "clarabel": "0.11.1",
+    "numpy": "2.4.6",
+    "scipy": "1.17.1",
+    "pandas": "2.3.3",
+    "solver": "CLARABEL",
+    "solver_tolerances": {
+      "tol_gap_abs": 1e-09,
+      "tol_gap_rel": 1e-09,
+      "tol_feas": 1e-09
+    },
+    "thread_environment": {
+      "OMP_NUM_THREADS": null,
+      "OPENBLAS_NUM_THREADS": null,
+      "MKL_NUM_THREADS": null,
+      "RAYON_NUM_THREADS": null
+    },
+    "sandbox_note": "This ran inside an agent sandbox that may constrain CPU and memory. Every timing here is therefore a floor on the hardware's performance and every memory figure is what this shape actually needed under that constraint, not a ceiling the hardware imposes. The machine was shared while the cells ran, so timings move run to run by a few tens of percent; every timing summary carries its own min, median and max over the cell's bars, and the median is the figure the scaling fits and the projection use. The memory figures are far more stable than the timings, and the conclusions that turn on memory do not turn on a few tens of percent."
+  },
+  "declared_shape": {
+    "source_profile": "examples/reference/profiles/experiment_v1.toml",
+    "source_risk_model": "examples/reference/risk/factor_diagonal.toml",
+    "source_registration": "registrations/2026-09-construction.toml",
+    "n_factors": 15,
+    "horizon_bars": 21,
+    "scaling": "per_bar_times_h",
+    "limits": [
+      "max_gross",
+      "max_name_weight",
+      "net_band",
+      "variance_budget",
+      "participation_per_name"
+    ],
+    "max_gross": 1.0,
+    "max_name_weight": 0.1,
+    "net_band": 0.02,
+    "variance_budget": 0.0332,
+    "participation_per_name": 0.05,
+    "cash_buffer": 0.02,
+    "risk_aversion": 0.0,
+    "eps": 1e-08,
+    "components": 1,
+    "cost_terms": [
+      "linear_bps",
+      "quadratic_notional",
+      "power_three_halves",
+      "borrow",
+      "financing"
+    ],
+    "panel": "synthetic: z rank-standardized normal, sigma_h lognormal about 32 percent annual, prices lognormal about 60 dollars, adv_dollars lognormal about 40 million, w0 an invested dollar-neutral book at the profile's gross less the cash buffer",
+    "why_synthetic": "No frozen 3,000-name panel exists in this workspace, and a solver timing depends on the problem's shape and coefficient density rather than on which names carry which scores. Every structural parameter is the declared one; the draws are recorded so the shape is reproducible."
+  },
+  "method": {
+    "modes": {
+      "production": "prism.portfolio.convex.ConvexProgram as shipped: no parameters, fresh compile per bar",
+      "twin_constant": "the profiling twin with numpy constants: the non-DPP control for the DPP cell",
+      "twin_dpp": "the profiling twin with cvxpy Parameters: compiled once, re-solved by assignment",
+      "twin_dpp_fixed_cone": "the same DPP twin with the risk cone written as a constant rather than an N x K parameter, so it is recompiled on the risk model's `refresh_every_bars = 5` cadence rather than on every bar. It isolates how much of DPP's cost is the cone parameter."
+    },
+    "twin_departures": [
+      "a trade variable dw with dw == w - w0, because linear_bps @ abs(w - w0_parameter) is not DPP",
+      "max_name_weight and participation_per_name as box bounds rather than abs() atoms; the feasible set is identical and the box survives a bar on which a name becomes reduce-only"
+    ],
+    "twin_is_not_production": "The twin lives in research/ and is a measuring instrument. Whether to adopt a DPP formulation is a decision these numbers inform; writing one into the production path before the numbers existed would be the tuning this stage forbids.",
+    "equivalence_check": "Each twin cell solves the production program on the same bar and records the maximum absolute weight difference and the objective difference, so a twin timing cannot silently describe a different problem.",
+    "memory": "One child process per cell; peak resident set size from getrusage(RUSAGE_SELF).ru_maxrss, which is monotonic within a process and would otherwise report the largest cell's peak for every cell. tracemalloc peak is the Python-object half of the same number and excludes CLARABEL's own allocations. A sampling thread reads /proc/self/statm every 50 ms and stops the cell if the resident set exceeds `memory_budget_mib`, so a cell that needs more memory than the budget allows is stopped by this harness, with the phase and the figure recorded, rather than by the kernel's OOM killer, which is free to take some other process instead. A stopped cell's `trace.peak_rss_observed_mib` is therefore a lower bound on what the cell needed, not the figure it would have reached.",
+    "extrapolation": "`scaling` fits log(marginal cost) against log(n_names) by least squares over the cells that completed, and reports the exponent, so a shape that was stopped can be described by the curve the completed shapes trace rather than by an unattributed failure.",
+    "first_compile": "For the production mode, the canonicalization time of a freshly built problem measured through Problem.get_problem_data(CLARABEL); for the twins, cvxpy's own Problem.compilation_time. `cold` is the first bar of the cell and `repeat` is every bar after it, so `cold.compile_seconds` is first compilation and `repeat.compile_seconds` is what a subsequent bar pays.",
+    "timing_decomposition": {
+      "data_seconds": "production: ConvexProgram construction, which is the snapshot validation, the sigma cross-check, the coefficient vectors and the action-restriction masks. twins: the same, plus reading the twin's vectors off it. Charging the twins for building the production program's cvxpy expressions overstates their data cost, which is the conservative direction for a DPP claim.",
+      "build_seconds": "production: assembling the objective and constraint expressions. twin_constant: constructing the whole problem. twin_dpp: assigning parameter values on the first bar's compiled problem, except the cold bar, which constructs it.",
+      "wall_seconds": "the Problem.solve call, which for a non-DPP problem recanonicalizes inside it",
+      "solver_seconds": "CLARABEL's own reported solve time, excluding canonicalization",
+      "per_bar_total_seconds": "data + build + wall, over the bars after the cold one"
+    },
+    "import_seconds": "cvxpy is imported and warmed before anything is timed, so the cold bar carries compilation rather than an import. The engine pays it once per process."
+  },
+  "memory_budget_mib": 8192.0,
+  "memory_cap_gib": null,
+  "command": "python -m research.scripts.solver_profile --names 500 574 1000 1500 2000 3000 --bars 8 --memory-budget-mib 8192 --trace-dir /tmp/claude-1000/prof/trace --out results/solver_profile_2026-09-08.json",
+  "cells": [
+    {
+      "n_names": 500,
+      "mode": "production",
+      "bars": 8,
+      "seed": 20260908,
+      "equity": 1000000.0,
+      "import_seconds": 0.153830686933361,
+      "cold": {
+        "data_seconds": 0.015043021994642913,
+        "build_seconds": 0.0058460800210013986,
+        "compile_seconds": 0.06933172210119665,
+        "wall_seconds": 0.23295559803955257,
+        "solver_seconds": 0.111736264,
+        "status": "optimal",
+        "iterations": 35.0
+      },
+      "repeat": {
+        "data_seconds": {
+          "n": 7,
+          "min": 0.015076961019076407,
+          "median": 0.016092268051579595,
+          "mean": 0.01872337785815554,
+          "max": 0.02894392900634557,
+          "total": 0.13106364500708878
+        },
+        "build_seconds": {
+          "n": 7,
+          "min": 0.004332826007157564,
+          "median": 0.005855815950781107,
+          "mean": 0.0058784976967477375,
+          "max": 0.00791329296771437,
+          "total": 0.04114948387723416
+        },
+        "compile_seconds": {
+          "n": 7,
+          "min": 0.056526285014115274,
+          "median": 0.06342577305622399,
+          "mean": 0.061500920880852,
+          "max": 0.06480503198690712,
+          "total": 0.430506446165964
+        },
+        "wall_seconds": {
+          "n": 7,
+          "min": 0.22434877301566303,
+          "median": 0.2452506610425189,
+          "mean": 0.2537597099851285,
+          "max": 0.285254088928923,
+          "total": 1.7763179698958993
+        },
+        "solver_seconds": {
+          "n": 7,
+          "min": 0.105982907,
+          "median": 0.121348128,
+          "mean": 0.12187254700000001,
+          "max": 0.137120823,
+          "total": 0.853107829
+        },
+        "iterations": {
+          "n": 7,
+          "min": 32.0,
+          "median": 34.0,
+          "mean": 34.57142857142857,
+          "max": 39.0,
+          "total": 242.0
+        }
+      },
+      "per_bar_total_seconds": {
+        "n": 7,
+        "min": 0.24629685701802373,
+        "median": 0.2758629539748654,
+        "mean": 0.27836158554003176,
+        "max": 0.31494153290987015,
+        "total": 1.9485310987802222
+      },
+      "cold_bar_total_seconds": 0.2538447000551969,
+      "complete_decision": {
+        "construct_seconds": {
+          "n": 8,
+          "min": 0.25794645503629,
+          "median": 0.2873642630293034,
+          "mean": 0.2890175471256953,
+          "max": 0.311965944012627,
+          "total": 2.312140377005562
+        },
+        "finalize_batch_seconds": {
+          "n": 8,
+          "min": 0.047135886969044805,
+          "median": 0.06240826204884797,
+          "mean": 0.0630514257500181,
+          "max": 0.08214564202353358,
+          "total": 0.5044114060001448
+        },
+        "paths": [
+          "normal"
+        ]
+      },
+      "statuses": [
+        "optimal",
+        "optimal_inaccurate"
+      ],
+      "status_counts": {
+        "optimal": 6,
+        "optimal_inaccurate": 2
+      },
+      "objective_values": {
+        "n": 8,
+        "min": 0.019494096627313308,
+        "median": 0.021785016585409815,
+        "mean": 0.02168342680327604,
+        "max": 0.023031190681388015,
+        "total": 0.17346741442620833
+      },
+      "memory": {
+        "peak_rss_mib": 207.04296875,
+        "rss_at_start_mib": 183.87890625,
+        "rss_at_end_mib": 206.66015625,
+        "tracemalloc_peak_mib": 6.265254974365234,
+        "tracemalloc_current_end_mib": 2.9126148223876953,
+        "sampled_peak_rss_mib": 207.41796875
+      },
+      "canonical_shape": {
+        "n_scalar_variables": 500,
+        "n_scalar_eq_constraints": 0,
+        "n_scalar_leq_constraints": 1003,
+        "constraint_matrix_rows": 9023,
+        "constraint_matrix_cols": 4003,
+        "constraint_matrix_nnz": 23507,
+        "cone_dims": {
+          "zero": 500,
+          "nonneg": 5007,
+          "n_second_order_cones": 1001,
+          "second_order_cone_sizes": {
+            "3": 1000,
+            "516": 1
+          },
+          "second_order_cone_scalars": 3516,
+          "exp": 0,
+          "psd": []
+        }
+      },
+      "dpp_compliant": true,
+      "memory_budget_mib": 8192.0,
+      "memory_cap": {
+        "applied": false
+      },
+      "equivalence": null,
+      "cell_seconds": 5.792632104945369,
+      "stderr_tail": "/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n",
+      "wall_seconds_including_process": 7.392144717974588
+    },
+    {
+      "n_names": 500,
+      "mode": "twin_constant",
+      "bars": 8,
+      "seed": 20260908,
+      "equity": 1000000.0,
+      "import_seconds": 0.16732867097016424,
+      "cold": {
+        "data_seconds": 0.015154876047745347,
+        "build_seconds": 0.005126680945977569,
+        "compile_seconds": 0.07946205139160156,
+        "wall_seconds": 0.2889455300755799,
+        "solver_seconds": 0.147727261,
+        "status": "optimal",
+        "iterations": 35.0
+      },
+      "repeat": {
+        "data_seconds": {
+          "n": 7,
+          "min": 0.014870767015963793,
+          "median": 0.019401852041482925,
+          "mean": 0.020806312427989075,
+          "max": 0.028566682944074273,
+          "total": 0.14564418699592352
+        },
+        "build_seconds": {
+          "n": 7,
+          "min": 0.005373444058932364,
+          "median": 0.005972093902528286,
+          "mean": 0.005988368115920041,
+          "max": 0.006954588927328587,
+          "total": 0.04191857681144029
+        },
+        "compile_seconds": {
+          "n": 7,
+          "min": 0.05909156799316406,
+          "median": 0.0669562816619873,
+          "mean": 0.0669459615434919,
+          "max": 0.0771780014038086,
+          "total": 0.46862173080444336
+        },
+        "wall_seconds": {
+          "n": 7,
+          "min": 0.2586325079901144,
+          "median": 0.28941813099663705,
+          "mean": 0.2851221001141572,
+          "max": 0.3039570020046085,
+          "total": 1.9958547007991
+        },
+        "solver_seconds": {
+          "n": 7,
+          "min": 0.1294543,
+          "median": 0.143278138,
+          "mean": 0.14150103500000002,
+          "max": 0.152141253,
+          "total": 0.9905072450000001
+        },
+        "iterations": {
+          "n": 7,
+          "min": 33.0,
+          "median": 36.0,
+          "mean": 36.285714285714285,
+          "max": 41.0,
+          "total": 254.0
+        }
+      },
+      "per_bar_total_seconds": {
+        "n": 7,
+        "min": 0.28798206301871687,
+        "median": 0.3107883039629087,
+        "mean": 0.3119167806580663,
+        "max": 0.33789712900761515,
+        "total": 2.183417464606464
+      },
+      "cold_bar_total_seconds": 0.3092270870693028,
+      "complete_decision": {
+        "construct_seconds": null,
+        "finalize_batch_seconds": null,
+        "paths": null
+      },
+      "statuses": [
+        "optimal",
+        "optimal_inaccurate"
+      ],
+      "status_counts": {
+        "optimal": 6,
+        "optimal_inaccurate": 2
+      },
+      "objective_values": {
+        "n": 8,
+        "min": 0.019494096587970047,
+        "median": 0.021785016607672774,
+        "mean": 0.021683426830302124,
+        "max": 0.023031190768829535,
+        "total": 0.173467414642417
+      },
+      "memory": {
+        "peak_rss_mib": 206.63671875,
+        "rss_at_start_mib": 184.140625,
+        "rss_at_end_mib": 206.1796875,
+        "tracemalloc_peak_mib": 6.100793838500977,
+        "tracemalloc_current_end_mib": 4.717865943908691,
+        "sampled_peak_rss_mib": 206.9375
+      },
+      "canonical_shape": {
+        "n_scalar_variables": 1000,
+        "n_scalar_eq_constraints": 500,
+        "n_scalar_leq_constraints": 2003,
+        "constraint_matrix_rows": 10025,
+        "constraint_matrix_cols": 4004,
+        "constraint_matrix_nnz": 25509,
+        "cone_dims": {
+          "zero": 500,
+          "nonneg": 6009,
+          "n_second_order_cones": 1001,
+          "second_order_cone_sizes": {
+            "3": 1000,
+            "516": 1
+          },
+          "second_order_cone_scalars": 3516,
+          "exp": 0,
+          "psd": []
+        },
+        "parameter_tensor": {
+          "n_scalar_parameters": 0,
+          "tensor_rows": 40150125,
+          "tensor_cols": 1,
+          "tensor_nnz": 29014
+        }
+      },
+      "dpp_compliant": true,
+      "memory_budget_mib": 8192.0,
+      "memory_cap": {
+        "applied": false
+      },
+      "equivalence": {
+        "checked_against": "production",
+        "max_abs_weight_difference": 1.5486215186946706e-08,
+        "gross_difference": 8.19304624144479e-11,
+        "objective_production": 0.021750543289221404,
+        "objective_twin": 0.02175054329085021,
+        "objective_difference": 1.6288047299806152e-12
+      },
+      "cell_seconds": 2.9866842759074643,
+      "stderr_tail": "/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n",
+      "wall_seconds_including_process": 4.621162344003096
+    },
+    {
+      "n_names": 500,
+      "mode": "twin_dpp",
+      "bars": 8,
+      "seed": 20260908,
+      "equity": 1000000.0,
+      "import_seconds": 0.1528879520483315,
+      "cold": {
+        "data_seconds": 0.016144064022228122,
+        "build_seconds": 0.007525861030444503,
+        "compile_seconds": 3.9053564071655273,
+        "wall_seconds": 4.149086158024147,
+        "solver_seconds": 0.161023522,
+        "status": "optimal",
+        "iterations": 35.0
+      },
+      "repeat": {
+        "data_seconds": {
+          "n": 7,
+          "min": 0.016345896990969777,
+          "median": 0.021949138026684523,
+          "mean": 0.02085281700627612,
+          "max": 0.024505696957930923,
+          "total": 0.14596971904393286
+        },
+        "build_seconds": {
+          "n": 7,
+          "min": 0.0027057339902967215,
+          "median": 0.00373256194870919,
+          "mean": 0.0037030665802636315,
+          "max": 0.005053505068644881,
+          "total": 0.025921466061845422
+        },
+        "compile_seconds": {
+          "n": 7,
+          "min": 0.004629611968994141,
+          "median": 0.005304574966430664,
+          "mean": 0.005821296146937779,
+          "max": 0.007526397705078125,
+          "total": 0.04074907302856445
+        },
+        "wall_seconds": {
+          "n": 7,
+          "min": 0.25087706092745066,
+          "median": 0.2721428140066564,
+          "mean": 0.27375764168599354,
+          "max": 0.3053151519270614,
+          "total": 1.9163034918019548
+        },
+        "solver_seconds": {
+          "n": 7,
+          "min": 0.145803035,
+          "median": 0.15786448,
+          "mean": 0.16238526128571426,
+          "max": 0.189625236,
+          "total": 1.136696829
+        },
+        "iterations": {
+          "n": 7,
+          "min": 32.0,
+          "median": 35.0,
+          "mean": 35.42857142857143,
+          "max": 40.0,
+          "total": 248.0
+        }
+      },
+      "per_bar_total_seconds": {
+        "n": 7,
+        "min": 0.26992869190871716,
+        "median": 0.2959478748962283,
+        "mean": 0.2983135252725333,
+        "max": 0.3327104659983888,
+        "total": 2.088194676907733
+      },
+      "cold_bar_total_seconds": 4.17275608307682,
+      "complete_decision": {
+        "construct_seconds": null,
+        "finalize_batch_seconds": null,
+        "paths": null
+      },
+      "statuses": [
+        "optimal",
+        "optimal_inaccurate"
+      ],
+      "status_counts": {
+        "optimal": 5,
+        "optimal_inaccurate": 3
+      },
+      "objective_values": {
+        "n": 8,
+        "min": 0.01949409663122919,
+        "median": 0.021785016104185293,
+        "mean": 0.0216834266467028,
+        "max": 0.02303119020077414,
+        "total": 0.1734674131736224
+      },
+      "memory": {
+        "peak_rss_mib": 1854.3125,
+        "rss_at_start_mib": 183.81640625,
+        "rss_at_end_mib": 206.44921875,
+        "tracemalloc_peak_mib": 1655.3597707748413,
+        "tracemalloc_current_end_mib": 4.763971328735352,
+        "sampled_peak_rss_mib": 1828.7578125
+      },
+      "canonical_shape": {
+        "n_scalar_variables": 1000,
+        "n_scalar_eq_constraints": 500,
+        "n_scalar_leq_constraints": 2003,
+        "constraint_matrix_rows": 10025,
+        "constraint_matrix_cols": 4004,
+        "constraint_matrix_nnz": 25509,
+        "cone_dims": {
+          "zero": 500,
+          "nonneg": 6009,
+          "n_second_order_cones": 1001,
+          "second_order_cone_sizes": {
+            "3": 1000,
+            "516": 1
+          },
+          "second_order_cone_scalars": 3516,
+          "exp": 0,
+          "psd": []
+        },
+        "parameter_tensor": {
+          "n_scalar_parameters": 13506,
+          "tensor_rows": 40150125,
+          "tensor_cols": 13507,
+          "tensor_nnz": 29016
+        }
+      },
+      "dpp_compliant": true,
+      "memory_budget_mib": 8192.0,
+      "memory_cap": {
+        "applied": false
+      },
+      "equivalence": {
+        "checked_against": "production",
+        "max_abs_weight_difference": 1.5486215186946706e-08,
+        "gross_difference": 8.19304624144479e-11,
+        "objective_production": 0.021750543289221404,
+        "objective_twin": 0.02175054329085021,
+        "objective_difference": 1.6288047299806152e-12
+      },
+      "cell_seconds": 6.7490927170729265,
+      "stderr_tail": "/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n",
+      "wall_seconds_including_process": 8.465835027047433
+    },
+    {
+      "n_names": 500,
+      "mode": "twin_dpp_fixed_cone",
+      "bars": 8,
+      "seed": 20260908,
+      "equity": 1000000.0,
+      "import_seconds": 0.18882497295271605,
+      "cold": {
+        "data_seconds": 0.022150989971123636,
+        "build_seconds": 0.0087572360644117,
+        "compile_seconds": 0.9088587760925293,
+        "wall_seconds": 1.1498836450045928,
+        "solver_seconds": 0.133321495,
+        "status": "optimal",
+        "iterations": 35.0
+      },
+      "repeat": {
+        "data_seconds": {
+          "n": 7,
+          "min": 0.014647571020759642,
+          "median": 0.016344689996913075,
+          "mean": 0.019015110164348568,
+          "max": 0.027277736109681427,
+          "total": 0.13310577115043998
+        },
+        "build_seconds": {
+          "n": 7,
+          "min": 0.0023164680460467935,
+          "median": 0.00294025510083884,
+          "mean": 0.003242583596147597,
+          "max": 0.004497135058045387,
+          "total": 0.022698085173033178
+        },
+        "compile_seconds": {
+          "n": 7,
+          "min": 0.0030906200408935547,
+          "median": 0.003492116928100586,
+          "mean": 0.003841127668108259,
+          "max": 0.00608372688293457,
+          "total": 0.026887893676757812
+        },
+        "wall_seconds": {
+          "n": 7,
+          "min": 0.2100662550656125,
+          "median": 0.23195924900937825,
+          "mean": 0.23809337388125382,
+          "max": 0.2709351710509509,
+          "total": 1.6666536171687767
+        },
+        "solver_seconds": {
+          "n": 7,
+          "min": 0.11175512,
+          "median": 0.134709539,
+          "mean": 0.13892983799999997,
+          "max": 0.161166273,
+          "total": 0.9725088659999999
+        },
+        "iterations": {
+          "n": 7,
+          "min": 34.0,
+          "median": 36.0,
+          "mean": 37.0,
+          "max": 43.0,
+          "total": 259.0
+        }
+      },
+      "per_bar_total_seconds": {
+        "n": 7,
+        "min": 0.23355699109379202,
+        "median": 0.25454639724921435,
+        "mean": 0.26035106764175,
+        "max": 0.289674456929788,
+        "total": 1.8224574734922498
+      },
+      "cold_bar_total_seconds": 1.1807918710401282,
+      "complete_decision": {
+        "construct_seconds": null,
+        "finalize_batch_seconds": null,
+        "paths": null
+      },
+      "statuses": [
+        "optimal",
+        "optimal_inaccurate"
+      ],
+      "status_counts": {
+        "optimal": 6,
+        "optimal_inaccurate": 2
+      },
+      "objective_values": {
+        "n": 8,
+        "min": 0.02095019778428097,
+        "median": 0.02365762998840141,
+        "mean": 0.023501546959219105,
+        "max": 0.0260620537402799,
+        "total": 0.18801237567375284
+      },
+      "memory": {
+        "peak_rss_mib": 876.42578125,
+        "rss_at_start_mib": 183.796875,
+        "rss_at_end_mib": 207.1328125,
+        "tracemalloc_peak_mib": 677.4488182067871,
+        "tracemalloc_current_end_mib": 4.694319725036621,
+        "sampled_peak_rss_mib": 821.6484375
+      },
+      "canonical_shape": {
+        "n_scalar_variables": 1000,
+        "n_scalar_eq_constraints": 500,
+        "n_scalar_leq_constraints": 2003,
+        "constraint_matrix_rows": 10025,
+        "constraint_matrix_cols": 4004,
+        "constraint_matrix_nnz": 25509,
+        "cone_dims": {
+          "zero": 500,
+          "nonneg": 6009,
+          "n_second_order_cones": 1001,
+          "second_order_cone_sizes": {
+            "3": 1000,
+            "516": 1
+          },
+          "second_order_cone_scalars": 3516,
+          "exp": 0,
+          "psd": []
+        },
+        "parameter_tensor": {
+          "n_scalar_parameters": 5506,
+          "tensor_rows": 40150125,
+          "tensor_cols": 5507,
+          "tensor_nnz": 29016
+        }
+      },
+      "dpp_compliant": true,
+      "memory_budget_mib": 8192.0,
+      "memory_cap": {
+        "applied": false
+      },
+      "equivalence": {
+        "checked_against": "production",
+        "max_abs_weight_difference": 1.5486215186946706e-08,
+        "gross_difference": 8.19304624144479e-11,
+        "objective_production": 0.021750543289221404,
+        "objective_twin": 0.02175054329085021,
+        "objective_difference": 1.6288047299806152e-12
+      },
+      "cell_seconds": 3.5440857770154253,
+      "stderr_tail": "/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n",
+      "wall_seconds_including_process": 5.425991138909012
+    },
+    {
+      "n_names": 574,
+      "mode": "production",
+      "bars": 8,
+      "seed": 20260908,
+      "equity": 1000000.0,
+      "import_seconds": 0.15352321101818234,
+      "cold": {
+        "data_seconds": 0.018229804001748562,
+        "build_seconds": 0.006218485999852419,
+        "compile_seconds": 0.09415640402585268,
+        "wall_seconds": 0.2704419930232689,
+        "solver_seconds": 0.130526605,
+        "status": "optimal_inaccurate",
+        "iterations": 35.0
+      },
+      "repeat": {
+        "data_seconds": {
+          "n": 7,
+          "min": 0.01641199307050556,
+          "median": 0.017702272976748645,
+          "mean": 0.019599797004567727,
+          "max": 0.02554005302954465,
+          "total": 0.13719857903197408
+        },
+        "build_seconds": {
+          "n": 7,
+          "min": 0.004067067988216877,
+          "median": 0.004558735992759466,
+          "mean": 0.004917467129416764,
+          "max": 0.006464152014814317,
+          "total": 0.034422269905917346
+        },
+        "compile_seconds": {
+          "n": 7,
+          "min": 0.05544854700565338,
+          "median": 0.06767764291726053,
+          "mean": 0.0689274792759014,
+          "max": 0.08273510308936238,
+          "total": 0.4824923549313098
+        },
+        "wall_seconds": {
+          "n": 7,
+          "min": 0.271772732026875,
+          "median": 0.28929092502221465,
+          "mean": 0.29292447845052394,
+          "max": 0.31477198004722595,
+          "total": 2.0504713491536677
+        },
+        "solver_seconds": {
+          "n": 7,
+          "min": 0.116232741,
+          "median": 0.141707948,
+          "mean": 0.14028112585714284,
+          "max": 0.159213643,
+          "total": 0.9819678809999999
+        },
+        "iterations": {
+          "n": 7,
+          "min": 32.0,
+          "median": 34.0,
+          "mean": 33.857142857142854,
+          "max": 36.0,
+          "total": 237.0
+        }
+      },
+      "per_bar_total_seconds": {
+        "n": 7,
+        "min": 0.295588176115416,
+        "median": 0.31959322502370924,
+        "mean": 0.31744174258450847,
+        "max": 0.338563997996971,
+        "total": 2.222092198091559
+      },
+      "cold_bar_total_seconds": 0.29489028302486986,
+      "complete_decision": {
+        "construct_seconds": {
+          "n": 8,
+          "min": 0.31097821798175573,
+          "median": 0.3454444829840213,
+          "mean": 0.34742603974882513,
+          "max": 0.38546971895266324,
+          "total": 2.779408317990601
+        },
+        "finalize_batch_seconds": {
+          "n": 8,
+          "min": 0.04717510694172233,
+          "median": 0.055553748505190015,
+          "mean": 0.058246462256647646,
+          "max": 0.0817043969873339,
+          "total": 0.46597169805318117
+        },
+        "paths": [
+          "normal"
+        ]
+      },
+      "statuses": [
+        "optimal",
+        "optimal_inaccurate"
+      ],
+      "status_counts": {
+        "optimal": 2,
+        "optimal_inaccurate": 6
+      },
+      "objective_values": {
+        "n": 8,
+        "min": 0.019046836220778997,
+        "median": 0.02067027720924952,
+        "mean": 0.020644911323027225,
+        "max": 0.021549443040718045,
+        "total": 0.1651592905842178
+      },
+      "memory": {
+        "peak_rss_mib": 208.93359375,
+        "rss_at_start_mib": 184.0390625,
+        "rss_at_end_mib": 208.5546875,
+        "tracemalloc_peak_mib": 6.778746604919434,
+        "tracemalloc_current_end_mib": 3.164849281311035,
+        "sampled_peak_rss_mib": 209.3125
+      },
+      "canonical_shape": {
+        "n_scalar_variables": 574,
+        "n_scalar_eq_constraints": 0,
+        "n_scalar_leq_constraints": 1151,
+        "constraint_matrix_rows": 10355,
+        "constraint_matrix_cols": 4595,
+        "constraint_matrix_nnz": 26985,
+        "cone_dims": {
+          "zero": 574,
+          "nonneg": 5747,
+          "n_second_order_cones": 1149,
+          "second_order_cone_sizes": {
+            "3": 1148,
+            "590": 1
+          },
+          "second_order_cone_scalars": 4034,
+          "exp": 0,
+          "psd": []
+        }
+      },
+      "dpp_compliant": true,
+      "memory_budget_mib": 8192.0,
+      "memory_cap": {
+        "applied": false
+      },
+      "equivalence": null,
+      "cell_seconds": 6.632204052992165,
+      "stderr_tail": "serWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n",
+      "wall_seconds_including_process": 8.287665234995075
+    },
+    {
+      "n_names": 574,
+      "mode": "twin_constant",
+      "bars": 8,
+      "seed": 20260908,
+      "equity": 1000000.0,
+      "import_seconds": 0.13981893297750503,
+      "cold": {
+        "data_seconds": 0.020135149941779673,
+        "build_seconds": 0.0046924210619181395,
+        "compile_seconds": 0.06381368637084961,
+        "wall_seconds": 0.31626266904640943,
+        "solver_seconds": 0.163635771,
+        "status": "optimal_inaccurate",
+        "iterations": 34.0
+      },
+      "repeat": {
+        "data_seconds": {
+          "n": 7,
+          "min": 0.016459528007544577,
+          "median": 0.02164474595338106,
+          "mean": 0.021792416011781564,
+          "max": 0.03133449098095298,
+          "total": 0.15254691208247095
+        },
+        "build_seconds": {
+          "n": 7,
+          "min": 0.00545221590436995,
+          "median": 0.0059020849876105785,
+          "mean": 0.005843160840283547,
+          "max": 0.006177485920488834,
+          "total": 0.04090212588198483
+        },
+        "compile_seconds": {
+          "n": 7,
+          "min": 0.060793399810791016,
+          "median": 0.06450152397155762,
+          "mean": 0.065633910042899,
+          "max": 0.0722055435180664,
+          "total": 0.45943737030029297
+        },
+        "wall_seconds": {
+          "n": 7,
+          "min": 0.27138266700785607,
+          "median": 0.2979880250059068,
+          "mean": 0.29776415217202157,
+          "max": 0.3362677280092612,
+          "total": 2.084349065204151
+        },
+        "solver_seconds": {
+          "n": 7,
+          "min": 0.128568624,
+          "median": 0.148169641,
+          "mean": 0.1456594864285714,
+          "max": 0.169584416,
+          "total": 1.0196164049999998
+        },
+        "iterations": {
+          "n": 7,
+          "min": 30.0,
+          "median": 33.0,
+          "mean": 33.142857142857146,
+          "max": 37.0,
+          "total": 232.0
+        }
+      },
+      "per_bar_total_seconds": {
+        "n": 7,
+        "min": 0.30255564907565713,
+        "median": 0.32091602706350386,
+        "mean": 0.3253997290240867,
+        "max": 0.3589047419372946,
+        "total": 2.2777981031686068
+      },
+      "cold_bar_total_seconds": 0.34109024005010724,
+      "complete_decision": {
+        "construct_seconds": null,
+        "finalize_batch_seconds": null,
+        "paths": null
+      },
+      "statuses": [
+        "optimal",
+        "optimal_inaccurate"
+      ],
+      "status_counts": {
+        "optimal": 3,
+        "optimal_inaccurate": 5
+      },
+      "objective_values": {
+        "n": 8,
+        "min": 0.019046837085682396,
+        "median": 0.020670277352654514,
+        "mean": 0.02064491147400345,
+        "max": 0.02154944285792123,
+        "total": 0.1651592917920276
+      },
+      "memory": {
+        "peak_rss_mib": 209.47265625,
+        "rss_at_start_mib": 184.04296875,
+        "rss_at_end_mib": 209.09375,
+        "tracemalloc_peak_mib": 6.871161460876465,
+        "tracemalloc_current_end_mib": 5.283928871154785,
+        "sampled_peak_rss_mib": 209.8515625
+      },
+      "canonical_shape": {
+        "n_scalar_variables": 1148,
+        "n_scalar_eq_constraints": 574,
+        "n_scalar_leq_constraints": 2299,
+        "constraint_matrix_rows": 11505,
+        "constraint_matrix_cols": 4596,
+        "constraint_matrix_nnz": 29283,
+        "cone_dims": {
+          "zero": 574,
+          "nonneg": 6897,
+          "n_second_order_cones": 1149,
+          "second_order_cone_sizes": {
+            "3": 1148,
+            "590": 1
+          },
+          "second_order_cone_scalars": 4034,
+          "exp": 0,
+          "psd": []
+        },
+        "parameter_tensor": {
+          "n_scalar_parameters": 0,
+          "tensor_rows": 52888485,
+          "tensor_cols": 1,
+          "tensor_nnz": 33306
+        }
+      },
+      "dpp_compliant": true,
+      "memory_budget_mib": 8192.0,
+      "memory_cap": {
+        "applied": false
+      },
+      "equivalence": {
+        "checked_against": "production",
+        "max_abs_weight_difference": 2.418604528589205e-07,
+        "gross_difference": 2.237737284360719e-08,
+        "objective_production": 0.02134993499966348,
+        "objective_twin": 0.021349935465536023,
+        "objective_difference": 4.658725419326437e-10
+      },
+      "cell_seconds": 3.140110999927856,
+      "stderr_tail": "/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n",
+      "wall_seconds_including_process": 4.747172101982869
+    },
+    {
+      "n_names": 574,
+      "mode": "twin_dpp",
+      "bars": 8,
+      "seed": 20260908,
+      "equity": 1000000.0,
+      "import_seconds": 0.13779208494815975,
+      "cold": {
+        "data_seconds": 0.01905037695541978,
+        "build_seconds": 0.008920408901758492,
+        "compile_seconds": 4.788378000259399,
+        "wall_seconds": 4.984249469009228,
+        "solver_seconds": 0.123274823,
+        "status": "optimal_inaccurate",
+        "iterations": 34.0
+      },
+      "repeat": {
+        "data_seconds": {
+          "n": 7,
+          "min": 0.016431575990282,
+          "median": 0.017624526983126998,
+          "mean": 0.02029421614549522,
+          "max": 0.029393246048130095,
+          "total": 0.14205951301846653
+        },
+        "build_seconds": {
+          "n": 7,
+          "min": 0.002659914083778858,
+          "median": 0.0027946430491283536,
+          "mean": 0.0034211937205067705,
+          "max": 0.005915455985814333,
+          "total": 0.023948356043547392
+        },
+        "compile_seconds": {
+          "n": 7,
+          "min": 0.003467559814453125,
+          "median": 0.003820657730102539,
+          "mean": 0.004144259861537388,
+          "max": 0.005293369293212891,
+          "total": 0.02900981903076172
+        },
+        "wall_seconds": {
+          "n": 7,
+          "min": 0.21288069302681834,
+          "median": 0.24993379693478346,
+          "mean": 0.24682337656018458,
+          "max": 0.29320583993103355,
+          "total": 1.727763635921292
+        },
+        "solver_seconds": {
+          "n": 7,
+          "min": 0.123167926,
+          "median": 0.149618282,
+          "mean": 0.14792910214285718,
+          "max": 0.185343315,
+          "total": 1.0355037150000002
+        },
+        "iterations": {
+          "n": 7,
+          "min": 29.0,
+          "median": 33.0,
+          "mean": 33.0,
+          "max": 38.0,
+          "total": 231.0
+        }
+      },
+      "per_bar_total_seconds": {
+        "n": 7,
+        "min": 0.237790311104618,
+        "median": 0.27075314486864954,
+        "mean": 0.27053878642618656,
+        "max": 0.3151215019170195,
+        "total": 1.893771504983306
+      },
+      "cold_bar_total_seconds": 5.012220254866406,
+      "complete_decision": {
+        "construct_seconds": null,
+        "finalize_batch_seconds": null,
+        "paths": null
+      },
+      "statuses": [
+        "optimal",
+        "optimal_inaccurate"
+      ],
+      "status_counts": {
+        "optimal": 2,
+        "optimal_inaccurate": 6
+      },
+      "objective_values": {
+        "n": 8,
+        "min": 0.01904683602117016,
+        "median": 0.020670277537013105,
+        "mean": 0.020644911400914706,
+        "max": 0.021549443456715247,
+        "total": 0.16515929120731765
+      },
+      "memory": {
+        "peak_rss_mib": 2381.0625,
+        "rss_at_start_mib": 183.8359375,
+        "rss_at_end_mib": 208.921875,
+        "tracemalloc_peak_mib": 2180.2630796432495,
+        "tracemalloc_current_end_mib": 5.34691047668457,
+        "sampled_peak_rss_mib": 2366.71484375
+      },
+      "canonical_shape": {
+        "n_scalar_variables": 1148,
+        "n_scalar_eq_constraints": 574,
+        "n_scalar_leq_constraints": 2299,
+        "constraint_matrix_rows": 11505,
+        "constraint_matrix_cols": 4596,
+        "constraint_matrix_nnz": 29283,
+        "cone_dims": {
+          "zero": 574,
+          "nonneg": 6897,
+          "n_second_order_cones": 1149,
+          "second_order_cone_sizes": {
+            "3": 1148,
+            "590": 1
+          },
+          "second_order_cone_scalars": 4034,
+          "exp": 0,
+          "psd": []
+        },
+        "parameter_tensor": {
+          "n_scalar_parameters": 15504,
+          "tensor_rows": 52888485,
+          "tensor_cols": 15505,
+          "tensor_nnz": 33308
+        }
+      },
+      "dpp_compliant": true,
+      "memory_budget_mib": 8192.0,
+      "memory_cap": {
+        "applied": false
+      },
+      "equivalence": {
+        "checked_against": "production",
+        "max_abs_weight_difference": 2.418604528589205e-07,
+        "gross_difference": 2.237737284360719e-08,
+        "objective_production": 0.02134993499966348,
+        "objective_twin": 0.021349935465536023,
+        "objective_difference": 4.658725419326437e-10
+      },
+      "cell_seconds": 7.383475634967908,
+      "stderr_tail": "er settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n",
+      "wall_seconds_including_process": 8.961374056059867
+    },
+    {
+      "n_names": 574,
+      "mode": "twin_dpp_fixed_cone",
+      "bars": 8,
+      "seed": 20260908,
+      "equity": 1000000.0,
+      "import_seconds": 0.1621778910048306,
+      "cold": {
+        "data_seconds": 0.027535927016288042,
+        "build_seconds": 0.007067668018862605,
+        "compile_seconds": 1.4886608123779297,
+        "wall_seconds": 1.7161852089921013,
+        "solver_seconds": 0.143503146,
+        "status": "optimal_inaccurate",
+        "iterations": 34.0
+      },
+      "repeat": {
+        "data_seconds": {
+          "n": 7,
+          "min": 0.017093033995479345,
+          "median": 0.019390011904761195,
+          "mean": 0.022054838964582553,
+          "max": 0.03114172292407602,
+          "total": 0.15438387275207788
+        },
+        "build_seconds": {
+          "n": 7,
+          "min": 0.0023459939984604716,
+          "median": 0.002474223030731082,
+          "mean": 0.0026345272781327367,
+          "max": 0.0038056049961596727,
+          "total": 0.018441690946929157
+        },
+        "compile_seconds": {
+          "n": 7,
+          "min": 0.0031914710998535156,
+          "median": 0.0037331581115722656,
+          "mean": 0.004149062292916434,
+          "max": 0.005579471588134766,
+          "total": 0.02904343605041504
+        },
+        "wall_seconds": {
+          "n": 7,
+          "min": 0.22803915501572192,
+          "median": 0.2699570449767634,
+          "mean": 0.27059325344660984,
+          "max": 0.30759552505332977,
+          "total": 1.894152774126269
+        },
+        "solver_seconds": {
+          "n": 7,
+          "min": 0.132088226,
+          "median": 0.146183786,
+          "mean": 0.155797651,
+          "max": 0.192482089,
+          "total": 1.090583557
+        },
+        "iterations": {
+          "n": 7,
+          "min": 31.0,
+          "median": 33.0,
+          "mean": 33.57142857142857,
+          "max": 39.0,
+          "total": 235.0
+        }
+      },
+      "per_bar_total_seconds": {
+        "n": 7,
+        "min": 0.24766349396668375,
+        "median": 0.30357299093157053,
+        "mean": 0.2952826196893251,
+        "max": 0.32738665502984077,
+        "total": 2.066978337825276
+      },
+      "cold_bar_total_seconds": 1.750788804027252,
+      "complete_decision": {
+        "construct_seconds": null,
+        "finalize_batch_seconds": null,
+        "paths": null
+      },
+      "statuses": [
+        "optimal",
+        "optimal_inaccurate"
+      ],
+      "status_counts": {
+        "optimal": 5,
+        "optimal_inaccurate": 3
+      },
+      "objective_values": {
+        "n": 8,
+        "min": 0.01922664709920627,
+        "median": 0.021703658397328865,
+        "mean": 0.021750227334838772,
+        "max": 0.024136978788351547,
+        "total": 0.17400181867871017
+      },
+      "memory": {
+        "peak_rss_mib": 1092.671875,
+        "rss_at_start_mib": 183.88671875,
+        "rss_at_end_mib": 210.19921875,
+        "tracemalloc_peak_mib": 891.6993055343628,
+        "tracemalloc_current_end_mib": 5.268068313598633,
+        "sampled_peak_rss_mib": 1042.12109375
+      },
+      "canonical_shape": {
+        "n_scalar_variables": 1148,
+        "n_scalar_eq_constraints": 574,
+        "n_scalar_leq_constraints": 2299,
+        "constraint_matrix_rows": 11505,
+        "constraint_matrix_cols": 4596,
+        "constraint_matrix_nnz": 29283,
+        "cone_dims": {
+          "zero": 574,
+          "nonneg": 6897,
+          "n_second_order_cones": 1149,
+          "second_order_cone_sizes": {
+            "3": 1148,
+            "590": 1
+          },
+          "second_order_cone_scalars": 4034,
+          "exp": 0,
+          "psd": []
+        },
+        "parameter_tensor": {
+          "n_scalar_parameters": 6320,
+          "tensor_rows": 52888485,
+          "tensor_cols": 6321,
+          "tensor_nnz": 33308
+        }
+      },
+      "dpp_compliant": true,
+      "memory_budget_mib": 8192.0,
+      "memory_cap": {
+        "applied": false
+      },
+      "equivalence": {
+        "checked_against": "production",
+        "max_abs_weight_difference": 2.418604528589205e-07,
+        "gross_difference": 2.237737284360719e-08,
+        "objective_production": 0.02134993499966348,
+        "objective_twin": 0.021349935465536023,
+        "objective_difference": 4.658725419326437e-10
+      },
+      "cell_seconds": 4.336769977002405,
+      "stderr_tail": "/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n",
+      "wall_seconds_including_process": 5.943567876005545
+    },
+    {
+      "n_names": 1000,
+      "mode": "production",
+      "bars": 8,
+      "seed": 20260908,
+      "equity": 1000000.0,
+      "import_seconds": 0.161601030966267,
+      "cold": {
+        "data_seconds": 0.02908960892818868,
+        "build_seconds": 0.0056144100381061435,
+        "compile_seconds": 0.08669250796083361,
+        "wall_seconds": 0.5086728640599176,
+        "solver_seconds": 0.292527261,
+        "status": "optimal_inaccurate",
+        "iterations": 38.0
+      },
+      "repeat": {
+        "data_seconds": {
+          "n": 7,
+          "min": 0.03033867699559778,
+          "median": 0.03196481696795672,
+          "mean": 0.034605801005714705,
+          "max": 0.04368052410427481,
+          "total": 0.24224060704000294
+        },
+        "build_seconds": {
+          "n": 7,
+          "min": 0.004403169034048915,
+          "median": 0.006138337077572942,
+          "mean": 0.006284158444032073,
+          "max": 0.008040518034249544,
+          "total": 0.04398910910822451
+        },
+        "compile_seconds": {
+          "n": 7,
+          "min": 0.06924965791404247,
+          "median": 0.07950434903614223,
+          "mean": 0.08155257958320103,
+          "max": 0.10828394501004368,
+          "total": 0.5708680570824072
+        },
+        "wall_seconds": {
+          "n": 7,
+          "min": 0.4488839349942282,
+          "median": 0.5435202899388969,
+          "mean": 0.5454726371182395,
+          "max": 0.6201213699532673,
+          "total": 3.8183084598276764
+        },
+        "solver_seconds": {
+          "n": 7,
+          "min": 0.245086157,
+          "median": 0.321711412,
+          "mean": 0.320359267,
+          "max": 0.377498735,
+          "total": 2.242514869
+        },
+        "iterations": {
+          "n": 7,
+          "min": 30.0,
+          "median": 37.0,
+          "mean": 36.142857142857146,
+          "max": 42.0,
+          "total": 253.0
+        }
+      },
+      "per_bar_total_seconds": {
+        "n": 7,
+        "min": 0.4836257810238749,
+        "median": 0.58066449186299,
+        "mean": 0.5863625965679863,
+        "max": 0.669940231135115,
+        "total": 4.104538175975904
+      },
+      "cold_bar_total_seconds": 0.5433768830262125,
+      "complete_decision": {
+        "construct_seconds": {
+          "n": 8,
+          "min": 0.4877160539617762,
+          "median": 0.6175134900258854,
+          "mean": 0.6071776348690037,
+          "max": 0.6638147189514711,
+          "total": 4.857421078952029
+        },
+        "finalize_batch_seconds": {
+          "n": 8,
+          "min": 0.06909021199680865,
+          "median": 0.08351962402230129,
+          "mean": 0.08355621350347064,
+          "max": 0.10520152398385108,
+          "total": 0.6684497080277652
+        },
+        "paths": [
+          "normal"
+        ]
+      },
+      "statuses": [
+        "optimal",
+        "optimal_inaccurate"
+      ],
+      "status_counts": {
+        "optimal": 4,
+        "optimal_inaccurate": 4
+      },
+      "objective_values": {
+        "n": 8,
+        "min": 0.020042349307388557,
+        "median": 0.023566272295779844,
+        "mean": 0.02361285366080559,
+        "max": 0.027016956534167053,
+        "total": 0.18890282928644472
+      },
+      "memory": {
+        "peak_rss_mib": 220.5234375,
+        "rss_at_start_mib": 184.0625,
+        "rss_at_end_mib": 220.9609375,
+        "tracemalloc_peak_mib": 10.49755859375,
+        "tracemalloc_current_end_mib": 4.583001136779785,
+        "sampled_peak_rss_mib": 220.71484375
+      },
+      "canonical_shape": {
+        "n_scalar_variables": 1000,
+        "n_scalar_eq_constraints": 0,
+        "n_scalar_leq_constraints": 2003,
+        "constraint_matrix_rows": 18023,
+        "constraint_matrix_cols": 8003,
+        "constraint_matrix_nnz": 47007,
+        "cone_dims": {
+          "zero": 1000,
+          "nonneg": 10007,
+          "n_second_order_cones": 2001,
+          "second_order_cone_sizes": {
+            "3": 2000,
+            "1016": 1
+          },
+          "second_order_cone_scalars": 7016,
+          "exp": 0,
+          "psd": []
+        }
+      },
+      "dpp_compliant": true,
+      "memory_budget_mib": 8192.0,
+      "memory_cap": {
+        "applied": false
+      },
+      "equivalence": null,
+      "cell_seconds": 11.157480712980032,
+      "stderr_tail": "=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n1 intended orders dropped by increment/notional rounding (book/target divergence, N7-loud): [('S00509', 66.09)]\n",
+      "wall_seconds_including_process": 12.87714703392703
+    },
+    {
+      "n_names": 1000,
+      "mode": "twin_constant",
+      "bars": 8,
+      "seed": 20260908,
+      "equity": 1000000.0,
+      "import_seconds": 0.1858674909453839,
+      "cold": {
+        "data_seconds": 0.05007318197749555,
+        "build_seconds": 0.008251107996329665,
+        "compile_seconds": 0.0772392749786377,
+        "wall_seconds": 0.5627964469604194,
+        "solver_seconds": 0.300927231,
+        "status": "optimal_inaccurate",
+        "iterations": 37.0
+      },
+      "repeat": {
+        "data_seconds": {
+          "n": 7,
+          "min": 0.029025526950135827,
+          "median": 0.039525742060504854,
+          "mean": 0.03728381785497602,
+          "max": 0.04675242293160409,
+          "total": 0.2609867249848321
+        },
+        "build_seconds": {
+          "n": 7,
+          "min": 0.00590929901227355,
+          "median": 0.00617385795339942,
+          "mean": 0.006871280127338001,
+          "max": 0.009508396033197641,
+          "total": 0.048098960891366005
+        },
+        "compile_seconds": {
+          "n": 7,
+          "min": 0.07497835159301758,
+          "median": 0.08594536781311035,
+          "mean": 0.08425896508353097,
+          "max": 0.09575867652893066,
+          "total": 0.5898127555847168
+        },
+        "wall_seconds": {
+          "n": 7,
+          "min": 0.4664999230299145,
+          "median": 0.5082304020179436,
+          "mean": 0.5116836585802957,
+          "max": 0.5510641230503097,
+          "total": 3.58178561006207
+        },
+        "solver_seconds": {
+          "n": 7,
+          "min": 0.245925362,
+          "median": 0.292701482,
+          "mean": 0.2907792172857143,
+          "max": 0.339832252,
+          "total": 2.035454521
+        },
+        "iterations": {
+          "n": 7,
+          "min": 31.0,
+          "median": 35.0,
+          "mean": 34.285714285714285,
+          "max": 38.0,
+          "total": 240.0
+        }
+      },
+      "per_bar_total_seconds": {
+        "n": 7,
+        "min": 0.519426203914918,
+        "median": 0.5536856760736555,
+        "mean": 0.5558387565626097,
+        "max": 0.5879598840838298,
+        "total": 3.8908712959382683
+      },
+      "cold_bar_total_seconds": 0.6211207369342446,
+      "complete_decision": {
+        "construct_seconds": null,
+        "finalize_batch_seconds": null,
+        "paths": null
+      },
+      "statuses": [
+        "optimal",
+        "optimal_inaccurate"
+      ],
+      "status_counts": {
+        "optimal": 4,
+        "optimal_inaccurate": 4
+      },
+      "objective_values": {
+        "n": 8,
+        "min": 0.020042349239915703,
+        "median": 0.02356627266098599,
+        "mean": 0.02361285408545967,
+        "max": 0.027016956703848877,
+        "total": 0.18890283268367736
+      },
+      "memory": {
+        "peak_rss_mib": 220.73828125,
+        "rss_at_start_mib": 184.09375,
+        "rss_at_end_mib": 221.3125,
+        "tracemalloc_peak_mib": 10.70340347290039,
+        "tracemalloc_current_end_mib": 7.940074920654297,
+        "sampled_peak_rss_mib": 221.06640625
+      },
+      "canonical_shape": {
+        "n_scalar_variables": 2000,
+        "n_scalar_eq_constraints": 1000,
+        "n_scalar_leq_constraints": 4003,
+        "constraint_matrix_rows": 20025,
+        "constraint_matrix_cols": 8004,
+        "constraint_matrix_nnz": 51009,
+        "cone_dims": {
+          "zero": 1000,
+          "nonneg": 12009,
+          "n_second_order_cones": 2001,
+          "second_order_cone_sizes": {
+            "3": 2000,
+            "1016": 1
+          },
+          "second_order_cone_scalars": 7016,
+          "exp": 0,
+          "psd": []
+        },
+        "parameter_tensor": {
+          "n_scalar_parameters": 0,
+          "tensor_rows": 160300125,
+          "tensor_cols": 1,
+          "tensor_nnz": 58014
+        }
+      },
+      "dpp_compliant": true,
+      "memory_budget_mib": 8192.0,
+      "memory_cap": {
+        "applied": false
+      },
+      "equivalence": {
+        "checked_against": "production",
+        "max_abs_weight_difference": 1.2314546838851359e-08,
+        "gross_difference": 8.546444218993088e-09,
+        "objective_production": 0.027016956534167053,
+        "objective_twin": 0.027016956703848877,
+        "objective_difference": 1.696818241470055e-10
+      },
+      "cell_seconds": 5.319686122937128,
+      "stderr_tail": "/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n",
+      "wall_seconds_including_process": 7.165241993963718
+    },
+    {
+      "n_names": 1000,
+      "mode": "twin_dpp",
+      "bars": 8,
+      "seed": 20260908,
+      "equity": 1000000.0,
+      "import_seconds": 0.15007711900398135,
+      "cold": {
+        "data_seconds": 0.029732104972936213,
+        "build_seconds": 0.007281693979166448,
+        "compile_seconds": 16.473182201385498,
+        "wall_seconds": 16.971770585980266,
+        "solver_seconds": 0.341510989,
+        "status": "optimal_inaccurate",
+        "iterations": 37.0
+      },
+      "repeat": {
+        "data_seconds": {
+          "n": 7,
+          "min": 0.02779054595157504,
+          "median": 0.032549848896451294,
+          "mean": 0.03531539041016783,
+          "max": 0.05135957698803395,
+          "total": 0.2472077328711748
+        },
+        "build_seconds": {
+          "n": 7,
+          "min": 0.0029267730424180627,
+          "median": 0.0030237119644880295,
+          "mean": 0.0035081885622016023,
+          "max": 0.00561128300614655,
+          "total": 0.024557319935411215
+        },
+        "compile_seconds": {
+          "n": 7,
+          "min": 0.004109621047973633,
+          "median": 0.004608154296875,
+          "mean": 0.004730190549577985,
+          "max": 0.0054585933685302734,
+          "total": 0.0331113338470459
+        },
+        "wall_seconds": {
+          "n": 7,
+          "min": 0.4429846400162205,
+          "median": 0.4769979160046205,
+          "mean": 0.47814614270880285,
+          "max": 0.5287814249750227,
+          "total": 3.34702299896162
+        },
+        "solver_seconds": {
+          "n": 7,
+          "min": 0.273061842,
+          "median": 0.303843825,
+          "mean": 0.31175890985714283,
+          "max": 0.384816124,
+          "total": 2.182312369
+        },
+        "iterations": {
+          "n": 7,
+          "min": 31.0,
+          "median": 34.0,
+          "mean": 34.42857142857143,
+          "max": 40.0,
+          "total": 241.0
+        }
+      },
+      "per_bar_total_seconds": {
+        "n": 7,
+        "min": 0.4737019590102136,
+        "median": 0.5168466600589454,
+        "mean": 0.5169697216811723,
+        "max": 0.5613048959057778,
+        "total": 3.618788051768206
+      },
+      "cold_bar_total_seconds": 17.00878438493237,
+      "complete_decision": {
+        "construct_seconds": null,
+        "finalize_batch_seconds": null,
+        "paths": null
+      },
+      "statuses": [
+        "optimal",
+        "optimal_inaccurate"
+      ],
+      "status_counts": {
+        "optimal": 5,
+        "optimal_inaccurate": 3
+      },
+      "objective_values": {
+        "n": 8,
+        "min": 0.020042349241087914,
+        "median": 0.023566272800742118,
+        "mean": 0.023612853676479275,
+        "max": 0.027016956703848877,
+        "total": 0.1889028294118342
+      },
+      "memory": {
+        "peak_rss_mib": 6814.41796875,
+        "rss_at_start_mib": 184.09375,
+        "rss_at_end_mib": 222.1796875,
+        "tracemalloc_peak_mib": 6605.373204231262,
+        "tracemalloc_current_end_mib": 8.100810050964355,
+        "sampled_peak_rss_mib": 6755.015625
+      },
+      "canonical_shape": {
+        "n_scalar_variables": 2000,
+        "n_scalar_eq_constraints": 1000,
+        "n_scalar_leq_constraints": 4003,
+        "constraint_matrix_rows": 20025,
+        "constraint_matrix_cols": 8004,
+        "constraint_matrix_nnz": 51009,
+        "cone_dims": {
+          "zero": 1000,
+          "nonneg": 12009,
+          "n_second_order_cones": 2001,
+          "second_order_cone_sizes": {
+            "3": 2000,
+            "1016": 1
+          },
+          "second_order_cone_scalars": 7016,
+          "exp": 0,
+          "psd": []
+        },
+        "parameter_tensor": {
+          "n_scalar_parameters": 27006,
+          "tensor_rows": 160300125,
+          "tensor_cols": 27007,
+          "tensor_nnz": 58016
+        }
+      },
+      "dpp_compliant": true,
+      "memory_budget_mib": 8192.0,
+      "memory_cap": {
+        "applied": false
+      },
+      "equivalence": {
+        "checked_against": "production",
+        "max_abs_weight_difference": 1.2314546838851359e-08,
+        "gross_difference": 8.546444218993088e-09,
+        "objective_production": 0.027016956534167053,
+        "objective_twin": 0.027016956703848877,
+        "objective_difference": 1.696818241470055e-10
+      },
+      "cell_seconds": 21.406422606902197,
+      "stderr_tail": "/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n",
+      "wall_seconds_including_process": 23.015858173952438
+    },
+    {
+      "n_names": 1000,
+      "mode": "twin_dpp_fixed_cone",
+      "bars": 8,
+      "seed": 20260908,
+      "equity": 1000000.0,
+      "import_seconds": 0.17238762904889882,
+      "cold": {
+        "data_seconds": 0.03299082210287452,
+        "build_seconds": 0.012541797943413258,
+        "compile_seconds": 6.414878845214844,
+        "wall_seconds": 7.087442239979282,
+        "solver_seconds": 0.472690824,
+        "status": "optimal_inaccurate",
+        "iterations": 37.0
+      },
+      "repeat": {
+        "data_seconds": {
+          "n": 7,
+          "min": 0.028207262977957726,
+          "median": 0.049361346988007426,
+          "mean": 0.04613398640815701,
+          "max": 0.0604293110081926,
+          "total": 0.32293790485709906
+        },
+        "build_seconds": {
+          "n": 7,
+          "min": 0.002393161063082516,
+          "median": 0.0039197220467031,
+          "mean": 0.0036449843152825323,
+          "max": 0.004395804018713534,
+          "total": 0.025514890206977725
+        },
+        "compile_seconds": {
+          "n": 7,
+          "min": 0.004546165466308594,
+          "median": 0.005242586135864258,
+          "mean": 0.005720240729195731,
+          "max": 0.008582592010498047,
+          "total": 0.04004168510437012
+        },
+        "wall_seconds": {
+          "n": 7,
+          "min": 0.44836537004448473,
+          "median": 0.5305040039820597,
+          "mean": 0.5411303931614384,
+          "max": 0.6731534000718966,
+          "total": 3.787912752130069
+        },
+        "solver_seconds": {
+          "n": 7,
+          "min": 0.259667545,
+          "median": 0.366043985,
+          "mean": 0.3586219417142858,
+          "max": 0.444124079,
+          "total": 2.5103535920000004
+        },
+        "iterations": {
+          "n": 7,
+          "min": 31.0,
+          "median": 35.0,
+          "mean": 35.57142857142857,
+          "max": 42.0,
+          "total": 249.0
+        }
+      },
+      "per_bar_total_seconds": {
+        "n": 7,
+        "min": 0.4799462320515886,
+        "median": 0.5837850730167702,
+        "mean": 0.5909093638848779,
+        "max": 0.7378836991265416,
+        "total": 4.136365547194146
+      },
+      "cold_bar_total_seconds": 7.13297486002557,
+      "complete_decision": {
+        "construct_seconds": null,
+        "finalize_batch_seconds": null,
+        "paths": null
+      },
+      "statuses": [
+        "optimal",
+        "optimal_inaccurate"
+      ],
+      "status_counts": {
+        "optimal": 5,
+        "optimal_inaccurate": 3
+      },
+      "objective_values": {
+        "n": 8,
+        "min": 0.020604245728832224,
+        "median": 0.02453932792994397,
+        "mean": 0.024520305944578512,
+        "max": 0.028001774983951306,
+        "total": 0.1961624475566281
+      },
+      "memory": {
+        "peak_rss_mib": 2905.2578125,
+        "rss_at_start_mib": 183.859375,
+        "rss_at_end_mib": 221.94140625,
+        "tracemalloc_peak_mib": 2696.430844306946,
+        "tracemalloc_current_end_mib": 7.970010757446289,
+        "sampled_peak_rss_mib": 2896.36328125
+      },
+      "canonical_shape": {
+        "n_scalar_variables": 2000,
+        "n_scalar_eq_constraints": 1000,
+        "n_scalar_leq_constraints": 4003,
+        "constraint_matrix_rows": 20025,
+        "constraint_matrix_cols": 8004,
+        "constraint_matrix_nnz": 51009,
+        "cone_dims": {
+          "zero": 1000,
+          "nonneg": 12009,
+          "n_second_order_cones": 2001,
+          "second_order_cone_sizes": {
+            "3": 2000,
+            "1016": 1
+          },
+          "second_order_cone_scalars": 7016,
+          "exp": 0,
+          "psd": []
+        },
+        "parameter_tensor": {
+          "n_scalar_parameters": 11006,
+          "tensor_rows": 160300125,
+          "tensor_cols": 11007,
+          "tensor_nnz": 58016
+        }
+      },
+      "dpp_compliant": true,
+      "memory_budget_mib": 8192.0,
+      "memory_cap": {
+        "applied": false
+      },
+      "equivalence": {
+        "checked_against": "production",
+        "max_abs_weight_difference": 1.2314546838851359e-08,
+        "gross_difference": 8.546444218993088e-09,
+        "objective_production": 0.027016956534167053,
+        "objective_twin": 0.027016956703848877,
+        "objective_difference": 1.696818241470055e-10
+      },
+      "cell_seconds": 12.079082809970714,
+      "stderr_tail": "/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n",
+      "wall_seconds_including_process": 13.750964608043432
+    },
+    {
+      "n_names": 1500,
+      "mode": "production",
+      "bars": 8,
+      "seed": 20260908,
+      "equity": 1000000.0,
+      "import_seconds": 0.16440887202043086,
+      "cold": {
+        "data_seconds": 0.046246839920058846,
+        "build_seconds": 0.006326884031295776,
+        "compile_seconds": 0.09817788796499372,
+        "wall_seconds": 0.746606000000611,
+        "solver_seconds": 0.452624969,
+        "status": "optimal",
+        "iterations": 36.0
+      },
+      "repeat": {
+        "data_seconds": {
+          "n": 7,
+          "min": 0.04113224009051919,
+          "median": 0.04589323594700545,
+          "mean": 0.04730702612349497,
+          "max": 0.056560249999165535,
+          "total": 0.3311491828644648
+        },
+        "build_seconds": {
+          "n": 7,
+          "min": 0.004627821035683155,
+          "median": 0.0052607490215450525,
+          "mean": 0.005984420572141451,
+          "max": 0.009008399909362197,
+          "total": 0.04189094400499016
+        },
+        "compile_seconds": {
+          "n": 7,
+          "min": 0.0726754009956494,
+          "median": 0.08850005990825593,
+          "mean": 0.0857605649757066,
+          "max": 0.09963074198458344,
+          "total": 0.6003239548299462
+        },
+        "wall_seconds": {
+          "n": 7,
+          "min": 0.7122117739636451,
+          "median": 0.760642983019352,
+          "mean": 0.7643904782765146,
+          "max": 0.8493912590201944,
+          "total": 5.350733347935602
+        },
+        "solver_seconds": {
+          "n": 7,
+          "min": 0.459327041,
+          "median": 0.485322767,
+          "mean": 0.4897355452857143,
+          "max": 0.532072002,
+          "total": 3.428148817
+        },
+        "iterations": {
+          "n": 7,
+          "min": 37.0,
+          "median": 38.0,
+          "mean": 39.0,
+          "max": 42.0,
+          "total": 273.0
+        }
+      },
+      "per_bar_total_seconds": {
+        "n": 7,
+        "min": 0.7597704499494284,
+        "median": 0.8262116329278797,
+        "mean": 0.817681924972151,
+        "max": 0.899912316002883,
+        "total": 5.723773474805057
+      },
+      "cold_bar_total_seconds": 0.7991797239519656,
+      "complete_decision": {
+        "construct_seconds": {
+          "n": 8,
+          "min": 0.7936652000062168,
+          "median": 0.8365931459702551,
+          "mean": 0.8502587571274489,
+          "max": 0.9924760940484703,
+          "total": 6.802070057019591
+        },
+        "finalize_batch_seconds": {
+          "n": 8,
+          "min": 0.08180950593668967,
+          "median": 0.09802282048622146,
+          "mean": 0.43185317907773424,
+          "max": 2.7778657788876444,
+          "total": 3.454825432621874
+        },
+        "paths": [
+          "normal"
+        ]
+      },
+      "statuses": [
+        "optimal",
+        "optimal_inaccurate"
+      ],
+      "status_counts": {
+        "optimal": 5,
+        "optimal_inaccurate": 3
+      },
+      "objective_values": {
+        "n": 8,
+        "min": 0.022576363226153147,
+        "median": 0.02563434103259108,
+        "mean": 0.025380947395878047,
+        "max": 0.02777971683845538,
+        "total": 0.20304757916702437
+      },
+      "memory": {
+        "peak_rss_mib": 233.546875,
+        "rss_at_start_mib": 183.81640625,
+        "rss_at_end_mib": 234.18359375,
+        "tracemalloc_peak_mib": 14.763965606689453,
+        "tracemalloc_current_end_mib": 6.085253715515137,
+        "sampled_peak_rss_mib": 233.9375
+      },
+      "canonical_shape": {
+        "n_scalar_variables": 1500,
+        "n_scalar_eq_constraints": 0,
+        "n_scalar_leq_constraints": 3003,
+        "constraint_matrix_rows": 27023,
+        "constraint_matrix_cols": 12003,
+        "constraint_matrix_nnz": 70507,
+        "cone_dims": {
+          "zero": 1500,
+          "nonneg": 15007,
+          "n_second_order_cones": 3001,
+          "second_order_cone_sizes": {
+            "3": 3000,
+            "1516": 1
+          },
+          "second_order_cone_scalars": 10516,
+          "exp": 0,
+          "psd": []
+        }
+      },
+      "dpp_compliant": true,
+      "memory_budget_mib": 8192.0,
+      "memory_cap": {
+        "applied": false
+      },
+      "equivalence": null,
+      "cell_seconds": 17.844008618034422,
+      "stderr_tail": "/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n1 intended orders dropped by increment/notional rounding (book/target divergence, N7-loud): [('S01134', 7.76)]\n",
+      "wall_seconds_including_process": 19.528614724986255
+    },
+    {
+      "n_names": 1500,
+      "mode": "twin_constant",
+      "bars": 8,
+      "seed": 20260908,
+      "equity": 1000000.0,
+      "import_seconds": 0.15705721301492304,
+      "cold": {
+        "data_seconds": 0.03963277000002563,
+        "build_seconds": 0.0058551240945234895,
+        "compile_seconds": 0.07302474975585938,
+        "wall_seconds": 0.8901789699448273,
+        "solver_seconds": 0.618143638,
+        "status": "optimal",
+        "iterations": 38.0
+      },
+      "repeat": {
+        "data_seconds": {
+          "n": 7,
+          "min": 0.04092242300976068,
+          "median": 0.0429116589948535,
+          "mean": 0.04401530816020178,
+          "max": 0.05086600000504404,
+          "total": 0.30810715712141246
+        },
+        "build_seconds": {
+          "n": 7,
+          "min": 0.006062330096028745,
+          "median": 0.006438999087549746,
+          "mean": 0.006399635757718768,
+          "max": 0.006851891987025738,
+          "total": 0.04479745030403137
+        },
+        "compile_seconds": {
+          "n": 7,
+          "min": 0.0712590217590332,
+          "median": 0.0789785385131836,
+          "mean": 0.08105315480913435,
+          "max": 0.092254638671875,
+          "total": 0.5673720836639404
+        },
+        "wall_seconds": {
+          "n": 7,
+          "min": 0.6864659079583362,
+          "median": 0.7305254059610888,
+          "mean": 0.7293651794149939,
+          "max": 0.76959482091479,
+          "total": 5.105556255904958
+        },
+        "solver_seconds": {
+          "n": 7,
+          "min": 0.422634878,
+          "median": 0.460140073,
+          "mean": 0.46181285699999997,
+          "max": 0.503049905,
+          "total": 3.2326899989999998
+        },
+        "iterations": {
+          "n": 7,
+          "min": 34.0,
+          "median": 38.0,
+          "mean": 37.285714285714285,
+          "max": 40.0,
+          "total": 261.0
+        }
+      },
+      "per_bar_total_seconds": {
+        "n": 7,
+        "min": 0.7336760319303721,
+        "median": 0.779700422193855,
+        "mean": 0.7797801233329145,
+        "max": 0.8166282209567726,
+        "total": 5.4584608633304015
+      },
+      "cold_bar_total_seconds": 0.9356668640393764,
+      "complete_decision": {
+        "construct_seconds": null,
+        "finalize_batch_seconds": null,
+        "paths": null
+      },
+      "statuses": [
+        "optimal",
+        "optimal_inaccurate"
+      ],
+      "status_counts": {
+        "optimal": 4,
+        "optimal_inaccurate": 4
+      },
+      "objective_values": {
+        "n": 8,
+        "min": 0.022576363915869358,
+        "median": 0.025634340733571674,
+        "mean": 0.02538094715080841,
+        "max": 0.027779716833889675,
+        "total": 0.20304757720646727
+      },
+      "memory": {
+        "peak_rss_mib": 234.87109375,
+        "rss_at_start_mib": 184.0703125,
+        "rss_at_end_mib": 235.28515625,
+        "tracemalloc_peak_mib": 14.944622993469238,
+        "tracemalloc_current_end_mib": 10.798569679260254,
+        "sampled_peak_rss_mib": 235.22265625
+      },
+      "canonical_shape": {
+        "n_scalar_variables": 3000,
+        "n_scalar_eq_constraints": 1500,
+        "n_scalar_leq_constraints": 6003,
+        "constraint_matrix_rows": 30025,
+        "constraint_matrix_cols": 12004,
+        "constraint_matrix_nnz": 76509,
+        "cone_dims": {
+          "zero": 1500,
+          "nonneg": 18009,
+          "n_second_order_cones": 3001,
+          "second_order_cone_sizes": {
+            "3": 3000,
+            "1516": 1
+          },
+          "second_order_cone_scalars": 10516,
+          "exp": 0,
+          "psd": []
+        },
+        "parameter_tensor": {
+          "n_scalar_parameters": 0,
+          "tensor_rows": 360450125,
+          "tensor_cols": 1,
+          "tensor_nnz": 87014
+        }
+      },
+      "dpp_compliant": true,
+      "memory_budget_mib": 8192.0,
+      "memory_cap": {
+        "applied": false
+      },
+      "equivalence": {
+        "checked_against": "production",
+        "max_abs_weight_difference": 4.201878154562735e-09,
+        "gross_difference": 1.9890367131125686e-10,
+        "objective_production": 0.02777971683845538,
+        "objective_twin": 0.027779716833889675,
+        "objective_difference": 4.5657054525971574e-12
+      },
+      "cell_seconds": 7.361006468068808,
+      "stderr_tail": "/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n",
+      "wall_seconds_including_process": 8.859828414977528
+    },
+    {
+      "n_names": 1500,
+      "mode": "twin_dpp",
+      "bars": 8,
+      "failed": true,
+      "returncode": 42,
+      "signal": null,
+      "killed_by_oom_killer": false,
+      "stopped_at_memory_budget": true,
+      "memory_budget_mib": 8192.0,
+      "stderr_tail": "solver_profile: stopped at 8211 MiB resident, over the declared 8192 MiB budget, during bar0:solve:memory_budget_exceeded\n",
+      "reason": "the harness stopped the cell at the declared 8192 MiB resident-set budget; the phase and the resident figure at the stop are in `trace`",
+      "trace": {
+        "last_phase": "bar0:solve:memory_budget_exceeded",
+        "rss_at_last_sample_mib": 8214.5859375,
+        "peak_rss_observed_mib": 8214.5859375,
+        "phase_at_peak_rss": "bar0:solve:memory_budget_exceeded",
+        "n_rows": 344,
+        "n_phase_marks": 5,
+        "phases_reached": [
+          "cell_start",
+          "bar0:inputs",
+          "bar0:build",
+          "bar0:solve",
+          "bar0:solve:memory_budget_exceeded"
+        ],
+        "seconds_to_last_row": 18.376911163330078
+      },
+      "wall_seconds_including_process": 19.879465238074772
+    },
+    {
+      "n_names": 1500,
+      "mode": "twin_dpp_fixed_cone",
+      "bars": 8,
+      "seed": 20260908,
+      "equity": 1000000.0,
+      "import_seconds": 0.15940014005172998,
+      "cold": {
+        "data_seconds": 0.04297714796848595,
+        "build_seconds": 0.006412092945538461,
+        "compile_seconds": 10.928648948669434,
+        "wall_seconds": 11.551423992961645,
+        "solver_seconds": 0.444564304,
+        "status": "optimal",
+        "iterations": 38.0
+      },
+      "repeat": {
+        "data_seconds": {
+          "n": 7,
+          "min": 0.03749901591800153,
+          "median": 0.038422332028858364,
+          "mean": 0.04020318854600191,
+          "max": 0.04530709097161889,
+          "total": 0.2814223198220134
+        },
+        "build_seconds": {
+          "n": 7,
+          "min": 0.002197113004513085,
+          "median": 0.002253697020933032,
+          "mean": 0.002310277012708996,
+          "max": 0.002554349019192159,
+          "total": 0.016171939088962972
+        },
+        "compile_seconds": {
+          "n": 7,
+          "min": 0.003803730010986328,
+          "median": 0.003963470458984375,
+          "mean": 0.003961120332990374,
+          "max": 0.0041904449462890625,
+          "total": 0.027727842330932617
+        },
+        "wall_seconds": {
+          "n": 7,
+          "min": 0.6004528270568699,
+          "median": 0.6314657690236345,
+          "mean": 0.6416398967350168,
+          "max": 0.6874227889347821,
+          "total": 4.4914792771451175
+        },
+        "solver_seconds": {
+          "n": 7,
+          "min": 0.388714149,
+          "median": 0.438733281,
+          "mean": 0.44106923585714286,
+          "max": 0.499092663,
+          "total": 3.087484651
+        },
+        "iterations": {
+          "n": 7,
+          "min": 36.0,
+          "median": 41.0,
+          "mean": 40.857142857142854,
+          "max": 45.0,
+          "total": 286.0
+        }
+      },
+      "per_bar_total_seconds": {
+        "n": 7,
+        "min": 0.6474872030084953,
+        "median": 0.6720730130327865,
+        "mean": 0.6841533622937277,
+        "max": 0.727135076886043,
+        "total": 4.789073536056094
+      },
+      "cold_bar_total_seconds": 11.60081323387567,
+      "complete_decision": {
+        "construct_seconds": null,
+        "finalize_batch_seconds": null,
+        "paths": null
+      },
+      "statuses": [
+        "optimal",
+        "optimal_inaccurate"
+      ],
+      "status_counts": {
+        "optimal": 6,
+        "optimal_inaccurate": 2
+      },
+      "objective_values": {
+        "n": 8,
+        "min": 0.02341060272158675,
+        "median": 0.02722277743903983,
+        "mean": 0.02747376368741748,
+        "max": 0.03094025381080285,
+        "total": 0.21979010949933983
+      },
+      "memory": {
+        "peak_rss_mib": 6275.59765625,
+        "rss_at_start_mib": 183.8359375,
+        "rss_at_end_mib": 233.8515625,
+        "tracemalloc_peak_mib": 6057.934942245483,
+        "tracemalloc_current_end_mib": 10.882745742797852,
+        "sampled_peak_rss_mib": 6187.703125
+      },
+      "canonical_shape": {
+        "n_scalar_variables": 3000,
+        "n_scalar_eq_constraints": 1500,
+        "n_scalar_leq_constraints": 6003,
+        "constraint_matrix_rows": 30025,
+        "constraint_matrix_cols": 12004,
+        "constraint_matrix_nnz": 76509,
+        "cone_dims": {
+          "zero": 1500,
+          "nonneg": 18009,
+          "n_second_order_cones": 3001,
+          "second_order_cone_sizes": {
+            "3": 3000,
+            "1516": 1
+          },
+          "second_order_cone_scalars": 10516,
+          "exp": 0,
+          "psd": []
+        },
+        "parameter_tensor": {
+          "n_scalar_parameters": 16506,
+          "tensor_rows": 360450125,
+          "tensor_cols": 16507,
+          "tensor_nnz": 87016
+        }
+      },
+      "dpp_compliant": true,
+      "memory_budget_mib": 8192.0,
+      "memory_cap": {
+        "applied": false
+      },
+      "equivalence": {
+        "checked_against": "production",
+        "max_abs_weight_difference": 4.201878154562735e-09,
+        "gross_difference": 1.9890367131125686e-10,
+        "objective_production": 0.02777971683845538,
+        "objective_twin": 0.027779716833889675,
+        "objective_difference": 4.5657054525971574e-12
+      },
+      "cell_seconds": 17.266458709025756,
+      "stderr_tail": "/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n",
+      "wall_seconds_including_process": 18.627040179097094
+    },
+    {
+      "n_names": 2000,
+      "mode": "production",
+      "bars": 8,
+      "seed": 20260908,
+      "equity": 1000000.0,
+      "import_seconds": 0.13577489310409874,
+      "cold": {
+        "data_seconds": 0.04997448204085231,
+        "build_seconds": 0.0052549600368365645,
+        "compile_seconds": 0.10298947792034596,
+        "wall_seconds": 0.8173131770454347,
+        "solver_seconds": 0.510361031,
+        "status": "optimal_inaccurate",
+        "iterations": 38.0
+      },
+      "repeat": {
+        "data_seconds": {
+          "n": 7,
+          "min": 0.05026485794223845,
+          "median": 0.06159324396867305,
+          "mean": 0.06204481697308698,
+          "max": 0.08623899600934237,
+          "total": 0.43431371881160885
+        },
+        "build_seconds": {
+          "n": 7,
+          "min": 0.004057764075696468,
+          "median": 0.005513904034160078,
+          "mean": 0.005736410285213164,
+          "max": 0.008252243977040052,
+          "total": 0.04015487199649215
+        },
+        "compile_seconds": {
+          "n": 7,
+          "min": 0.0687543370295316,
+          "median": 0.0823644120246172,
+          "mean": 0.09515594657776612,
+          "max": 0.1544733049813658,
+          "total": 0.6660916260443628
+        },
+        "wall_seconds": {
+          "n": 7,
+          "min": 0.8062607810134068,
+          "median": 0.8921347339637578,
+          "mean": 1.0042549434251018,
+          "max": 1.322211844031699,
+          "total": 7.029784603975713
+        },
+        "solver_seconds": {
+          "n": 7,
+          "min": 0.505774211,
+          "median": 0.588723741,
+          "mean": 0.6762466397142858,
+          "max": 0.944621907,
+          "total": 4.733726478
+        },
+        "iterations": {
+          "n": 7,
+          "min": 35.0,
+          "median": 39.0,
+          "mean": 39.57142857142857,
+          "max": 45.0,
+          "total": 277.0
+        }
+      },
+      "per_bar_total_seconds": {
+        "n": 7,
+        "min": 0.8768655888270587,
+        "median": 0.9471375439316034,
+        "mean": 1.072036170683402,
+        "max": 1.4065278740599751,
+        "total": 7.504253194783814
+      },
+      "cold_bar_total_seconds": 0.8725426191231236,
+      "complete_decision": {
+        "construct_seconds": {
+          "n": 8,
+          "min": 0.8873139349743724,
+          "median": 1.0519012499717064,
+          "mean": 1.1117882893740898,
+          "max": 1.4928353209979832,
+          "total": 8.894306314992718
+        },
+        "finalize_batch_seconds": {
+          "n": 8,
+          "min": 0.10283747303765267,
+          "median": 0.119130072533153,
+          "mean": 0.11991699662758037,
+          "max": 0.1383955959463492,
+          "total": 0.959335973020643
+        },
+        "paths": [
+          "normal"
+        ]
+      },
+      "statuses": [
+        "optimal",
+        "optimal_inaccurate"
+      ],
+      "status_counts": {
+        "optimal": 3,
+        "optimal_inaccurate": 5
+      },
+      "objective_values": {
+        "n": 8,
+        "min": 0.024055271733541807,
+        "median": 0.027967160044578998,
+        "mean": 0.02755414110579802,
+        "max": 0.029071323094667888,
+        "total": 0.22043312884638416
+      },
+      "memory": {
+        "peak_rss_mib": 246.81640625,
+        "rss_at_start_mib": 184.04296875,
+        "rss_at_end_mib": 247.40625,
+        "tracemalloc_peak_mib": 19.518495559692383,
+        "tracemalloc_current_end_mib": 8.0866060256958,
+        "sampled_peak_rss_mib": 247.16015625
+      },
+      "canonical_shape": {
+        "n_scalar_variables": 2000,
+        "n_scalar_eq_constraints": 0,
+        "n_scalar_leq_constraints": 4003,
+        "constraint_matrix_rows": 36023,
+        "constraint_matrix_cols": 16003,
+        "constraint_matrix_nnz": 94007,
+        "cone_dims": {
+          "zero": 2000,
+          "nonneg": 20007,
+          "n_second_order_cones": 4001,
+          "second_order_cone_sizes": {
+            "3": 4000,
+            "2016": 1
+          },
+          "second_order_cone_scalars": 14016,
+          "exp": 0,
+          "psd": []
+        }
+      },
+      "dpp_compliant": true,
+      "memory_budget_mib": 8192.0,
+      "memory_cap": {
+        "applied": false
+      },
+      "equivalence": null,
+      "cell_seconds": 19.40409066900611,
+      "stderr_tail": "se=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n1 intended orders dropped by increment/notional rounding (book/target divergence, N7-loud): [('S01645', 2.2)]\n/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n",
+      "wall_seconds_including_process": 20.783753108000383
+    },
+    {
+      "n_names": 2000,
+      "mode": "twin_constant",
+      "bars": 8,
+      "seed": 20260908,
+      "equity": 1000000.0,
+      "import_seconds": 0.162987977033481,
+      "cold": {
+        "data_seconds": 0.052048813086003065,
+        "build_seconds": 0.004805882927030325,
+        "compile_seconds": 0.08843684196472168,
+        "wall_seconds": 1.0641620539827272,
+        "solver_seconds": 0.702751124,
+        "status": "optimal_inaccurate",
+        "iterations": 37.0
+      },
+      "repeat": {
+        "data_seconds": {
+          "n": 7,
+          "min": 0.05812614201568067,
+          "median": 0.06060689699370414,
+          "mean": 0.06341711599712394,
+          "max": 0.07329503202345222,
+          "total": 0.4439198119798675
+        },
+        "build_seconds": {
+          "n": 7,
+          "min": 0.005840678000822663,
+          "median": 0.00627364101819694,
+          "mean": 0.0063049559913841745,
+          "max": 0.007003735052421689,
+          "total": 0.04413469193968922
+        },
+        "compile_seconds": {
+          "n": 7,
+          "min": 0.08980584144592285,
+          "median": 0.10113906860351562,
+          "mean": 0.10134649276733398,
+          "max": 0.11440372467041016,
+          "total": 0.7094254493713379
+        },
+        "wall_seconds": {
+          "n": 7,
+          "min": 1.0744390069739893,
+          "median": 1.1669661330524832,
+          "mean": 1.1596106480075312,
+          "max": 1.2530133459949866,
+          "total": 8.117274536052719
+        },
+        "solver_seconds": {
+          "n": 7,
+          "min": 0.695636423,
+          "median": 0.782540976,
+          "mean": 0.7792260200000001,
+          "max": 0.900511027,
+          "total": 5.45458214
+        },
+        "iterations": {
+          "n": 7,
+          "min": 34.0,
+          "median": 41.0,
+          "mean": 40.285714285714285,
+          "max": 49.0,
+          "total": 282.0
+        }
+      },
+      "per_bar_total_seconds": {
+        "n": 7,
+        "min": 1.1415917018894106,
+        "median": 1.235252223093994,
+        "mean": 1.2293327199960393,
+        "max": 1.3323098309338093,
+        "total": 8.605329039972275
+      },
+      "cold_bar_total_seconds": 1.1210167499957606,
+      "complete_decision": {
+        "construct_seconds": null,
+        "finalize_batch_seconds": null,
+        "paths": null
+      },
+      "statuses": [
+        "optimal",
+        "optimal_inaccurate"
+      ],
+      "status_counts": {
+        "optimal": 3,
+        "optimal_inaccurate": 5
+      },
+      "objective_values": {
+        "n": 8,
+        "min": 0.024055275516335572,
+        "median": 0.02796715894890585,
+        "mean": 0.027554141730498635,
+        "max": 0.029071326073428206,
+        "total": 0.22043313384398908
+      },
+      "memory": {
+        "peak_rss_mib": 248.953125,
+        "rss_at_start_mib": 184.06640625,
+        "rss_at_end_mib": 249.6875,
+        "tracemalloc_peak_mib": 19.66764259338379,
+        "tracemalloc_current_end_mib": 14.142485618591309,
+        "sampled_peak_rss_mib": 249.44140625
+      },
+      "canonical_shape": {
+        "n_scalar_variables": 4000,
+        "n_scalar_eq_constraints": 2000,
+        "n_scalar_leq_constraints": 8003,
+        "constraint_matrix_rows": 40025,
+        "constraint_matrix_cols": 16004,
+        "constraint_matrix_nnz": 102009,
+        "cone_dims": {
+          "zero": 2000,
+          "nonneg": 24009,
+          "n_second_order_cones": 4001,
+          "second_order_cone_sizes": {
+            "3": 4000,
+            "2016": 1
+          },
+          "second_order_cone_scalars": 14016,
+          "exp": 0,
+          "psd": []
+        },
+        "parameter_tensor": {
+          "n_scalar_parameters": 0,
+          "tensor_rows": 640600125,
+          "tensor_cols": 1,
+          "tensor_nnz": 116014
+        }
+      },
+      "dpp_compliant": true,
+      "memory_budget_mib": 8192.0,
+      "memory_cap": {
+        "applied": false
+      },
+      "equivalence": {
+        "checked_against": "production",
+        "max_abs_weight_difference": 1.9594005075869198e-07,
+        "gross_difference": 1.3252629194049348e-07,
+        "objective_production": 0.029071323094667888,
+        "objective_twin": 0.029071326073428206,
+        "objective_difference": 2.9787603182673816e-09
+      },
+      "cell_seconds": 11.143577128998004,
+      "stderr_tail": "/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n",
+      "wall_seconds_including_process": 12.89780764898751
+    },
+    {
+      "n_names": 2000,
+      "mode": "twin_dpp",
+      "bars": 8,
+      "failed": true,
+      "returncode": 42,
+      "signal": null,
+      "killed_by_oom_killer": false,
+      "stopped_at_memory_budget": true,
+      "memory_budget_mib": 8192.0,
+      "stderr_tail": "/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\nsolver_profile: stopped at 8206 MiB resident, over the declared 8192 MiB budget, during bar0:solve:memory_budget_exceeded\n",
+      "reason": "the harness stopped the cell at the declared 8192 MiB resident-set budget; the phase and the resident figure at the stop are in `trace`",
+      "trace": {
+        "last_phase": "bar0:solve:memory_budget_exceeded",
+        "rss_at_last_sample_mib": 8207.484375,
+        "peak_rss_observed_mib": 8207.484375,
+        "phase_at_peak_rss": "bar0:solve:memory_budget_exceeded",
+        "n_rows": 396,
+        "n_phase_marks": 5,
+        "phases_reached": [
+          "cell_start",
+          "bar0:inputs",
+          "bar0:build",
+          "bar0:solve",
+          "bar0:solve:memory_budget_exceeded"
+        ],
+        "seconds_to_last_row": 21.45360016822815
+      },
+      "wall_seconds_including_process": 23.19635968003422
+    },
+    {
+      "n_names": 2000,
+      "mode": "twin_dpp_fixed_cone",
+      "bars": 8,
+      "failed": true,
+      "returncode": 42,
+      "signal": null,
+      "killed_by_oom_killer": false,
+      "stopped_at_memory_budget": true,
+      "memory_budget_mib": 8192.0,
+      "stderr_tail": "/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\nsolver_profile: stopped at 8214 MiB resident, over the declared 8192 MiB budget, during bar0:solve:memory_budget_exceeded\n",
+      "reason": "the harness stopped the cell at the declared 8192 MiB resident-set budget; the phase and the resident figure at the stop are in `trace`",
+      "trace": {
+        "last_phase": "bar0:solve:memory_budget_exceeded",
+        "rss_at_last_sample_mib": 8218.984375,
+        "peak_rss_observed_mib": 8218.984375,
+        "phase_at_peak_rss": "bar0:solve:memory_budget_exceeded",
+        "n_rows": 346,
+        "n_phase_marks": 5,
+        "phases_reached": [
+          "cell_start",
+          "bar0:inputs",
+          "bar0:build",
+          "bar0:solve",
+          "bar0:solve:memory_budget_exceeded"
+        ],
+        "seconds_to_last_row": 18.730314254760742
+      },
+      "wall_seconds_including_process": 21.092402679030783
+    },
+    {
+      "n_names": 3000,
+      "mode": "production",
+      "bars": 8,
+      "seed": 20260908,
+      "equity": 1000000.0,
+      "import_seconds": 0.18020005291327834,
+      "cold": {
+        "data_seconds": 0.09481461299583316,
+        "build_seconds": 0.005475298035889864,
+        "compile_seconds": 0.12439419992733747,
+        "wall_seconds": 1.901481807930395,
+        "solver_seconds": 1.3400939539999999,
+        "status": "optimal_inaccurate",
+        "iterations": 43.0
+      },
+      "repeat": {
+        "data_seconds": {
+          "n": 7,
+          "min": 0.08451896300539374,
+          "median": 0.09206202102359384,
+          "mean": 0.09780376742128283,
+          "max": 0.1283700349740684,
+          "total": 0.6846263719489798
+        },
+        "build_seconds": {
+          "n": 7,
+          "min": 0.004468807019293308,
+          "median": 0.0071775519754737616,
+          "mean": 0.006617092277987727,
+          "max": 0.00809314998332411,
+          "total": 0.04631964594591409
+        },
+        "compile_seconds": {
+          "n": 7,
+          "min": 0.09440215898212045,
+          "median": 0.11142161407042295,
+          "mean": 0.11657524671006415,
+          "max": 0.13378171296790242,
+          "total": 0.8160267269704491
+        },
+        "wall_seconds": {
+          "n": 7,
+          "min": 1.5590748869581148,
+          "median": 1.7867825570283458,
+          "mean": 1.8234099501278251,
+          "max": 2.146215104032308,
+          "total": 12.763869650894776
+        },
+        "solver_seconds": {
+          "n": 7,
+          "min": 1.097886619,
+          "median": 1.267086084,
+          "mean": 1.3160614632857146,
+          "max": 1.595366963,
+          "total": 9.212430243000002
+        },
+        "iterations": {
+          "n": 7,
+          "min": 35.0,
+          "median": 40.0,
+          "mean": 40.42857142857143,
+          "max": 44.0,
+          "total": 283.0
+        }
+      },
+      "per_bar_total_seconds": {
+        "n": 7,
+        "min": 1.6648783718701452,
+        "median": 1.9090560328913853,
+        "mean": 1.9278308098270958,
+        "max": 2.256880164030008,
+        "total": 13.49481566878967
+      },
+      "cold_bar_total_seconds": 2.001771718962118,
+      "complete_decision": {
+        "construct_seconds": {
+          "n": 8,
+          "min": 1.7648099379148334,
+          "median": 2.0091899220715277,
+          "mean": 1.9994902886246564,
+          "max": 2.2982536889612675,
+          "total": 15.995922308997251
+        },
+        "finalize_batch_seconds": {
+          "n": 8,
+          "min": 0.14308995800092816,
+          "median": 0.16941246448550373,
+          "mean": 0.17941003026498947,
+          "max": 0.22516366105992347,
+          "total": 1.4352802421199158
+        },
+        "paths": [
+          "normal"
+        ]
+      },
+      "statuses": [
+        "optimal",
+        "optimal_inaccurate"
+      ],
+      "status_counts": {
+        "optimal": 2,
+        "optimal_inaccurate": 6
+      },
+      "objective_values": {
+        "n": 8,
+        "min": 0.02717013207838706,
+        "median": 0.029392380006191196,
+        "mean": 0.029596492086044868,
+        "max": 0.03242628049273502,
+        "total": 0.23677193668835894
+      },
+      "memory": {
+        "peak_rss_mib": 271.29296875,
+        "rss_at_start_mib": 184.07421875,
+        "rss_at_end_mib": 272.0859375,
+        "tracemalloc_peak_mib": 27.619178771972656,
+        "tracemalloc_current_end_mib": 10.682401657104492,
+        "sampled_peak_rss_mib": 271.83984375
+      },
+      "canonical_shape": {
+        "n_scalar_variables": 3000,
+        "n_scalar_eq_constraints": 0,
+        "n_scalar_leq_constraints": 6003,
+        "constraint_matrix_rows": 54023,
+        "constraint_matrix_cols": 24003,
+        "constraint_matrix_nnz": 141007,
+        "cone_dims": {
+          "zero": 3000,
+          "nonneg": 30007,
+          "n_second_order_cones": 6001,
+          "second_order_cone_sizes": {
+            "3": 6000,
+            "3016": 1
+          },
+          "second_order_cone_scalars": 21016,
+          "exp": 0,
+          "psd": []
+        }
+      },
+      "dpp_compliant": true,
+      "memory_budget_mib": 8192.0,
+      "memory_cap": {
+        "applied": false
+      },
+      "equivalence": null,
+      "cell_seconds": 34.35942671995144,
+      "stderr_tail": "serWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n",
+      "wall_seconds_including_process": 36.15248041797895
+    },
+    {
+      "n_names": 3000,
+      "mode": "twin_constant",
+      "bars": 8,
+      "seed": 20260908,
+      "equity": 1000000.0,
+      "import_seconds": 0.17201345006469637,
+      "cold": {
+        "data_seconds": 0.10271039302460849,
+        "build_seconds": 0.004509895923547447,
+        "compile_seconds": 0.15238714218139648,
+        "wall_seconds": 1.9781437129713595,
+        "solver_seconds": 1.384119585,
+        "status": "optimal_inaccurate",
+        "iterations": 40.0
+      },
+      "repeat": {
+        "data_seconds": {
+          "n": 7,
+          "min": 0.08461993001401424,
+          "median": 0.10305129399057478,
+          "mean": 0.09964356458346758,
+          "max": 0.11970869905781001,
+          "total": 0.6975049520842731
+        },
+        "build_seconds": {
+          "n": 7,
+          "min": 0.005679816007614136,
+          "median": 0.006074363016523421,
+          "mean": 0.0060852005844935775,
+          "max": 0.006544257048517466,
+          "total": 0.04259640409145504
+        },
+        "compile_seconds": {
+          "n": 7,
+          "min": 0.10464620590209961,
+          "median": 0.11650681495666504,
+          "mean": 0.11674138477870397,
+          "max": 0.12452840805053711,
+          "total": 0.8171896934509277
+        },
+        "wall_seconds": {
+          "n": 7,
+          "min": 1.8290433250367641,
+          "median": 1.9690031309146434,
+          "mean": 1.9561751502499516,
+          "max": 2.098294661962427,
+          "total": 13.693226051749662
+        },
+        "solver_seconds": {
+          "n": 7,
+          "min": 1.290827013,
+          "median": 1.426886558,
+          "mean": 1.4071722967142857,
+          "max": 1.545871606,
+          "total": 9.850206077
+        },
+        "iterations": {
+          "n": 7,
+          "min": 37.0,
+          "median": 42.0,
+          "mean": 42.285714285714285,
+          "max": 46.0,
+          "total": 296.0
+        }
+      },
+      "per_bar_total_seconds": {
+        "n": 7,
+        "min": 1.926218299078755,
+        "median": 2.0884724149946123,
+        "mean": 2.0619039154179126,
+        "max": 2.2149537689983845,
+        "total": 14.43332740792539
+      },
+      "cold_bar_total_seconds": 2.0853640019195154,
+      "complete_decision": {
+        "construct_seconds": null,
+        "finalize_batch_seconds": null,
+        "paths": null
+      },
+      "statuses": [
+        "optimal",
+        "optimal_inaccurate"
+      ],
+      "status_counts": {
+        "optimal": 5,
+        "optimal_inaccurate": 3
+      },
+      "objective_values": {
+        "n": 8,
+        "min": 0.027170128887714872,
+        "median": 0.02939237991096534,
+        "mean": 0.029596493274149004,
+        "max": 0.032426280973327386,
+        "total": 0.23677194619319203
+      },
+      "memory": {
+        "peak_rss_mib": 273.9609375,
+        "rss_at_start_mib": 183.87890625,
+        "rss_at_end_mib": 274.703125,
+        "tracemalloc_peak_mib": 28.390902519226074,
+        "tracemalloc_current_end_mib": 20.09437656402588,
+        "sampled_peak_rss_mib": 274.45703125
+      },
+      "canonical_shape": {
+        "n_scalar_variables": 6000,
+        "n_scalar_eq_constraints": 3000,
+        "n_scalar_leq_constraints": 12003,
+        "constraint_matrix_rows": 60025,
+        "constraint_matrix_cols": 24004,
+        "constraint_matrix_nnz": 153009,
+        "cone_dims": {
+          "zero": 3000,
+          "nonneg": 36009,
+          "n_second_order_cones": 6001,
+          "second_order_cone_sizes": {
+            "3": 6000,
+            "3016": 1
+          },
+          "second_order_cone_scalars": 21016,
+          "exp": 0,
+          "psd": []
+        },
+        "parameter_tensor": {
+          "n_scalar_parameters": 0,
+          "tensor_rows": 1440900125,
+          "tensor_cols": 1,
+          "tensor_nnz": 174014
+        }
+      },
+      "dpp_compliant": true,
+      "memory_budget_mib": 8192.0,
+      "memory_cap": {
+        "applied": false
+      },
+      "equivalence": {
+        "checked_against": "production",
+        "max_abs_weight_difference": 2.447594607789261e-07,
+        "gross_difference": 1.2371113444764603e-07,
+        "objective_production": 0.02717013207838706,
+        "objective_twin": 0.027170128887714872,
+        "objective_difference": 3.1906721882635214e-09
+      },
+      "cell_seconds": 18.73064115399029,
+      "stderr_tail": "/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n/home/b90/prism/.claude/worktrees/engine-overhaul/research/scripts/solver_profile.py:640: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  self.problem.solve(solver=cp.CLARABEL, verbose=False, **_solver_tolerances())\n",
+      "wall_seconds_including_process": 20.430891586001962
+    },
+    {
+      "n_names": 3000,
+      "mode": "twin_dpp",
+      "bars": 8,
+      "failed": true,
+      "returncode": 42,
+      "signal": null,
+      "killed_by_oom_killer": false,
+      "stopped_at_memory_budget": true,
+      "memory_budget_mib": 8192.0,
+      "stderr_tail": "/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\nsolver_profile: stopped at 8215 MiB resident, over the declared 8192 MiB budget, during bar0:solve:memory_budget_exceeded\n",
+      "reason": "the harness stopped the cell at the declared 8192 MiB resident-set budget; the phase and the resident figure at the stop are in `trace`",
+      "trace": {
+        "last_phase": "bar0:solve:memory_budget_exceeded",
+        "rss_at_last_sample_mib": 8217.20703125,
+        "peak_rss_observed_mib": 8217.20703125,
+        "phase_at_peak_rss": "bar0:solve:memory_budget_exceeded",
+        "n_rows": 421,
+        "n_phase_marks": 5,
+        "phases_reached": [
+          "cell_start",
+          "bar0:inputs",
+          "bar0:build",
+          "bar0:solve",
+          "bar0:solve:memory_budget_exceeded"
+        ],
+        "seconds_to_last_row": 23.42903423309326
+      },
+      "wall_seconds_including_process": 25.376060876995325
+    },
+    {
+      "n_names": 3000,
+      "mode": "twin_dpp_fixed_cone",
+      "bars": 8,
+      "failed": true,
+      "returncode": 42,
+      "signal": null,
+      "killed_by_oom_killer": false,
+      "stopped_at_memory_budget": true,
+      "memory_budget_mib": 8192.0,
+      "stderr_tail": "/home/b90/prism/.claude/worktrees/engine-overhaul/src/prism/portfolio/convex.py:918: UserWarning: Solution may be inaccurate. Try another solver, adjusting the solver settings, or solve with verbose=True for more information.\n  problem.solve(solver=cp.CLARABEL, verbose=False, **SOLVER_TOLERANCES)\nsolver_profile: stopped at 8214 MiB resident, over the declared 8192 MiB budget, during bar0:solve:memory_budget_exceeded\n",
+      "reason": "the harness stopped the cell at the declared 8192 MiB resident-set budget; the phase and the resident figure at the stop are in `trace`",
+      "trace": {
+        "last_phase": "bar0:solve:memory_budget_exceeded",
+        "rss_at_last_sample_mib": 8217.3671875,
+        "peak_rss_observed_mib": 8217.3671875,
+        "phase_at_peak_rss": "bar0:solve:memory_budget_exceeded",
+        "n_rows": 388,
+        "n_phase_marks": 5,
+        "phases_reached": [
+          "cell_start",
+          "bar0:inputs",
+          "bar0:build",
+          "bar0:solve",
+          "bar0:solve:memory_budget_exceeded"
+        ],
+        "seconds_to_last_row": 21.771831035614014
+      },
+      "wall_seconds_including_process": 23.856771643972024
+    }
+  ],
+  "scaling": {
+    "baseline_rss_mib": 184.0390625,
+    "by_mode": {
+      "production": {
+        "completed_at_n_names": [
+          500,
+          574,
+          1000,
+          1500,
+          2000,
+          3000
+        ],
+        "per_bar_seconds": {
+          "exponent": 1.0150487844594978,
+          "coefficient": 0.0005000987763321332,
+          "r_squared": 0.9825985529837342,
+          "fitted_on_n_names": [
+            500.0,
+            574.0,
+            1000.0,
+            1500.0,
+            2000.0,
+            3000.0
+          ],
+          "fitted_values": [
+            0.2758629539748654,
+            0.31959322502370924,
+            0.58066449186299,
+            0.8262116329278797,
+            0.9471375439316034,
+            1.9090560328913853
+          ]
+        },
+        "first_compile_seconds": {
+          "exponent": 0.2384571581147747,
+          "coefficient": 0.017524455721487683,
+          "r_squared": 0.7541581171760261,
+          "fitted_on_n_names": [
+            500.0,
+            574.0,
+            1000.0,
+            1500.0,
+            2000.0,
+            3000.0
+          ],
+          "fitted_values": [
+            0.06933172210119665,
+            0.09415640402585268,
+            0.08669250796083361,
+            0.09817788796499372,
+            0.10298947792034596,
+            0.12439419992733747
+          ]
+        },
+        "marginal_peak_rss_mib": {
+          "exponent": 0.7433263313499744,
+          "coefficient": 0.22105967117408576,
+          "r_squared": 0.9979734538816776,
+          "fitted_on_n_names": [
+            500.0,
+            574.0,
+            1000.0,
+            1500.0,
+            2000.0,
+            3000.0
+          ],
+          "fitted_values": [
+            23.00390625,
+            24.89453125,
+            36.484375,
+            49.5078125,
+            62.77734375,
+            87.25390625
+          ]
+        },
+        "extrapolated": {}
+      },
+      "twin_constant": {
+        "completed_at_n_names": [
+          500,
+          574,
+          1000,
+          1500,
+          2000,
+          3000
+        ],
+        "per_bar_seconds": {
+          "exponent": 1.0613588652468002,
+          "coefficient": 0.0003836719140693867,
+          "r_squared": 0.9839610071581886,
+          "fitted_on_n_names": [
+            500.0,
+            574.0,
+            1000.0,
+            1500.0,
+            2000.0,
+            3000.0
+          ],
+          "fitted_values": [
+            0.3107883039629087,
+            0.32091602706350386,
+            0.5536856760736555,
+            0.779700422193855,
+            1.235252223093994,
+            2.0884724149946123
+          ]
+        },
+        "first_compile_seconds": {
+          "exponent": 0.32511517371353654,
+          "coefficient": 0.008576637730710742,
+          "r_squared": 0.5707024736262797,
+          "fitted_on_n_names": [
+            500.0,
+            574.0,
+            1000.0,
+            1500.0,
+            2000.0,
+            3000.0
+          ],
+          "fitted_values": [
+            0.07946205139160156,
+            0.06381368637084961,
+            0.0772392749786377,
+            0.07302474975585938,
+            0.08843684196472168,
+            0.15238714218139648
+          ]
+        },
+        "marginal_peak_rss_mib": {
+          "exponent": 0.7640941235793892,
+          "coefficient": 0.19407916524968344,
+          "r_squared": 0.9981550661562437,
+          "fitted_on_n_names": [
+            500.0,
+            574.0,
+            1000.0,
+            1500.0,
+            2000.0,
+            3000.0
+          ],
+          "fitted_values": [
+            22.59765625,
+            25.43359375,
+            36.69921875,
+            50.83203125,
+            64.9140625,
+            89.921875
+          ]
+        },
+        "extrapolated": {}
+      },
+      "twin_dpp": {
+        "completed_at_n_names": [
+          500,
+          574,
+          1000
+        ],
+        "per_bar_seconds": {
+          "exponent": 0.9076790228454026,
+          "coefficient": 0.0009550720992742287,
+          "r_squared": 0.9031179413140499,
+          "fitted_on_n_names": [
+            500.0,
+            574.0,
+            1000.0
+          ],
+          "fitted_values": [
+            0.2959478748962283,
+            0.27075314486864954,
+            0.5168466600589454
+          ]
+        },
+        "first_compile_seconds": {
+          "exponent": 2.119338866691063,
+          "coefficient": 7.153242087162476e-06,
+          "r_squared": 0.9966410359104738,
+          "fitted_on_n_names": [
+            500.0,
+            574.0,
+            1000.0
+          ],
+          "fitted_values": [
+            3.9053564071655273,
+            4.788378000259399,
+            16.473182201385498
+          ]
+        },
+        "marginal_peak_rss_mib": {
+          "exponent": 1.9892183473985086,
+          "coefficient": 0.007142697444679183,
+          "r_squared": 0.9999999064921216,
+          "fitted_on_n_names": [
+            500.0,
+            574.0,
+            1000.0
+          ],
+          "fitted_values": [
+            1670.2734375,
+            2197.0234375,
+            6630.37890625
+          ]
+        },
+        "extrapolated": {
+          "1500": {
+            "measured": false,
+            "per_bar_seconds": 0.7293022754838083,
+            "first_compile_seconds": 38.52268705020491,
+            "marginal_peak_rss_mib": 14852.55809915471
+          },
+          "2000": {
+            "measured": false,
+            "per_bar_seconds": 0.9469168374539557,
+            "first_compile_seconds": 70.87679862624778,
+            "marginal_peak_rss_mib": 26322.77593948967
+          },
+          "3000": {
+            "measured": false,
+            "per_bar_seconds": 1.3681892723827662,
+            "first_compile_seconds": 167.3790669033833,
+            "marginal_peak_rss_mib": 58967.89846385238
+          }
+        }
+      },
+      "twin_dpp_fixed_cone": {
+        "completed_at_n_names": [
+          500,
+          574,
+          1000,
+          1500
+        ],
+        "per_bar_seconds": {
+          "exponent": 0.9187749269198283,
+          "coefficient": 0.0008875118751660531,
+          "r_squared": 0.9550133122307969,
+          "fitted_on_n_names": [
+            500.0,
+            574.0,
+            1000.0,
+            1500.0
+          ],
+          "fitted_values": [
+            0.25454639724921435,
+            0.30357299093157053,
+            0.5837850730167702,
+            0.6720730130327865
+          ]
+        },
+        "first_compile_seconds": {
+          "exponent": 2.2879653378886555,
+          "coefficient": 6.914009043853327e-07,
+          "r_squared": 0.9758430724937456,
+          "fitted_on_n_names": [
+            500.0,
+            574.0,
+            1000.0,
+            1500.0
+          ],
+          "fitted_values": [
+            0.9088587760925293,
+            1.4886608123779297,
+            6.414878845214844,
+            10.928648948669434
+          ]
+        },
+        "marginal_peak_rss_mib": {
+          "exponent": 1.9790572390036376,
+          "coefficient": 0.003151247820133841,
+          "r_squared": 0.9999976413612398,
+          "fitted_on_n_names": [
+            500.0,
+            574.0,
+            1000.0,
+            1500.0
+          ],
+          "fitted_values": [
+            692.38671875,
+            908.6328125,
+            2721.21875,
+            6091.55859375
+          ]
+        },
+        "extrapolated": {
+          "2000": {
+            "measured": false,
+            "per_bar_seconds": 0.9573654840341579,
+            "first_compile_seconds": 24.681534246750132,
+            "marginal_peak_rss_mib": 10750.034730646756
+          },
+          "3000": {
+            "measured": false,
+            "per_bar_seconds": 1.3895238307202922,
+            "first_compile_seconds": 62.411245517773104,
+            "marginal_peak_rss_mib": 23983.05747924043
+          }
+        }
+      }
+    }
+  },
+  "summary": {
+    "the_shipped_constructor_at_the_largest_shape_profiled": {
+      "n_names": 3000,
+      "ran": true,
+      "solver_status": [
+        "optimal",
+        "optimal_inaccurate"
+      ],
+      "median_seconds_per_bar": 1.9090560328913853,
+      "peak_rss_mib": 271.29296875,
+      "peak_rss_above_interpreter_baseline_mib": 87.25390625,
+      "note": "The shipped non-DPP path completed every cross-section size profiled, at every bar. There is no out-of-memory result on this path to cite. `solver_status` is the set of statuses CLARABEL returned across the cell's bars; `optimal_inaccurate` among them is a tolerance outcome and not a failure -- prism.portfolio.convex records it and the independent validation of portfolio/validate.py, never the status, decides whether the output is usable."
+    },
+    "production_by_size": {
+      "500": {
+        "completed": true,
+        "solver_status": [
+          "optimal",
+          "optimal_inaccurate"
+        ],
+        "solver_status_counts": {
+          "optimal": 6,
+          "optimal_inaccurate": 2
+        },
+        "first_compile_seconds": 0.06933172210119665,
+        "median_per_bar_seconds": 0.2758629539748654,
+        "median_clarabel_seconds": 0.121348128,
+        "median_construct_seconds": 0.2873642630293034,
+        "median_finalize_batch_seconds": 0.06240826204884797,
+        "peak_rss_mib": 207.04296875
+      },
+      "574": {
+        "completed": true,
+        "solver_status": [
+          "optimal",
+          "optimal_inaccurate"
+        ],
+        "solver_status_counts": {
+          "optimal": 2,
+          "optimal_inaccurate": 6
+        },
+        "first_compile_seconds": 0.09415640402585268,
+        "median_per_bar_seconds": 0.31959322502370924,
+        "median_clarabel_seconds": 0.141707948,
+        "median_construct_seconds": 0.3454444829840213,
+        "median_finalize_batch_seconds": 0.055553748505190015,
+        "peak_rss_mib": 208.93359375
+      },
+      "1000": {
+        "completed": true,
+        "solver_status": [
+          "optimal",
+          "optimal_inaccurate"
+        ],
+        "solver_status_counts": {
+          "optimal": 4,
+          "optimal_inaccurate": 4
+        },
+        "first_compile_seconds": 0.08669250796083361,
+        "median_per_bar_seconds": 0.58066449186299,
+        "median_clarabel_seconds": 0.321711412,
+        "median_construct_seconds": 0.6175134900258854,
+        "median_finalize_batch_seconds": 0.08351962402230129,
+        "peak_rss_mib": 220.5234375
+      },
+      "1500": {
+        "completed": true,
+        "solver_status": [
+          "optimal",
+          "optimal_inaccurate"
+        ],
+        "solver_status_counts": {
+          "optimal": 5,
+          "optimal_inaccurate": 3
+        },
+        "first_compile_seconds": 0.09817788796499372,
+        "median_per_bar_seconds": 0.8262116329278797,
+        "median_clarabel_seconds": 0.485322767,
+        "median_construct_seconds": 0.8365931459702551,
+        "median_finalize_batch_seconds": 0.09802282048622146,
+        "peak_rss_mib": 233.546875
+      },
+      "2000": {
+        "completed": true,
+        "solver_status": [
+          "optimal",
+          "optimal_inaccurate"
+        ],
+        "solver_status_counts": {
+          "optimal": 3,
+          "optimal_inaccurate": 5
+        },
+        "first_compile_seconds": 0.10298947792034596,
+        "median_per_bar_seconds": 0.9471375439316034,
+        "median_clarabel_seconds": 0.588723741,
+        "median_construct_seconds": 1.0519012499717064,
+        "median_finalize_batch_seconds": 0.119130072533153,
+        "peak_rss_mib": 246.81640625
+      },
+      "3000": {
+        "completed": true,
+        "solver_status": [
+          "optimal",
+          "optimal_inaccurate"
+        ],
+        "solver_status_counts": {
+          "optimal": 2,
+          "optimal_inaccurate": 6
+        },
+        "first_compile_seconds": 0.12439419992733747,
+        "median_per_bar_seconds": 1.9090560328913853,
+        "median_clarabel_seconds": 1.267086084,
+        "median_construct_seconds": 2.0091899220715277,
+        "median_finalize_batch_seconds": 0.16941246448550373,
+        "peak_rss_mib": 271.29296875
+      }
+    },
+    "solver_status_counts_by_mode_and_size": {
+      "production@500": {
+        "optimal": 6,
+        "optimal_inaccurate": 2
+      },
+      "twin_constant@500": {
+        "optimal": 6,
+        "optimal_inaccurate": 2
+      },
+      "twin_dpp@500": {
+        "optimal": 5,
+        "optimal_inaccurate": 3
+      },
+      "twin_dpp_fixed_cone@500": {
+        "optimal": 6,
+        "optimal_inaccurate": 2
+      },
+      "production@574": {
+        "optimal": 2,
+        "optimal_inaccurate": 6
+      },
+      "twin_constant@574": {
+        "optimal": 3,
+        "optimal_inaccurate": 5
+      },
+      "twin_dpp@574": {
+        "optimal": 2,
+        "optimal_inaccurate": 6
+      },
+      "twin_dpp_fixed_cone@574": {
+        "optimal": 5,
+        "optimal_inaccurate": 3
+      },
+      "production@1000": {
+        "optimal": 4,
+        "optimal_inaccurate": 4
+      },
+      "twin_constant@1000": {
+        "optimal": 4,
+        "optimal_inaccurate": 4
+      },
+      "twin_dpp@1000": {
+        "optimal": 5,
+        "optimal_inaccurate": 3
+      },
+      "twin_dpp_fixed_cone@1000": {
+        "optimal": 5,
+        "optimal_inaccurate": 3
+      },
+      "production@1500": {
+        "optimal": 5,
+        "optimal_inaccurate": 3
+      },
+      "twin_constant@1500": {
+        "optimal": 4,
+        "optimal_inaccurate": 4
+      },
+      "twin_dpp_fixed_cone@1500": {
+        "optimal": 6,
+        "optimal_inaccurate": 2
+      },
+      "production@2000": {
+        "optimal": 3,
+        "optimal_inaccurate": 5
+      },
+      "twin_constant@2000": {
+        "optimal": 3,
+        "optimal_inaccurate": 5
+      },
+      "production@3000": {
+        "optimal": 2,
+        "optimal_inaccurate": 6
+      },
+      "twin_constant@3000": {
+        "optimal": 5,
+        "optimal_inaccurate": 3
+      }
+    },
+    "interpreter_baseline_rss_mib": 184.0390625,
+    "what_ran_out_of_memory": {
+      "twin_dpp": [
+        {
+          "n_names": 1500,
+          "resident_mib_at_stop": 8214.5859375,
+          "phase": "bar0:solve:memory_budget_exceeded",
+          "seconds_before_stop": 18.376911163330078
+        },
+        {
+          "n_names": 2000,
+          "resident_mib_at_stop": 8207.484375,
+          "phase": "bar0:solve:memory_budget_exceeded",
+          "seconds_before_stop": 21.45360016822815
+        },
+        {
+          "n_names": 3000,
+          "resident_mib_at_stop": 8217.20703125,
+          "phase": "bar0:solve:memory_budget_exceeded",
+          "seconds_before_stop": 23.42903423309326
+        }
+      ],
+      "twin_dpp_fixed_cone": [
+        {
+          "n_names": 2000,
+          "resident_mib_at_stop": 8218.984375,
+          "phase": "bar0:solve:memory_budget_exceeded",
+          "seconds_before_stop": 18.730314254760742
+        },
+        {
+          "n_names": 3000,
+          "resident_mib_at_stop": 8217.3671875,
+          "phase": "bar0:solve:memory_budget_exceeded",
+          "seconds_before_stop": 21.771831035614014
+        }
+      ],
+      "mechanism": "DPP canonicalization builds and caches a parameter-to-canonical-form map whose construction cost grows with the square of the cross-section; `scaling.by_mode.twin_dpp.marginal_peak_rss_mib` carries the fitted exponent and its R-squared. The stopped cells were stopped by this harness at the declared resident budget during the first bar's compile, not by the kernel, and the figure each was holding at the stop is a lower bound on what it needed, not the figure it would have reached; the extrapolations in `scaling` are what describe those shapes."
+    },
+    "what_dpp_buys": {
+      "measured": "A DPP compile turns the per-bar canonicalization into a parameter assignment: `repeat.compile_seconds` falls from tens of milliseconds to a few milliseconds. It changes nothing about CLARABEL's own solve time, which is what dominates at every size profiled -- compare `repeat.solver_seconds` across the modes at one size.",
+      "per_bar_seconds_exponent_by_mode": {
+        "production": 1.0150487844594978,
+        "twin_constant": 1.0613588652468002,
+        "twin_dpp": 0.9076790228454026,
+        "twin_dpp_fixed_cone": 0.9187749269198283
+      }
+    },
+    "equivalence": "Every twin cell solved the production program on the same bar; `cells[].equivalence.max_abs_weight_difference` is the largest disagreement, and it is what makes the twin's timings comparable to the production ones rather than merely adjacent to them."
+  },
+  "complete_evaluation_projection": {
+    "definition": "construct() plus finalize_batch() at the measured median, times the registration's decision count. It is the construction half of an evaluation only: the score panel, the calibration fits, the accounting engine and the fold loop are not in it.",
+    "sessions": 1308,
+    "decision_stride_bars": 21,
+    "decisions_per_arm_per_capital_scenario": 63,
+    "convex_arms": 2,
+    "capital_scenarios": 6,
+    "total_convex_decisions": 756,
+    "reference_universe_names": 574,
+    "by_cross_section_size": {
+      "500": {
+        "median_seconds_per_decision": 0.3497725250781514,
+        "seconds_per_arm_per_capital_scenario": 22.035669079923537,
+        "seconds_for_both_convex_arms_all_capital_scenarios": 264.42802895908244,
+        "minutes_for_both_convex_arms_all_capital_scenarios": 4.407133815984707
+      },
+      "574": {
+        "median_seconds_per_decision": 0.4009982314892113,
+        "seconds_per_arm_per_capital_scenario": 25.262888583820313,
+        "seconds_for_both_convex_arms_all_capital_scenarios": 303.15466300584376,
+        "minutes_for_both_convex_arms_all_capital_scenarios": 5.052577716764063
+      },
+      "1000": {
+        "median_seconds_per_decision": 0.7010331140481867,
+        "seconds_per_arm_per_capital_scenario": 44.16508618503576,
+        "seconds_for_both_convex_arms_all_capital_scenarios": 529.9810342204291,
+        "minutes_for_both_convex_arms_all_capital_scenarios": 8.833017237007152
+      },
+      "1500": {
+        "median_seconds_per_decision": 0.9346159664564766,
+        "seconds_per_arm_per_capital_scenario": 58.880805886758026,
+        "seconds_for_both_convex_arms_all_capital_scenarios": 706.5696706410963,
+        "minutes_for_both_convex_arms_all_capital_scenarios": 11.776161177351606
+      },
+      "2000": {
+        "median_seconds_per_decision": 1.1710313225048594,
+        "seconds_per_arm_per_capital_scenario": 73.77497331780614,
+        "seconds_for_both_convex_arms_all_capital_scenarios": 885.2996798136737,
+        "minutes_for_both_convex_arms_all_capital_scenarios": 14.754994663561229
+      },
+      "3000": {
+        "median_seconds_per_decision": 2.1786023865570314,
+        "seconds_per_arm_per_capital_scenario": 137.25195035309298,
+        "seconds_for_both_convex_arms_all_capital_scenarios": 1647.0234042371158,
+        "minutes_for_both_convex_arms_all_capital_scenarios": 27.450390070618596
+      }
+    }
+  }
+}

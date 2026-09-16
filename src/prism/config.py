@@ -1,30 +1,51 @@
-"""Production configuration: directories, spine API keys, cost dataclasses.
+"""Production cost/trading value objects (SPEC §9).
+
+``ExecutionConfig`` is the cost stack the reproduction accounting engine
+(``historical_constant_weight``) takes; ``TradingConfig`` is its trading-side
+companion. Both are pure value objects: importing this module creates no
+directory, reads no ``.env``, and touches no credential (spec §3.1). Writable
+paths come from :class:`prism.workspace.Workspace`, credentials from the
+command entry point after :func:`prism.workspace.load_env`.
 
 The ensemble-side half of the pre-R1 config (member/ensemble/training
 dataclasses, research artifact dirs, the MLflow URI, the Polygon news key)
 lives in ``research/config.py`` with its only consumers (SPEC §9).
 """
 
-import os
+import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 
-import dotenv
+# Deprecated package-relative directories. They survive stage 1 only because
+# the research drivers still binding them at import (research/config.py,
+# research/scripts/{sweep,rl_seed_eval,trend_wfo}.py, and
+# tests/test_trend_walk_forward.py) must keep running for stage 2
+# reproduction; they are deleted with those drivers. Unlike the originals
+# they create nothing and read nothing. New code takes a ``Workspace``.
+_DEPRECATED_DIRS = {
+    # This file lives at src/prism/config.py under src-layout, so the repo
+    # root is three levels up -- the meaning these names have always had.
+    "PROJECT_DIR": lambda: Path(__file__).parents[2],
+    "DATA_DIR": lambda: Path(__file__).parents[2] / "data",
+    "RESULTS_DIR": lambda: Path(__file__).parents[2] / "results",
+}
 
-dotenv.load_dotenv()
 
-# Project directories. This file lives at src/prism/config.py under src-layout,
-# so the repo root is three levels up.
-PROJECT_DIR = Path(__file__).parents[2]
-DATA_DIR = PROJECT_DIR / "data"
-RESULTS_DIR = PROJECT_DIR / "results"
-LOGS_DIR = PROJECT_DIR / "logs"
+def __getattr__(name: str) -> Path:
+    """Serve the deprecated directory constants with a warning."""
+    if name in _DEPRECATED_DIRS:
+        warnings.warn(
+            f"prism.config.{name} is deprecated and is removed with the research drivers that "
+            "bind it; take the directory from prism.workspace.resolve_workspace() instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return _DEPRECATED_DIRS[name]()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
-for directory in [DATA_DIR, RESULTS_DIR]:
-    directory.mkdir(exist_ok=True, parents=True)
 
-# API key for the Twelve Data spine (prism.io.loader).
-TWELVEDATA_API_KEY = os.getenv("TWELVEDATA_API_KEY")
+def __dir__() -> list[str]:
+    return sorted([*globals(), *_DEPRECATED_DIRS])
 
 
 @dataclass

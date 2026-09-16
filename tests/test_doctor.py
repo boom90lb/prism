@@ -17,13 +17,13 @@ from datetime import date
 from prism.live.state import LoopState, StateStore
 from prism.scripts.doctor import (
     CLEAN_SESSIONS_REQUIRED,
+    _repo_ops_file,
     check_account_book,
     check_env_credentials,
     check_equity_ledger,
     check_holdings_priceable,
     check_kill_switch,
     check_loop_state,
-    _repo_ops_file,
     check_nightly_log,
     check_regime_clock,
     check_universe_file,
@@ -92,11 +92,31 @@ def test_present_keys_pass_without_leaking_values():
         assert value not in blob  # presence is reported, values never are
 
 
-def test_live_endpoint_warns():
+def test_live_endpoint_is_refused_under_paper_mode():
+    """§3.10: the endpoint check is a refusal under the wrong mode, not a warning.
+
+    A doctor that reports "the shell points this loop at real money" as a WARN
+    has already failed: the wrapper's exit code is what the alert reads, and a
+    WARN does not change it.
+    """
     env = {"APCA_API_BASE_URL": "https://api.alpaca.markets"}
-    results = _by_name(check_env_credentials(env))
-    assert results["alpaca-endpoint"].status == "WARN"
-    assert "real money" in results["alpaca-endpoint"].detail
+    results = _by_name(check_env_credentials(env, mode="paper"))
+    assert results["alpaca-endpoint"].status == "FAIL"
+    assert "live endpoint under mode 'paper'" in results["alpaca-endpoint"].detail
+
+
+def test_paper_endpoint_is_refused_under_live_mode():
+    """And the reverse: --account live over the paper endpoint is refused too."""
+    env = {"APCA_API_BASE_URL": "https://paper-api.alpaca.markets"}
+    results = _by_name(check_env_credentials(env, mode="live"))
+    assert results["alpaca-endpoint"].status == "FAIL"
+    assert "paper endpoint under mode 'live'" in results["alpaca-endpoint"].detail
+
+
+def test_endpoint_passes_on_its_own_mode():
+    for mode, base in (("paper", "https://paper-api.alpaca.markets"), ("live", "https://api.alpaca.markets")):
+        results = _by_name(check_env_credentials({"APCA_API_BASE_URL": base}, mode=mode))
+        assert results["alpaca-endpoint"].status == "PASS"
 
 
 # ---------------------------------------------------------------------------
@@ -279,13 +299,18 @@ def test_wrapper_provenance_unstamped_run_fails(tmp_path):
 
 
 def test_wrapper_provenance_foreign_path_fails(tmp_path):
-    _nightly(tmp_path, [f"2026-07-31T18:30:01-0700 RUN: book=momentum wrapper={tmp_path}/stale_copy.sh commit=abc1234"])
+    _nightly(
+        tmp_path, [f"2026-07-31T18:30:01-0700 RUN: book=momentum wrapper={tmp_path}/stale_copy.sh commit=abc1234"]
+    )
     result = check_wrapper_provenance(tmp_path)
     assert result.status == "FAIL" and "drifted copy" in result.detail
 
 
 def test_wrapper_provenance_repo_wrapper_passes(tmp_path):
-    _nightly(tmp_path, [f"2026-07-31T18:30:01-0700 RUN: book=momentum wrapper={_ops('paper_loop_nightly.sh')} commit=abc1234"])
+    _nightly(
+        tmp_path,
+        [f"2026-07-31T18:30:01-0700 RUN: book=momentum wrapper={_ops('paper_loop_nightly.sh')} commit=abc1234"],
+    )
     result = check_wrapper_provenance(tmp_path)
     assert result.status == "PASS" and "paper_loop_nightly.sh" in result.detail
 
@@ -305,15 +330,24 @@ def test_wrapper_provenance_only_latest_entry_counts(tmp_path):
 
 
 def test_wrapper_provenance_stale_sweep_fails_even_with_good_nightly(tmp_path):
-    _nightly(tmp_path, [f"2026-07-31T18:30:01-0700 RUN: book=momentum wrapper={_ops('paper_loop_nightly.sh')} commit=abc1234"])
+    _nightly(
+        tmp_path,
+        [f"2026-07-31T18:30:01-0700 RUN: book=momentum wrapper={_ops('paper_loop_nightly.sh')} commit=abc1234"],
+    )
     _sweep(tmp_path, ["2026-07-31T06:50:00-0700 SWEEP: run-dir=runs/x", "2026-07-31T06:50:02-0700 EXIT 0"])
     result = check_wrapper_provenance(tmp_path)
     assert result.status == "FAIL" and "sweep.log" in result.detail
 
 
 def test_wrapper_provenance_both_stamped_passes(tmp_path):
-    _nightly(tmp_path, [f"2026-07-31T18:30:01-0700 RUN: book=momentum wrapper={_ops('paper_loop_nightly.sh')} commit=abc1234"])
-    _sweep(tmp_path, [f"2026-07-31T06:50:00-0700 SWEEP: run-dir=runs/x wrapper={_ops('paper_sweep_morning.sh')} commit=abc1234"])
+    _nightly(
+        tmp_path,
+        [f"2026-07-31T18:30:01-0700 RUN: book=momentum wrapper={_ops('paper_loop_nightly.sh')} commit=abc1234"],
+    )
+    _sweep(
+        tmp_path,
+        [f"2026-07-31T06:50:00-0700 SWEEP: run-dir=runs/x wrapper={_ops('paper_sweep_morning.sh')} commit=abc1234"],
+    )
     result = check_wrapper_provenance(tmp_path)
     assert result.status == "PASS" and "sweep" in result.detail
 

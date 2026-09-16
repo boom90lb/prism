@@ -70,11 +70,17 @@ import math
 from dataclasses import dataclass
 from typing import Any, Callable, Collection, Mapping, Sequence
 
-import numpy as np
 import pandas as pd
 
-from prism.execution.participation import participation_capped_targets
-from prism.live.broker import Broker, Fill, Order
+from prism.assembly import (
+    AccountState,
+    DecisionContext,
+    assemble,
+    heuristic_book_rule,
+    raw_book_weights,
+)
+from prism.composition import ComponentPlan
+from prism.live.broker import Broker, Fill, Order, transmits_to_venue
 from prism.live.loop import (
     LiveLoopContext,
     append_concordance_ledger,
@@ -88,12 +94,6 @@ from prism.live.loop import (
 from prism.live.monitor import book_concordance, paper_monitor_read
 from prism.live.safety import SafetyConfig, check_orders, halt_reason
 from prism.live.state import LoopState
-from prism.portfolio.construct import (
-    construct_decile_neutral,
-    construct_directional_targets,
-    construct_inverse_vol_targets,
-    step_no_trade_band,
-)
 from prism.signal.base import Signal
 
 logger = logging.getLogger(__name__)
@@ -526,9 +526,10 @@ def run_daily_cycle(
             ),
         )
         logger.info(
-            "decision %s: %d orders submitted, equity %.2f, gross %.4f",
+            "decision %s: %d orders %s, equity %.2f, gross %.4f",
             decision_bar,
             len(orders),
+            "submitted" if transmits_to_venue(ctx.broker) else "decided and NOT submitted",
             equity,
             float(targets.abs().sum()),
         )
@@ -754,104 +755,58 @@ def _construct_refresh_targets(
     unrankable: Callable[[str], Collection[str]] | None,
     decision_bar: str,
 ) -> tuple[pd.Series, list[str] | None]:
-    """Step 3 on a refresh session: score → construct → band → participation.
+    """Step 3 on a refresh session: the shared decision assembly (§3.8).
 
-    Returns ``(targets, masked)``. Sizing folds in exactly once (I-4): the
-    book construct owns weights, the online band owns hysteresis against
-    *held* weights, the participation gate shrinks trades over the %ADV cap.
+    The score → construct → band → participation segment is
+    :func:`prism.assembly.assemble`, so this book and any evaluation of it
+    run the same code. What stays here is what the mask contract makes the
+    caller's: the driver consults the ``unrankable`` provider and hands the
+    result in — assembly never fetches it — and reports back which names it
+    actually applied to (the provider's list intersected with the scored
+    cross-section).
+
+    Returns ``(targets, masked)``. No order intents are sized here: the
+    write-ahead protocol reconciles against broker truth and sizes inside
+    ``decide_and_submit``, which is why ``AccountState.positions`` is None.
     """
-    score_row = pd.DataFrame([signal.score(close, volume)], index=close.index[-1:])
-    masked: list[str] | None = None
-    if unrankable is not None:
+    supplied = None if unrankable is None else frozenset(unrankable(decision_bar))
+    plan = ComponentPlan(
+        component=signal,
+        component_id=config.book,
+        to_weights=config.book,
+        weights_fn=heuristic_book_rule(config, close, effective_max_gross),
+    )
+    output = assemble(
+        DecisionContext(
+            decision_bar=decision_bar,
+            components=(plan,),
+            scoring_panels={"price": close},
+            volume=volume,
+            construction=config,
+            state=AccountState(equity=equity, held_weights=prev_weights, positions=None),
+            sessions=[str(bar.date()) for bar in close.index],
+            unrankable=() if supplied is None else supplied,
+            max_gross=effective_max_gross,
+        )
+    )
+    masked = None if supplied is None else sorted(output.diagnostics["masked"])
+    if masked:
         # Unrankable names (spin-off inside the lookback — see the
         # run_daily_cycle docstring) leave the scored cross-section entirely,
-        # so decile membership is decided over rankable names only.
-        masked = sorted(set(unrankable(decision_bar)) & set(score_row.columns))
-        if masked:
-            score_row.loc[:, masked] = float("nan")
-            logger.info(
-                "unrankable mask: %d name(s) held out of ranking this refresh: %s",
-                len(masked),
-                masked,
-            )
-    raw = _construct_raw_book(score_row, close, config, effective_max_gross)
-    if masked:
-        # Hold, don't flatten: the decile construct pins a NaN score to an
-        # explicit 0.0 (exit), but an unrankable name carries NO decision.
-        # A NaN target resolves to the held weight in step_no_trade_band
-        # (0.0 for an unheld name), so no new position opens on a divergent
-        # rank and a held name is held until the event clears the lookback.
-        raw.loc[masked] = float("nan")
-    targets = step_no_trade_band(prev_weights, raw, config.no_trade_band)
-    if config.max_participation is not None:
-        if volume is None:
-            raise ValueError("max_participation is set but there is no volume panel to compute ADV (N7)")
-        dollar_volume = (close * volume).rolling(config.adv_window_bars, min_periods=1).mean().iloc[-1]
-        targets = participation_capped_targets(
-            prev_weights,
-            targets,
-            dollar_volume,
-            aum=equity,
-            max_participation=config.max_participation,
+        # so decile membership is decided over rankable names only, and they
+        # then carry NO decision: a held position is held until the window
+        # clears the event, and no new position opens on a divergent rank.
+        logger.info(
+            "unrankable mask: %d name(s) held out of ranking this refresh: %s",
+            len(masked),
+            masked,
         )
-    return targets, masked
+    return output.targets, masked
 
 
-def _construct_raw_book(
-    score_row: pd.DataFrame,
-    close: pd.DataFrame,
-    config: DailyBookConfig,
-    effective_max_gross: float,
-) -> pd.Series:
-    """One scored row → the book's raw target weights (pre-band, pre-gate)."""
-    if effective_max_gross <= 0.0:
-        # A zero effective cap — regime_scale clamped to 0.0, the full
-        # de-gross — admits no gross, and cap_book refuses a 0 cap, so
-        # emit each book's own flat form directly: the decile /
-        # inverse_vol books' explicit 0.0 for every name (NaN-score pin
-        # included), the directional book's flat-where-decided (a NaN
-        # score keeps carrying no decision, exactly as the construct
-        # would emit). The band step then exits every held, decidable name.
-        if config.book in ("decile_neutral", "inverse_vol"):
-            return pd.Series(0.0, index=score_row.columns, dtype=float)
-        return score_row.iloc[0] * 0.0
-    if config.book == "decile_neutral":
-        # The decile construct emits an explicit weight (0.0 outside the
-        # decile) for every scored name, so a held name that falls out of the
-        # decile — including a book inherited at cutover, as long as it is in
-        # the fetched universe — is rebalanced to flat by the online band. A
-        # held name absent from the universe cannot be priced and is refused
-        # loudly at the mark step (N7): trade only what you can value, so a
-        # cutover universe must contain the names it inherits.
-        return construct_decile_neutral(
-            score_row,
-            decile=config.decile,
-            max_gross=effective_max_gross,
-            max_symbol_abs_weight=config.max_symbol_abs_weight,
-        ).iloc[0]
-    if config.book == "inverse_vol":
-        # Trend sleeve (docs/trend_design.md §2). Vol needs trailing
-        # close history; align the one-row score onto the full panel so
-        # only the decision bar carries a sign and earlier bars stay
-        # NaN (unused by the last-row construct read).
-        scores_aligned = pd.DataFrame(
-            np.nan, index=close.index, columns=score_row.columns, dtype=float
-        )
-        scores_aligned.iloc[-1] = score_row.iloc[0].reindex(score_row.columns)
-        return construct_inverse_vol_targets(
-            scores_aligned,
-            close.reindex(columns=score_row.columns),
-            vol_ewma_bars=config.vol_ewma_bars,
-            max_gross=effective_max_gross,
-            max_symbol_abs_weight=config.max_symbol_abs_weight,
-        ).iloc[-1]
-    return construct_directional_targets(
-        score_row,
-        position_size=config.position_size,
-        max_gross=effective_max_gross,
-        max_symbol_abs_weight=config.max_symbol_abs_weight,
-        no_trade_band=0.0,  # the online band owns hysteresis (never the flat replay)
-    ).iloc[0]
+#: The book construct moved to :mod:`prism.assembly` (engine specification §3.8);
+#: the name stays because the parity tests are written against it.
+_construct_raw_book = raw_book_weights
 
 
 def _is_refresh_session(

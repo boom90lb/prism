@@ -1,0 +1,96 @@
+# The stage 4 construction experiment's profile (spec section 3.13, decision D8).
+#
+# This is a Correction, not a migration: the participation cap, the net band,
+# the cash buffer and the variance budget do not exist in the recorded paper
+# path (`examples/reference/profiles/paper.toml`, which carries the certified
+# B1 values only and must not acquire new limits). Both convex arms of
+# `registrations/2026-09-construction.toml` name this file, and so does the
+# decile control, so the three arms are compared under one set of limits.
+#
+# The variance budget is the whole reason the file exists. `risk_aversion` is
+# declared at its reference value of zero in the registration's `[shared]`
+# construction settings, so the variance term is not in the objective; with no
+# budget and negligible cost curvature the convex program is linear in expected
+# return and its optimum is a maximal-concentration corner (spec section 3.7,
+# Run: 10 of 20 names at the cap on the worked cross-section). The full factor
+# covariance would then carry weight zero in the objective and appear in no
+# constraint, and the comparison of a convex arm against the decile control
+# would say nothing about the risk model. The budget is the one channel through
+# which the risk model acts on the solution (decision D8).
+name = "experiment_v1"
+cash_buffer = 0.02
+min_account_status = "undetermined"
+
+[[limits]]
+name = "max_gross"
+class = "preference"
+priority = 1
+value = 1.0
+
+[[limits]]
+name = "max_name_weight"
+class = "preference"
+priority = 2
+value = 0.10
+
+[[limits]]
+name = "net_band"
+class = "preference"
+priority = 3
+value = 0.02
+
+# The budget: an ex-ante standard deviation over the risk model's 21-bar
+# horizon, in fractions of marked equity, `sqrt(w' Sigma w) <= value` under the
+# snapshot of `examples/reference/risk/factor_diagonal.toml` (spec section 3.7's
+# limit table).
+#
+# Where the number comes from, so that it is neither arbitrary nor tuned. The
+# reference book is the decile control's own recorded evaluation,
+# `results/demotion_b1/` (the momentum-only B1 run; `summary.json` and
+# `results/momentum_m0_repro_2026-09-03/summary.json` carry the same
+# `config_hash` 000b74941cfd). Its recorded net daily return series
+# (`results/demotion_b1/returns.csv`, 1308 sessions, 2021-03-30 to 2026-06-12)
+# has a sample standard deviation of 0.007249325 per session, which is the
+# recorded 0.11507947 annualized at 252 bars (Run). Over the 21-bar forecast
+# horizon that is 0.007249325 * sqrt(21) = 0.03322058, and the declared budget
+# is that figure trimmed to three significant figures, 0.0332.
+#
+# So the convex arms are allowed the ex-ante risk the control actually ran at,
+# and no more: an arm that beats the control does not do it by holding more
+# risk. The two are not the same quantity — the control's figure is realized
+# net volatility, including its cost drag and its own 0.968 average gross,
+# while the budget binds a model ex-ante standard deviation under a factor
+# snapshot — so this is an anchored choice, not an equality. It is fixed here,
+# before the run, and shared by both convex arms; it is not re-derived from any
+# outcome of the experiment.
+#
+# `mode = "absolute"` rather than the `matched_to_control` alternative of spec
+# section 3.7: matched_to_control sets the budget to a multiple of the control
+# construction's ex-ante standard deviation on each decision bar, which is a
+# fixed *rule* but not a value fixed before the run, and it makes every convex
+# solve depend on a control solve on the same bar. An absolute budget is the
+# only mode an operating profile may use, it is checkable against this file
+# alone, and it keeps the two convex arms differing in exactly one thing: the
+# calibration's `confidence`.
+[[limits]]
+name = "variance_budget"
+class = "preference"
+priority = 4
+
+[limits.params]
+mode = "absolute"
+value = 0.0332
+units = "per_horizon_sd_fraction_of_equity"
+horizon_bars = 21
+source = "results/demotion_b1/returns.csv"
+
+# Physical, so it is never waived or reduced in recovery: a trade the venue
+# cannot absorb is not a preference. An action restriction carries no priority
+# (spec section 3.7), so none is declared: `portfolio/limits.py::load_limits`
+# discards one written here and only reports having done so.
+# `adv_dollars` comes from the cost stack's [dollar_volume.participation]
+# block; 0.05 is the cap fraction only.
+[[limits]]
+name = "participation_per_name"
+class = "physical"
+value = 0.05

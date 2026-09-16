@@ -1,0 +1,120 @@
+# The recorded T0 trend evaluation as a specification (spec section 5, stage 3b
+# "The trend reproduction of stage 2's list runs here").
+#
+# Every value here is read off `results/trend_t0/config.json`, which the
+# recorded cell carries, and nothing here is chosen. The recorded run was
+# produced by `research/scripts/trend_wfo.py` under its flag defaults, whose
+# walk config is the `walk` block of that file, whose signal config is its
+# `signal` block, and whose sizing is its `construction` block.
+# `tests/test_trend_t0_reproduction.py` asserts this file against the recorded
+# configuration field by field, so a value that drifts on either side fails a
+# test rather than forking the reproduction target silently.
+#
+# This is a reproduction arm. It is evaluated with `kind = "reproduction"`,
+# which `attempt_counts` excludes from independent-evidence counts, on the
+# frozen fold table `folds/trend_t0.toml` imported from the recorded
+# `folds.json`. It is not a new experiment and it may not be cited as one; the
+# recorded cell's own conclusion was negative.
+
+[strategy]
+name = "trend_v1_t0"
+combination = "position_space"
+# The recorded book has one sleeve, so renormalization is unobservable; it is
+# declared false because that is the recorded driver's behaviour.
+renormalize = false
+# config.json `symbols`, in the panel column order the recorded driver built
+# (`prism.signal.trend_node.TREND_V1_UNIVERSE`, which is what
+# `load_pinned_panels` was handed). config.json `universe.policy` is
+# `fixed_registered_list`: the ten names are the universe on every bar and no
+# membership table gates them.
+universe_list = ["SPY", "EFA", "EEM", "TLT", "IEF", "LQD", "HYG", "GLD", "PDBC", "UUP"]
+universe_as_of = "2026-07-17"
+universe_registration = "docs/trend_design.md section 1"
+
+[[strategy.components]]
+id = "trend"
+path = "prism.signal.trend_node:TrendSignalNode"
+weight = 1.0
+# signal.decision_every = 21 and walk.mom_decision_every = 21. The recorded
+# driver freezes the target frame to every 21st bar of the fold's test window
+# and bands only on those bars; with both cadences equal, every refresh is
+# emitted on the bar it is computed, so valid_for_bars equals update_every_bars
+# and the recorded book carries no staleness slack.
+horizon_bars = 21
+update_every_bars = 21
+valid_for_bars = 21
+to_weights = "sign_inverse_vol"
+
+[strategy.components.params]
+# signal.lookback_bars = 252, signal.skip_bars = 21
+lookback_bars = 252
+skip_bars = 21
+horizon_bars = 21
+
+[strategy.components.to_weights_params]
+# construction.vol_ewma_bars = 63, construction.annualization_bars = 252,
+# walk.max_gross = 1.0, walk.max_symbol_abs_weight = 1.0. `construction.sizing`
+# is `inverse_vol`, which is the `sign_inverse_vol` rule.
+vol_ewma_bars = 63
+annualization_bars = 252
+max_gross = 1.0
+max_symbol_abs_weight = 1.0
+
+# The recorded driver applies no eligibility screen to this fixed list except
+# the listing rule of `docs/trend_design.md` section 1 honesty note (i): each
+# name enters at its own first cached session plus `entry_bars` = 252, and
+# before that its score is withheld and its weight is an explicit 0.0
+# (`research/arbitrage/trend_walk_forward.py::listing_entry_mask`). That is
+# `listing_seasoning_bars`, measured on the `listings` table's `valid_from`
+# over the bundled session table. Every other gate is left at its default,
+# which the loader resolves into the specification before hashing.
+[strategy.eligibility]
+listing_seasoning_bars = 252
+
+[construction]
+kind = "heuristic"
+# The recorded driver bands against the held book and re-caps afterwards,
+# because a per-name blend of held and fresh weights can exceed max_gross
+# (`research/arbitrage/residual_walk_forward.py:239-249`).
+step_order = "construct_band_cap_participation"
+max_gross = 1.0
+max_symbol_abs_weight = 1.0
+
+# walk.band_mode = "closed_form", config.band_gamma_risk = 1.0. The half-width
+# is the Martin (2012) cube-root band from the variance of day-over-day target
+# changes over the fold's formation window and the round-trip cost of that
+# fold's own spread buckets. gamma_risk is pre-registered at 1.0 and never
+# fitted.
+[construction.band]
+mode = "closed_form"
+gamma_risk = 1.0
+
+# walk.max_participation = 0.05 against the 20-bar trailing median dollar
+# volume (signal.dollar_volume_window = 20). floor_dollars is 0.0 deliberately
+# and is NOT execution.adv_floor_dollars: the recorded gate passes
+# `adv_floor=0.0` explicitly, because flooring ADV up would loosen the bound
+# for exactly the illiquid names it protects. At initial_capital = 1.0 the
+# bound is inert by magnitude and only its NaN/zero-ADV hold-prior rule is
+# live, which is what the recorded summary states.
+[construction.participation]
+max_participation = 0.05
+statistic = "median"
+window_bars = 20
+floor_dollars = 0.0
+base = "initial_capital"
+
+# walk.spread_mode = "bucket", config.spread_schedule =
+# SPREAD_BUCKET_SCHEDULE_V1, config.spread_accounting = "per_fold_bucket".
+# Each name's half-spread comes from its own fold's formation-window median
+# dollar volume through that schedule; unknown liquidity lands in the widest
+# step. The per-fold cadence is `cost_refresh = "fold"` at the call site, which
+# is what `per_fold_bucket` means and is not the momentum record's cadence.
+[construction.spread]
+mode = "bucket"
+
+[policy]
+profile = "examples/reference/profiles/paper.toml"
+costs = "examples/reference/costs/retail_v1.toml"
+execution = "examples/reference/profiles/execution_alpaca.toml"
+monitoring = "examples/reference/policies/monitoring.toml"
+recovery = "examples/reference/policies/recovery.toml"
