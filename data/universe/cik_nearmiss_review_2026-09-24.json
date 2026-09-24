@@ -1,0 +1,2966 @@
+{
+  "asof": "2026-09-24",
+  "cases": [
+    {
+      "candidates": [
+        {
+          "cik": 9892,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 36,
+          "first_in_interval": "2009-07-27",
+          "last_in_interval": "2017-10-26",
+          "last_periodic_overall": "2017-10-26",
+          "name_now": "BARD C R INC /NJ/",
+          "names_during_interval": [
+            "BARD C R INC /NJ/"
+          ],
+          "rule": "same_letters",
+          "score": 1.0,
+          "sec_name": "BARD C R INC /NJ/",
+          "strength_rank": 4,
+          "strength_rule": "same_letters",
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2009-06-15",
+          "ticker_fit_to": "2018-01-03",
+          "wikipedia_name_at_time": false
+        }
+      ],
+      "end": "2018-01-03",
+      "proposals_checked": [
+        {
+          "cik": 9892,
+          "rule": "same_letters",
+          "score": 1.0,
+          "sec_name": "BARD C R INC /NJ/",
+          "status": "accepted"
+        },
+        {
+          "cik": 275110,
+          "rule": "same_letters",
+          "score": 1.0,
+          "sec_name": "BARD C R INC                                          (PRED)",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 27224,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "C. R. DAVIS & COMPANY",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1338413,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "CR PACIFICLAND LLC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1345424,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "C R PROJECT LLC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1351276,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "CR CERTIFICATION CORP",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1428217,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "CR ACQUISITION CORP.",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1436322,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "CR WATERMAN & CO LLC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1488806,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "CR EVERGREEN, LLC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1528968,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "C R COLLECTIONS, LLC",
+          "status": "no_periodic_filing_in_interval"
+        }
+      ],
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "only close match that filed during the interval (same_letters: ['BARD C R INC /NJ/'])",
+        "cik": 9892,
+        "kind": "cik",
+        "name": "BARD C R INC /NJ/"
+      },
+      "ticker": "BCR",
+      "wikipedia_names": [
+        "CR Bard"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 789073,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 20,
+          "first_in_interval": "2009-08-07",
+          "last_in_interval": "2014-04-29",
+          "last_periodic_overall": "2014-04-29",
+          "name_now": "Beam Suntory Inc.",
+          "names_during_interval": [
+            "BEAM INC",
+            "FORTUNE BRANDS INC"
+          ],
+          "rule": "ticker_name",
+          "score": 0.6,
+          "sec_name": "BEAM INC",
+          "strength_rank": 1,
+          "strength_rule": "ticker_name",
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2011-10-06",
+          "ticker_fit_to": "2014-04-30",
+          "wikipedia_name_at_time": false
+        }
+      ],
+      "end": "2014-05-01",
+      "proposals_checked": [
+        {
+          "cik": 789073,
+          "rule": "ticker_name",
+          "score": 0.6,
+          "sec_name": "BEAM INC",
+          "status": "accepted"
+        },
+        {
+          "cik": 1381311,
+          "rule": "ticker_name",
+          "score": 0.6,
+          "sec_name": "BEAM INC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1897953,
+          "rule": "ticker_name",
+          "score": 0.6,
+          "sec_name": "BEAM INC. /DE/",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1083808,
+          "rule": "first_word",
+          "score": 0.4,
+          "sec_name": "SUNTORY WATER GROUP INC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1587200,
+          "rule": "first_word",
+          "score": 0.367,
+          "sec_name": "SUNTORY BEVERAGE & FOOD LIMITED/ADR",
+          "status": "no_periodic_filing_in_interval"
+        }
+      ],
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "WEAK (ticker-as-name only); confirm: only close match that filed during the interval (ticker_name: ['BEAM INC', 'FORTUNE BRANDS INC'])",
+        "cik": 789073,
+        "kind": "cik",
+        "name": "Beam Suntory Inc."
+      },
+      "ticker": "BEAM",
+      "wikipedia_names": [
+        "Suntory Global Spirits"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 823094,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 42,
+          "first_in_interval": "2009-08-05",
+          "last_in_interval": "2019-07-30",
+          "last_periodic_overall": "2019-11-13",
+          "name_now": "SOTHEBYS",
+          "names_during_interval": [
+            "SOTHEBYS"
+          ],
+          "rule": "same_letters",
+          "score": 1.0,
+          "sec_name": "SOTHEBYS",
+          "strength_rank": 4,
+          "strength_rule": "same_letters",
+          "subsidiary_form_only": false,
+          "ticker_fit": false,
+          "ticker_fit_from": null,
+          "ticker_fit_to": null,
+          "wikipedia_name_at_time": false
+        }
+      ],
+      "end": "2019-10-03",
+      "proposals_checked": [
+        {
+          "cik": 823094,
+          "rule": "same_letters",
+          "score": 1.0,
+          "sec_name": "SOTHEBYS",
+          "status": "accepted"
+        },
+        {
+          "cik": 1420935,
+          "rule": "all_words",
+          "score": 0.8,
+          "sec_name": "SOTHEBY'S INTERNATIONAL REALTY, INC.",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 2017944,
+          "rule": "all_words",
+          "score": 0.8,
+          "sec_name": "SOTHEBY'S ARTFI FUNDING LLC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1420425,
+          "rule": "all_words",
+          "score": 0.75,
+          "sec_name": "SOTHEBY'S INTERNATIONAL REALTY LICENSEE LLC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1420426,
+          "rule": "all_words",
+          "score": 0.75,
+          "sec_name": "SOTHEBY'S INTERNATIONAL REALTY AFFILIATES LLC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1420427,
+          "rule": "all_words",
+          "score": 0.75,
+          "sec_name": "SOTHEBY'S INTERNATIONAL REALTY REFERRAL COMPANY, LLC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1705822,
+          "rule": "ticker_name",
+          "score": 0.6,
+          "sec_name": "BID CORP LIMITED/ADR",
+          "status": "no_periodic_filing_in_interval"
+        }
+      ],
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "only close match that filed during the interval (same_letters: ['SOTHEBYS'])",
+        "cik": 823094,
+        "kind": "cik",
+        "name": "SOTHEBYS"
+      },
+      "ticker": "BID",
+      "wikipedia_names": [
+        "Sotheby's"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 1009626,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 33,
+          "first_in_interval": "2009-08-31",
+          "last_in_interval": "2017-09-01",
+          "last_periodic_overall": "2017-09-01",
+          "name_now": "BROCADE COMMUNICATIONS SYSTEMS INC",
+          "names_during_interval": [
+            "BROCADE COMMUNICATIONS SYSTEMS INC"
+          ],
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "BROCADE COMMUNICATIONS SYSTEMS INC",
+          "strength_rank": 3,
+          "strength_rule": "all_words",
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2009-06-15",
+          "ticker_fit_to": "2017-11-22",
+          "wikipedia_name_at_time": false
+        }
+      ],
+      "end": "2017-11-22",
+      "proposals_checked": [
+        {
+          "cik": 1009626,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "BROCADE COMMUNICATIONS SYSTEMS INC",
+          "status": "accepted"
+        },
+        {
+          "cik": 1493573,
+          "rule": "all_words",
+          "score": 0.8,
+          "sec_name": "BROCADE COMMUNICATIONS SYSTEMS SKYPORT LLC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1408148,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "BROCADE FUND LP",
+          "status": "no_periodic_filing_in_interval"
+        }
+      ],
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "only close match that filed during the interval (all_words: ['BROCADE COMMUNICATIONS SYSTEMS INC'])",
+        "cik": 1009626,
+        "kind": "cik",
+        "name": "BROCADE COMMUNICATIONS SYSTEMS INC"
+      },
+      "ticker": "BRCD",
+      "wikipedia_names": [
+        "Brocade Communications"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 356028,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 41,
+          "first_in_interval": "2009-07-24",
+          "last_in_interval": "2018-08-07",
+          "last_periodic_overall": "2018-11-07",
+          "name_now": "CA, INC.",
+          "names_during_interval": [
+            "CA, INC."
+          ],
+          "rule": "first_word",
+          "score": 0.5,
+          "sec_name": "CA, INC.",
+          "strength_rank": 2,
+          "strength_rule": "first_word",
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2009-06-15",
+          "ticker_fit_to": "2018-11-06",
+          "wikipedia_name_at_time": false
+        }
+      ],
+      "end": "2018-11-06",
+      "proposals_checked": [
+        {
+          "cik": 356028,
+          "rule": "first_word",
+          "score": 0.5,
+          "sec_name": "CA, INC.",
+          "status": "accepted"
+        },
+        {
+          "cik": 1337773,
+          "rule": "first_word",
+          "score": 0.5,
+          "sec_name": "CA HOLDING INC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1433857,
+          "rule": "first_word",
+          "score": 0.5,
+          "sec_name": "CA HOLDING INC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1664562,
+          "rule": "first_word",
+          "score": 0.5,
+          "sec_name": "CA/ASV SPRING, LLC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 13463,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "C A BOTZUM & CO.",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1026792,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "CA SHORT CO",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1314355,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "CA NETWORKS, INC.",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1315744,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "CA LEWISPORT, LLC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1319461,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "CA MUER CORP",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1335241,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "CA INDOSUEZ (SWITZERLAND) SA (CAIS)",
+          "status": "no_periodic_filing_in_interval"
+        }
+      ],
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "only close match that filed during the interval (first_word: ['CA, INC.'])",
+        "cik": 356028,
+        "kind": "cik",
+        "name": "CA, INC."
+      },
+      "ticker": "CA",
+      "wikipedia_names": [
+        "CA Technologies"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 878560,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 34,
+          "first_in_interval": "2009-08-06",
+          "last_in_interval": "2017-11-09",
+          "last_periodic_overall": "2017-11-09",
+          "name_now": "CalAtlantic Group, LLC",
+          "names_during_interval": [
+            "CalAtlantic Group, Inc.",
+            "STANDARD PACIFIC CORP /DE/"
+          ],
+          "rule": "first_word",
+          "score": 0.5,
+          "sec_name": "CALATLANTIC GROUP, INC.",
+          "strength_rank": 2,
+          "strength_rule": "first_word",
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2015-07-29",
+          "ticker_fit_to": "2018-02-13",
+          "wikipedia_name_at_time": false
+        }
+      ],
+      "end": "2018-02-13",
+      "proposals_checked": [
+        {
+          "cik": 1130466,
+          "rule": "all_words",
+          "score": 0.8,
+          "sec_name": "CALATLANTIC HOMES OF ARIZONA, INC.",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1309607,
+          "rule": "all_words",
+          "score": 0.8,
+          "sec_name": "CALATLANTIC HOMES OF INDIANA, INC.",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1354494,
+          "rule": "all_words",
+          "score": 0.8,
+          "sec_name": "CALATLANTIC HOMES OF TEXAS, INC.",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1738506,
+          "rule": "all_words",
+          "score": 0.8,
+          "sec_name": "CALATLANTIC HOMES OF WASHINGTON, INC.",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1738558,
+          "rule": "all_words",
+          "score": 0.8,
+          "sec_name": "CALATLANTIC HOMES OF GEORGIA, INC.",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 878560,
+          "rule": "first_word",
+          "score": 0.5,
+          "sec_name": "CALATLANTIC GROUP, INC.",
+          "status": "accepted"
+        },
+        {
+          "cik": 1738406,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "CALATLANTIC TITLE, INC.",
+          "status": "no_periodic_filing_in_interval"
+        }
+      ],
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "only close match that filed during the interval (first_word: ['CalAtlantic Group, Inc.', 'STANDARD PACIFIC CORP /DE/'])",
+        "cik": 878560,
+        "kind": "cik",
+        "name": "CalAtlantic Group, LLC"
+      },
+      "ticker": "CAA",
+      "wikipedia_names": [
+        "CalAtlantic Homes"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 1267130,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 23,
+          "first_in_interval": "2012-10-25",
+          "last_in_interval": "2017-08-03",
+          "last_periodic_overall": "2017-08-03",
+          "name_now": "CABELAS INC",
+          "names_during_interval": [
+            "CABELAS INC"
+          ],
+          "rule": "same_letters",
+          "score": 1.0,
+          "sec_name": "CABELAS INC",
+          "strength_rank": 4,
+          "strength_rule": "same_letters",
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2012-10-04",
+          "ticker_fit_to": "2017-09-26",
+          "wikipedia_name_at_time": false
+        },
+        {
+          "cik": 1592143,
+          "covers_end": false,
+          "covers_start": false,
+          "filings_in_interval": 3,
+          "first_in_interval": "2015-03-31",
+          "last_in_interval": "2017-03-29",
+          "last_periodic_overall": "2020-03-27",
+          "name_now": "Cabela's Master Credit Card Trust",
+          "names_during_interval": [
+            "Cabela's Master Credit Card Trust"
+          ],
+          "rule": "all_words",
+          "score": 0.7,
+          "sec_name": "CABELA'S MASTER CREDIT CARD TRUST",
+          "strength_rank": 3,
+          "strength_rule": "all_words",
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2014-12-01",
+          "ticker_fit_to": "2017-09-26",
+          "wikipedia_name_at_time": false
+        },
+        {
+          "cik": 1592145,
+          "covers_end": false,
+          "covers_start": false,
+          "filings_in_interval": 3,
+          "first_in_interval": "2015-03-31",
+          "last_in_interval": "2017-03-29",
+          "last_periodic_overall": "2020-03-27",
+          "name_now": "Cabela's Credit Card Master Note Trust",
+          "names_during_interval": [
+            "Cabela's Credit Card Master Note Trust"
+          ],
+          "rule": "all_words",
+          "score": 0.65,
+          "sec_name": "CABELA'S CREDIT CARD MASTER NOTE TRUST",
+          "strength_rank": 3,
+          "strength_rule": "all_words",
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2014-12-01",
+          "ticker_fit_to": "2017-09-26",
+          "wikipedia_name_at_time": false
+        }
+      ],
+      "end": "2017-09-26",
+      "proposals_checked": [
+        {
+          "cik": 1267130,
+          "rule": "same_letters",
+          "score": 1.0,
+          "sec_name": "CABELAS INC",
+          "status": "accepted"
+        },
+        {
+          "cik": 1592143,
+          "rule": "all_words",
+          "score": 0.7,
+          "sec_name": "CABELA'S MASTER CREDIT CARD TRUST",
+          "status": "accepted"
+        },
+        {
+          "cik": 1592145,
+          "rule": "all_words",
+          "score": 0.65,
+          "sec_name": "CABELA'S CREDIT CARD MASTER NOTE TRUST",
+          "status": "accepted"
+        },
+        {
+          "cik": 1292774,
+          "rule": "first_word",
+          "score": 0.4,
+          "sec_name": "CABELA JAMES W",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1292776,
+          "rule": "first_word",
+          "score": 0.4,
+          "sec_name": "CABELA RICHARD N",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1292777,
+          "rule": "first_word",
+          "score": 0.4,
+          "sec_name": "CABELA MARY A",
+          "status": "no_periodic_filing_in_interval"
+        }
+      ],
+      "start": "2012-10-04",
+      "suggestion": {
+        "basis": "the only candidate matching by same_letters under a name held during the interval (['CABELAS INC'])",
+        "cik": 1267130,
+        "kind": "cik",
+        "name": "CABELAS INC"
+      },
+      "ticker": "CAB",
+      "wikipedia_names": [
+        "Cabela's"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 1166691,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 1,
+          "first_in_interval": "2015-10-27",
+          "last_in_interval": "2015-10-27",
+          "last_periodic_overall": "2026-07-23",
+          "name_now": "COMCAST CORP",
+          "names_during_interval": [
+            "COMCAST CORP"
+          ],
+          "rule": "first_word",
+          "score": 0.5,
+          "sec_name": "COMCAST CORP",
+          "strength_rank": 2,
+          "strength_rule": "first_word",
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2015-09-18",
+          "ticker_fit_to": "2015-12-15",
+          "wikipedia_name_at_time": false
+        }
+      ],
+      "end": "2015-12-15",
+      "proposals_checked": [
+        {
+          "cik": 22301,
+          "rule": "first_word",
+          "score": 0.5,
+          "sec_name": "COMCAST CORP",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1166691,
+          "rule": "first_word",
+          "score": 0.5,
+          "sec_name": "COMCAST CORP",
+          "status": "accepted"
+        },
+        {
+          "cik": 275605,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "COMCAST JOIN HOLDINGS INC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 732718,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "COMCAST MO GROUP INC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 925692,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "COMCAST CABLE HOLDINGS LLC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 939345,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "COMCAST UK HOLDINGS INC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1000450,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "COMCAST LCI HOLDINGS INC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1041854,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "COMCAST CELLULAR HOLDINGS INC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1105716,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "COMCAST ICG INC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1253778,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "COMCAST PROGRAMING HOLDINGS INC",
+          "status": "no_periodic_filing_in_interval"
+        }
+      ],
+      "start": "2015-09-18",
+      "suggestion": {
+        "basis": "only close match that filed during the interval (first_word: ['COMCAST CORP'])",
+        "cik": 1166691,
+        "kind": "cik",
+        "name": "COMCAST CORP"
+      },
+      "ticker": "CMCSK",
+      "wikipedia_names": [
+        "Comcast Class K Special",
+        "Comcast K Corp"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 1393612,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 69,
+          "first_in_interval": "2009-07-01",
+          "last_in_interval": "2025-04-30",
+          "last_periodic_overall": "2025-04-30",
+          "name_now": "Discover Financial Services",
+          "names_during_interval": [
+            "Discover Financial Services"
+          ],
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "DISCOVER FINANCIAL SERVICES",
+          "strength_rank": 3,
+          "strength_rule": "all_words",
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2009-06-15",
+          "ticker_fit_to": "2025-05-19",
+          "wikipedia_name_at_time": false
+        }
+      ],
+      "end": "2025-05-19",
+      "proposals_checked": [
+        {
+          "cik": 1393612,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "DISCOVER FINANCIAL SERVICES",
+          "status": "accepted"
+        },
+        {
+          "cik": 1975918,
+          "rule": "all_words",
+          "score": 0.75,
+          "sec_name": "DISCOVER FINANCIAL HEALTH IMPROVEMENT FUND, LLC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1761929,
+          "rule": "first_word",
+          "score": 0.5,
+          "sec_name": "DISCOVER GROUP LLC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 815743,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "DISCOVER CREDIT CORP",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 894327,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "DISCOVER BANK",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1189699,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "DISCOVER CAPITAL HOLDINGS CORP",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1383825,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "DISCOVER SCREENS INC",
+          "status": "name_not_held_during_interval"
+        },
+        {
+          "cik": 1431213,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "DISCOVER ADVISORY CO",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1610985,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "DISCOVER CAPITAL, LLC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1640497,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "DISCOVER FUTURE LTD",
+          "status": "no_periodic_filing_in_interval"
+        }
+      ],
+      "start": "2007-07-02",
+      "suggestion": {
+        "basis": "only close match that filed during the interval (all_words: ['Discover Financial Services'])",
+        "cik": 1393612,
+        "kind": "cik",
+        "name": "Discover Financial Services"
+      },
+      "ticker": "DFS",
+      "wikipedia_names": [
+        "Discover Financial"
+      ]
+    },
+    {
+      "candidates": [],
+      "end": "2019-06-03",
+      "proposals_checked": [
+        {
+          "cik": 800299,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "DUPONT CANADA INC                                      /FI",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1012128,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "DUPONT PHOTOMASKS INC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1027593,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "DUPONT SECURITIES GROUP, INC.",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1072444,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "DUPONT ENERGY CO",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1218729,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "DUPONT ERIC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1321570,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "DUPONT HOSPITAL LLC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1553335,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "DUPONT JAKOB",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1932912,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "DUPONT MEADOWS, LLC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 2036968,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "DUPONT 37 LLC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 807904,
+          "rule": "all_words",
+          "score": 0.8,
+          "sec_name": "DUPONT DIRECT FINANCIAL HOLDINGS INC",
+          "status": "no_periodic_filing_in_interval"
+        }
+      ],
+      "start": "2017-09-01",
+      "suggestion": {
+        "basis": "no close match that filed during the interval under a matching name; needs judgment",
+        "kind": "none"
+      },
+      "ticker": "DWDP",
+      "wikipedia_names": [
+        "DuPont"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 800459,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 32,
+          "first_in_interval": "2009-08-19",
+          "last_in_interval": "2017-01-26",
+          "last_periodic_overall": "2017-01-26",
+          "name_now": "HARMAN INTERNATIONAL INDUSTRIES INC /DE/",
+          "names_during_interval": [
+            "HARMAN INTERNATIONAL INDUSTRIES INC /DE/"
+          ],
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "HARMAN INTERNATIONAL INDUSTRIES INC /DE/",
+          "strength_rank": 3,
+          "strength_rule": "all_words",
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2009-06-15",
+          "ticker_fit_to": "2017-03-16",
+          "wikipedia_name_at_time": false
+        }
+      ],
+      "end": "2017-03-16",
+      "proposals_checked": [
+        {
+          "cik": 45623,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "HARMAN INTERNATIONAL INDUSTRIES INC/NY",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 800459,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "HARMAN INTERNATIONAL INDUSTRIES INC /DE/",
+          "status": "accepted"
+        },
+        {
+          "cik": 1640446,
+          "rule": "all_words",
+          "score": 0.8,
+          "sec_name": "HARMAN FINANCE INTERNATIONAL, S.C.A.",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 901091,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "HARMAN SIDNEY",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 920236,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "HARMAN AUTOMOTIVE INC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1277950,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "HARMAN PAUL",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1343559,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "HARMAN GINA",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1401962,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "HARMAN SUSAN",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1432071,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "HARMAN BRYN",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1643077,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "HARMAN TODD",
+          "status": "no_periodic_filing_in_interval"
+        }
+      ],
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "only close match that filed during the interval (all_words: ['HARMAN INTERNATIONAL INDUSTRIES INC /DE/'])",
+        "cik": 800459,
+        "kind": "cik",
+        "name": "HARMAN INTERNATIONAL INDUSTRIES INC /DE/"
+      },
+      "ticker": "HAR",
+      "wikipedia_names": [
+        "Harman International"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 46640,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 16,
+          "first_in_interval": "2009-06-17",
+          "last_in_interval": "2013-02-21",
+          "last_periodic_overall": "2014-03-07",
+          "name_now": "Kraft Heinz Foods Co",
+          "names_during_interval": [
+            "HEINZ H J CO"
+          ],
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "HEINZ H J CO",
+          "strength_rank": 3,
+          "strength_rule": "all_words",
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2009-06-15",
+          "ticker_fit_to": "2013-06-06",
+          "wikipedia_name_at_time": false
+        }
+      ],
+      "end": "2013-06-06",
+      "proposals_checked": [
+        {
+          "cik": 46640,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "HEINZ H J CO",
+          "status": "accepted"
+        },
+        {
+          "cik": 918397,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "HEINZ TERESA",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1446585,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "HEINZ ROGER",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1473252,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "HEINZ JAMES",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1599585,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "HEINZ CREDIT LLC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1599598,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "HEINZ TRANSATLANTIC HOLDING LLC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1599600,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "HEINZ INVESTMENT CO",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1599696,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "HEINZ PURCHASING CO",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1599700,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "HEINZ THAILAND LTD",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1599706,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "HEINZ GP LLC",
+          "status": "no_periodic_filing_in_interval"
+        }
+      ],
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "only close match that filed during the interval (all_words: ['HEINZ H J CO'])",
+        "cik": 46640,
+        "kind": "cik",
+        "name": "Kraft Heinz Foods Co"
+      },
+      "ticker": "HNZ",
+      "wikipedia_names": [
+        "Heinz"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 316206,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 32,
+          "first_in_interval": "2009-08-06",
+          "last_in_interval": "2016-07-29",
+          "last_periodic_overall": "2016-07-29",
+          "name_now": "STARWOOD HOTELS & RESORTS WORLDWIDE, LLC",
+          "names_during_interval": [
+            "STARWOOD HOTEL & RESORTS WORLDWIDE, INC",
+            "STARWOOD HOTEL & RESORTS WORLDWIDE INC"
+          ],
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "STARWOOD LODGING CORP",
+          "strength_rank": 3,
+          "strength_rule": "all_words",
+          "subsidiary_form_only": false,
+          "ticker_fit": false,
+          "ticker_fit_from": null,
+          "ticker_fit_to": null,
+          "wikipedia_name_at_time": false
+        }
+      ],
+      "end": "2016-09-22",
+      "proposals_checked": [
+        {
+          "cik": 316206,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "STARWOOD LODGING CORP",
+          "status": "accepted"
+        },
+        {
+          "cik": 917112,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "STARWOOD CAPITAL GROUP LP /ADV",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 923030,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "STARWOOD INVESTMENTS LP",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1095651,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "STARWOOD FINANCIAL INC",
+          "status": "name_not_held_during_interval"
+        },
+        {
+          "cik": 1173886,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "STARWOOD RESERVATIONS CORP",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1553289,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "STARWOOD LAHAINA LLC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 48595,
+          "rule": "all_words",
+          "score": 0.8,
+          "sec_name": "STARWOOD LODGING TRUST",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 831972,
+          "rule": "all_words",
+          "score": 0.8,
+          "sec_name": "STARWOOD FINANCIAL TRUST",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 929867,
+          "rule": "all_words",
+          "score": 0.8,
+          "sec_name": "STARWOOD MEZZANINE INVESTORS LP",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1173887,
+          "rule": "all_words",
+          "score": 0.8,
+          "sec_name": "STARWOOD VACATION EXCHANGE CO",
+          "status": "no_periodic_filing_in_interval"
+        }
+      ],
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "only close match that filed during the interval (all_words: ['STARWOOD HOTEL & RESORTS WORLDWIDE, INC', 'STARWOOD HOTEL & RESORTS WORLDWIDE INC'])",
+        "cik": 316206,
+        "kind": "cik",
+        "name": "STARWOOD HOTELS & RESORTS WORLDWIDE, LLC"
+      },
+      "ticker": "HOT",
+      "wikipedia_names": [
+        "Starwood"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 47518,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 51,
+          "first_in_interval": "2009-08-07",
+          "last_in_interval": "2021-11-12",
+          "last_periodic_overall": "2021-12-23",
+          "name_now": "Hill-Rom Holdings, Inc.",
+          "names_during_interval": [
+            "Hill-Rom Holdings, Inc."
+          ],
+          "rule": "same_letters",
+          "score": 1.0,
+          "sec_name": "HILL-ROM HOLDINGS, INC.",
+          "strength_rank": 4,
+          "strength_rule": "same_letters",
+          "subsidiary_form_only": false,
+          "ticker_fit": false,
+          "ticker_fit_from": null,
+          "ticker_fit_to": null,
+          "wikipedia_name_at_time": false
+        }
+      ],
+      "end": "2021-12-20",
+      "proposals_checked": [
+        {
+          "cik": 47518,
+          "rule": "same_letters",
+          "score": 1.0,
+          "sec_name": "HILL-ROM HOLDINGS, INC.",
+          "status": "accepted"
+        }
+      ],
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "only close match that filed during the interval (same_letters: ['Hill-Rom Holdings, Inc.'])",
+        "cik": 47518,
+        "kind": "cik",
+        "name": "Hill-Rom Holdings, Inc."
+      },
+      "ticker": "HRC",
+      "wikipedia_names": [
+        "Hillrom"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 51644,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 66,
+          "first_in_interval": "2009-07-28",
+          "last_in_interval": "2025-11-10",
+          "last_periodic_overall": "2025-11-10",
+          "name_now": "INTERPUBLIC GROUP OF COMPANIES, INC.",
+          "names_during_interval": [
+            "INTERPUBLIC GROUP OF COMPANIES, INC."
+          ],
+          "rule": "all_words",
+          "score": 0.75,
+          "sec_name": "INTERPUBLIC GROUP OF COMPANIES INC",
+          "strength_rank": 3,
+          "strength_rule": "all_words",
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2009-06-15",
+          "ticker_fit_to": "2025-11-28",
+          "wikipedia_name_at_time": false
+        }
+      ],
+      "end": "2025-11-28",
+      "proposals_checked": [
+        {
+          "cik": 51644,
+          "rule": "all_words",
+          "score": 0.75,
+          "sec_name": "INTERPUBLIC GROUP OF COMPANIES INC",
+          "status": "accepted"
+        },
+        {
+          "cik": 944048,
+          "rule": "all_words",
+          "score": 0.75,
+          "sec_name": "INTERPUBLIC GROUP OF COMPANIES INC /IPG/",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1306956,
+          "rule": "ticker_name",
+          "score": 0.6,
+          "sec_name": "IPG (US) INC.",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1306958,
+          "rule": "ticker_name",
+          "score": 0.6,
+          "sec_name": "IPG HOLDINGS LP",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1306959,
+          "rule": "ticker_name",
+          "score": 0.6,
+          "sec_name": "IPG (US) HOLDINGS INC.",
+          "status": "no_periodic_filing_in_interval"
+        }
+      ],
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "only close match that filed during the interval (all_words: ['INTERPUBLIC GROUP OF COMPANIES, INC.'])",
+        "cik": 51644,
+        "kind": "cik",
+        "name": "INTERPUBLIC GROUP OF COMPANIES, INC."
+      },
+      "ticker": "IPG",
+      "wikipedia_names": [
+        "Interpublic Group"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 1166126,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 17,
+          "first_in_interval": "2009-09-09",
+          "last_in_interval": "2013-09-10",
+          "last_periodic_overall": "2020-12-10",
+          "name_now": "Old COPPER Company, Inc.",
+          "names_during_interval": [
+            "J C PENNEY CO INC"
+          ],
+          "rule": "same_letters",
+          "score": 1.0,
+          "sec_name": "J C PENNEY CO INC",
+          "strength_rank": 4,
+          "strength_rule": "same_letters",
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2009-06-15",
+          "ticker_fit_to": "2013-12-02",
+          "wikipedia_name_at_time": false
+        }
+      ],
+      "end": "2013-12-02",
+      "proposals_checked": [
+        {
+          "cik": 77182,
+          "rule": "same_letters",
+          "score": 1.0,
+          "sec_name": "J C PENNEY CORP INC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1166126,
+          "rule": "same_letters",
+          "score": 1.0,
+          "sec_name": "J C PENNEY CO INC",
+          "status": "accepted"
+        }
+      ],
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "only close match that filed during the interval (same_letters: ['J C PENNEY CO INC'])",
+        "cik": 1166126,
+        "kind": "cik",
+        "name": "Old COPPER Company, Inc."
+      },
+      "ticker": "JCP",
+      "wikipedia_names": [
+        "JCPenney"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 743316,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 11,
+          "first_in_interval": "2019-02-01",
+          "last_in_interval": "2021-08-20",
+          "last_periodic_overall": "2021-09-07",
+          "name_now": "MAXIM INTEGRATED PRODUCTS INC",
+          "names_during_interval": [
+            "MAXIM INTEGRATED PRODUCTS INC"
+          ],
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "MAXIM INTEGRATED PRODUCTS INC",
+          "strength_rank": 3,
+          "strength_rule": "all_words",
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2018-12-03",
+          "ticker_fit_to": "2021-08-30",
+          "wikipedia_name_at_time": false
+        }
+      ],
+      "end": "2021-08-30",
+      "proposals_checked": [
+        {
+          "cik": 743316,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "MAXIM INTEGRATED PRODUCTS INC",
+          "status": "accepted"
+        },
+        {
+          "cik": 910468,
+          "rule": "first_word",
+          "score": 0.5,
+          "sec_name": "MAXIM GROUP INC /",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1172614,
+          "rule": "first_word",
+          "score": 0.5,
+          "sec_name": "MAXIM GROUP LLC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1013351,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "MAXIM PHARMACEUTICALS INC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1048965,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "MAXIM RETAIL GROUP",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1122380,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "MAXIM MORTGAGE CORP/",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1313720,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "MAXIM RESOURCES INC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1366562,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "MAXIM ENERGY CORP",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1422220,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "MAXIM TEP, INC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1434223,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "MAXIM TEP LTD",
+          "status": "no_periodic_filing_in_interval"
+        }
+      ],
+      "start": "2018-12-03",
+      "suggestion": {
+        "basis": "only close match that filed during the interval (all_words: ['MAXIM INTEGRATED PRODUCTS INC'])",
+        "cik": 743316,
+        "kind": "cik",
+        "name": "MAXIM INTEGRATED PRODUCTS INC"
+      },
+      "ticker": "MXIM",
+      "wikipedia_names": [
+        "Maxim Integrated"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 1011290,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 10,
+          "first_in_interval": "2009-08-05",
+          "last_in_interval": "2011-11-10",
+          "last_periodic_overall": "2017-12-08",
+          "name_now": "99 CENTS ONLY STORES LLC",
+          "names_during_interval": [
+            "99 CENTS ONLY STORES"
+          ],
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "99 CENTS ONLY STORES",
+          "strength_rank": 3,
+          "strength_rule": "all_words",
+          "subsidiary_form_only": false,
+          "ticker_fit": false,
+          "ticker_fit_from": null,
+          "ticker_fit_to": null,
+          "wikipedia_name_at_time": false
+        }
+      ],
+      "end": "2012-01-13",
+      "proposals_checked": [
+        {
+          "cik": 1011290,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "99 CENTS ONLY STORES",
+          "status": "accepted"
+        },
+        {
+          "cik": 1553724,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "99 CENTS ONLY STORES",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1553585,
+          "rule": "all_words",
+          "score": 0.8,
+          "sec_name": "99 CENTS ONLY STORES TEXAS, INC.",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1270889,
+          "rule": "first_word",
+          "score": 0.4,
+          "sec_name": "99 COMMISSARY LLC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1270893,
+          "rule": "first_word",
+          "score": 0.4,
+          "sec_name": "99 RESTAURANTS LLC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1270895,
+          "rule": "first_word",
+          "score": 0.4,
+          "sec_name": "99 WEST INC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1632783,
+          "rule": "first_word",
+          "score": 0.4,
+          "sec_name": "99 TAXIS",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1664675,
+          "rule": "first_word",
+          "score": 0.4,
+          "sec_name": "99 ADMINISTRATION INC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1855001,
+          "rule": "first_word",
+          "score": 0.4,
+          "sec_name": "99 PATRIOTS, LLC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1856110,
+          "rule": "first_word",
+          "score": 0.4,
+          "sec_name": "99 COMMERCIAL LLC",
+          "status": "no_periodic_filing_in_interval"
+        }
+      ],
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "only close match that filed during the interval (all_words: ['99 CENTS ONLY STORES'])",
+        "cik": 1011290,
+        "kind": "cik",
+        "name": "99 CENTS ONLY STORES LLC"
+      },
+      "ticker": "NDN",
+      "wikipedia_names": [
+        "99\u00a2 Only Stores"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 799729,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 35,
+          "first_in_interval": "2009-08-28",
+          "last_in_interval": "2017-08-29",
+          "last_periodic_overall": "2017-08-29",
+          "name_now": "PAREXEL INTERNATIONAL CORP",
+          "names_during_interval": [
+            "PAREXEL INTERNATIONAL CORP"
+          ],
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "PAREXEL INTERNATIONAL CORP",
+          "strength_rank": 3,
+          "strength_rule": "all_words",
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2009-06-15",
+          "ticker_fit_to": "2017-10-02",
+          "wikipedia_name_at_time": false
+        }
+      ],
+      "end": "2017-10-02",
+      "proposals_checked": [
+        {
+          "cik": 799729,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "PAREXEL INTERNATIONAL CORP",
+          "status": "accepted"
+        },
+        {
+          "cik": 1892518,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "PAREXEL INTERNATIONAL CORP",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1732608,
+          "rule": "all_words",
+          "score": 0.75,
+          "sec_name": "PAREXEL INVESTMENT HOLDINGS, L.P.",
+          "status": "no_periodic_filing_in_interval"
+        }
+      ],
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "only close match that filed during the interval (all_words: ['PAREXEL INTERNATIONAL CORP'])",
+        "cik": 799729,
+        "kind": "cik",
+        "name": "PAREXEL INTERNATIONAL CORP"
+      },
+      "ticker": "PRXL",
+      "wikipedia_names": [
+        "PAREXEL"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 29669,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 31,
+          "first_in_interval": "2009-08-05",
+          "last_in_interval": "2016-08-03",
+          "last_periodic_overall": "2022-02-24",
+          "name_now": "RR Donnelley & Sons Co",
+          "names_during_interval": [
+            "RR Donnelley & Sons Co"
+          ],
+          "rule": "all_words",
+          "score": 0.8,
+          "sec_name": "DONNELLEY R R & SONS CO",
+          "strength_rank": 3,
+          "strength_rule": "all_words",
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2009-06-15",
+          "ticker_fit_to": "2016-09-27",
+          "wikipedia_name_at_time": false
+        }
+      ],
+      "end": "2016-09-27",
+      "proposals_checked": [
+        {
+          "cik": 29669,
+          "rule": "all_words",
+          "score": 0.8,
+          "sec_name": "DONNELLEY R R & SONS CO",
+          "status": "accepted"
+        },
+        {
+          "cik": 930661,
+          "rule": "all_words",
+          "score": 0.8,
+          "sec_name": "DONNELLEY RR & SONS CO/ FA",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1132647,
+          "rule": "all_words",
+          "score": 0.8,
+          "sec_name": "RR DONNELLEY FINANCIAL /NY/FA/",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 898430,
+          "rule": "all_words",
+          "score": 0.7,
+          "sec_name": "DONNELLEY R R & SONS CO 05/FA",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 950132,
+          "rule": "all_words",
+          "score": 0.7,
+          "sec_name": "DONNELLEY R R & SONS CO 04/FA",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1316913,
+          "rule": "ticker_name",
+          "score": 0.6,
+          "sec_name": "RRD, INC.",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1426412,
+          "rule": "first_word",
+          "score": 0.5,
+          "sec_name": "RR (L STREET) INC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1426414,
+          "rule": "first_word",
+          "score": 0.5,
+          "sec_name": "RR (BOULEVARD) INC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1426415,
+          "rule": "first_word",
+          "score": 0.5,
+          "sec_name": "RR (SUPERIOR) INC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1426416,
+          "rule": "first_word",
+          "score": 0.5,
+          "sec_name": "RR (ESSEN) INC",
+          "status": "no_periodic_filing_in_interval"
+        }
+      ],
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "only close match that filed during the interval (all_words: ['RR Donnelley & Sons Co'])",
+        "cik": 29669,
+        "kind": "cik",
+        "name": "RR Donnelley & Sons Co"
+      },
+      "ticker": "RRD",
+      "wikipedia_names": [
+        "RR Donnelley"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 1065837,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 67,
+          "first_in_interval": "2009-08-07",
+          "last_in_interval": "2025-08-08",
+          "last_periodic_overall": "2025-08-08",
+          "name_now": "SKECHERS USA INC",
+          "names_during_interval": [
+            "SKECHERS USA INC"
+          ],
+          "rule": "all_words",
+          "score": 0.8,
+          "sec_name": "SKECHERS USA INC",
+          "strength_rank": 3,
+          "strength_rule": "all_words",
+          "subsidiary_form_only": false,
+          "ticker_fit": false,
+          "ticker_fit_from": null,
+          "ticker_fit_to": null,
+          "wikipedia_name_at_time": false
+        }
+      ],
+      "end": "2025-09-12",
+      "proposals_checked": [
+        {
+          "cik": 1065837,
+          "rule": "all_words",
+          "score": 0.8,
+          "sec_name": "SKECHERS USA INC",
+          "status": "accepted"
+        }
+      ],
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "only close match that filed during the interval (all_words: ['SKECHERS USA INC'])",
+        "cik": 1065837,
+        "kind": "cik",
+        "name": "SKECHERS USA INC"
+      },
+      "ticker": "SKX",
+      "wikipedia_names": [
+        "Skechers"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 18349,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 70,
+          "first_in_interval": "2009-08-10",
+          "last_in_interval": "2025-11-04",
+          "last_periodic_overall": "2025-11-04",
+          "name_now": "SYNOVUS FINANCIAL CORP",
+          "names_during_interval": [
+            "SYNOVUS FINANCIAL CORP"
+          ],
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "SYNOVUS FINANCIAL CORP",
+          "strength_rank": 3,
+          "strength_rule": "all_words",
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2009-06-15",
+          "ticker_fit_to": "2026-01-02",
+          "wikipedia_name_at_time": false
+        }
+      ],
+      "end": "2026-01-02",
+      "proposals_checked": [
+        {
+          "cik": 18349,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "SYNOVUS FINANCIAL CORP",
+          "status": "accepted"
+        },
+        {
+          "cik": 776021,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "SYNOVUS SECURITIES, INC.",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 945597,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "SYNOVUS TRUST CO/GA",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 949887,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "SYNOVUS TRUST CO",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1077694,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "SYNOVUS TRUST CO/FL",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1520194,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "SYNOVUS SECURITIES, INC.",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1268781,
+          "rule": "all_words",
+          "score": 0.8,
+          "sec_name": "SYNOVUS INVESTMENT ADVISORS INC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1259075,
+          "rule": "all_words",
+          "score": 0.75,
+          "sec_name": "SYNOVUS TRUST CO NA",
+          "status": "no_periodic_filing_in_interval"
+        }
+      ],
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "only close match that filed during the interval (all_words: ['SYNOVUS FINANCIAL CORP'])",
+        "cik": 18349,
+        "kind": "cik",
+        "name": "SYNOVUS FINANCIAL CORP"
+      },
+      "ticker": "SNV",
+      "wikipedia_names": [
+        "Synovus"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 1308606,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 18,
+          "first_in_interval": "2019-08-07",
+          "last_in_interval": "2023-11-02",
+          "last_periodic_overall": "2023-11-02",
+          "name_now": "SPIRIT REALTY CAPITAL, INC.",
+          "names_during_interval": [
+            "SPIRIT REALTY CAPITAL, INC."
+          ],
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "SPIRIT REALTY CAPITAL, INC.",
+          "strength_rank": 3,
+          "strength_rule": "all_words",
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2019-07-09",
+          "ticker_fit_to": "2024-01-23",
+          "wikipedia_name_at_time": false
+        },
+        {
+          "cik": 1703181,
+          "covers_end": false,
+          "covers_start": true,
+          "filings_in_interval": 7,
+          "first_in_interval": "2019-08-07",
+          "last_in_interval": "2021-02-19",
+          "last_periodic_overall": "2021-02-19",
+          "name_now": "Spirit Realty, L.P.",
+          "names_during_interval": [
+            "Spirit Realty, L.P."
+          ],
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "SPIRIT REALTY, L.P.",
+          "strength_rank": 3,
+          "strength_rule": "all_words",
+          "subsidiary_form_only": true,
+          "ticker_fit": false,
+          "ticker_fit_from": null,
+          "ticker_fit_to": null,
+          "wikipedia_name_at_time": false
+        },
+        {
+          "cik": 1364885,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 18,
+          "first_in_interval": "2019-07-31",
+          "last_in_interval": "2023-11-01",
+          "last_periodic_overall": "2025-10-31",
+          "name_now": "Spirit AeroSystems Holdings, Inc.",
+          "names_during_interval": [
+            "Spirit AeroSystems Holdings, Inc."
+          ],
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "SPIRIT AEROSYSTEMS HOLDINGS, INC.",
+          "strength_rank": 2,
+          "strength_rule": "first_word",
+          "subsidiary_form_only": false,
+          "ticker_fit": false,
+          "ticker_fit_from": null,
+          "ticker_fit_to": null,
+          "wikipedia_name_at_time": false
+        }
+      ],
+      "end": "2024-01-23",
+      "proposals_checked": [
+        {
+          "cik": 1277406,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "SPIRIT REALTY CAPITAL, INC.",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1308606,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "SPIRIT REALTY CAPITAL, INC.",
+          "status": "accepted"
+        },
+        {
+          "cik": 1703181,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "SPIRIT REALTY, L.P.",
+          "status": "accepted"
+        },
+        {
+          "cik": 1462515,
+          "rule": "ticker_name",
+          "score": 0.6,
+          "sec_name": "SRC GROUP, INC.",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1556628,
+          "rule": "first_word",
+          "score": 0.5,
+          "sec_name": "SPIRIT, INC.",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 926032,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "SPIRIT PARTNERS LP                                      /BD",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1190541,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "SPIRIT ENERGY CORP",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1349682,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "SPIRIT AEROSYSTEMS HOLDINGS INC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1355054,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "SPIRIT SHOP INC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1364885,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "SPIRIT AEROSYSTEMS HOLDINGS, INC.",
+          "status": "accepted"
+        }
+      ],
+      "start": "2019-07-09",
+      "suggestion": {
+        "basis": "ticker fit: SRC in ['SPIRIT REALTY CAPITAL, INC.']; co-filing LLC/LP dropped: [1703181]",
+        "cik": 1308606,
+        "kind": "cik",
+        "name": "SPIRIT REALTY CAPITAL, INC."
+      },
+      "ticker": "SRC",
+      "wikipedia_names": [
+        "Spirit Realty"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 1562476,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 26,
+          "first_in_interval": "2020-02-19",
+          "last_in_interval": "2026-04-22",
+          "last_periodic_overall": "2026-04-22",
+          "name_now": "Taylor Morrison Home Corp",
+          "names_during_interval": [
+            "Taylor Morrison Home Corp"
+          ],
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "TAYLOR MORRISON HOME CORP",
+          "strength_rank": 3,
+          "strength_rule": "all_words",
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2020-01-31",
+          "ticker_fit_to": "2026-07-24",
+          "wikipedia_name_at_time": false
+        },
+        {
+          "cik": 96536,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 26,
+          "first_in_interval": "2020-03-25",
+          "last_in_interval": "2026-03-31",
+          "last_periodic_overall": "2026-08-18",
+          "name_now": "TAYLOR DEVICES, INC.",
+          "names_during_interval": [
+            "TAYLOR DEVICES INC",
+            "TAYLOR DEVICES, INC."
+          ],
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "TAYLOR DEVICES, INC.",
+          "strength_rank": 2,
+          "strength_rule": "first_word",
+          "subsidiary_form_only": false,
+          "ticker_fit": false,
+          "ticker_fit_from": null,
+          "ticker_fit_to": null,
+          "wikipedia_name_at_time": false
+        }
+      ],
+      "end": "2026-07-24",
+      "proposals_checked": [
+        {
+          "cik": 1562476,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "TAYLOR MORRISON HOME CORP",
+          "status": "accepted"
+        },
+        {
+          "cik": 1804592,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "TAYLOR MORRISON COMMUNITIES, INC.",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1610666,
+          "rule": "first_word",
+          "score": 0.5,
+          "sec_name": "TAYLOR GROUP CORP",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 96536,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "TAYLOR DEVICES, INC.",
+          "status": "accepted"
+        },
+        {
+          "cik": 735086,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "TAYLOR DEVICES INC                                      /TA",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 801966,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "TAYLOR SECURITIES, INC.",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 934373,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "TAYLOR INVESTMENT CORP /MN/",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1012852,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "TAYLOR DONALD",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1016861,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "TAYLOR CAROLYN",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1018418,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "TAYLOR JEFFREY",
+          "status": "no_periodic_filing_in_interval"
+        }
+      ],
+      "start": "2020-01-31",
+      "suggestion": {
+        "basis": "the only candidate matching by all_words under a name held during the interval (['Taylor Morrison Home Corp'])",
+        "cik": 1562476,
+        "kind": "cik",
+        "name": "Taylor Morrison Home Corp"
+      },
+      "ticker": "TMHC",
+      "wikipedia_names": [
+        "Taylor Morrison"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 1320760,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 42,
+          "first_in_interval": "2009-08-14",
+          "last_in_interval": "2019-08-14",
+          "last_periodic_overall": "2026-08-14",
+          "name_now": "TSS, Inc.",
+          "names_during_interval": [
+            "Fortress International Group, Inc.",
+            "TSS, Inc."
+          ],
+          "rule": "ticker_name",
+          "score": 0.6,
+          "sec_name": "TSS, INC.",
+          "strength_rank": 1,
+          "strength_rule": "ticker_name",
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2013-08-14",
+          "ticker_fit_to": "2019-09-23",
+          "wikipedia_name_at_time": false
+        }
+      ],
+      "end": "2019-09-23",
+      "proposals_checked": [
+        {
+          "cik": 848013,
+          "rule": "ticker_name",
+          "score": 0.6,
+          "sec_name": "TSS LTD",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1320760,
+          "rule": "ticker_name",
+          "score": 0.6,
+          "sec_name": "TSS, INC.",
+          "status": "accepted"
+        }
+      ],
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "WEAK (ticker-as-name only); confirm: only close match that filed during the interval (ticker_name: ['Fortress International Group, Inc.', 'TSS, Inc.'])",
+        "cik": 1320760,
+        "kind": "cik",
+        "name": "TSS, Inc."
+      },
+      "ticker": "TSS",
+      "wikipedia_names": [
+        "TSYS"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 1470215,
+          "covers_end": true,
+          "covers_start": false,
+          "filings_in_interval": 26,
+          "first_in_interval": "2009-12-23",
+          "last_in_interval": "2015-11-09",
+          "last_periodic_overall": "2015-11-09",
+          "name_now": "Towers Watson & Co.",
+          "names_during_interval": [
+            "JUPITER SATURN HOLDING CO",
+            "Towers Watson & Co."
+          ],
+          "rule": "same_letters",
+          "score": 1.0,
+          "sec_name": "TOWERS WATSON & CO.",
+          "strength_rank": 4,
+          "strength_rule": "same_letters",
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2009-12-23",
+          "ticker_fit_to": "2016-01-05",
+          "wikipedia_name_at_time": false
+        }
+      ],
+      "end": "2016-01-05",
+      "proposals_checked": [
+        {
+          "cik": 1470215,
+          "rule": "same_letters",
+          "score": 1.0,
+          "sec_name": "TOWERS WATSON & CO.",
+          "status": "accepted"
+        },
+        {
+          "cik": 1103126,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "TOWERS WATSON DELAWARE HOLDINGS INC.",
+          "status": "name_not_held_during_interval"
+        },
+        {
+          "cik": 1426385,
+          "rule": "all_words",
+          "score": 0.8,
+          "sec_name": "TOWERS WATSON CAPITAL MARKETS INC.",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1594150,
+          "rule": "all_words",
+          "score": 0.75,
+          "sec_name": "TOWERS WATSON HEDGE ADVANTAGE FUND",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1594162,
+          "rule": "all_words",
+          "score": 0.75,
+          "sec_name": "TOWERS WATSON DIVERSIFYING STRATEGIES FUND",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1661667,
+          "rule": "all_words",
+          "score": 0.75,
+          "sec_name": "TOWERS WATSON ALTERNATIVE CREDIT FUND",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1934210,
+          "rule": "all_words",
+          "score": 0.65,
+          "sec_name": "TOWERS WATSON FOCUSED HIGH YIELD MASTER FUND",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1021387,
+          "rule": "ticker_name",
+          "score": 0.6,
+          "sec_name": "TW INC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1357820,
+          "rule": "ticker_name",
+          "score": 0.6,
+          "sec_name": "TW/TAE, INC.",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1416026,
+          "rule": "ticker_name",
+          "score": 0.6,
+          "sec_name": "TW HOLDINGS INC",
+          "status": "no_periodic_filing_in_interval"
+        }
+      ],
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "only close match that filed during the interval (same_letters: ['JUPITER SATURN HOLDING CO', 'Towers Watson & Co.'])",
+        "cik": 1470215,
+        "kind": "cik",
+        "name": "Towers Watson & Co."
+      },
+      "ticker": "TW",
+      "wikipedia_names": [
+        "Towers Watson"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 1856437,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 8,
+          "first_in_interval": "2021-09-10",
+          "last_in_interval": "2023-06-02",
+          "last_periodic_overall": "2026-09-04",
+          "name_now": "Victoria's Secret & Co.",
+          "names_during_interval": [
+            "Victoria's Secret & Co."
+          ],
+          "rule": "same_letters",
+          "score": 1.0,
+          "sec_name": "VICTORIA'S SECRET & CO.",
+          "strength_rank": 4,
+          "strength_rule": "same_letters",
+          "subsidiary_form_only": false,
+          "ticker_fit": false,
+          "ticker_fit_from": null,
+          "ticker_fit_to": null,
+          "wikipedia_name_at_time": false
+        }
+      ],
+      "end": "2023-06-19",
+      "proposals_checked": [
+        {
+          "cik": 1856437,
+          "rule": "same_letters",
+          "score": 1.0,
+          "sec_name": "VICTORIA'S SECRET & CO.",
+          "status": "accepted"
+        },
+        {
+          "cik": 1476447,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "VICTORIA'S SECRET STORES, LLC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1476448,
+          "rule": "all_words",
+          "score": 0.75,
+          "sec_name": "VICTORIA'S SECRET STORES BRAND MANAGEMENT, INC.",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1476449,
+          "rule": "all_words",
+          "score": 0.75,
+          "sec_name": "VICTORIA'S SECRET DIRECT BRAND MANAGEMENT, LLC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1041378,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "VICTORIA HOLDINGS INC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1453380,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "VICTORIA SECRET 3-D PROSPECT",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 2020019,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "VICTORIA'S RETAIL PORTFOLIO 1, LLC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 103466,
+          "rule": "first_word",
+          "score": 0.4,
+          "sec_name": "VICTORIA BANKSHARES INC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 720479,
+          "rule": "first_word",
+          "score": 0.4,
+          "sec_name": "VICTORIA FINANCIAL CORP",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 796812,
+          "rule": "first_word",
+          "score": 0.4,
+          "sec_name": "VICTORIA CREATIONS INC",
+          "status": "no_periodic_filing_in_interval"
+        }
+      ],
+      "start": "2021-08-04",
+      "suggestion": {
+        "basis": "only close match that filed during the interval (same_letters: [\"Victoria's Secret & Co.\"])",
+        "cik": 1856437,
+        "kind": "cik",
+        "name": "Victoria's Secret & Co."
+      },
+      "ticker": "VSCO",
+      "wikipedia_names": [
+        "Victoria's Secret"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 801337,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 72,
+          "first_in_interval": "2009-08-05",
+          "last_in_interval": "2026-07-27",
+          "last_periodic_overall": "2026-07-27",
+          "name_now": "WEBSTER FINANCIAL CORP",
+          "names_during_interval": [
+            "WEBSTER FINANCIAL CORP"
+          ],
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "WEBSTER FINANCIAL CORP",
+          "strength_rank": 2,
+          "strength_rule": "first_word",
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2009-06-15",
+          "ticker_fit_to": "2026-08-20",
+          "wikipedia_name_at_time": false
+        }
+      ],
+      "end": "2026-08-20",
+      "proposals_checked": [
+        {
+          "cik": 1105837,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "WEBSTER BANK, N. A.",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1146252,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "WEBSTER BANK TREASURY GROUP                             /MSD",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 801337,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "WEBSTER FINANCIAL CORP",
+          "status": "accepted"
+        },
+        {
+          "cik": 1012653,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "WEBSTER JEFFREY",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1238363,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "WEBSTER DAVID",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1297411,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "WEBSTER I LLC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1450640,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "WEBSTER JEFFREY",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1463383,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "WEBSTER SEAN",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1478045,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "WEBSTER ATLANTIC CO",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1495228,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "WEBSTER KAY",
+          "status": "no_periodic_filing_in_interval"
+        }
+      ],
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "only close match that filed during the interval (first_word: ['WEBSTER FINANCIAL CORP'])",
+        "cik": 801337,
+        "kind": "cik",
+        "name": "WEBSTER FINANCIAL CORP"
+      },
+      "ticker": "WBS",
+      "wikipedia_names": [
+        "Webster Bank"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 828916,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 50,
+          "first_in_interval": "2009-08-07",
+          "last_in_interval": "2021-08-02",
+          "last_periodic_overall": "2021-08-02",
+          "name_now": "WEINGARTEN REALTY INVESTORS /TX/",
+          "names_during_interval": [
+            "WEINGARTEN REALTY INVESTORS /TX/"
+          ],
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "WEINGARTEN REALTY INVESTORS /TX/",
+          "strength_rank": 3,
+          "strength_rule": "all_words",
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2009-06-15",
+          "ticker_fit_to": "2021-08-04",
+          "wikipedia_name_at_time": false
+        }
+      ],
+      "end": "2021-08-04",
+      "proposals_checked": [
+        {
+          "cik": 828916,
+          "rule": "all_words",
+          "score": 0.85,
+          "sec_name": "WEINGARTEN REALTY INVESTORS /TX/",
+          "status": "accepted"
+        },
+        {
+          "cik": 1268677,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "WEINGARTEN TIM",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1437761,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "WEINGARTEN IAN",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1866222,
+          "rule": "first_word",
+          "score": 0.433,
+          "sec_name": "WEINGARTEN TOMER",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1133800,
+          "rule": "first_word",
+          "score": 0.4,
+          "sec_name": "WEINGARTEN ALLAN D",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1135337,
+          "rule": "first_word",
+          "score": 0.4,
+          "sec_name": "WEINGARTEN ROBERT N",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1210577,
+          "rule": "first_word",
+          "score": 0.4,
+          "sec_name": "WEINGARTEN ALAN H",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1342556,
+          "rule": "first_word",
+          "score": 0.4,
+          "sec_name": "WEINGARTEN JOSEPH S",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1343379,
+          "rule": "first_word",
+          "score": 0.4,
+          "sec_name": "WEINGARTEN & WINBURN LLC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1474807,
+          "rule": "first_word",
+          "score": 0.4,
+          "sec_name": "WEINGARTEN MICHAEL S",
+          "status": "no_periodic_filing_in_interval"
+        }
+      ],
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "only close match that filed during the interval (all_words: ['WEINGARTEN REALTY INVESTORS /TX/'])",
+        "cik": 828916,
+        "kind": "cik",
+        "name": "WEINGARTEN REALTY INVESTORS /TX/"
+      },
+      "ticker": "WRI",
+      "wikipedia_names": [
+        "Weingarten Realty"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 1163302,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 64,
+          "first_in_interval": "2009-07-28",
+          "last_in_interval": "2025-05-02",
+          "last_periodic_overall": "2025-05-02",
+          "name_now": "UNITED STATES STEEL CORP",
+          "names_during_interval": [
+            "UNITED STATES STEEL CORP"
+          ],
+          "rule": "same_letters",
+          "score": 1.0,
+          "sec_name": "UNITED STATES STEEL CORP",
+          "strength_rank": 4,
+          "strength_rule": "same_letters",
+          "subsidiary_form_only": false,
+          "ticker_fit": false,
+          "ticker_fit_from": null,
+          "ticker_fit_to": null,
+          "wikipedia_name_at_time": false
+        },
+        {
+          "cik": 27093,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 72,
+          "first_in_interval": "2009-07-28",
+          "last_in_interval": "2025-03-17",
+          "last_periodic_overall": "2026-09-11",
+          "name_now": "U.S. GOLD CORP.",
+          "names_during_interval": [
+            "DATARAM CORP",
+            "U.S. GOLD CORP."
+          ],
+          "rule": "first_word",
+          "score": 0.5,
+          "sec_name": "U.S. GOLD CORP.",
+          "strength_rank": 2,
+          "strength_rule": "first_word",
+          "subsidiary_form_only": false,
+          "ticker_fit": false,
+          "ticker_fit_from": null,
+          "ticker_fit_to": null,
+          "wikipedia_name_at_time": false
+        }
+      ],
+      "end": "2025-06-24",
+      "proposals_checked": [
+        {
+          "cik": 317155,
+          "rule": "same_letters",
+          "score": 1.0,
+          "sec_name": "UNITED STATES STEEL CORP/PA",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1146318,
+          "rule": "same_letters",
+          "score": 1.0,
+          "sec_name": "UNITED STATES STEEL CORP /PA/                           /TA",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1163302,
+          "rule": "same_letters",
+          "score": 1.0,
+          "sec_name": "UNITED STATES STEEL CORP",
+          "status": "accepted"
+        },
+        {
+          "cik": 877374,
+          "rule": "all_words",
+          "score": 0.7,
+          "sec_name": "UNITED STATES STEEL & CARNEGIE PENSION FUND             /ADV",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1053136,
+          "rule": "all_words",
+          "score": 0.7,
+          "sec_name": "UNITED STATES STEEL & CARNEGIE PENSION FD",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1587298,
+          "rule": "ticker_name",
+          "score": 0.6,
+          "sec_name": "X SHARES, LLC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1659790,
+          "rule": "ticker_name",
+          "score": 0.6,
+          "sec_name": "X/SEED CAPITAL, LP",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1661660,
+          "rule": "ticker_name",
+          "score": 0.6,
+          "sec_name": "X-CO HOLDINGS, LP",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 1798841,
+          "rule": "ticker_name",
+          "score": 0.6,
+          "sec_name": "X, LLC",
+          "status": "no_periodic_filing_in_interval"
+        },
+        {
+          "cik": 27093,
+          "rule": "first_word",
+          "score": 0.5,
+          "sec_name": "U.S. GOLD CORP.",
+          "status": "accepted"
+        }
+      ],
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "the only candidate matching by same_letters under a name held during the interval (['UNITED STATES STEEL CORP'])",
+        "cik": 1163302,
+        "kind": "cik",
+        "name": "UNITED STATES STEEL CORP"
+      },
+      "ticker": "X",
+      "wikipedia_names": [
+        "U.S. Steel"
+      ]
+    }
+  ],
+  "matches_input": "data/universe/cik_name_matches_2026-09-24.json"
+}
