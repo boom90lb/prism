@@ -1,0 +1,181 @@
+# The component book of the fundamentals registration
+# (`registrations/2026-09-fundamentals.toml`; docs/fundamentals_design.md).
+#
+# Six published accounting characteristics, each a
+# `prism.signal.fundamental_node:FundamentalCharacteristicNode` reading the frozen
+# point-in-time panel `data/frozen/fundamentals_v1/panel.parquet` (pinned by sha256;
+# built by `prism.scripts.build_fundamental_panel`, definitions in
+# `prism.io.fundamental_panel`). Every arm of the registration runs this book and
+# differs only in the `[arms.components]` weights: one characteristic at 1.0, the rest
+# at 0.0. A component at weight zero contributes nothing to the composed target
+# (position-space sum, `renormalize = false`) and nothing to gross.
+#
+# Everything else is the momentum control's (`examples/characteristics/control.toml`):
+# decile long/short, monthly decisions, the same eligibility screen, construction,
+# costs and execution profile. The weights below make this file, run alone, the
+# book-to-market arm.
+
+[strategy]
+name = "fundamentals_control"
+universe_index = "sp500"
+combination = "position_space"
+renormalize = false
+
+[[strategy.components]]
+id = "be_me"
+path = "prism.signal.fundamental_node:FundamentalCharacteristicNode"
+weight = 1.0
+horizon_bars = 21
+update_every_bars = 21
+valid_for_bars = 21
+to_weights = "decile_long_short"
+
+[strategy.components.params]
+characteristic = "be_me"
+panel = "data/frozen/fundamentals_v1/panel.parquet"
+panel_sha256 = "06ea92de10b1e2e9f0106c795b7d0b8ddac1a0dc62ef6a929ffc404ed7415df3"
+horizon_bars = 21
+
+[strategy.components.to_weights_params]
+decile = 0.10
+max_gross = 1.0
+max_symbol_abs_weight = 0.35
+
+[[strategy.components]]
+id = "gp_at"
+path = "prism.signal.fundamental_node:FundamentalCharacteristicNode"
+weight = 0.0
+horizon_bars = 21
+update_every_bars = 21
+valid_for_bars = 21
+to_weights = "decile_long_short"
+
+[strategy.components.params]
+characteristic = "gp_at"
+panel = "data/frozen/fundamentals_v1/panel.parquet"
+panel_sha256 = "06ea92de10b1e2e9f0106c795b7d0b8ddac1a0dc62ef6a929ffc404ed7415df3"
+horizon_bars = 21
+
+[strategy.components.to_weights_params]
+decile = 0.10
+max_gross = 1.0
+max_symbol_abs_weight = 0.35
+
+[[strategy.components]]
+id = "at_gr1"
+path = "prism.signal.fundamental_node:FundamentalCharacteristicNode"
+weight = 0.0
+horizon_bars = 21
+update_every_bars = 21
+valid_for_bars = 21
+to_weights = "decile_long_short"
+
+[strategy.components.params]
+characteristic = "at_gr1"
+panel = "data/frozen/fundamentals_v1/panel.parquet"
+panel_sha256 = "06ea92de10b1e2e9f0106c795b7d0b8ddac1a0dc62ef6a929ffc404ed7415df3"
+horizon_bars = 21
+
+[strategy.components.to_weights_params]
+decile = 0.10
+max_gross = 1.0
+max_symbol_abs_weight = 0.35
+
+[[strategy.components]]
+id = "oaccruals_at"
+path = "prism.signal.fundamental_node:FundamentalCharacteristicNode"
+weight = 0.0
+horizon_bars = 21
+update_every_bars = 21
+valid_for_bars = 21
+to_weights = "decile_long_short"
+
+[strategy.components.params]
+characteristic = "oaccruals_at"
+panel = "data/frozen/fundamentals_v1/panel.parquet"
+panel_sha256 = "06ea92de10b1e2e9f0106c795b7d0b8ddac1a0dc62ef6a929ffc404ed7415df3"
+horizon_bars = 21
+
+[strategy.components.to_weights_params]
+decile = 0.10
+max_gross = 1.0
+max_symbol_abs_weight = 0.35
+
+[[strategy.components]]
+id = "niq_su"
+path = "prism.signal.fundamental_node:FundamentalCharacteristicNode"
+weight = 0.0
+horizon_bars = 21
+update_every_bars = 21
+valid_for_bars = 21
+to_weights = "decile_long_short"
+
+[strategy.components.params]
+characteristic = "niq_su"
+panel = "data/frozen/fundamentals_v1/panel.parquet"
+panel_sha256 = "06ea92de10b1e2e9f0106c795b7d0b8ddac1a0dc62ef6a929ffc404ed7415df3"
+horizon_bars = 21
+
+[strategy.components.to_weights_params]
+decile = 0.10
+max_gross = 1.0
+max_symbol_abs_weight = 0.35
+
+[[strategy.components]]
+id = "chcsho_12m"
+path = "prism.signal.fundamental_node:FundamentalCharacteristicNode"
+weight = 0.0
+horizon_bars = 21
+update_every_bars = 21
+valid_for_bars = 21
+to_weights = "decile_long_short"
+
+[strategy.components.params]
+characteristic = "chcsho_12m"
+panel = "data/frozen/fundamentals_v1/panel.parquet"
+panel_sha256 = "06ea92de10b1e2e9f0106c795b7d0b8ddac1a0dc62ef6a929ffc404ed7415df3"
+horizon_bars = 21
+
+[strategy.components.to_weights_params]
+decile = 0.10
+max_gross = 1.0
+max_symbol_abs_weight = 0.35
+
+# The screen of the momentum control (`examples/characteristics/control.toml`), kept
+# identical so every arm scores the same eligible cross-section as the promoted
+# momentum book it will be combined with.
+[strategy.eligibility]
+min_price = 5.0
+min_median_dollar_volume = 1000000.0
+dollar_volume_window = 20
+return_history_bars = 252
+listing_seasoning_bars = 0
+membership_required = true
+exclude_asset_classes = []
+
+[construction]
+kind = "heuristic"
+step_order = "construct_band_cap_participation"
+max_gross = 1.0
+max_symbol_abs_weight = 0.35
+
+[construction.band]
+mode = "closed_form"
+gamma_risk = 1.0
+
+[construction.participation]
+max_participation = 0.05
+statistic = "median"
+window_bars = 20
+floor_dollars = 0.0
+base = "initial_capital"
+
+[construction.spread]
+mode = "bucket"
+
+[policy]
+profile = "examples/reference/profiles/experiment_v1.toml"
+costs = "examples/reference/costs/retail_v1.toml"
+execution = "examples/reference/profiles/execution_alpaca.toml"
+monitoring = "examples/reference/policies/monitoring.toml"
+recovery = "examples/reference/policies/recovery.toml"

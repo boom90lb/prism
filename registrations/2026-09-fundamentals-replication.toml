@@ -1,0 +1,132 @@
+# Fundamentals, replication route: the criteria (SPEC.md §4; docs/fundamentals_design.md).
+#
+# Companion to `registrations/2026-09-fundamentals.toml`, which declares the six
+# in-house arms. This file pins everything the replication read
+# (`research/scripts/fundamentals_replication.py`) uses to decide them: the public
+# reference series and their publication dates, the four per-arm criteria, the pinned
+# combination (SPEC §4, Combinations), and the forward kill rules. A changed series,
+# date, floor, hurdle, part or weight is a new registration.
+id = "2026-09-fundamentals-replication"
+created = 2026-09-24
+selection_set = "fundamentals_v1"
+route = "replication"
+engine_registration = "registrations/2026-09-fundamentals.toml"
+# The engine arms' records, as `research.scripts.registered_read` writes them.
+engine_read = "results/2026-09-fundamentals"
+# The combination is one more evaluated configuration: its row goes to its own log so
+# the engine's six-arm budget is untouched.
+combination_trial_log = "trials/fundamentals_v1_combination.jsonl"
+
+# ------------------------------------------------------------ public reference series
+# JKP daily US factor returns, capped value weight, direction-adjusted by JKP (the
+# `direction` column: +1 for be_me, gp_at, niq_su; -1 for at_gr1, oaccruals_at,
+# chcsho_12m, matching the node's published signs). Files as fetched 2026-09-24;
+# only schemas and date ranges were inspected before this registration.
+[[characteristic]]
+id = "be_me"
+source = "Fama, E. and French, K. (1992). The cross-section of expected stock returns. Journal of Finance 47(2)."
+publication = "1992-06"
+jkp_url = "https://jkpfactors-data.s3.amazonaws.com/public/%5Busa%5D_%5Bbe_me%5D_%5Bdaily%5D_%5Bvw_cap%5D.zip"
+jkp_sha256 = "fed24dda1e3ff8f4b8835bc24c3379d9a93a2e688e1fdfd1acb5b772f646af56"
+
+[[characteristic]]
+id = "gp_at"
+source = "Novy-Marx, R. (2013). The other side of value: The gross profitability premium. Journal of Financial Economics 108(1)."
+publication = "2013-04"
+jkp_url = "https://jkpfactors-data.s3.amazonaws.com/public/%5Busa%5D_%5Bgp_at%5D_%5Bdaily%5D_%5Bvw_cap%5D.zip"
+jkp_sha256 = "9e941c4bb01a0cda481889de766273b6f118ca7e2148aea59b03a766b407e30b"
+
+[[characteristic]]
+id = "at_gr1"
+source = "Cooper, M., Gulen, H. and Schill, M. (2008). Asset growth and the cross-section of stock returns. Journal of Finance 63(4)."
+publication = "2008-08"
+jkp_url = "https://jkpfactors-data.s3.amazonaws.com/public/%5Busa%5D_%5Bat_gr1%5D_%5Bdaily%5D_%5Bvw_cap%5D.zip"
+jkp_sha256 = "67cd2937812aa13138143c60733645b9b228b96aff8a5f50c7487c72e7a2bc15"
+
+[[characteristic]]
+id = "oaccruals_at"
+source = "Sloan, R. (1996). Do stock prices fully reflect information in accruals and cash flows about future earnings? The Accounting Review 71(3)."
+publication = "1996-07"
+jkp_url = "https://jkpfactors-data.s3.amazonaws.com/public/%5Busa%5D_%5Boaccruals_at%5D_%5Bdaily%5D_%5Bvw_cap%5D.zip"
+jkp_sha256 = "aeea724b0e9742b325dc5811f50d30d78f6be57f254ab440fc3a293d5e69d7e8"
+
+[[characteristic]]
+id = "niq_su"
+source = "Foster, G., Olsen, C. and Shevlin, T. (1984). Earnings releases, anomalies, and the behavior of security returns. The Accounting Review 59(4)."
+publication = "1984-10"
+jkp_url = "https://jkpfactors-data.s3.amazonaws.com/public/%5Busa%5D_%5Bniq_su%5D_%5Bdaily%5D_%5Bvw_cap%5D.zip"
+jkp_sha256 = "7c84169284019354a2db6de0131a013d54a3c67dd360fb174ff9a7e0488fa59e"
+
+[[characteristic]]
+id = "chcsho_12m"
+source = "Pontiff, J. and Woodgate, A. (2008). Share issuance and cross-sectional returns. Journal of Finance 63(2)."
+publication = "2008-04"
+jkp_url = "https://jkpfactors-data.s3.amazonaws.com/public/%5Busa%5D_%5Bchcsho_12m%5D_%5Bdaily%5D_%5Bvw_cap%5D.zip"
+jkp_sha256 = "f463d91bc40fd15bbdfce6dbcacc34db082aeabf9e5e7ea02c9c0cc0457f7c6b"
+
+# ------------------------------------------------------------ SPEC §4 criteria, per arm
+[criteria]
+publication_bar_t = 3.0
+publication_bar_min_years = 20.0
+post_publication_min_years = 10.0
+pre_publication_haircut = 0.4
+# Contract minimum; a negative daily correlation is also recorded as a direction mismatch.
+fidelity_floor = 0.5
+# Hurdle: in-house books earn nothing on cash (retail_v1.toml cash_income_bps_annual =
+# 0.0), so an arm must out-earn T-bills at the volatility it can run at: the 12%
+# target, or twice its own unscaled volatility if the Reg T 2x gross ceiling binds
+# first. hurdle Sharpe = rf / min(target_vol, max_scale x own vol).
+target_vol = 0.12
+max_scale = 2.0
+hurdle_window_sessions = 252
+sessions_per_year = 252
+# The cash series is the vol-momentum read's pinned French file (202607 CRSP vintage).
+cash_url = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_Factors_daily_CSV.zip"
+cash_sha256 = "1916d331c2c51d2aee3d00215897d2b8e5995cb387f1f4569ba46bff5fb049a8"
+
+# ------------------------------------------------------------ the pinned combination
+# SPEC §4, Combinations, "on its own replication criteria". Parts: every arm above that
+# passes criteria 1 and 2 (which read public data and tracking, never in-house
+# performance), plus the promoted volatility-scaled momentum (vol_momentum_v1). At
+# least three parts, momentum among them, or the combination is not evaluated.
+[combination]
+min_parts = 3
+momentum_part = "vol_momentum"
+# Each fundamental part is scaled to the target by the rule the momentum part already
+# carries (126-session volatility, re-set every 21 sessions, scale capped at 2); the
+# momentum part enters as promoted. Equal weights over parts at a common volatility is
+# equal risk. The average is scaled to the target again, with the scale capped so that
+# total gross (sum of weight x part scale x part gross) stays within 2.
+weights = "equal"
+target_vol = 0.12
+lookback_sessions = 126
+refresh_sessions = 21
+part_max_scale = 2.0
+max_total_gross = 2.0
+scale_change_cost_bps = 10.0
+# The prior is the public combination's Sharpe from the latest publication among the
+# parts to the public series' common end, if that spans ten years or more; else 0.4 x
+# its Sharpe over the whole common window. Costs are the parts' own, summed with no
+# netting credit (conservative).
+# The momentum part is the promoted configuration's own committed record: its in-house
+# scaled net returns and charged costs, and its public reference (French momentum
+# scaled by the same rule, gross), as `vol_momentum_replication` wrote them.
+momentum_series = "results/2026-09-vol-momentum/series.csv"
+momentum_series_sha256 = "ded96a7226e7ae70c71422741a46a3ec1620442dbbb0c2e38aae64f49db37395"
+momentum_publication = "2015-04"
+
+[bootstrap]
+block_bars = 42
+n_resamples = 2000
+seed = 20260925
+confidence = 0.95
+
+# ------------------------------------------------------------ forward kill rule
+# Runs from this registration's commit, and after any promotion, on the arms and the
+# combination run forward on sessions from 2026-09-24 (the forward_v1 geometry). The
+# first read is at >= 126 forward sessions, then every 63. Any one condition kills.
+[kill]
+first_read_min_sessions = 126
+read_every_sessions = 63
+max_drawdown = 0.25
+min_forward_fidelity = 0.5

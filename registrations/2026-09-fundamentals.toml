@@ -1,0 +1,248 @@
+# Fundamentals, replication route (SPEC.md §4; docs/fundamentals_design.md).
+#
+# Six published accounting characteristics, each run as its own arm: the decile
+# long/short book of `examples/fundamentals/control.toml` with one characteristic at
+# weight 1.0. Same frozen dataset, fold geometry, cost stack, execution profile,
+# accounting engine, eligibility screen and capital as the momentum control of
+# `registrations/2026-09-characteristics.toml`, so every arm is the book the
+# promoted, vol-scaled momentum configuration would be combined with.
+#
+# This file declares the in-house runs only. The replication criteria (public
+# reference series, publication dates, fidelity floors, hurdle, the combination and
+# the forward kill rules) are in `registrations/2026-09-fundamentals-replication.toml`
+# and are read by `research/scripts/fundamentals_replication.py`, which the promotion
+# rule's callback names. Adding an arm, a characteristic, a window or a threshold after
+# seeing a result is a new registration, never an edit of either file.
+id = "2026-09-fundamentals"
+created = 2026-09-24
+selection_set = "fundamentals_v1"
+strict = true
+# One attempt is one `arm_id`. Six arms, six attempts, no reserve. A retry after a
+# crash carries kind = "retry" and spends none.
+trial_budget = 6
+
+# Every component emits its characteristic signed to the published direction
+# (`prism.io.fundamental_panel.expected_signs`), so a high score is always the long
+# leg and every expected sign here is positive.
+
+[[components]]
+id = "be_me"
+path = "prism.signal.fundamental_node:FundamentalCharacteristicNode"
+expected_sign = "positive"
+scoring_basis = "price"
+
+[[components]]
+id = "gp_at"
+path = "prism.signal.fundamental_node:FundamentalCharacteristicNode"
+expected_sign = "positive"
+scoring_basis = "price"
+
+[[components]]
+id = "at_gr1"
+path = "prism.signal.fundamental_node:FundamentalCharacteristicNode"
+expected_sign = "positive"
+scoring_basis = "price"
+
+[[components]]
+id = "oaccruals_at"
+path = "prism.signal.fundamental_node:FundamentalCharacteristicNode"
+expected_sign = "positive"
+scoring_basis = "price"
+
+[[components]]
+id = "niq_su"
+path = "prism.signal.fundamental_node:FundamentalCharacteristicNode"
+expected_sign = "positive"
+scoring_basis = "price"
+
+[[components]]
+id = "chcsho_12m"
+path = "prism.signal.fundamental_node:FundamentalCharacteristicNode"
+expected_sign = "positive"
+scoring_basis = "price"
+
+# Restated from `registrations/2026-09-characteristics.toml`: every arm is heuristic,
+# so no calibration is read, and the risk model acts only through the experiment
+# profile's variance-budget limit.
+[shared]
+risk_model = "examples/reference/risk/factor_diagonal.toml"
+calibration_family = "calibrations/shared_slope_point.toml"
+standardize = "rank_normal"
+weighting = "per_date_equal"
+shrink_pseudo_periods = 12.0
+block_periods = 3
+min_training_periods = 12
+min_blocks = 4
+risk_aversion = 0.0
+eps = 1.0e-8
+max_at_cap_fraction = 0.35
+eligibility_exit = "reduce_only"
+
+# Arm 1. Book-to-market (Fama and French 1992).
+[[arms]]
+id = "be_me"
+profile = "examples/reference/profiles/experiment_v1.toml"
+
+[arms.construction]
+kind = "heuristic"
+to_weights = "decile_long_short"
+decile = 0.10
+
+[arms.components]
+be_me = 1.0
+gp_at = 0.0
+at_gr1 = 0.0
+oaccruals_at = 0.0
+niq_su = 0.0
+chcsho_12m = 0.0
+
+# Arm 2. Gross profitability (Novy-Marx 2013).
+[[arms]]
+id = "gp_at"
+profile = "examples/reference/profiles/experiment_v1.toml"
+
+[arms.construction]
+kind = "heuristic"
+to_weights = "decile_long_short"
+decile = 0.10
+
+[arms.components]
+be_me = 0.0
+gp_at = 1.0
+at_gr1 = 0.0
+oaccruals_at = 0.0
+niq_su = 0.0
+chcsho_12m = 0.0
+
+# Arm 3. Asset growth (Cooper, Gulen and Schill 2008).
+[[arms]]
+id = "at_gr1"
+profile = "examples/reference/profiles/experiment_v1.toml"
+
+[arms.construction]
+kind = "heuristic"
+to_weights = "decile_long_short"
+decile = 0.10
+
+[arms.components]
+be_me = 0.0
+gp_at = 0.0
+at_gr1 = 1.0
+oaccruals_at = 0.0
+niq_su = 0.0
+chcsho_12m = 0.0
+
+# Arm 4. Operating accruals (Sloan 1996).
+[[arms]]
+id = "oaccruals_at"
+profile = "examples/reference/profiles/experiment_v1.toml"
+
+[arms.construction]
+kind = "heuristic"
+to_weights = "decile_long_short"
+decile = 0.10
+
+[arms.components]
+be_me = 0.0
+gp_at = 0.0
+at_gr1 = 0.0
+oaccruals_at = 1.0
+niq_su = 0.0
+chcsho_12m = 0.0
+
+# Arm 5. Earnings surprise (Foster, Olsen and Shevlin 1984).
+[[arms]]
+id = "niq_su"
+profile = "examples/reference/profiles/experiment_v1.toml"
+
+[arms.construction]
+kind = "heuristic"
+to_weights = "decile_long_short"
+decile = 0.10
+
+[arms.components]
+be_me = 0.0
+gp_at = 0.0
+at_gr1 = 0.0
+oaccruals_at = 0.0
+niq_su = 1.0
+chcsho_12m = 0.0
+
+# Arm 6. Net share issuance (Pontiff and Woodgate 2008).
+[[arms]]
+id = "chcsho_12m"
+profile = "examples/reference/profiles/experiment_v1.toml"
+
+[arms.construction]
+kind = "heuristic"
+to_weights = "decile_long_short"
+decile = 0.10
+
+[arms.components]
+be_me = 0.0
+gp_at = 0.0
+at_gr1 = 0.0
+oaccruals_at = 0.0
+niq_su = 0.0
+chcsho_12m = 1.0
+
+# Sample and fold geometry: the recorded B1 evidence's own, as in the characteristics
+# registration. The fundamental nodes need one bar of history; `warmup_bars` stays at
+# the momentum book's 273 so every arm scores exactly the momentum control's decision
+# bars.
+[sample]
+history_start = 2020-01-02
+first_decision = 2021-03-30
+last_decision = 2026-06-12
+warmup_bars = 273
+decision_offset_minutes = 0
+
+[folds]
+table = "folds/demotion_b1.toml"
+
+[frozen]
+freeze_record = "data/frozen/fundamentals_v1.freeze.json"
+executable_return = "open_to_open"
+cost_stack = "examples/reference/costs/retail_v1.toml"
+execution_profile = "examples/reference/profiles/execution_alpaca.toml"
+accounting_engine = "canonical"
+visibility_mode = "research_vintage"
+fold_portfolio = "carry"
+cost_refresh = "fold"
+capital_scenarios = [100000]
+capital_unit = "usd_marked_equity_at_first_decision"
+
+[evidence]
+robust_dsr_threshold = 0.95
+min_obs = 20
+
+[sharpe_bootstrap]
+frequency = "daily"
+block_bars = 42
+n_resamples = 2000
+seed = 20260924
+scheme = "circular"
+paired = true
+
+# The set closes when the six declared arms have run. An arm the replication read
+# finds contradicted in-house (criterion 4) is dead; forward kill rules live in the
+# replication registration.
+[stop_rule]
+kind = "structured"
+min_obs = 20
+note = "The set closes when the six declared arms have run; no arm may be added. Kill: SPEC §4 replication criterion 4, and the forward kill rules of registrations/2026-09-fundamentals-replication.toml."
+
+# Replication route (SPEC §4): each arm promotes on its own four criteria, and the
+# pinned combination on the Combinations criteria, both computed by the callback from
+# public series and these arms' records.
+[promotion_rule]
+kind = "structured"
+callback = "research.scripts.fundamentals_replication:promotion_outcome"
+note = "SPEC §4 replication route, per arm and for the pinned combination; parameters in registrations/2026-09-fundamentals-replication.toml."
+
+[benchmark]
+cash_series = "tbill_3m"
+cash_source = "FRED:DTB3"
+cash_conversion = "discount_to_bond_equivalent_then_daily_accrual"
+day_count = "act/365"
+control = "examples/fundamentals/control.toml"
