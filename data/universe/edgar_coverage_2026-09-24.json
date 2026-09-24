@@ -1,9 +1,9 @@
 {
-  "accepted_ciks": 1452,
-  "accepted_tickers": 1481,
+  "accepted_ciks": 1480,
+  "accepted_tickers": 1511,
   "asof": "2026-09-24",
   "availability_basis": {
-    "acceptance": 3087728,
+    "acceptance": 3133899,
     "filed_date_end": 79
   },
   "ciks_without_companyfacts": [
@@ -11,43 +11,11 @@
     66479,
     1058083
   ],
-  "coverage_xbrl_era": 0.9673416067929458,
-  "facts_rows": 3087807,
-  "filings_rows": 3488899,
+  "coverage_xbrl_era": 0.9869366427171783,
+  "facts_rows": 3133978,
+  "filings_rows": 3537537,
   "membership_rows": 1627,
   "not_accepted": [
-    {
-      "cik": null,
-      "end": "2018-01-03",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "1990-01-01",
-      "status": "unresolved",
-      "ticker": "BCR"
-    },
-    {
-      "cik": 1745999,
-      "end": "2014-05-01",
-      "reason": null,
-      "start": "1990-01-01",
-      "status": "no_periodic_filing_in_interval",
-      "ticker": "BEAM"
-    },
-    {
-      "cik": 2094919,
-      "end": "2019-10-03",
-      "reason": null,
-      "start": "1990-01-01",
-      "status": "no_periodic_filing_in_interval",
-      "ticker": "BID"
-    },
-    {
-      "cik": null,
-      "end": "2017-11-22",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "1990-01-01",
-      "status": "unresolved",
-      "ticker": "BRCD"
-    },
     {
       "cik": 1668717,
       "end": "2026-06-16",
@@ -55,30 +23,6 @@
       "start": "1976-07-01",
       "status": "no_periodic_filing_in_interval",
       "ticker": "BUD"
-    },
-    {
-      "cik": null,
-      "end": "2018-11-06",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "1990-01-01",
-      "status": "unresolved",
-      "ticker": "CA"
-    },
-    {
-      "cik": null,
-      "end": "2018-02-13",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "1990-01-01",
-      "status": "unresolved",
-      "ticker": "CAA"
-    },
-    {
-      "cik": null,
-      "end": "2017-09-26",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "2012-10-04",
-      "status": "unresolved",
-      "ticker": "CAB"
     },
     {
       "cik": null,
@@ -113,36 +57,12 @@
       "ticker": "CLB"
     },
     {
-      "cik": null,
-      "end": "2015-12-15",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "2015-09-18",
-      "status": "unresolved",
-      "ticker": "CMCSK"
-    },
-    {
       "cik": 1666700,
       "end": "2017-09-01",
       "reason": null,
       "start": "1990-01-01",
       "status": "no_periodic_filing_in_interval",
       "ticker": "DD"
-    },
-    {
-      "cik": null,
-      "end": "2025-05-19",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "2007-07-02",
-      "status": "unresolved",
-      "ticker": "DFS"
-    },
-    {
-      "cik": null,
-      "end": "2019-06-03",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "2017-09-01",
-      "status": "unresolved",
-      "ticker": "DWDP"
     },
     {
       "cik": null,
@@ -194,54 +114,6 @@
     },
     {
       "cik": null,
-      "end": "2017-03-16",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "1990-01-01",
-      "status": "unresolved",
-      "ticker": "HAR"
-    },
-    {
-      "cik": null,
-      "end": "2013-06-06",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "1990-01-01",
-      "status": "unresolved",
-      "ticker": "HNZ"
-    },
-    {
-      "cik": null,
-      "end": "2016-09-22",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "1990-01-01",
-      "status": "unresolved",
-      "ticker": "HOT"
-    },
-    {
-      "cik": null,
-      "end": "2021-12-20",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "1990-01-01",
-      "status": "unresolved",
-      "ticker": "HRC"
-    },
-    {
-      "cik": null,
-      "end": "2025-11-28",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "1990-01-01",
-      "status": "unresolved",
-      "ticker": "IPG"
-    },
-    {
-      "cik": null,
-      "end": "2013-12-02",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "1990-01-01",
-      "status": "unresolved",
-      "ticker": "JCP"
-    },
-    {
-      "cik": null,
       "end": "2015-06-11",
       "reason": "not_in_sec_current_ticker_map",
       "start": "2008-06-10",
@@ -258,27 +130,11 @@
     },
     {
       "cik": null,
-      "end": "2021-08-30",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "2018-12-03",
-      "status": "unresolved",
-      "ticker": "MXIM"
-    },
-    {
-      "cik": null,
       "end": "2026-06-16",
       "reason": "not_in_sec_current_ticker_map",
       "start": "1994-09-30",
       "status": "unresolved",
       "ticker": "NCC"
-    },
-    {
-      "cik": null,
-      "end": "2012-01-13",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "1990-01-01",
-      "status": "unresolved",
-      "ticker": "NDN"
     },
     {
       "cik": 1569650,
@@ -295,14 +151,6 @@
       "start": "2009-06-29",
       "status": "unresolved",
       "ticker": "PCS"
-    },
-    {
-      "cik": null,
-      "end": "2017-10-02",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "1990-01-01",
-      "status": "unresolved",
-      "ticker": "PRXL"
     },
     {
       "cik": 2058873,
@@ -322,43 +170,11 @@
     },
     {
       "cik": null,
-      "end": "2016-09-27",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "1990-01-01",
-      "status": "unresolved",
-      "ticker": "RRD"
-    },
-    {
-      "cik": null,
       "end": "2023-03-15",
       "reason": "not_in_sec_current_ticker_map",
       "start": "1990-01-01",
       "status": "unresolved",
       "ticker": "SBNY"
-    },
-    {
-      "cik": null,
-      "end": "2025-09-12",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "1990-01-01",
-      "status": "unresolved",
-      "ticker": "SKX"
-    },
-    {
-      "cik": null,
-      "end": "2026-01-02",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "1990-01-01",
-      "status": "unresolved",
-      "ticker": "SNV"
-    },
-    {
-      "cik": null,
-      "end": "2024-01-23",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "2019-07-09",
-      "status": "unresolved",
-      "ticker": "SRC"
     },
     {
       "cik": 1385157,
@@ -367,38 +183,6 @@
       "start": "1990-01-01",
       "status": "no_periodic_filing_in_interval",
       "ticker": "TEL"
-    },
-    {
-      "cik": null,
-      "end": "2026-07-24",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "2020-01-31",
-      "status": "unresolved",
-      "ticker": "TMHC"
-    },
-    {
-      "cik": null,
-      "end": "2019-09-23",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "1990-01-01",
-      "status": "unresolved",
-      "ticker": "TSS"
-    },
-    {
-      "cik": 1758730,
-      "end": "2016-01-05",
-      "reason": null,
-      "start": "1990-01-01",
-      "status": "no_periodic_filing_in_interval",
-      "ticker": "TW"
-    },
-    {
-      "cik": null,
-      "end": "2023-06-19",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "2021-08-04",
-      "status": "unresolved",
-      "ticker": "VSCO"
     },
     {
       "cik": 1967649,
@@ -410,43 +194,19 @@
     },
     {
       "cik": null,
-      "end": "2026-08-20",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "1990-01-01",
-      "status": "unresolved",
-      "ticker": "WBS"
-    },
-    {
-      "cik": null,
       "end": "2017-04-28",
       "reason": "not_in_sec_current_ticker_map",
       "start": "1990-01-01",
       "status": "unresolved",
       "ticker": "WDR"
-    },
-    {
-      "cik": null,
-      "end": "2021-08-04",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "1990-01-01",
-      "status": "unresolved",
-      "ticker": "WRI"
-    },
-    {
-      "cik": null,
-      "end": "2025-06-24",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "1990-01-01",
-      "status": "unresolved",
-      "ticker": "X"
     }
   ],
-  "peak_rss_mb": 378.5,
+  "peak_rss_mb": 376.2,
   "status_counts": {
-    "accepted": 1543,
-    "no_periodic_filing_in_interval": 12,
+    "accepted": 1573,
+    "no_periodic_filing_in_interval": 9,
     "pre_xbrl": 40,
-    "unresolved": 41
+    "unresolved": 14
   },
   "tickers": 1565,
   "xbrl_era_tickers": 1531

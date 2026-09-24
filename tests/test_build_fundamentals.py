@@ -256,3 +256,14 @@ def test_decision_for_a_changed_membership_interval_is_refused(tmp_path):
     with pytest.raises(edgar.EdgarError):
         bf.build(membership, client, tmp_path / "out", tmp_path / "ledger.json", "2026-09-24",
                  name_matches=bf.load_review_decisions(_decisions(tmp_path, [LSI_SPLIT])))
+
+
+def test_decision_files_merge_and_refuse_a_twice_decided_interval(tmp_path):
+    dyn = {"ticker": "DYN", "start": "1990-01-01", "end": "2009-12-18", "kind": "cik", "cik": 1379895}
+    tss = {"ticker": "TSS", "start": "1990-01-01", "end": "2019-09-23", "kind": "cik", "cik": 721683}
+    first, second = tmp_path / "a", tmp_path / "b"
+    first.mkdir(), second.mkdir()
+    merged = bf.merge_review_decisions([_decisions(first, [dyn]), _decisions(second, [tss])])
+    assert set(merged) == {("DYN", "1990-01-01"), ("TSS", "1990-01-01")}
+    with pytest.raises(edgar.EdgarError):
+        bf.merge_review_decisions([_decisions(first, [dyn]), _decisions(second, [dyn])])

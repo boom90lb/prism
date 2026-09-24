@@ -1,0 +1,309 @@
+{
+  "approved_by": "owner",
+  "approved_on": "2026-09-24",
+  "asof": "2026-09-24",
+  "decisions": [
+    {
+      "cik": 9892,
+      "end": "2018-01-03",
+      "kind": "cik",
+      "name": "BARD C R INC /NJ/",
+      "reason": "only close match that filed during the interval (same_letters: ['BARD C R INC /NJ/'])",
+      "source": "owner_approved_suggestion",
+      "start": "1990-01-01",
+      "ticker": "BCR"
+    },
+    {
+      "cik": 789073,
+      "end": "2014-05-01",
+      "kind": "cik",
+      "name": "Beam Suntory Inc.",
+      "reason": "WEAK (ticker-as-name only); confirm: only close match that filed during the interval (ticker_name: ['BEAM INC', 'FORTUNE BRANDS INC'])",
+      "source": "owner_approved_suggestion",
+      "start": "1990-01-01",
+      "ticker": "BEAM"
+    },
+    {
+      "cik": 823094,
+      "end": "2019-10-03",
+      "kind": "cik",
+      "name": "SOTHEBYS",
+      "reason": "only close match that filed during the interval (same_letters: ['SOTHEBYS'])",
+      "source": "owner_approved_suggestion",
+      "start": "1990-01-01",
+      "ticker": "BID"
+    },
+    {
+      "cik": 1009626,
+      "end": "2017-11-22",
+      "kind": "cik",
+      "name": "BROCADE COMMUNICATIONS SYSTEMS INC",
+      "reason": "only close match that filed during the interval (all_words: ['BROCADE COMMUNICATIONS SYSTEMS INC'])",
+      "source": "owner_approved_suggestion",
+      "start": "1990-01-01",
+      "ticker": "BRCD"
+    },
+    {
+      "cik": 356028,
+      "end": "2018-11-06",
+      "kind": "cik",
+      "name": "CA, INC.",
+      "reason": "only close match that filed during the interval (first_word: ['CA, INC.'])",
+      "source": "owner_approved_suggestion",
+      "start": "1990-01-01",
+      "ticker": "CA"
+    },
+    {
+      "cik": 878560,
+      "end": "2018-02-13",
+      "kind": "cik",
+      "name": "CalAtlantic Group, LLC",
+      "reason": "only close match that filed during the interval (first_word: ['CalAtlantic Group, Inc.', 'STANDARD PACIFIC CORP /DE/'])",
+      "source": "owner_approved_suggestion",
+      "start": "1990-01-01",
+      "ticker": "CAA"
+    },
+    {
+      "cik": 1267130,
+      "end": "2017-09-26",
+      "kind": "cik",
+      "name": "CABELAS INC",
+      "reason": "the only candidate matching by same_letters under a name held during the interval (['CABELAS INC'])",
+      "source": "owner_approved_suggestion",
+      "start": "2012-10-04",
+      "ticker": "CAB"
+    },
+    {
+      "cik": 1166691,
+      "end": "2015-12-15",
+      "kind": "cik",
+      "name": "COMCAST CORP",
+      "reason": "only close match that filed during the interval (first_word: ['COMCAST CORP'])",
+      "source": "owner_approved_suggestion",
+      "start": "2015-09-18",
+      "ticker": "CMCSK"
+    },
+    {
+      "cik": 1393612,
+      "end": "2025-05-19",
+      "kind": "cik",
+      "name": "Discover Financial Services",
+      "reason": "only close match that filed during the interval (all_words: ['Discover Financial Services'])",
+      "source": "owner_approved_suggestion",
+      "start": "2007-07-02",
+      "ticker": "DFS"
+    },
+    {
+      "cik": 1666700,
+      "end": "2019-06-03",
+      "kind": "cik",
+      "name": "DOWDUPONT INC.",
+      "reason": "DowDuPont Inc. held DWDP from the 2017 merger to its 2019 renaming as DuPont de Nemours (general knowledge; CIK from SEC's name index)",
+      "source": "owner_override_of_suggestion",
+      "start": "2017-09-01",
+      "ticker": "DWDP"
+    },
+    {
+      "cik": 800459,
+      "end": "2017-03-16",
+      "kind": "cik",
+      "name": "HARMAN INTERNATIONAL INDUSTRIES INC /DE/",
+      "reason": "only close match that filed during the interval (all_words: ['HARMAN INTERNATIONAL INDUSTRIES INC /DE/'])",
+      "source": "owner_approved_suggestion",
+      "start": "1990-01-01",
+      "ticker": "HAR"
+    },
+    {
+      "cik": 46640,
+      "end": "2013-06-06",
+      "kind": "cik",
+      "name": "Kraft Heinz Foods Co",
+      "reason": "only close match that filed during the interval (all_words: ['HEINZ H J CO'])",
+      "source": "owner_approved_suggestion",
+      "start": "1990-01-01",
+      "ticker": "HNZ"
+    },
+    {
+      "cik": 316206,
+      "end": "2016-09-22",
+      "kind": "cik",
+      "name": "STARWOOD HOTELS & RESORTS WORLDWIDE, LLC",
+      "reason": "only close match that filed during the interval (all_words: ['STARWOOD HOTEL & RESORTS WORLDWIDE, INC', 'STARWOOD HOTEL & RESORTS WORLDWIDE INC'])",
+      "source": "owner_approved_suggestion",
+      "start": "1990-01-01",
+      "ticker": "HOT"
+    },
+    {
+      "cik": 47518,
+      "end": "2021-12-20",
+      "kind": "cik",
+      "name": "Hill-Rom Holdings, Inc.",
+      "reason": "only close match that filed during the interval (same_letters: ['Hill-Rom Holdings, Inc.'])",
+      "source": "owner_approved_suggestion",
+      "start": "1990-01-01",
+      "ticker": "HRC"
+    },
+    {
+      "cik": 51644,
+      "end": "2025-11-28",
+      "kind": "cik",
+      "name": "INTERPUBLIC GROUP OF COMPANIES, INC.",
+      "reason": "only close match that filed during the interval (all_words: ['INTERPUBLIC GROUP OF COMPANIES, INC.'])",
+      "source": "owner_approved_suggestion",
+      "start": "1990-01-01",
+      "ticker": "IPG"
+    },
+    {
+      "cik": 1166126,
+      "end": "2013-12-02",
+      "kind": "cik",
+      "name": "Old COPPER Company, Inc.",
+      "reason": "only close match that filed during the interval (same_letters: ['J C PENNEY CO INC'])",
+      "source": "owner_approved_suggestion",
+      "start": "1990-01-01",
+      "ticker": "JCP"
+    },
+    {
+      "cik": 743316,
+      "end": "2021-08-30",
+      "kind": "cik",
+      "name": "MAXIM INTEGRATED PRODUCTS INC",
+      "reason": "only close match that filed during the interval (all_words: ['MAXIM INTEGRATED PRODUCTS INC'])",
+      "source": "owner_approved_suggestion",
+      "start": "2018-12-03",
+      "ticker": "MXIM"
+    },
+    {
+      "cik": 1011290,
+      "end": "2012-01-13",
+      "kind": "cik",
+      "name": "99 CENTS ONLY STORES LLC",
+      "reason": "only close match that filed during the interval (all_words: ['99 CENTS ONLY STORES'])",
+      "source": "owner_approved_suggestion",
+      "start": "1990-01-01",
+      "ticker": "NDN"
+    },
+    {
+      "cik": 799729,
+      "end": "2017-10-02",
+      "kind": "cik",
+      "name": "PAREXEL INTERNATIONAL CORP",
+      "reason": "only close match that filed during the interval (all_words: ['PAREXEL INTERNATIONAL CORP'])",
+      "source": "owner_approved_suggestion",
+      "start": "1990-01-01",
+      "ticker": "PRXL"
+    },
+    {
+      "cik": 29669,
+      "end": "2016-09-27",
+      "kind": "cik",
+      "name": "RR Donnelley & Sons Co",
+      "reason": "only close match that filed during the interval (all_words: ['RR Donnelley & Sons Co'])",
+      "source": "owner_approved_suggestion",
+      "start": "1990-01-01",
+      "ticker": "RRD"
+    },
+    {
+      "cik": 1065837,
+      "end": "2025-09-12",
+      "kind": "cik",
+      "name": "SKECHERS USA INC",
+      "reason": "only close match that filed during the interval (all_words: ['SKECHERS USA INC'])",
+      "source": "owner_approved_suggestion",
+      "start": "1990-01-01",
+      "ticker": "SKX"
+    },
+    {
+      "cik": 18349,
+      "end": "2026-01-02",
+      "kind": "cik",
+      "name": "SYNOVUS FINANCIAL CORP",
+      "reason": "only close match that filed during the interval (all_words: ['SYNOVUS FINANCIAL CORP'])",
+      "source": "owner_approved_suggestion",
+      "start": "1990-01-01",
+      "ticker": "SNV"
+    },
+    {
+      "cik": 1308606,
+      "end": "2024-01-23",
+      "kind": "cik",
+      "name": "SPIRIT REALTY CAPITAL, INC.",
+      "reason": "ticker fit: SRC in ['SPIRIT REALTY CAPITAL, INC.']; co-filing LLC/LP dropped: [1703181]",
+      "source": "owner_approved_suggestion",
+      "start": "2019-07-09",
+      "ticker": "SRC"
+    },
+    {
+      "cik": 1562476,
+      "end": "2026-07-24",
+      "kind": "cik",
+      "name": "Taylor Morrison Home Corp",
+      "reason": "the only candidate matching by all_words under a name held during the interval (['Taylor Morrison Home Corp'])",
+      "source": "owner_approved_suggestion",
+      "start": "2020-01-31",
+      "ticker": "TMHC"
+    },
+    {
+      "cik": 721683,
+      "end": "2019-09-23",
+      "kind": "cik",
+      "name": "TOTAL SYSTEM SERVICES INC",
+      "reason": "TSYS is Total System Services; the suggested 'TSS, Inc.' (formerly Fortress International Group) is unrelated (general knowledge; CIK from SEC's name index)",
+      "source": "owner_override_of_suggestion",
+      "start": "1990-01-01",
+      "ticker": "TSS"
+    },
+    {
+      "cik": 1470215,
+      "end": "2016-01-05",
+      "kind": "cik",
+      "name": "Towers Watson & Co.",
+      "reason": "only close match that filed during the interval (same_letters: ['JUPITER SATURN HOLDING CO', 'Towers Watson & Co.'])",
+      "source": "owner_approved_suggestion",
+      "start": "1990-01-01",
+      "ticker": "TW"
+    },
+    {
+      "cik": 1856437,
+      "end": "2023-06-19",
+      "kind": "cik",
+      "name": "Victoria's Secret & Co.",
+      "reason": "only close match that filed during the interval (same_letters: [\"Victoria's Secret & Co.\"])",
+      "source": "owner_approved_suggestion",
+      "start": "2021-08-04",
+      "ticker": "VSCO"
+    },
+    {
+      "cik": 801337,
+      "end": "2026-08-20",
+      "kind": "cik",
+      "name": "WEBSTER FINANCIAL CORP",
+      "reason": "only close match that filed during the interval (first_word: ['WEBSTER FINANCIAL CORP'])",
+      "source": "owner_approved_suggestion",
+      "start": "1990-01-01",
+      "ticker": "WBS"
+    },
+    {
+      "cik": 828916,
+      "end": "2021-08-04",
+      "kind": "cik",
+      "name": "WEINGARTEN REALTY INVESTORS /TX/",
+      "reason": "only close match that filed during the interval (all_words: ['WEINGARTEN REALTY INVESTORS /TX/'])",
+      "source": "owner_approved_suggestion",
+      "start": "1990-01-01",
+      "ticker": "WRI"
+    },
+    {
+      "cik": 1163302,
+      "end": "2025-06-24",
+      "kind": "cik",
+      "name": "UNITED STATES STEEL CORP",
+      "reason": "the only candidate matching by same_letters under a name held during the interval (['UNITED STATES STEEL CORP'])",
+      "source": "owner_approved_suggestion",
+      "start": "1990-01-01",
+      "ticker": "X"
+    }
+  ],
+  "note": "Owner approved every near-miss suggestion with two changes (DWDP picked; TSS overridden) in session.",
+  "review_sheet": "data/universe/cik_nearmiss_review_2026-09-24.json"
+}

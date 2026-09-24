@@ -214,6 +214,17 @@ def load_review_decisions(path: Path | None) -> dict[tuple[str, str], dict[str, 
     return out
 
 
+def merge_review_decisions(paths: Sequence[Path]) -> dict[tuple[str, str], dict[str, Any]]:
+    """Several decision files as one mapping; an interval decided in two files is refused (N7)."""
+    merged: dict[tuple[str, str], dict[str, Any]] = {}
+    for path in paths:
+        for key, decision in load_review_decisions(path).items():
+            if key in merged:
+                raise edgar.EdgarError(f"{key[0]} {key[1]} is decided in more than one decisions file ({path})")
+            merged[key] = decision
+    return merged
+
+
 def _segments_for(span: Any, override: Mapping[str, Any] | None,
                   fallback: Mapping[str, Any]) -> list[dict[str, Any]]:
     """The (start, end, cik, title, source) pieces a membership interval resolves to."""
@@ -369,8 +380,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--limit", type=int, default=None, help="first N tickers only (smoke runs)")
     parser.add_argument("--name-matches", type=Path, default=None,
                         help="cik_name_matches ledger from prism.scripts.match_delisted_ciks (per-interval overrides)")
-    parser.add_argument("--review-decisions", type=Path, default=None,
-                        help="owner-approved cik_review_decisions file; takes precedence over name matches")
+    parser.add_argument("--review-decisions", type=Path, nargs="+", default=None,
+                        help="owner-approved decision files (cik_review_decisions, cik_nearmiss_decisions); "
+                             "they take precedence over name matches, and two files deciding one interval is refused")
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
@@ -380,7 +392,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     ledger = build(membership, client, args.out_dir, args.ledger_dir / f"edgar_coverage_{args.asof}{suffix}.json",
                    args.asof, refresh=args.refresh, limit=args.limit,
                    name_matches={**load_name_matches(args.name_matches),
-                                 **load_review_decisions(args.review_decisions)})
+                                 **merge_review_decisions(args.review_decisions or [])})
     summary = {k: ledger[k] for k in ("tickers", "xbrl_era_tickers", "accepted_tickers", "coverage_xbrl_era",
                                       "accepted_ciks", "facts_rows", "filings_rows", "peak_rss_mb", "status_counts")}
     print(json.dumps(summary, indent=2, default=str))
