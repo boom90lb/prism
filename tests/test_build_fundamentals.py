@@ -99,3 +99,12 @@ def test_facts_carry_acceptance_availability(built):
     assert row["available_at"] == pd.Timestamp("2017-02-01 07:00", tz="America/New_York")
     manifest = json.loads((tmp_path / "out" / "manifest.json").read_text())
     assert set(manifest["companyfacts"]) == {"1", "3"}
+
+
+def test_recent_joiner_accepted_by_prior_quarter_filing():
+    filings = pd.DataFrame({"form": ["10-Q"], "filing_date": pd.to_datetime(["2026-07-25"])})
+    assert bf.interval_status(filings, pd.Timestamp("2026-08-20"), pd.Timestamp("2026-09-23")) == "accepted"
+    # a reused ticker's new holder that began filing after the old interval ended stays refused
+    later = pd.DataFrame({"form": ["10-K"], "filing_date": pd.to_datetime(["2017-02-28"])})
+    assert bf.interval_status(later, pd.Timestamp("1990-01-01"), pd.Timestamp("2016-11-01")) == \
+        "no_periodic_filing_in_interval"

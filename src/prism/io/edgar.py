@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import gzip
 import hashlib
+import http.client
 import json
 import logging
 import os
@@ -175,7 +176,7 @@ class SecClient:
                 if exc.code != 429 and exc.code < 500:
                     raise EdgarError(f"HTTP {exc.code} for {url}") from exc
                 reason = f"HTTP {exc.code}"
-            except (urllib.error.URLError, TimeoutError, ConnectionError) as exc:
+            except (urllib.error.URLError, http.client.HTTPException, TimeoutError, ConnectionError) as exc:
                 reason = f"{type(exc).__name__}: {exc}"
             if attempt == self.max_retries:
                 raise EdgarError(f"{url} failed after {self.max_retries + 1} attempts ({reason})")
@@ -267,7 +268,7 @@ def submissions_filings(payload: Mapping[str, Any], pages: Sequence[Mapping[str,
             "accn": block["accessionNumber"],
             "form": block["form"],
             "filing_date": pd.to_datetime(block["filingDate"]),
-            "acceptance": pd.to_datetime(block["acceptanceDateTime"], utc=True, errors="coerce"),
+            "acceptance": pd.to_datetime(block["acceptanceDateTime"], utc=True, format="ISO8601"),
             "report_date": pd.to_datetime(block.get("reportDate", [None] * len(block["form"])), errors="coerce"),
             "items": block.get("items", [""] * len(block["form"])),
         }))

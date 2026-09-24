@@ -8,6 +8,7 @@ client's fail-loud behaviour. No network.
 
 import email.message
 import gzip
+import http.client
 import json
 import urllib.error
 
@@ -101,6 +102,19 @@ def test_client_retries_rate_limits_then_succeeds(tmp_path):
     payload, _ = client.get_json("https://x/a", "a")
     assert payload == {"cik": 1}
     assert 1.0 in clock.sleeps and 2.0 in clock.sleeps  # exponential backoff
+
+
+def test_client_retries_truncated_responses(tmp_path):
+    outcomes = [http.client.IncompleteRead(b"partial"), b'{"cik": 1}']
+
+    def transport(url, headers, timeout):
+        outcome = outcomes.pop(0)
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome
+
+    client, _ = _client(tmp_path, transport)
+    assert client.get_json("https://x/a", "a")[0] == {"cik": 1}
 
 
 @pytest.mark.parametrize("code,error", [(403, edgar.EdgarError), (404, edgar.EdgarNotFound)])

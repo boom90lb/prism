@@ -13,7 +13,7 @@ Steps, each recorded:
    (``prism.io.universe_sp500.RENAME_TABLE``). A current ticker can name a
    different company than the one that held it during a membership interval
    (ticker reuse), so a mapping is **accepted for an interval only if that CIK
-   filed a 10-K or 10-Q inside it** (intervals ending before the XBRL era carry
+   filed a 10-K or 10-Q inside it, or in the quarter before it** (intervals ending before the XBRL era carry
    no XBRL facts and are marked ``pre_xbrl``). Names SEC's current map does not
    carry (delisted, acquired, renamed without a reviewed successor) are ledgered
    as unresolved, never guessed; resolving them by name is a separate, reviewed
@@ -48,6 +48,7 @@ from prism.io.universe_sp500 import RENAME_TABLE, normalize_ticker
 logger = logging.getLogger(__name__)
 
 XBRL_ERA_START = pd.Timestamp("2009-06-15")
+LOOKBACK = pd.Timedelta(days=100)
 PERIODIC_FORMS = ("10-K", "10-Q", "10-K/A", "10-Q/A", "10-KT", "10-QT")
 
 
@@ -85,10 +86,15 @@ def candidate_ciks(tickers: Sequence[str], sec_map: Mapping[str, tuple[int, str]
 
 
 def interval_status(filings: pd.DataFrame, start: pd.Timestamp, end: pd.Timestamp) -> str:
-    """``accepted`` if the CIK filed a periodic report inside the interval's XBRL-era part."""
+    """``accepted`` if the CIK filed a periodic report in the interval's XBRL-era part, or in the quarter before it.
+
+    The look-back is one quarter and only backward: a member that joined days ago has
+    filed nothing since joining, while a reused ticker's new holder has not filed before
+    the old holder's interval ended.
+    """
     if end < XBRL_ERA_START:
         return "pre_xbrl"
-    lo = max(start, XBRL_ERA_START)
+    lo = max(start - LOOKBACK, XBRL_ERA_START)
     periodic = filings[filings["form"].isin(PERIODIC_FORMS)]
     inside = periodic[(periodic["filing_date"] >= lo) & (periodic["filing_date"] <= end)]
     return "accepted" if len(inside) else "no_periodic_filing_in_interval"
@@ -137,6 +143,7 @@ def build(membership: pd.DataFrame, client: edgar.SecClient, out_dir: Path, ledg
             rows.append({"ticker": ticker, "start": span.start, "end": span.end, "cik": cik, "title": info["title"],
                          "source": info["source"], "status": status, "reason": info.get("reason")})
     intervals = pd.DataFrame(rows)
+    intervals["cik"] = intervals["cik"].astype("Int64")
 
     accepted_ciks = sorted({int(c) for c in intervals.loc[intervals["status"] == "accepted", "cik"]})
     fact_frames, missing_facts = [], []

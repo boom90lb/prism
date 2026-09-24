@@ -1,0 +1,3663 @@
+{
+  "accepted_ciks": 1083,
+  "accepted_tickers": 1091,
+  "asof": "2026-09-24",
+  "availability_basis": {
+    "acceptance": 2596239,
+    "filed_date_end": 79
+  },
+  "ciks_without_companyfacts": [],
+  "coverage_xbrl_era": 0.712606139777923,
+  "facts_rows": 2596318,
+  "membership_rows": 1627,
+  "not_accepted": [
+    {
+      "cik": 1675149,
+      "end": "2016-11-01",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "AA"
+    },
+    {
+      "cik": null,
+      "end": "2022-12-22",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2016-03-30",
+      "status": "unresolved",
+      "ticker": "ABMD"
+    },
+    {
+      "cik": null,
+      "end": "2022-08-10",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "ACC"
+    },
+    {
+      "cik": null,
+      "end": "2016-01-19",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "ACE"
+    },
+    {
+      "cik": 1646972,
+      "end": "2013-12-20",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "ACI"
+    },
+    {
+      "cik": null,
+      "end": "2013-12-20",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "ADS"
+    },
+    {
+      "cik": null,
+      "end": "2020-06-22",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2013-12-23",
+      "status": "unresolved",
+      "ticker": "ADS"
+    },
+    {
+      "cik": 1703056,
+      "end": "2016-05-03",
+      "reason": null,
+      "start": "2012-10-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "ADT"
+    },
+    {
+      "cik": null,
+      "end": "2018-12-03",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "AET"
+    },
+    {
+      "cik": null,
+      "end": "2015-03-23",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "AGN"
+    },
+    {
+      "cik": null,
+      "end": "2012-12-21",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "AGP"
+    },
+    {
+      "cik": null,
+      "end": "2019-02-21",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "AHL"
+    },
+    {
+      "cik": null,
+      "end": "2014-02-28",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "AINV"
+    },
+    {
+      "cik": null,
+      "end": "2024-06-28",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2020-12-21",
+      "status": "unresolved",
+      "ticker": "AIRC"
+    },
+    {
+      "cik": null,
+      "end": "2011-12-16",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2008-07-01",
+      "status": "unresolved",
+      "ticker": "AKS"
+    },
+    {
+      "cik": null,
+      "end": "2025-12-17",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2018-03-07",
+      "status": "unresolved",
+      "ticker": "ALE"
+    },
+    {
+      "cik": null,
+      "end": "2020-02-07",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2012-06-29",
+      "status": "unresolved",
+      "ticker": "ALEX"
+    },
+    {
+      "cik": null,
+      "end": "2025-03-06",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2024-01-02",
+      "status": "unresolved",
+      "ticker": "ALTM"
+    },
+    {
+      "cik": null,
+      "end": "2015-12-29",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "ALTR"
+    },
+    {
+      "cik": null,
+      "end": "2025-03-31",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2024-06-24",
+      "status": "unresolved",
+      "ticker": "ALTR"
+    },
+    {
+      "cik": null,
+      "end": "2021-07-21",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2012-05-21",
+      "status": "unresolved",
+      "ticker": "ALXN"
+    },
+    {
+      "cik": 1623925,
+      "end": "2012-04-30",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "AM"
+    },
+    {
+      "cik": null,
+      "end": "2025-08-19",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2019-02-21",
+      "status": "unresolved",
+      "ticker": "AMED"
+    },
+    {
+      "cik": null,
+      "end": "2018-10-01",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "ANDV"
+    },
+    {
+      "cik": null,
+      "end": "2014-04-30",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2011-06-01",
+      "status": "unresolved",
+      "ticker": "ANR"
+    },
+    {
+      "cik": null,
+      "end": "2025-07-18",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2017-06-19",
+      "status": "unresolved",
+      "ticker": "ANSS"
+    },
+    {
+      "cik": null,
+      "end": "2015-06-25",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "AOL"
+    },
+    {
+      "cik": 2080921,
+      "end": "2019-08-09",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "APC"
+    },
+    {
+      "cik": null,
+      "end": "2015-11-30",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "APOL"
+    },
+    {
+      "cik": null,
+      "end": "2016-05-23",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2009-09-28",
+      "status": "unresolved",
+      "ticker": "ARG"
+    },
+    {
+      "cik": null,
+      "end": "2020-04-01",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2016-11-01",
+      "status": "unresolved",
+      "ticker": "ARNC"
+    },
+    {
+      "cik": null,
+      "end": "2019-04-11",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2014-06-20",
+      "status": "unresolved",
+      "ticker": "ARRS"
+    },
+    {
+      "cik": null,
+      "end": "2026-03-23",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2018-10-11",
+      "status": "unresolved",
+      "ticker": "ASGN"
+    },
+    {
+      "cik": null,
+      "end": "2016-11-10",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "ASNA"
+    },
+    {
+      "cik": null,
+      "end": "2021-07-07",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "ATGE"
+    },
+    {
+      "cik": null,
+      "end": "2016-04-06",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "ATML"
+    },
+    {
+      "cik": null,
+      "end": "2023-10-18",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2015-08-28",
+      "status": "unresolved",
+      "ticker": "ATVI"
+    },
+    {
+      "cik": null,
+      "end": "2016-01-19",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "ATW"
+    },
+    {
+      "cik": null,
+      "end": "2026-06-16",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2007-01-10",
+      "status": "unresolved",
+      "ticker": "AVB"
+    },
+    {
+      "cik": null,
+      "end": "2021-05-17",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "AVNS"
+    },
+    {
+      "cik": null,
+      "end": "2015-03-23",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "AVP"
+    },
+    {
+      "cik": null,
+      "end": "2011-02-25",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2000-12-05",
+      "status": "unresolved",
+      "ticker": "AYE"
+    },
+    {
+      "cik": null,
+      "end": "2025-03-11",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2021-05-17",
+      "status": "unresolved",
+      "ticker": "AZPN"
+    },
+    {
+      "cik": null,
+      "end": "2017-07-26",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "BBBY"
+    },
+    {
+      "cik": null,
+      "end": "2014-09-30",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "BBG"
+    },
+    {
+      "cik": null,
+      "end": "2018-01-03",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "BCR"
+    },
+    {
+      "cik": 1745999,
+      "end": "2014-05-01",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "BEAM"
+    },
+    {
+      "cik": null,
+      "end": "2017-04-19",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "BEAV"
+    },
+    {
+      "cik": null,
+      "end": "2025-05-01",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2023-06-19",
+      "status": "unresolved",
+      "ticker": "BERY"
+    },
+    {
+      "cik": null,
+      "end": "2017-07-07",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "BHI"
+    },
+    {
+      "cik": 2094919,
+      "end": "2019-10-03",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "BID"
+    },
+    {
+      "cik": null,
+      "end": "2019-03-18",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "BIG"
+    },
+    {
+      "cik": null,
+      "end": "2018-03-08",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2017-02-03",
+      "status": "unresolved",
+      "ticker": "BIVV"
+    },
+    {
+      "cik": null,
+      "end": "2010-04-29",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "BJS"
+    },
+    {
+      "cik": null,
+      "end": "2013-09-27",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "BKS"
+    },
+    {
+      "cik": null,
+      "end": "2026-07-01",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2020-06-30",
+      "status": "unresolved",
+      "ticker": "BLD"
+    },
+    {
+      "cik": null,
+      "end": "2013-09-10",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "BMC"
+    },
+    {
+      "cik": 1899005,
+      "end": "2016-01-27",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "BMR"
+    },
+    {
+      "cik": null,
+      "end": "2019-06-11",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "BMS"
+    },
+    {
+      "cik": null,
+      "end": "2014-06-06",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "BOBE"
+    },
+    {
+      "cik": null,
+      "end": "2017-11-22",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "BRCD"
+    },
+    {
+      "cik": null,
+      "end": "2016-02-01",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "BRCM"
+    },
+    {
+      "cik": null,
+      "end": "2014-04-01",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "BRE"
+    },
+    {
+      "cik": 1668717,
+      "end": "2026-06-16",
+      "reason": null,
+      "start": "1976-07-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "BUD"
+    },
+    {
+      "cik": null,
+      "end": "2018-02-05",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "BWLD"
+    },
+    {
+      "cik": null,
+      "end": "2016-06-03",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2015-07-01",
+      "status": "unresolved",
+      "ticker": "BXLT"
+    },
+    {
+      "cik": null,
+      "end": "2014-11-24",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "BYI"
+    },
+    {
+      "cik": null,
+      "end": "2018-11-06",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "CA"
+    },
+    {
+      "cik": null,
+      "end": "2018-02-13",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "CAA"
+    },
+    {
+      "cik": null,
+      "end": "2017-09-26",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2012-10-04",
+      "status": "unresolved",
+      "ticker": "CAB"
+    },
+    {
+      "cik": null,
+      "end": "2026-02-02",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "CADE"
+    },
+    {
+      "cik": null,
+      "end": "2016-04-04",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "CAM"
+    },
+    {
+      "cik": null,
+      "end": "2009-09-28",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "CBE"
+    },
+    {
+      "cik": null,
+      "end": "2012-12-03",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2011-11-18",
+      "status": "unresolved",
+      "ticker": "CBE"
+    },
+    {
+      "cik": null,
+      "end": "2016-05-31",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "CCE"
+    },
+    {
+      "cik": null,
+      "end": "2022-07-07",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2019-12-02",
+      "status": "unresolved",
+      "ticker": "CCMP"
+    },
+    {
+      "cik": null,
+      "end": "2017-08-17",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "CCP"
+    },
+    {
+      "cik": null,
+      "end": "2026-06-16",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1997-06-17",
+      "status": "unresolved",
+      "ticker": "CCR"
+    },
+    {
+      "cik": null,
+      "end": "2026-06-16",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2019-10-30",
+      "status": "unresolved",
+      "ticker": "CDAY"
+    },
+    {
+      "cik": null,
+      "end": "2022-07-06",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2014-09-30",
+      "status": "unresolved",
+      "ticker": "CDK"
+    },
+    {
+      "cik": 1868275,
+      "end": "2012-03-13",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "CEG"
+    },
+    {
+      "cik": null,
+      "end": "2019-11-21",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "CELG"
+    },
+    {
+      "cik": null,
+      "end": "2011-10-14",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "CEPH"
+    },
+    {
+      "cik": null,
+      "end": "2022-06-08",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2010-04-29",
+      "status": "unresolved",
+      "ticker": "CERN"
+    },
+    {
+      "cik": null,
+      "end": "2015-03-18",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "CFN"
+    },
+    {
+      "cik": null,
+      "end": "2019-08-01",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2016-09-01",
+      "status": "unresolved",
+      "ticker": "CHFC"
+    },
+    {
+      "cik": null,
+      "end": "2020-02-27",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "CHK"
+    },
+    {
+      "cik": null,
+      "end": "2017-07-19",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "CHS"
+    },
+    {
+      "cik": null,
+      "end": "2025-07-18",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "CHX"
+    },
+    {
+      "cik": null,
+      "end": "2022-01-04",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2020-01-21",
+      "status": "unresolved",
+      "ticker": "CIT"
+    },
+    {
+      "cik": null,
+      "end": "2026-01-30",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2023-09-29",
+      "status": "unresolved",
+      "ticker": "CIVI"
+    },
+    {
+      "cik": 1958086,
+      "end": "2020-04-27",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "CLB"
+    },
+    {
+      "cik": null,
+      "end": "2021-06-09",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "CLGX"
+    },
+    {
+      "cik": null,
+      "end": "2020-09-21",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "CLI"
+    },
+    {
+      "cik": null,
+      "end": "2024-06-24",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "CMA"
+    },
+    {
+      "cik": null,
+      "end": "2026-02-02",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2024-12-23",
+      "status": "unresolved",
+      "ticker": "CMA"
+    },
+    {
+      "cik": null,
+      "end": "2015-12-15",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2015-09-18",
+      "status": "unresolved",
+      "ticker": "CMCSK"
+    },
+    {
+      "cik": null,
+      "end": "2021-06-02",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "CMD"
+    },
+    {
+      "cik": 1953575,
+      "end": "2016-04-14",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "CNL"
+    },
+    {
+      "cik": null,
+      "end": "2014-12-04",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "CNQR"
+    },
+    {
+      "cik": null,
+      "end": "2014-12-09",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "CNVR"
+    },
+    {
+      "cik": null,
+      "end": "2026-06-16",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2008-06-23",
+      "status": "unresolved",
+      "ticker": "COG"
+    },
+    {
+      "cik": null,
+      "end": "2018-12-03",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "COL"
+    },
+    {
+      "cik": 2103884,
+      "end": "2022-03-30",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "CONE"
+    },
+    {
+      "cik": null,
+      "end": "2015-01-27",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2011-02-28",
+      "status": "unresolved",
+      "ticker": "COV"
+    },
+    {
+      "cik": null,
+      "end": "2016-07-05",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2015-07-02",
+      "status": "unresolved",
+      "ticker": "CPGX"
+    },
+    {
+      "cik": null,
+      "end": "2017-04-04",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "CSC"
+    },
+    {
+      "cik": null,
+      "end": "2018-04-04",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2015-12-01",
+      "status": "unresolved",
+      "ticker": "CSRA"
+    },
+    {
+      "cik": null,
+      "end": "2017-06-29",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2013-05-01",
+      "status": "unresolved",
+      "ticker": "CST"
+    },
+    {
+      "cik": null,
+      "end": "2024-12-23",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "CTLT"
+    },
+    {
+      "cik": null,
+      "end": "2026-05-07",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "CTRA"
+    },
+    {
+      "cik": null,
+      "end": "2009-08-19",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "CTX"
+    },
+    {
+      "cik": null,
+      "end": "2022-10-03",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "CTXS"
+    },
+    {
+      "cik": null,
+      "end": "2016-06-22",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2010-12-17",
+      "status": "unresolved",
+      "ticker": "CVC"
+    },
+    {
+      "cik": null,
+      "end": "2018-10-10",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "CVG"
+    },
+    {
+      "cik": null,
+      "end": "2013-05-08",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "CVH"
+    },
+    {
+      "cik": null,
+      "end": "2021-01-21",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2016-02-22",
+      "status": "unresolved",
+      "ticker": "CXO"
+    },
+    {
+      "cik": null,
+      "end": "2020-04-13",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "CY"
+    },
+    {
+      "cik": 1874097,
+      "end": "2015-11-02",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "CYN"
+    },
+    {
+      "cik": null,
+      "end": "2015-12-14",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "CYT"
+    },
+    {
+      "cik": null,
+      "end": "2026-02-09",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "DAY"
+    },
+    {
+      "cik": null,
+      "end": "2018-08-22",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "DCT"
+    },
+    {
+      "cik": 1666700,
+      "end": "2017-09-01",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "DD"
+    },
+    {
+      "cik": 1571996,
+      "end": "2013-10-29",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "DELL"
+    },
+    {
+      "cik": null,
+      "end": "2013-05-23",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "DF"
+    },
+    {
+      "cik": null,
+      "end": "2025-05-19",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2007-07-02",
+      "status": "unresolved",
+      "ticker": "DFS"
+    },
+    {
+      "cik": null,
+      "end": "2022-04-11",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "DISCA"
+    },
+    {
+      "cik": null,
+      "end": "2022-04-11",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2014-08-06",
+      "status": "unresolved",
+      "ticker": "DISCK"
+    },
+    {
+      "cik": null,
+      "end": "2023-06-20",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2017-03-13",
+      "status": "unresolved",
+      "ticker": "DISH"
+    },
+    {
+      "cik": null,
+      "end": "2026-06-16",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2012-12-21",
+      "status": "unresolved",
+      "ticker": "DLPH"
+    },
+    {
+      "cik": null,
+      "end": "2019-02-11",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "DNB"
+    },
+    {
+      "cik": null,
+      "end": "2020-12-21",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2015-04-27",
+      "status": "unresolved",
+      "ticker": "DNKN"
+    },
+    {
+      "cik": null,
+      "end": "2015-03-23",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "DNR"
+    },
+    {
+      "cik": null,
+      "end": "2016-09-30",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "DO"
+    },
+    {
+      "cik": 1751788,
+      "end": "2017-09-01",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "DOW"
+    },
+    {
+      "cik": null,
+      "end": "2018-07-02",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "DPS"
+    },
+    {
+      "cik": null,
+      "end": "2015-06-29",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "DRC"
+    },
+    {
+      "cik": null,
+      "end": "2022-10-03",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2017-07-26",
+      "status": "unresolved",
+      "ticker": "DRE"
+    },
+    {
+      "cik": null,
+      "end": "2019-02-04",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "DRQ"
+    },
+    {
+      "cik": null,
+      "end": "2018-04-19",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "DST"
+    },
+    {
+      "cik": null,
+      "end": "2015-07-29",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "DTV"
+    },
+    {
+      "cik": null,
+      "end": "2016-08-26",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "DWA"
+    },
+    {
+      "cik": null,
+      "end": "2019-06-03",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2017-09-01",
+      "status": "unresolved",
+      "ticker": "DWDP"
+    },
+    {
+      "cik": 1818794,
+      "end": "2009-12-18",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "DYN"
+    },
+    {
+      "cik": null,
+      "end": "2026-06-16",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "EA"
+    },
+    {
+      "cik": null,
+      "end": "2018-09-20",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2016-05-27",
+      "status": "unresolved",
+      "ticker": "EDR"
+    },
+    {
+      "cik": null,
+      "end": "2010-12-17",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "EK"
+    },
+    {
+      "cik": null,
+      "end": "2016-09-08",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "EMC"
+    },
+    {
+      "cik": null,
+      "end": "2017-03-02",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2015-01-27",
+      "status": "unresolved",
+      "ticker": "ENDP"
+    },
+    {
+      "cik": null,
+      "end": "2017-03-29",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2015-07-30",
+      "status": "unresolved",
+      "ticker": "ENH"
+    },
+    {
+      "cik": null,
+      "end": "2023-11-07",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2021-06-09",
+      "status": "unresolved",
+      "ticker": "ENV"
+    },
+    {
+      "cik": null,
+      "end": "2026-06-16",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "EQR"
+    },
+    {
+      "cik": 1590714,
+      "end": "2012-12-31",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "ESI"
+    },
+    {
+      "cik": null,
+      "end": "2018-12-24",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2003-09-25",
+      "status": "unresolved",
+      "ticker": "ESRX"
+    },
+    {
+      "cik": null,
+      "end": "2016-03-30",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2012-07-31",
+      "status": "unresolved",
+      "ticker": "ESV"
+    },
+    {
+      "cik": null,
+      "end": "2020-10-07",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "ETFC"
+    },
+    {
+      "cik": null,
+      "end": "2024-07-22",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "ETRN"
+    },
+    {
+      "cik": null,
+      "end": "2021-03-01",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "EV"
+    },
+    {
+      "cik": null,
+      "end": "2018-10-11",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2016-12-02",
+      "status": "unresolved",
+      "ticker": "EVHC"
+    },
+    {
+      "cik": null,
+      "end": "2022-12-19",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "FBHS"
+    },
+    {
+      "cik": null,
+      "end": "2016-09-21",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "FCS"
+    },
+    {
+      "cik": null,
+      "end": "2015-07-08",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "FDO"
+    },
+    {
+      "cik": 2082247,
+      "end": "2026-06-16",
+      "reason": null,
+      "start": "2026-06-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "FDXF"
+    },
+    {
+      "cik": null,
+      "end": "2013-01-02",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "FII"
+    },
+    {
+      "cik": null,
+      "end": "2023-09-18",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "FL"
+    },
+    {
+      "cik": null,
+      "end": "2021-05-14",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "FLIR"
+    },
+    {
+      "cik": null,
+      "end": "2026-06-16",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2018-06-20",
+      "status": "unresolved",
+      "ticker": "FLT"
+    },
+    {
+      "cik": null,
+      "end": "2016-08-19",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "FMER"
+    },
+    {
+      "cik": null,
+      "end": "2016-07-29",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "FNFG"
+    },
+    {
+      "cik": null,
+      "end": "2023-05-04",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2019-01-02",
+      "status": "unresolved",
+      "ticker": "FRC"
+    },
+    {
+      "cik": null,
+      "end": "2014-07-01",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "FRX"
+    },
+    {
+      "cik": null,
+      "end": "2026-06-16",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1998-12-11",
+      "status": "unresolved",
+      "ticker": "FSR"
+    },
+    {
+      "cik": null,
+      "end": "2013-06-28",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "FST"
+    },
+    {
+      "cik": null,
+      "end": "2017-12-06",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "FTR"
+    },
+    {
+      "cik": null,
+      "end": "2026-01-22",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2022-10-03",
+      "status": "unresolved",
+      "ticker": "FYBR"
+    },
+    {
+      "cik": null,
+      "end": "2016-07-01",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "GAS"
+    },
+    {
+      "cik": null,
+      "end": "2013-07-30",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "GDI"
+    },
+    {
+      "cik": null,
+      "end": "2011-04-01",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "GENZ"
+    },
+    {
+      "cik": null,
+      "end": "2016-11-01",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "GES"
+    },
+    {
+      "cik": null,
+      "end": "2018-08-28",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2013-12-10",
+      "status": "unresolved",
+      "ticker": "GGP"
+    },
+    {
+      "cik": null,
+      "end": "2014-06-30",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "GHL"
+    },
+    {
+      "cik": null,
+      "end": "2016-03-07",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "GMCR"
+    },
+    {
+      "cik": 1500435,
+      "end": "2012-07-31",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "GPRO"
+    },
+    {
+      "cik": null,
+      "end": "2022-02-03",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "GPS"
+    },
+    {
+      "cik": null,
+      "end": "2012-07-31",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "GR"
+    },
+    {
+      "cik": null,
+      "end": "2021-06-15",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2019-08-09",
+      "status": "unresolved",
+      "ticker": "GRUB"
+    },
+    {
+      "cik": null,
+      "end": "2026-07-17",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2022-03-30",
+      "status": "unresolved",
+      "ticker": "GTLS"
+    },
+    {
+      "cik": null,
+      "end": "2019-12-26",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2012-10-01",
+      "status": "unresolved",
+      "ticker": "GWR"
+    },
+    {
+      "cik": null,
+      "end": "2017-03-16",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "HAR"
+    },
+    {
+      "cik": null,
+      "end": "2023-03-20",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2015-03-23",
+      "status": "unresolved",
+      "ticker": "HBI"
+    },
+    {
+      "cik": null,
+      "end": "2015-11-02",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "HCBK"
+    },
+    {
+      "cik": null,
+      "end": "2025-07-23",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "HES"
+    },
+    {
+      "cik": null,
+      "end": "2021-06-04",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "HFC"
+    },
+    {
+      "cik": null,
+      "end": "2018-01-02",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2016-11-03",
+      "status": "unresolved",
+      "ticker": "HLS"
+    },
+    {
+      "cik": null,
+      "end": "2014-01-28",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "HMA"
+    },
+    {
+      "cik": null,
+      "end": "2013-06-06",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "HNZ"
+    },
+    {
+      "cik": null,
+      "end": "2026-04-09",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "HOLX"
+    },
+    {
+      "cik": null,
+      "end": "2016-09-22",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "HOT"
+    },
+    {
+      "cik": null,
+      "end": "2021-12-20",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "HRC"
+    },
+    {
+      "cik": null,
+      "end": "2026-06-16",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2008-09-16",
+      "status": "unresolved",
+      "ticker": "HRS"
+    },
+    {
+      "cik": null,
+      "end": "2014-08-14",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2012-06-28",
+      "status": "unresolved",
+      "ticker": "HSH"
+    },
+    {
+      "cik": null,
+      "end": "2018-01-02",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "HSNI"
+    },
+    {
+      "cik": null,
+      "end": "2015-09-02",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "HSP"
+    },
+    {
+      "cik": null,
+      "end": "2014-01-28",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "HTSI"
+    },
+    {
+      "cik": null,
+      "end": "2023-03-22",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2020-08-03",
+      "status": "unresolved",
+      "ticker": "IAA"
+    },
+    {
+      "cik": null,
+      "end": "2019-04-01",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "IDTI"
+    },
+    {
+      "cik": null,
+      "end": "2014-06-20",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "IGT"
+    },
+    {
+      "cik": null,
+      "end": "2018-09-04",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2017-09-18",
+      "status": "unresolved",
+      "ticker": "ILG"
+    },
+    {
+      "cik": null,
+      "end": "2016-12-06",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "IM"
+    },
+    {
+      "cik": null,
+      "end": "2022-03-02",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2017-06-02",
+      "status": "unresolved",
+      "ticker": "INFO"
+    },
+    {
+      "cik": null,
+      "end": "2021-08-04",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "INT"
+    },
+    {
+      "cik": null,
+      "end": "2025-11-28",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "IPG"
+    },
+    {
+      "cik": null,
+      "end": "2019-10-18",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "ISCA"
+    },
+    {
+      "cik": null,
+      "end": "2017-02-28",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "ISIL"
+    },
+    {
+      "cik": null,
+      "end": "2016-04-18",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2012-08-07",
+      "status": "unresolved",
+      "ticker": "JAH"
+    },
+    {
+      "cik": null,
+      "end": "2013-12-02",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "JCP"
+    },
+    {
+      "cik": null,
+      "end": "2013-12-23",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2000-07-27",
+      "status": "unresolved",
+      "ticker": "JDSU"
+    },
+    {
+      "cik": null,
+      "end": "2026-06-16",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2007-10-26",
+      "status": "unresolved",
+      "ticker": "JEC"
+    },
+    {
+      "cik": null,
+      "end": "2026-07-01",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "JHG"
+    },
+    {
+      "cik": null,
+      "end": "2025-07-09",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2006-06-02",
+      "status": "unresolved",
+      "ticker": "JNPR"
+    },
+    {
+      "cik": null,
+      "end": "2011-11-18",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "JNS"
+    },
+    {
+      "cik": null,
+      "end": "2017-04-06",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "JOY"
+    },
+    {
+      "cik": null,
+      "end": "2026-06-16",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2011-02-25",
+      "status": "unresolved",
+      "ticker": "JOYG"
+    },
+    {
+      "cik": null,
+      "end": "2025-05-22",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "JWN"
+    },
+    {
+      "cik": null,
+      "end": "2025-12-11",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "K"
+    },
+    {
+      "cik": null,
+      "end": "2021-12-02",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "KAR"
+    },
+    {
+      "cik": null,
+      "end": "2017-07-12",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2014-03-21",
+      "status": "unresolved",
+      "ticker": "KATE"
+    },
+    {
+      "cik": null,
+      "end": "2012-10-02",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2007-03-30",
+      "status": "unresolved",
+      "ticker": "KFT"
+    },
+    {
+      "cik": 2055116,
+      "end": "2010-12-17",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "KG"
+    },
+    {
+      "cik": null,
+      "end": "2018-09-18",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2014-12-16",
+      "status": "unresolved",
+      "ticker": "KLXI"
+    },
+    {
+      "cik": null,
+      "end": "2026-06-16",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2013-11-13",
+      "status": "unresolved",
+      "ticker": "KORS"
+    },
+    {
+      "cik": null,
+      "end": "2015-07-06",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2012-10-02",
+      "status": "unresolved",
+      "ticker": "KRFT"
+    },
+    {
+      "cik": null,
+      "end": "2021-12-14",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "KSU"
+    },
+    {
+      "cik": null,
+      "end": "2013-05-23",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "KWK"
+    },
+    {
+      "cik": null,
+      "end": "2024-06-24",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "LEG"
+    },
+    {
+      "cik": null,
+      "end": "2023-02-23",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2020-04-13",
+      "status": "unresolved",
+      "ticker": "LHCG"
+    },
+    {
+      "cik": null,
+      "end": "2018-12-03",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2014-06-30",
+      "status": "unresolved",
+      "ticker": "LHO"
+    },
+    {
+      "cik": 1788451,
+      "end": "2014-01-24",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "LIFE"
+    },
+    {
+      "cik": null,
+      "end": "2019-07-01",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "LLL"
+    },
+    {
+      "cik": null,
+      "end": "2017-03-13",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "LLTC"
+    },
+    {
+      "cik": null,
+      "end": "2020-08-03",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "LM"
+    },
+    {
+      "cik": null,
+      "end": "2018-03-26",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2016-02-25",
+      "status": "unresolved",
+      "ticker": "LNCE"
+    },
+    {
+      "cik": null,
+      "end": "2012-08-07",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "LNCR"
+    },
+    {
+      "cik": null,
+      "end": "2025-11-13",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "LNW"
+    },
+    {
+      "cik": null,
+      "end": "2015-06-11",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2008-06-10",
+      "status": "unresolved",
+      "ticker": "LO"
+    },
+    {
+      "cik": null,
+      "end": "2020-09-01",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2017-02-02",
+      "status": "unresolved",
+      "ticker": "LOGM"
+    },
+    {
+      "cik": null,
+      "end": "2018-11-06",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "LPNT"
+    },
+    {
+      "cik": null,
+      "end": "2014-01-02",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "LPS"
+    },
+    {
+      "cik": null,
+      "end": "2020-01-29",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "LPT"
+    },
+    {
+      "cik": null,
+      "end": "2023-07-24",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "LSI"
+    },
+    {
+      "cik": 1047716,
+      "end": "2015-06-10",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "LTM"
+    },
+    {
+      "cik": null,
+      "end": "2026-06-16",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2007-08-24",
+      "status": "unresolved",
+      "ticker": "LUK"
+    },
+    {
+      "cik": null,
+      "end": "2017-10-13",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2014-11-05",
+      "status": "unresolved",
+      "ticker": "LVLT"
+    },
+    {
+      "cik": null,
+      "end": "2016-11-28",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "LXK"
+    },
+    {
+      "cik": null,
+      "end": "2014-06-20",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "MASI"
+    },
+    {
+      "cik": 1941365,
+      "end": "2022-12-19",
+      "reason": null,
+      "start": "2022-12-15",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "MBC"
+    },
+    {
+      "cik": null,
+      "end": "2019-03-22",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2016-07-29",
+      "status": "unresolved",
+      "ticker": "MBFI"
+    },
+    {
+      "cik": null,
+      "end": "2014-09-03",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "MCRS"
+    },
+    {
+      "cik": null,
+      "end": "2011-01-03",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "MDP"
+    },
+    {
+      "cik": null,
+      "end": "2019-10-24",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2017-06-26",
+      "status": "unresolved",
+      "ticker": "MDSO"
+    },
+    {
+      "cik": null,
+      "end": "2011-06-01",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2008-06-23",
+      "status": "unresolved",
+      "ticker": "MEE"
+    },
+    {
+      "cik": null,
+      "end": "2017-04-03",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "MENT"
+    },
+    {
+      "cik": null,
+      "end": "2011-02-28",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "MFE"
+    },
+    {
+      "cik": null,
+      "end": "2012-04-03",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "MHS"
+    },
+    {
+      "cik": 1958713,
+      "end": "2011-07-05",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "MI"
+    },
+    {
+      "cik": null,
+      "end": "2010-07-14",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "MIL"
+    },
+    {
+      "cik": null,
+      "end": "2022-05-19",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2021-08-30",
+      "status": "unresolved",
+      "ticker": "MIME"
+    },
+    {
+      "cik": null,
+      "end": "2017-06-19",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2009-12-18",
+      "status": "unresolved",
+      "ticker": "MJN"
+    },
+    {
+      "cik": 1578732,
+      "end": "2012-05-21",
+      "reason": null,
+      "start": "2011-01-03",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "MMI"
+    },
+    {
+      "cik": null,
+      "end": "2017-07-26",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2013-06-28",
+      "status": "unresolved",
+      "ticker": "MNK"
+    },
+    {
+      "cik": null,
+      "end": "2023-12-18",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "MODG"
+    },
+    {
+      "cik": null,
+      "end": "2013-12-10",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "MOLX"
+    },
+    {
+      "cik": null,
+      "end": "2018-06-07",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "MON"
+    },
+    {
+      "cik": null,
+      "end": "2024-03-18",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2016-05-23",
+      "status": "unresolved",
+      "ticker": "MPW"
+    },
+    {
+      "cik": null,
+      "end": "2024-11-26",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "MRO"
+    },
+    {
+      "cik": 1997464,
+      "end": "2012-12-11",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "MRX"
+    },
+    {
+      "cik": null,
+      "end": "2018-05-31",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2016-01-19",
+      "status": "unresolved",
+      "ticker": "MSCC"
+    },
+    {
+      "cik": null,
+      "end": "2011-12-16",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "MWW"
+    },
+    {
+      "cik": null,
+      "end": "2021-08-30",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2018-12-03",
+      "status": "unresolved",
+      "ticker": "MXIM"
+    },
+    {
+      "cik": null,
+      "end": "2024-04-01",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2022-05-03",
+      "status": "unresolved",
+      "ticker": "NARI"
+    },
+    {
+      "cik": null,
+      "end": "2023-10-12",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "NATI"
+    },
+    {
+      "cik": null,
+      "end": "2020-10-12",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "NBL"
+    },
+    {
+      "cik": null,
+      "end": "2026-06-16",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1994-09-30",
+      "status": "unresolved",
+      "ticker": "NCC"
+    },
+    {
+      "cik": null,
+      "end": "2012-01-13",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "NDN"
+    },
+    {
+      "cik": 1895262,
+      "end": "2017-05-16",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "NE"
+    },
+    {
+      "cik": null,
+      "end": "2019-02-15",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2010-12-17",
+      "status": "unresolved",
+      "ticker": "NFX"
+    },
+    {
+      "cik": null,
+      "end": "2022-10-12",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2013-07-08",
+      "status": "unresolved",
+      "ticker": "NLSN"
+    },
+    {
+      "cik": null,
+      "end": "2011-04-27",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "NOVL"
+    },
+    {
+      "cik": null,
+      "end": "2026-07-22",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2021-05-14",
+      "status": "unresolved",
+      "ticker": "NSA"
+    },
+    {
+      "cik": null,
+      "end": "2011-09-23",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "NSM"
+    },
+    {
+      "cik": null,
+      "end": "2017-08-10",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "NSR"
+    },
+    {
+      "cik": null,
+      "end": "2022-12-19",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "NUVA"
+    },
+    {
+      "cik": null,
+      "end": "2013-12-23",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "NVE"
+    },
+    {
+      "cik": null,
+      "end": "2012-06-05",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "NVLS"
+    },
+    {
+      "cik": null,
+      "end": "2013-11-13",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "NYX"
+    },
+    {
+      "cik": null,
+      "end": "2018-06-11",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "OA"
+    },
+    {
+      "cik": null,
+      "end": "2019-12-22",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2018-05-01",
+      "status": "unresolved",
+      "ticker": "OAS"
+    },
+    {
+      "cik": null,
+      "end": "2010-12-17",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "ODP"
+    },
+    {
+      "cik": 1569650,
+      "end": "2026-09-23",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "OZK"
+    },
+    {
+      "cik": null,
+      "end": "2023-04-05",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "PACW"
+    },
+    {
+      "cik": 1841156,
+      "end": "2018-08-20",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "PAY"
+    },
+    {
+      "cik": null,
+      "end": "2022-04-04",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "PBCT"
+    },
+    {
+      "cik": null,
+      "end": "2026-02-02",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "PCH"
+    },
+    {
+      "cik": null,
+      "end": "2016-02-22",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "PCL"
+    },
+    {
+      "cik": null,
+      "end": "2016-02-01",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "PCP"
+    },
+    {
+      "cik": null,
+      "end": "2013-04-30",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2009-06-29",
+      "status": "unresolved",
+      "ticker": "PCS"
+    },
+    {
+      "cik": null,
+      "end": "2012-06-29",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "PCX"
+    },
+    {
+      "cik": null,
+      "end": "2023-08-08",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2022-02-15",
+      "status": "unresolved",
+      "ticker": "PDCE"
+    },
+    {
+      "cik": null,
+      "end": "2024-01-05",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "PDCO"
+    },
+    {
+      "cik": null,
+      "end": "2012-10-04",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "PETM"
+    },
+    {
+      "cik": null,
+      "end": "2015-03-12",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2012-10-10",
+      "status": "unresolved",
+      "ticker": "PETM"
+    },
+    {
+      "cik": null,
+      "end": "2012-07-02",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "PGN"
+    },
+    {
+      "cik": null,
+      "end": "2016-09-30",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "PLCM"
+    },
+    {
+      "cik": null,
+      "end": "2015-08-28",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "PLL"
+    },
+    {
+      "cik": null,
+      "end": "2019-12-10",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "PLT"
+    },
+    {
+      "cik": 1877971,
+      "end": "2016-03-30",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "POM"
+    },
+    {
+      "cik": null,
+      "end": "2021-07-02",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "PRAH"
+    },
+    {
+      "cik": null,
+      "end": "2021-05-07",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "PRSP"
+    },
+    {
+      "cik": null,
+      "end": "2017-10-02",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "PRXL"
+    },
+    {
+      "cik": null,
+      "end": "2022-07-20",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "PSB"
+    },
+    {
+      "cik": null,
+      "end": "2012-10-01",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "PSS"
+    },
+    {
+      "cik": null,
+      "end": "2010-11-17",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "PTV"
+    },
+    {
+      "cik": null,
+      "end": "2017-06-26",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2016-03-01",
+      "status": "unresolved",
+      "ticker": "PVTB"
+    },
+    {
+      "cik": null,
+      "end": "2024-05-08",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "PXD"
+    },
+    {
+      "cik": null,
+      "end": "2013-05-30",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "PXP"
+    },
+    {
+      "cik": 2058873,
+      "end": "2011-03-31",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "Q"
+    },
+    {
+      "cik": null,
+      "end": "2018-08-01",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2016-11-01",
+      "status": "unresolved",
+      "ticker": "QCP"
+    },
+    {
+      "cik": null,
+      "end": "2015-07-01",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2010-06-30",
+      "status": "unresolved",
+      "ticker": "QEP"
+    },
+    {
+      "cik": null,
+      "end": "2013-06-21",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "QLGC"
+    },
+    {
+      "cik": null,
+      "end": "2013-01-29",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "RAH"
+    },
+    {
+      "cik": null,
+      "end": "2017-07-26",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "RAI"
+    },
+    {
+      "cik": null,
+      "end": "2016-11-03",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "RAX"
+    },
+    {
+      "cik": null,
+      "end": "2016-02-09",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "RCII"
+    },
+    {
+      "cik": null,
+      "end": "2024-11-20",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2021-05-07",
+      "status": "unresolved",
+      "ticker": "RCM"
+    },
+    {
+      "cik": null,
+      "end": "2014-08-18",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "RDC"
+    },
+    {
+      "cik": null,
+      "end": "2026-06-16",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "RE"
+    },
+    {
+      "cik": null,
+      "end": "2019-07-15",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "RHT"
+    },
+    {
+      "cik": null,
+      "end": "2019-06-04",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2018-09-20",
+      "status": "unresolved",
+      "ticker": "RLGY"
+    },
+    {
+      "cik": null,
+      "end": "2015-11-18",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "ROVI"
+    },
+    {
+      "cik": null,
+      "end": "2016-09-27",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "RRD"
+    },
+    {
+      "cik": null,
+      "end": "2012-09-28",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "RSH"
+    },
+    {
+      "cik": null,
+      "end": "2020-04-06",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "RTN"
+    },
+    {
+      "cik": null,
+      "end": "2015-04-27",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "RVBD"
+    },
+    {
+      "cik": null,
+      "end": "2010-02-26",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "RX"
+    },
+    {
+      "cik": 1583708,
+      "end": "2013-07-08",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "S"
+    },
+    {
+      "cik": null,
+      "end": "2022-07-27",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2017-09-26",
+      "status": "unresolved",
+      "ticker": "SAFM"
+    },
+    {
+      "cik": null,
+      "end": "2013-09-20",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2009-12-18",
+      "status": "unresolved",
+      "ticker": "SAI"
+    },
+    {
+      "cik": 2030781,
+      "end": "2022-08-17",
+      "reason": null,
+      "start": "2020-10-05",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "SAIL"
+    },
+    {
+      "cik": null,
+      "end": "2023-03-15",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "SBNY"
+    },
+    {
+      "cik": null,
+      "end": "2019-01-02",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "SCG"
+    },
+    {
+      "cik": 1703399,
+      "end": "2017-02-28",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "SE"
+    },
+    {
+      "cik": null,
+      "end": "2023-12-18",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "SEE"
+    },
+    {
+      "cik": null,
+      "end": "2016-03-08",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "SFG"
+    },
+    {
+      "cik": null,
+      "end": "2014-04-17",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "SGMS"
+    },
+    {
+      "cik": 1778922,
+      "end": "2009-11-03",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "SGP"
+    },
+    {
+      "cik": null,
+      "end": "2013-02-12",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "SHAW"
+    },
+    {
+      "cik": null,
+      "end": "2012-09-05",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "SHLD"
+    },
+    {
+      "cik": null,
+      "end": "2015-11-19",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "SIAL"
+    },
+    {
+      "cik": 1512920,
+      "end": "2010-08-26",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "SII"
+    },
+    {
+      "cik": null,
+      "end": "2016-03-01",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2014-01-28",
+      "status": "unresolved",
+      "ticker": "SIRO"
+    },
+    {
+      "cik": null,
+      "end": "2023-03-15",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2018-03-19",
+      "status": "unresolved",
+      "ticker": "SIVB"
+    },
+    {
+      "cik": null,
+      "end": "2022-07-26",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2017-10-02",
+      "status": "unresolved",
+      "ticker": "SIX"
+    },
+    {
+      "cik": null,
+      "end": "2013-11-04",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "SKS"
+    },
+    {
+      "cik": null,
+      "end": "2025-09-12",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "SKX"
+    },
+    {
+      "cik": 1621672,
+      "end": "2012-06-29",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "SLE"
+    },
+    {
+      "cik": null,
+      "end": "2016-03-04",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "SLH"
+    },
+    {
+      "cik": null,
+      "end": "2015-04-07",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2013-07-30",
+      "status": "unresolved",
+      "ticker": "SLXP"
+    },
+    {
+      "cik": 2023554,
+      "end": "2016-05-13",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "SNDK"
+    },
+    {
+      "cik": null,
+      "end": "2018-03-07",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "SNI"
+    },
+    {
+      "cik": null,
+      "end": "2026-01-02",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "SNV"
+    },
+    {
+      "cik": null,
+      "end": "2017-09-18",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "SPLS"
+    },
+    {
+      "cik": null,
+      "end": "2018-11-14",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "SPN"
+    },
+    {
+      "cik": null,
+      "end": "2024-01-23",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2019-07-09",
+      "status": "unresolved",
+      "ticker": "SRC"
+    },
+    {
+      "cik": null,
+      "end": "2024-11-06",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "SRCL"
+    },
+    {
+      "cik": 1881551,
+      "end": "2019-12-09",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "STI"
+    },
+    {
+      "cik": null,
+      "end": "2017-01-05",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "STJ"
+    },
+    {
+      "cik": null,
+      "end": "2022-02-01",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "STL"
+    },
+    {
+      "cik": null,
+      "end": "2023-02-06",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2020-05-06",
+      "status": "unresolved",
+      "ticker": "STOR"
+    },
+    {
+      "cik": null,
+      "end": "2016-09-16",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "STR"
+    },
+    {
+      "cik": null,
+      "end": "2012-03-26",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "SUG"
+    },
+    {
+      "cik": null,
+      "end": "2012-04-23",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "SVU"
+    },
+    {
+      "cik": null,
+      "end": "2016-09-01",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2012-04-30",
+      "status": "unresolved",
+      "ticker": "SVU"
+    },
+    {
+      "cik": null,
+      "end": "2024-06-03",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2022-06-21",
+      "status": "unresolved",
+      "ticker": "SWAV"
+    },
+    {
+      "cik": null,
+      "end": "2016-02-09",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2012-07-31",
+      "status": "unresolved",
+      "ticker": "SWI"
+    },
+    {
+      "cik": null,
+      "end": "2024-10-01",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "SWN"
+    },
+    {
+      "cik": null,
+      "end": "2015-01-27",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "SWY"
+    },
+    {
+      "cik": null,
+      "end": "2023-09-29",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "SYNH"
+    },
+    {
+      "cik": null,
+      "end": "2021-06-09",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "TCF"
+    },
+    {
+      "cik": null,
+      "end": "2020-12-29",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "TCO"
+    },
+    {
+      "cik": 1992243,
+      "end": "2016-07-01",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "TE"
+    },
+    {
+      "cik": null,
+      "end": "2020-06-30",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "TECD"
+    },
+    {
+      "cik": null,
+      "end": "2015-07-01",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "TEG"
+    },
+    {
+      "cik": 1385157,
+      "end": "2009-06-25",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "TEL"
+    },
+    {
+      "cik": null,
+      "end": "2017-02-02",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "TGI"
+    },
+    {
+      "cik": null,
+      "end": "2024-09-23",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "TGNA"
+    },
+    {
+      "cik": null,
+      "end": "2021-09-03",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2014-12-09",
+      "status": "unresolved",
+      "ticker": "THS"
+    },
+    {
+      "cik": null,
+      "end": "2014-12-04",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "TIBX"
+    },
+    {
+      "cik": null,
+      "end": "2012-12-21",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "TIE"
+    },
+    {
+      "cik": null,
+      "end": "2021-01-07",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "TIF"
+    },
+    {
+      "cik": null,
+      "end": "2017-06-02",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2014-06-06",
+      "status": "unresolved",
+      "ticker": "TIME"
+    },
+    {
+      "cik": null,
+      "end": "2013-06-28",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "TLAB"
+    },
+    {
+      "cik": null,
+      "end": "2026-07-24",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2020-01-31",
+      "status": "unresolved",
+      "ticker": "TMHC"
+    },
+    {
+      "cik": null,
+      "end": "2015-07-30",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2014-06-30",
+      "status": "unresolved",
+      "ticker": "TMST"
+    },
+    {
+      "cik": null,
+      "end": "2012-05-15",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "TNB"
+    },
+    {
+      "cik": null,
+      "end": "2022-05-03",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "TPH"
+    },
+    {
+      "cik": null,
+      "end": "2026-06-16",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2007-09-27",
+      "status": "unresolved",
+      "ticker": "TSO"
+    },
+    {
+      "cik": null,
+      "end": "2019-09-23",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "TSS"
+    },
+    {
+      "cik": 1758730,
+      "end": "2016-01-05",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "TW"
+    },
+    {
+      "cik": null,
+      "end": "2016-05-18",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "TWC"
+    },
+    {
+      "cik": null,
+      "end": "2014-11-04",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "TWTC"
+    },
+    {
+      "cik": null,
+      "end": "2022-11-01",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2018-06-07",
+      "status": "unresolved",
+      "ticker": "TWTR"
+    },
+    {
+      "cik": null,
+      "end": "2018-06-20",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "TWX"
+    },
+    {
+      "cik": null,
+      "end": "2016-09-06",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2010-08-26",
+      "status": "unresolved",
+      "ticker": "TYC"
+    },
+    {
+      "cik": null,
+      "end": "2025-12-21",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2022-06-21",
+      "status": "unresolved",
+      "ticker": "UA/UAA"
+    },
+    {
+      "cik": null,
+      "end": "2025-12-22",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "UAA/UA"
+    },
+    {
+      "cik": null,
+      "end": "2021-04-20",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "UFS"
+    },
+    {
+      "cik": null,
+      "end": "2019-05-07",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2014-08-14",
+      "status": "unresolved",
+      "ticker": "ULTI"
+    },
+    {
+      "cik": null,
+      "end": "2023-03-01",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2014-04-17",
+      "status": "unresolved",
+      "ticker": "UMPQ"
+    },
+    {
+      "cik": 2020795,
+      "end": "2019-12-17",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "UNIT"
+    },
+    {
+      "cik": null,
+      "end": "2015-07-01",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "UNT"
+    },
+    {
+      "cik": null,
+      "end": "2023-08-04",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "UNVR"
+    },
+    {
+      "cik": null,
+      "end": "2014-10-17",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "URS"
+    },
+    {
+      "cik": null,
+      "end": "2014-05-28",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "UTIW"
+    },
+    {
+      "cik": null,
+      "end": "2021-04-20",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "VAR"
+    },
+    {
+      "cik": null,
+      "end": "2014-01-31",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "VCI"
+    },
+    {
+      "cik": null,
+      "end": "2019-12-05",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "VIAB"
+    },
+    {
+      "cik": null,
+      "end": "2023-06-19",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2021-08-04",
+      "status": "unresolved",
+      "ticker": "VSCO"
+    },
+    {
+      "cik": null,
+      "end": "2019-10-08",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2016-10-03",
+      "status": "unresolved",
+      "ticker": "VSM"
+    },
+    {
+      "cik": 1967649,
+      "end": "2023-12-18",
+      "reason": null,
+      "start": "2023-10-02",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "VSTS"
+    },
+    {
+      "cik": null,
+      "end": "2019-02-06",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "VVC"
+    },
+    {
+      "cik": null,
+      "end": "2025-08-28",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "WBA"
+    },
+    {
+      "cik": null,
+      "end": "2026-08-20",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "WBS"
+    },
+    {
+      "cik": null,
+      "end": "2020-01-28",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "WCG"
+    },
+    {
+      "cik": 1318220,
+      "end": "2016-05-31",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "WCN"
+    },
+    {
+      "cik": null,
+      "end": "2017-04-28",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "WDR"
+    },
+    {
+      "cik": null,
+      "end": "2017-08-29",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "WFM"
+    },
+    {
+      "cik": null,
+      "end": "2011-12-16",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "WFR"
+    },
+    {
+      "cik": null,
+      "end": "2018-07-11",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "WGL"
+    },
+    {
+      "cik": null,
+      "end": "2015-06-01",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "WIN"
+    },
+    {
+      "cik": null,
+      "end": "2026-06-16",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1999-06-09",
+      "status": "unresolved",
+      "ticker": "WLP"
+    },
+    {
+      "cik": null,
+      "end": "2018-05-01",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2014-05-28",
+      "status": "unresolved",
+      "ticker": "WPG"
+    },
+    {
+      "cik": null,
+      "end": "2021-01-07",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2011-12-31",
+      "status": "unresolved",
+      "ticker": "WPX"
+    },
+    {
+      "cik": null,
+      "end": "2018-06-05",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "WR"
+    },
+    {
+      "cik": null,
+      "end": "2021-08-04",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "WRI"
+    },
+    {
+      "cik": null,
+      "end": "2017-04-12",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "2013-05-23",
+      "status": "unresolved",
+      "ticker": "WWAV"
+    },
+    {
+      "cik": null,
+      "end": "2018-05-31",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "WYN"
+    },
+    {
+      "cik": null,
+      "end": "2025-06-24",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "X"
+    },
+    {
+      "cik": null,
+      "end": "2021-10-05",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "XEC"
+    },
+    {
+      "cik": null,
+      "end": "2018-09-14",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "XL"
+    },
+    {
+      "cik": null,
+      "end": "2022-02-15",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "XLNX"
+    },
+    {
+      "cik": null,
+      "end": "2015-05-29",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "XLS"
+    },
+    {
+      "cik": 2115436,
+      "end": "2026-06-16",
+      "reason": null,
+      "start": "1990-01-01",
+      "status": "no_periodic_filing_in_interval",
+      "ticker": "XOM"
+    },
+    {
+      "cik": null,
+      "end": "2010-06-28",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "XTO"
+    },
+    {
+      "cik": null,
+      "end": "2022-10-20",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1990-01-01",
+      "status": "unresolved",
+      "ticker": "Y"
+    },
+    {
+      "cik": null,
+      "end": "2017-06-19",
+      "reason": "not_in_sec_current_ticker_map",
+      "start": "1999-12-08",
+      "status": "unresolved",
+      "ticker": "YHOO"
+    }
+  ],
+  "status_counts": {
+    "accepted": 1132,
+    "no_periodic_filing_in_interval": 48,
+    "pre_xbrl": 40,
+    "unresolved": 407
+  },
+  "tickers": 1565,
+  "xbrl_era_tickers": 1531
+}
