@@ -1,0 +1,207 @@
+# The public factor lab (SPEC.md §5.2; docs/public_factor_lab_design.md).
+#
+# What this file is for. It pins every input and rule the lab uses, so the
+# script (`research/scripts/factor_lab.py`) reads its parameters from here and
+# cannot drift from the registration. It has three parts:
+#
+#   A. priors      uncounted measurement of public long-short series: full-sample
+#                  and post-publication Sharpe, the §4 publication bar, and
+#                  cross-series correlations. Nothing is selected.
+#   B. fidelity    uncounted measurement: correlation of the in-house books'
+#                  daily returns with the public series they implement.
+#   C. sizing      the counted selection set `sizing_lab_v1`: four sizing rules
+#                  on two public momentum series, eight rows, one kill rule.
+#
+# Adding a series, a rule, a window or a threshold after seeing a result is a
+# new registration with its own id, never an edit of this file.
+id = "2026-09-factor-lab"
+created = 2026-09-24
+selection_set = "sizing_lab_v1"
+trial_budget = 8
+
+# ---------------------------------------------------------------- sources
+# Raw files are cached under data/public/ (gitignored) and their sha256 is
+# recorded in every output, so a vendor revision is visible, never silent.
+[sources.ff3_daily]
+url = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_Factors_daily_CSV.zip"
+format = "french"
+
+[sources.ff5_daily]
+url = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_5_Factors_2x3_daily_CSV.zip"
+format = "french"
+
+[sources.ff_mom_daily]
+url = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Momentum_Factor_daily_CSV.zip"
+format = "french"
+
+[sources.ff_strev_daily]
+url = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_ST_Reversal_Factor_daily_CSV.zip"
+format = "french"
+
+[sources.jkp_themes_daily]
+url = "https://jkpfactors-data.s3.amazonaws.com/public/%5Busa%5D_%5Ball_themes%5D_%5Bdaily%5D_%5Bvw_cap%5D.zip"
+format = "jkp"
+
+[sources.jkp_resmom_daily]
+url = "https://jkpfactors-data.s3.amazonaws.com/public/%5Busa%5D_%5Bresff3_12_1%5D_%5Bdaily%5D_%5Bvw_cap%5D.zip"
+format = "jkp"
+
+[sources.jkp_resmom_large_monthly]
+url = "https://jkpfactors-data.s3.amazonaws.com/public/factor/%5Busa%5D_%5Bresff3_12_1%5D_%5Blarge%5D.zip"
+format = "jkp"
+
+# ---------------------------------------------------------------- series
+# Every series is a daily long-short (self-financing) return in decimal units.
+# `publication` is the month the premium's source paper appeared in print; it
+# splits pre- from post-publication for the §4 prior. Series without one are
+# descriptive only (the market premium is not an anomaly; a JKP theme is a
+# cluster of many papers).
+[[series]]
+id = "MKT_RF"
+source = "ff3_daily"
+column = "Mkt-RF"
+
+[[series]]
+id = "SMB"
+source = "ff5_daily"
+column = "SMB"
+publication = "1981-03"   # Banz, JFE 9(1)
+
+[[series]]
+id = "HML"
+source = "ff5_daily"
+column = "HML"
+publication = "1992-06"   # Fama and French, JF 47(2)
+
+[[series]]
+id = "RMW"
+source = "ff5_daily"
+column = "RMW"
+publication = "2013-04"   # Novy-Marx, JFE 108(1)
+
+[[series]]
+id = "CMA"
+source = "ff5_daily"
+column = "CMA"
+publication = "2004-12"   # Titman, Wei and Xie, JFQA 39(4)
+
+[[series]]
+id = "UMD"
+source = "ff_mom_daily"
+column = "Mom"
+publication = "1993-03"   # Jegadeesh and Titman, JF 48(1)
+
+[[series]]
+id = "STREV"
+source = "ff_strev_daily"
+column = "ST_Rev"
+publication = "1990-07"   # Jegadeesh, JF 45(3)
+
+[[series]]
+id = "RESMOM"
+source = "jkp_resmom_daily"
+column = "resff3_12_1"
+publication = "2011-06"   # Blitz, Huij and Martens, JEF 18(3)
+
+# The thirteen JKP themes, descriptive only.
+[jkp_themes]
+source = "jkp_themes_daily"
+names = [
+  "accruals", "debt_issuance", "investment", "low_leverage", "low_risk",
+  "momentum", "profit_growth", "profitability", "quality", "seasonality",
+  "short_term_reversal", "size", "value",
+]
+
+# ---------------------------------------------------------------- A. priors
+[priors]
+# SPEC §4 replication route, criterion 1, restated as numbers.
+publication_bar_t = 3.0
+publication_bar_min_years = 20.0
+post_publication_min_years = 10.0
+pre_publication_haircut = 0.4
+correlation_windows = [["2000-01-01", "2025-12-31"], ["2020-01-01", "2025-12-31"]]
+correlation_frequencies = ["daily", "monthly"]
+sessions_per_year = 252
+
+# ---------------------------------------------------------------- B. fidelity
+# In-house daily net returns against the public series each implements.
+# Daily is the public series' native frequency and is the SPEC §4 criterion-2
+# statistic; weekly (Friday-close compounding) is reported beside it because
+# in-house returns follow next-open fills and a one-day timing offset depresses
+# daily correlation without bearing on what the book holds.
+[[fidelity]]
+in_house = "results/demotion_b1/returns.csv"
+label = "live_book_b1"
+references = ["UMD", "jkp:momentum"]
+
+[[fidelity]]
+in_house = "results/2026-09-characteristics/returns/momentum_control.csv"
+label = "momentum_control"
+references = ["UMD", "jkp:momentum"]
+
+[[fidelity]]
+in_house = "results/2026-09-characteristics/returns/residual_momentum_only.csv"
+label = "residual_momentum_only"
+references = ["RESMOM"]
+# JKP's large-cap residual momentum is published monthly only; reported
+# beside the daily statistic, never in place of it.
+monthly_references = ["jkp_large:resff3_12_1"]
+
+[fidelity_settings]
+weekly_anchor = "W-FRI"
+floor = 0.5   # SPEC §4 criterion 2 floor; a replication registration may raise it
+
+# ---------------------------------------------------------------- C. sizing
+# Base series for the counted sizing rules.
+[sizing]
+bases = ["UMD", "RESMOM"]
+rules = ["none", "crash_degross_v1", "constant_vol_bsc", "variance_managed_mm"]
+# Every arm of a base runs on the base's sessions that also appear in the French
+# market series; sessions it lacks are dropped from every arm alike and listed in
+# the output. Pre-run structural check: one such session, 1985-09-27 (NYSE closed,
+# Hurricane Gloria), present in JKP resff3_12_1 and absent from French.
+calendar = "intersect_market"
+refresh_sessions = 21           # scale is re-set on every 21st session from the series start
+warmup_sessions = 1260          # the longest warm-up (variance_managed_mm) for every arm alike
+max_scale = 2.0                 # Reg T gross ceiling relative to a 1x base
+base_gross = 2.0                # a public long-short factor is $1 long and $1 short
+scale_change_cost_bps = 10.0    # one-way, charged on |Δscale| × base_gross
+# In-house charged cost per unit of gross per year (characteristics read,
+# 1,056 sessions = 4.19 years): momentum 2.09%, residual momentum 2.49%.
+base_cost_per_gross_year = { UMD = 0.00499, RESMOM = 0.00594 }
+pre_2020_end = "2019-12-31"
+crash_windows = [
+  ["1932-06-01", "1932-08-31"],
+  ["2009-03-01", "2009-05-31"],
+  ["2020-11-01", "2020-11-30"],
+]
+
+[sizing.crash_degross_v1]
+# docs/sizing_preregistration.md §3, verbatim pins. The market series is the
+# French total market return (Mkt-RF + RF) standing in for SPY.
+market = "MKT_RF+RF"
+theta = -0.017981751321183567
+trailing_sessions = 21
+multiplier = 0.5
+exit_clean_sessions = 5   # restore at a refresh whose trailing S = 0 run is >= 5
+# Its θ was measured on 2020-2026 SPY: pre-2020 is out of sample for it.
+calibration_start = "2020-01-01"
+
+[sizing.constant_vol_bsc]
+# Barroso and Santa-Clara, JFE 116(1), 2015.
+target_vol = 0.12
+lookback_sessions = 126
+publication = "2015-04"
+
+[sizing.variance_managed_mm]
+# Moreira and Muir, JF 72(4), 2017. The scale constant is the expanding mean of
+# prior realized variances, so no full-sample quantity enters.
+lookback_sessions = 21
+min_history_refreshes = 60
+publication = "2017-08"
+
+[sizing.bootstrap]
+block_bars = 63
+n_resamples = 1000
+seed = 20260924
+confidence = 0.95
