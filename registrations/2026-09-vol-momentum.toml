@@ -1,0 +1,88 @@
+# Volatility-scaled momentum, replication route (SPEC.md §4;
+# docs/vol_momentum_design.md).
+#
+# The in-house momentum book scaled by the published constant-volatility rule of
+# Barroso and Santa-Clara (2015), read against the same rule applied to Kenneth
+# French's daily momentum factor. One configuration, one counted row. Every
+# parameter below is fixed before the configuration's first computation; a
+# different target, lookback, cap, floor or kill threshold is a new registration.
+id = "2026-09-vol-momentum"
+created = 2026-09-24
+selection_set = "vol_momentum_v1"
+route = "replication"
+trial_budget = 1
+
+[source]
+citation = "Barroso, P. and Santa-Clara, P. (2015). Momentum has its moments. Journal of Financial Economics 116(1), 111-120."
+publication = "2015-04"
+target_vol = 0.12
+lookback_sessions = 126
+refresh_sessions = 21
+# The paper leaves the weight uncapped. The cap is the implementation's Reg T
+# gross ceiling (a 1x book at scale 2 is 2x gross), applied to the reference too
+# so the two series follow one rule.
+max_scale = 2.0
+
+# ------------------------------------------------------------ reference series
+# French daily UMD, scaled by the rule, gross of costs. The files are the
+# vintage the public factor lab read (results/2026-09-factor-lab/sources.json,
+# 202607 CRSP); a different hash refuses the run.
+[reference]
+momentum_source = "ff_mom_daily"
+momentum_url = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Momentum_Factor_daily_CSV.zip"
+momentum_sha256 = "b039d986db27fc831bcf1f52ba2134916e96fbeba4762fefc942429b0a568a96"
+momentum_column = "Mom"
+cash_source = "ff3_daily"
+cash_url = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_Factors_daily_CSV.zip"
+cash_sha256 = "1916d331c2c51d2aee3d00215897d2b8e5995cb387f1f4569ba46bff5fb049a8"
+cash_column = "RF"
+warmup_sessions = 1260          # scored from UMD's session 1,261, the factor lab's window
+
+# ------------------------------------------------------------ SPEC §4 criteria
+[criteria]
+publication_bar_t = 3.0
+publication_bar_min_years = 20.0
+post_publication_min_years = 10.0
+pre_publication_haircut = 0.4
+fidelity_floor = 0.75
+# Hurdle: in-house books earn nothing on cash (retail_v1.toml
+# cash_income_bps_annual = 0.0), so the book must out-earn T-bills in total
+# return at the volatility it runs at. rf = mean French RF over the last
+# `hurdle_window_sessions` sessions of the pinned file, annualized; hurdle
+# Sharpe = rf / target_vol.
+hurdle_window_sessions = 252
+sessions_per_year = 252
+
+# ------------------------------------------------------------ implementation
+# The canonical momentum_control book of characteristics_v1 (config_id
+# 3f0769555b14da3b61d369c12f756083f5b18a5ccf27c58116136307677d14f2, run
+# run-9f425894430542de), scaled at its own decision bars by the rule applied to
+# its own unscaled net daily returns.
+[implementation]
+returns = "results/2026-09-characteristics/returns/momentum_control.csv"
+returns_sha256 = "26943cfb8fc2a742e8d62b0e628dd4239e1cded68ae013c4fa48e851a4137712"
+costs = "results/run-9f425894430542de/costs.csv"
+costs_sha256 = "349b7a7d64a2de43ab14d033d9bacb22e6476a32ea92a38261cbfdf0ee72c964"
+# Decision bars fall on every 21st scored session from 2022-03-29
+# (folds/demotion_b1.toml: contiguous 63-session test windows, decisions every 21).
+refresh_phase_start = "2022-03-29"
+scale_change_cost_bps = 10.0    # one-way, on |Δscale| × the book's recorded gross exposure
+n_eff_unscaled = 46.7           # characteristics read; proportional scaling leaves it unchanged
+
+[bootstrap]
+block_bars = 42
+n_resamples = 2000
+seed = 20260925
+confidence = 0.95
+
+# ------------------------------------------------------------ forward kill rule
+# Runs on every session after this registration's commit, and after promotion.
+[kill]
+first_read_min_sessions = 126
+read_every_sessions = 63
+max_drawdown = 0.25
+min_forward_fidelity = 0.5
+# The forward stream: forward_v1's FB arm (docs/forward_design.md), the same
+# configuration, scaled by this rule. Sessions before 2026-09-24 enter only the
+# volatility estimate, never a forward statistic.
+forward_unscaled = "forward_v1:FB"
