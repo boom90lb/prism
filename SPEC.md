@@ -86,6 +86,18 @@ the certification under `docs/` remain as the research record.
   promote on its own replication criteria (§4, Combinations). This lets
   low-prior themes such as value enter through diversification measured on
   public data.
+- **Fundamentals ran 2026-09-24** (`fundamentals_v1`, replication route, 6 of 6
+  arms and 1 of 1 combination, `docs/fundamentals_read_2026-09-24.md`).
+  Nothing promotes; the set is closed and no arm was killed. The binding
+  constraint is the public prior times tracking, before any cost: ρ × prior is
+  0.08–0.24 per arm against hurdles of 0.35–0.48. The combination of asset
+  growth, issuance, gross profitability and vol-scaled momentum reaches F3
+  0.087 against 0.351. Its public prior since 2015 is 0.393, below momentum's
+  own 0.401 over the same window, and the 2× gross ceiling holds it at 6.2%
+  volatility. Earnings surprise has the best in-house net Sharpe (0.356) but
+  tracks JKP at only 0.29. Vol-scaled momentum's prior is 0.401 when cut at
+  2025-12, which would put its F3 at 0.312: its promotion margin rests on
+  January–July 2026.
 
 ## 2. Invariants — a change that violates one is wrong, not the invariant
 

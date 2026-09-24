@@ -1,0 +1,68 @@
+{
+  "component_panel_sha256": {
+    "at_gr1": "7776a8545b179e6c46992bde26ea4eab860cf265cebc4fed1a1d42238f010703",
+    "be_me": "5d008e5123b719ad5a042d74c9b9da04eb174d03a462a0d20c07f4c4c880ecb5",
+    "chcsho_12m": "1f0e9e49a30490c222243c7ba6605696c6e5225ca09973aef930cd6a042cb2a5",
+    "gp_at": "e7bd930b9dd19e6b82b54bc757442d6822293ce3edc555ea6c3fd88081ccba18",
+    "niq_su": "4a4893b9f6ca66690e4e4f661770dd1743ec563864146fd14ef28286a60c8e75",
+    "oaccruals_at": "eafe14c0dc23ced8e3647b8501a075fa6f59241f412d61aa6b9a95e6834e59bd"
+  },
+  "components": [
+    {
+      "component_id": "be_me",
+      "horizon_bars": 21,
+      "import_path": "prism.signal.fundamental_node:FundamentalCharacteristicNode",
+      "source_sha256": null,
+      "update_every_bars": 21
+    },
+    {
+      "component_id": "gp_at",
+      "horizon_bars": 21,
+      "import_path": "prism.signal.fundamental_node:FundamentalCharacteristicNode",
+      "source_sha256": null,
+      "update_every_bars": 21
+    },
+    {
+      "component_id": "at_gr1",
+      "horizon_bars": 21,
+      "import_path": "prism.signal.fundamental_node:FundamentalCharacteristicNode",
+      "source_sha256": null,
+      "update_every_bars": 21
+    },
+    {
+      "component_id": "oaccruals_at",
+      "horizon_bars": 21,
+      "import_path": "prism.signal.fundamental_node:FundamentalCharacteristicNode",
+      "source_sha256": null,
+      "update_every_bars": 21
+    },
+    {
+      "component_id": "niq_su",
+      "horizon_bars": 21,
+      "import_path": "prism.signal.fundamental_node:FundamentalCharacteristicNode",
+      "source_sha256": null,
+      "update_every_bars": 21
+    },
+    {
+      "component_id": "chcsho_12m",
+      "horizon_bars": 21,
+      "import_path": "prism.signal.fundamental_node:FundamentalCharacteristicNode",
+      "source_sha256": null,
+      "update_every_bars": 21
+    }
+  ],
+  "data_id": "bedf8c4c0f0c2195ce5aace938f4ad38e23e6b69b57075080073004692d46eef",
+  "first_row": "2021-03-30",
+  "fold_table_sha256": "fec02ca011e8c66309ab9e414403d1a6412a10569ff47bac775fa754ef3384f8",
+  "last_row": "2026-06-05",
+  "n_decision_rows": 63,
+  "n_universe": 574,
+  "note": "the panel is materialized from this dataset, this universe and this component identity under the recorded visibility mode; every arm recomputes the same score at each decision bar from the same frozen dataset rather than reading this file, and panel_sha256 is what a reader re-derives",
+  "panel_sha256": "659536278dc80a58fff9c7d1915359eb76453b4401566ef4e27e5e563c14c531",
+  "registration_id": "2026-09-fundamentals",
+  "selection_set": "fundamentals_v1",
+  "universe_sha256": "dc4d27ae378934b3302fec87cbd4a96389b8ef220c826569e32fdd76703f95b8",
+  "vintage": "demotion_b1_2026-06-16",
+  "visibility_mode": "research_vintage",
+  "warnings": []
+}

@@ -1,0 +1,43 @@
+registration 2026-09-fundamentals  sha256 90c8a983e1ec
+selection set fundamentals_v1  arms be_me, gp_at, at_gr1, oaccruals_at, niq_su, chcsho_12m
+held fixed: accounting_engine=canonical, capital=100000.0, cost_refresh={cadence, charged, note, per_fold, windows} (see the record), data_id=bedf8c4c0f0c2195ce5aace938f4ad38e23e6b69b57075080073004692d46eef, executable_return=next_open_fill_marked_close_to_close, vintage=demotion_b1_2026-06-16, visibility_mode=research_vintage
+differs by design: engine
+promotion check: no arm promotes (rule kind='structured')
+excluded folds (shared across every arm: True): 0
+
+   capital arm                      sharpe  ann.ret     cost  turnover  at_cap   ex_sd  repair none/scale/drop  flat
+--------------------------------------------------------------------------------------------------------------------
+   100,000 at_gr1                   0.1161   0.0073   0.0175     14.96   0.000     nan        60/0/0     0
+   100,000 be_me                    0.1111   0.0070   0.0168     13.22   0.000     nan        60/0/0     0
+   100,000 chcsho_12m               0.1915   0.0121   0.0173     15.16   0.000     nan        60/0/0     0
+   100,000 gp_at                    0.0364   0.0023   0.0152      8.96   0.000     nan        60/0/0     0
+   100,000 niq_su                   0.3560   0.0224   0.0241     35.69   0.000     nan        60/0/0     0
+   100,000 oaccruals_at             0.0375   0.0024   0.0168     13.85   0.000     nan        60/0/0     0
+
+studentized Sharpe differences, circular_moving blocks of 42 bars, 2000 resamples, seed 20260924, hac_lags 41, decision interval 21 bars, studentized_circular_block_bootstrap
+  the statistic is the per-bar (periodic) Sharpe difference; the annualized column is the same interval scaled by sqrt(252)
+   capital difference                                       diff    lower    upper      p  diff/yr  lower/yr  upper/yr
+----------------------------------------------------------------------------------------------------------------------
+   100,000 be_me_minus_gp_at                              0.0047  -0.0833   0.0902  0.913   0.0747   -1.3220    1.4324
+   100,000 be_me_minus_at_gr1                            -0.0003  -0.0522   0.0566  0.995  -0.0050   -0.8286    0.8982
+   100,000 be_me_minus_oaccruals_at                       0.0046  -0.0543   0.0613  0.886   0.0736   -0.8616    0.9724
+   100,000 be_me_minus_niq_su                            -0.0154  -0.0925   0.0678  0.706  -0.2449   -1.4679    1.0756
+   100,000 be_me_minus_chcsho_12m                        -0.0051  -0.0617   0.0548  0.875  -0.0804   -0.9788    0.8700
+   100,000 gp_at_minus_at_gr1                            -0.0050  -0.1141   0.0879  0.917  -0.0797   -1.8117    1.3949
+   100,000 gp_at_minus_oaccruals_at                      -0.0001  -0.0878   0.0828  0.998  -0.0011   -1.3933    1.3140
+   100,000 gp_at_minus_niq_su                            -0.0201  -0.0830   0.0366  0.502  -0.3196   -1.3180    0.5809
+   100,000 gp_at_minus_chcsho_12m                        -0.0098  -0.0667   0.0469  0.736  -0.1551   -1.0592    0.7450
+   100,000 at_gr1_minus_oaccruals_at                      0.0049  -0.0538   0.0637  0.866   0.0786   -0.8536    1.0116
+   100,000 at_gr1_minus_niq_su                           -0.0151  -0.1065   0.0833  0.752  -0.2399   -1.6908    1.3226
+   100,000 at_gr1_minus_chcsho_12m                       -0.0048  -0.0732   0.0694  0.902  -0.0754   -1.1612    1.1013
+   100,000 oaccruals_at_minus_niq_su                     -0.0201  -0.0921   0.0547  0.581  -0.3185   -1.4620    0.8682
+   100,000 oaccruals_at_minus_chcsho_12m                 -0.0097  -0.0741   0.0594  0.785  -0.1540   -1.1770    0.9427
+   100,000 niq_su_minus_chcsho_12m                        0.0104  -0.0518   0.0772  0.750   0.1645   -0.8231    1.2248
+
+intervals computed: 15
+warning: run-d30f969643074b40: fill_source=simulated; fills are not actual fills
+warning: run-a82aafff17e6452a: fill_source=simulated; fills are not actual fills
+warning: run-1a74deee3880478c: fill_source=simulated; fills are not actual fills
+warning: run-47d72fc8a93c4747: fill_source=simulated; fills are not actual fills
+warning: run-c979c3dc8b9b49ba: fill_source=simulated; fills are not actual fills
+warning: run-9c233252e9154454: fill_source=simulated; fills are not actual fills
