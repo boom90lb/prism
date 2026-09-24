@@ -178,7 +178,7 @@ def freeze_scores(
     step = max(int(plan.update_every_bars) for plan in plans)
     first = min(fold.test_start for fold in resolved.folds)
     last = max(fold.test_stop for fold in resolved.folds)
-    rows: dict[str, pd.Series] = {}
+    rows: dict[str, dict[str, pd.Series]] = {loaded.component_id: {} for loaded in spec.components}
     warnings: list[str] = []
     states: dict[str, Any] = {}
     for position in range(first, last, step):
@@ -200,9 +200,25 @@ def freeze_scores(
         states = dict(scored.composition.states)
         for output in scored.composition.component_outputs:
             if output.raw is not None:
-                rows[labels[position]] = output.raw.reindex(pd.Index(universe))
-    panel = pd.DataFrame(rows).T.sort_index()
-    digest = hashlib.sha256(panel.round(12).to_csv(float_format="%.12g").encode("utf-8")).hexdigest()
+                rows[str(output.component_id)][labels[position]] = output.raw.reindex(pd.Index(universe))
+    # One panel per component. A registration with one component freezes
+    # exactly the panel and digest it always did; with several, every
+    # component's panel is materialized and digested on its own, and the
+    # record's `panel_sha256` is the digest of those digests in component
+    # order, so a change in any one panel changes the freeze identity.
+    panels = {component_id: pd.DataFrame(entries).T.sort_index() for component_id, entries in rows.items()}
+    component_digests = {
+        component_id: hashlib.sha256(frame.round(12).to_csv(float_format="%.12g").encode("utf-8")).hexdigest()
+        for component_id, frame in panels.items()
+    }
+    if len(panels) == 1:
+        (panel,) = panels.values()
+        digest = next(iter(component_digests.values()))
+    else:
+        panel = pd.concat(panels, axis=1)
+        digest = hashlib.sha256(
+            "\n".join(f"{component_id}:{component_digests[component_id]}" for component_id in panels).encode("utf-8")
+        ).hexdigest()
     universe_digest = hashlib.sha256(stable_json_dumps(sorted(universe)).encode("utf-8")).hexdigest()
     record = {
         "registration_id": registration.id,
@@ -214,6 +230,7 @@ def freeze_scores(
         "universe_sha256": universe_digest,
         "n_universe": len(universe),
         "panel_sha256": digest,
+        "component_panel_sha256": component_digests,
         "n_decision_rows": int(len(panel)),
         "first_row": None if panel.empty else str(panel.index[0]),
         "last_row": None if panel.empty else str(panel.index[-1]),

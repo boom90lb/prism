@@ -67,6 +67,13 @@ from prism.workspace import Workspace, load_env, resolve_workspace
 
 logger = logging.getLogger(__name__)
 
+#: The indices this builder reconstructs, and the Wikipedia page each one reads.
+#: Both pages share the constituents + "Selected changes" layout the parsers pin.
+INDEX_PAGES: dict[str, str] = {
+    "sp500": WIKI_URL,
+    "sp400": "https://en.wikipedia.org/wiki/List_of_S%26P_400_companies",
+}
+
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Build a survivorship-bias-free S&P 500 universe.")
@@ -79,7 +86,9 @@ def parse_args() -> argparse.Namespace:
                         "The price cache is {workspace}/data and the logs are {workspace}/logs.")
     p.add_argument("--out_dir", type=str, default=None,
                    help="Output directory for the universe artifacts (default: {workspace}/data/universe).")
-    p.add_argument("--wiki_url", type=str, default=WIKI_URL)
+    p.add_argument("--index", type=str, default="sp500", choices=sorted(INDEX_PAGES),
+                   help="Which index to reconstruct; every artifact is prefixed with it.")
+    p.add_argument("--wiki_url", type=str, default=None, help="Defaults to the index's own page.")
     p.add_argument("--html_file", type=str, default=None,
                    help="Read the Wikipedia HTML from a local file instead of the network "
                         "(reproducible / offline membership build).")
@@ -99,7 +108,9 @@ def _to_vendor(ticker: str) -> str:
     return normalize_ticker(RENAME_TABLE.get(t, t))
 
 
-def _write_current_members(membership: pd.DataFrame, asof: str, path: Path, data_dir: Path) -> None:
+def _write_current_members(
+    membership: pd.DataFrame, asof: str, path: Path, data_dir: Path, *, index: str = "sp500"
+) -> None:
     """Current members (intervals open at ``asof``) that have a local bar cache.
 
     The live loop's universe file: a fetchable-today proxy, NOT survivorship-free
@@ -111,9 +122,9 @@ def _write_current_members(membership: pd.DataFrame, asof: str, path: Path, data
     cached = {p.name.split("_1d_")[0] for p in data_dir.glob("*_1d_*.parquet")}
     names = [s for s in current if s in cached and s not in QUARANTINE_TABLE]
     header = (
-        f"# Current S&P 500 members as of {asof} with local price data (fetchable\n"
-        "# proxy for the live loop; NOT survivorship-free -- backtests use sp500_pit_*).\n"
-        f"# Built from sp500_membership_{asof}.parquet (intervals open at as-of)\n"
+        f"# Current {index} members as of {asof} with local price data (fetchable\n"
+        f"# proxy for the live loop; NOT survivorship-free -- backtests use {index}_pit_*).\n"
+        f"# Built from {index}_membership_{asof}.parquet (intervals open at as-of)\n"
         f"# INTERSECT data/*_1d_*.parquet, minus quarantined symbols. {len(names)} names.\n"
     )
     path.write_text(header + "\n".join(names) + "\n")
@@ -123,7 +134,7 @@ def _load_tables(args: argparse.Namespace) -> tuple[list[str], pd.DataFrame]:
     if args.html_file:
         tables = extract_tables(Path(args.html_file).read_text())
         return parse_constituents_table(tables), parse_changes_table(tables)
-    return fetch_sp500_wikipedia(args.wiki_url)
+    return fetch_sp500_wikipedia(args.wiki_url or INDEX_PAGES[args.index])
 
 
 def _pull_prices(
@@ -187,9 +198,14 @@ def main() -> None:
     out_dir = Path(args.out_dir) if args.out_dir else workspace.data / "universe"
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    index = args.index
     current, changes = _load_tables(args)
     n_raw = len(changes)
-    changes = apply_changes_patches(changes)
+    # The reviewed changes patches are S&P 500 events (the ACT -> AGN seat);
+    # applying them to another index would inject a membership event it never
+    # had. The rename and quarantine tables are vendor-symbology facts and
+    # apply to every index.
+    changes = apply_changes_patches(changes) if index == "sp500" else apply_changes_patches(changes, patches=())
     if len(changes) != n_raw:
         logger.info("applied %d reviewed changes-table patch event(s)", len(changes) - n_raw)
     membership = reconstruct_membership(current, changes, end_date=args.asof)
@@ -203,8 +219,8 @@ def main() -> None:
     # window); the full membership parquet keeps every interval for the mask.
     window = members_active_between(membership, args.start_date, args.asof)
 
-    universe_path = out_dir / f"sp500_pit_{args.asof}.txt"
-    membership_path = out_dir / f"sp500_membership_{args.asof}.parquet"
+    universe_path = out_dir / f"{index}_pit_{args.asof}.txt"
+    membership_path = out_dir / f"{index}_membership_{args.asof}.parquet"
     write_universe_file(window, universe_path, asof=args.asof, source="wikipedia")
     membership.to_parquet(membership_path)
     logger.info(
@@ -213,6 +229,7 @@ def main() -> None:
     )
 
     result: dict[str, object] = {
+        "index": index,
         "asof": args.asof,
         "n_current_members": len(current),
         "n_changes": int(len(changes)),
@@ -234,12 +251,12 @@ def main() -> None:
             fetchable, args.start_date, args.end_date, loader=loader, rate_per_min=args.rate_per_min
         )
         coverage = compute_coverage(pull, available, asof=args.asof)
-        coverage_path = out_dir / f"sp500_coverage_{args.asof}.json"
+        coverage_path = out_dir / f"{index}_coverage_{args.asof}.json"
         coverage_path.write_text(json.dumps(coverage.to_dict(), indent=2))
-        resolved_path = out_dir / f"sp500_pit_resolved_{args.asof}.txt"
+        resolved_path = out_dir / f"{index}_pit_resolved_{args.asof}.txt"
         write_universe_file(coverage.resolved, resolved_path, asof=args.asof, source="wikipedia+twelvedata_resolved")
-        current_path = out_dir / "sp500_current.txt"
-        _write_current_members(membership, args.asof, current_path, workspace.data)
+        current_path = out_dir / f"{index}_current.txt"
+        _write_current_members(membership, args.asof, current_path, workspace.data, index=index)
         result["coverage_file"] = str(coverage_path)
         result["coverage_fraction"] = coverage.coverage_fraction
         result["n_resolved"] = coverage.n_resolved

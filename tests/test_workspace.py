@@ -312,6 +312,37 @@ def test_load_env_reads_the_project_dotenv(tmp_path, monkeypatch, restored_envir
         load_env(tmp_path / "absent.env")
 
 
+def test_load_env_never_crosses_a_checkout_boundary(tmp_path, monkeypatch, restored_environ):
+    """A linked worktree under the live checkout must not inherit its ``.env``.
+
+    Layout mirrors the 2026-09-09 incident: ``<repo>/.env`` beside
+    ``<repo>/.git/``, and a worktree at ``<repo>/.claude/worktrees/wt`` whose
+    ``.git`` is a file. From inside the worktree discovery returns nothing;
+    from a plain subdirectory of the repo it still finds the repo's file.
+    """
+    repo = tmp_path / "repo"
+    (repo / ".git").mkdir(parents=True)
+    _plant_env(repo)
+    worktree = repo / ".claude" / "worktrees" / "wt"
+    worktree.mkdir(parents=True)
+    (worktree / ".git").write_text("gitdir: ../../../.git/worktrees/wt\n", encoding="utf-8")
+    nested = worktree / "src" / "pkg"
+    nested.mkdir(parents=True)
+
+    os.environ.pop(_SENTINEL_VAR, None)
+    monkeypatch.chdir(nested)
+    assert load_env() is None
+    assert _SENTINEL_VAR not in os.environ
+
+    _plant_env(worktree)
+    assert load_env() == worktree / ".env"
+
+    plain = repo / "src" / "prism"
+    plain.mkdir(parents=True)
+    monkeypatch.chdir(plain)
+    assert load_env() == repo / ".env"
+
+
 _WIKI_HTML = """
 <table>
   <tr><th>Symbol</th><th>Security</th></tr>

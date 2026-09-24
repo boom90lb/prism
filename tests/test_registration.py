@@ -554,3 +554,200 @@ execution = "examples/reference/profiles/execution_alpaca.toml"
 monitoring = "examples/reference/policies/monitoring.toml"
 recovery = "examples/reference/policies/recovery.toml"
 """
+
+
+# --------------------------------------------------------------------------
+# Per-arm component weights (registrations/2026-09-characteristics.toml)
+# --------------------------------------------------------------------------
+
+CHARACTERISTICS = "registrations/2026-09-characteristics.toml"
+
+_CHARACTERISTICS_FILES: tuple[str, ...] = (
+    CHARACTERISTICS,
+    "examples/characteristics/control.toml",
+    PROFILE,
+    "calibrations/shared_slope_point.toml",
+    "examples/reference/risk/factor_diagonal.toml",
+    "folds/demotion_b1.toml",
+    "examples/reference/costs/retail_v1.toml",
+    "examples/reference/policies/monitoring.toml",
+    "examples/reference/policies/recovery.toml",
+    "examples/reference/profiles/execution_alpaca.toml",
+)
+
+
+@pytest.fixture(scope="module")
+def characteristics() -> Registration:
+    return load_registration(REPO_ROOT / CHARACTERISTICS, workspace=Workspace(REPO_ROOT))
+
+
+def _characteristics_project(tmp_path: Path) -> Workspace:
+    for relative in _CHARACTERISTICS_FILES:
+        target = tmp_path / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(REPO_ROOT / relative, target)
+    return Workspace(tmp_path)
+
+
+def test_characteristics_registration_declares_six_weighted_arms(characteristics: Registration) -> None:
+    assert characteristics.arm_ids == (
+        "momentum_control",
+        "residual_momentum_only",
+        "idiosyncratic_vol_only",
+        "momentum_residual_momentum",
+        "momentum_idiosyncratic_vol",
+        "composite_three",
+    )
+    assert characteristics.trial_budget == 6
+    assert {c.id for c in characteristics.components} == {"momentum", "residual_momentum", "idiosyncratic_vol"}
+    for arm in characteristics.arms:
+        assert arm.kind == "heuristic"
+        assert arm.component_weights is not None
+        assert set(arm.component_weights) == {"momentum", "residual_momentum", "idiosyncratic_vol"}
+    assert characteristics.arm("momentum_control").component_weights == {
+        "momentum": 1.0,
+        "residual_momentum": 0.0,
+        "idiosyncratic_vol": 0.0,
+    }
+
+
+def test_arm_weights_replace_the_control_s_and_every_component_is_still_run(characteristics: Registration) -> None:
+    """The control spec weights momentum 1 and the others 0; an arm's table overrides all three."""
+    spec = characteristics.arm_specification("composite_three", workspace=Workspace(REPO_ROOT))
+    weights = {loaded.component_id: float(loaded.spec.weight) for loaded in spec.components}
+    assert set(weights) == {"momentum", "residual_momentum", "idiosyncratic_vol"}
+    assert all(abs(w - 1.0 / 3.0) < 1e-12 for w in weights.values())
+    control = characteristics.arm_specification("momentum_control", workspace=Workspace(REPO_ROOT))
+    assert {loaded.component_id: float(loaded.spec.weight) for loaded in control.components} == {
+        "momentum": 1.0,
+        "residual_momentum": 0.0,
+        "idiosyncratic_vol": 0.0,
+    }
+    # Every declared component is loaded and scored even at weight zero; that
+    # is what makes the freeze cover all three panels.
+    assert len(control.components) == 3
+
+
+def test_every_weighted_arm_has_its_own_identity(characteristics: Registration) -> None:
+    ids = characteristics.arm_config_ids(
+        evaluation_context=_context(characteristics), workspace=Workspace(REPO_ROOT)
+    )
+    assert len(set(ids.values())) == len(characteristics.arms)
+
+
+def test_a_partial_weight_table_is_refused(tmp_path: Path) -> None:
+    ws = _characteristics_project(tmp_path)
+    _edit(
+        tmp_path / CHARACTERISTICS,
+        "[arms.components]\nmomentum = 1.0\nresidual_momentum = 0.0\nidiosyncratic_vol = 0.0\n",
+        "[arms.components]\nmomentum = 1.0\n",
+    )
+    with pytest.raises(RegistrationError, match="every declared component is weighted explicitly"):
+        load_registration(tmp_path / CHARACTERISTICS, workspace=ws)
+
+
+def test_an_arm_weighting_every_component_at_zero_is_refused(tmp_path: Path) -> None:
+    ws = _characteristics_project(tmp_path)
+    _edit(
+        tmp_path / CHARACTERISTICS,
+        "[arms.components]\nmomentum = 1.0\nresidual_momentum = 0.0\nidiosyncratic_vol = 0.0\n",
+        "[arms.components]\nmomentum = 0.0\nresidual_momentum = 0.0\nidiosyncratic_vol = 0.0\n",
+    )
+    with pytest.raises(RegistrationError, match="would hold nothing"):
+        load_registration(tmp_path / CHARACTERISTICS, workspace=ws)
+
+
+def test_a_negative_or_non_numeric_weight_is_refused(tmp_path: Path) -> None:
+    ws = _characteristics_project(tmp_path)
+    _edit(
+        tmp_path / CHARACTERISTICS,
+        "[arms.components]\nmomentum = 1.0\nresidual_momentum = 0.0\nidiosyncratic_vol = 0.0\n",
+        "[arms.components]\nmomentum = -1.0\nresidual_momentum = 0.0\nidiosyncratic_vol = 0.0\n",
+    )
+    with pytest.raises(RegistrationError, match="non-negative"):
+        load_registration(tmp_path / CHARACTERISTICS, workspace=ws)
+
+
+def test_the_construction_registration_still_carries_no_weight_table(shipped: Registration) -> None:
+    assert all(arm.component_weights is None for arm in shipped.arms)
+
+
+# --------------------------------------------------------------------------
+# The learned cross-section seam (registrations/2026-09-learned-xsection.toml)
+# --------------------------------------------------------------------------
+
+LEARNED = "registrations/2026-09-learned-xsection.toml"
+
+
+@pytest.fixture(scope="module")
+def learned() -> Registration:
+    return load_registration(REPO_ROOT / LEARNED, workspace=Workspace(REPO_ROOT))
+
+
+def test_learned_registration_runs_x0_to_x4_one_hot(learned: Registration) -> None:
+    assert learned.arm_ids == ("X0", "X1", "X2", "X3", "X4")
+    assert learned.trial_budget == 5
+    for index, arm in enumerate(learned.arms):
+        weights = arm.component_weights
+        assert weights is not None
+        assert [weights[f"x{i}"] for i in range(5)] == [1.0 if i == index else 0.0 for i in range(5)]
+
+
+def test_each_learned_component_differs_from_x0_in_exactly_the_design_s_one_value(learned: Registration) -> None:
+    """Design §3: X1 lambda 10, X2 drop rev_1, X3 18 cross-sections, X4 pinned GBM."""
+    control = tomllib.loads((REPO_ROOT / "examples/learned_xsection/control.toml").read_text(encoding="utf-8"))
+    params = {row["id"]: dict(row["params"]) for row in control["strategy"]["components"]}
+    x0 = params["x0"]
+    assert x0 == {"learner": "ridge", "ridge_lambda": 1.0, "n_cross_sections": 36, "spacing_bars": 21, "horizon_bars": 21}
+    assert {k: v for k, v in params["x1"].items() if x0.get(k) != v} == {"ridge_lambda": 10.0}
+    assert {k: v for k, v in params["x2"].items() if x0.get(k) != v} == {
+        "features": ["mom_12_1", "mom_6_1", "vol_63", "maxret_21", "high_52w", "dv_63"]
+    }
+    assert {k: v for k, v in params["x3"].items() if x0.get(k) != v} == {"n_cross_sections": 18}
+    assert params["x4"] == {
+        "learner": "gbm",
+        "n_cross_sections": 36,
+        "spacing_bars": 21,
+        "horizon_bars": 21,
+        "gbm_trees": 200,
+        "gbm_depth": 2,
+        "gbm_learning_rate": 0.05,
+        "gbm_min_leaf": 50,
+        "gbm_seed": 20260718,
+    }
+
+
+def test_learned_fold_table_is_folds_12_to_20_of_the_recorded_geometry(learned: Registration) -> None:
+    recorded = tomllib.loads((REPO_ROOT / "folds/demotion_b1.toml").read_text(encoding="utf-8"))["fold"]
+    table = tomllib.loads((REPO_ROOT / "folds/learned_xsection_v1.toml").read_text(encoding="utf-8"))["fold"]
+    keys = ("formation_start", "formation_end", "test_start", "test_end")
+    assert [tuple(row[k] for k in keys) for row in table] == [
+        tuple(row[k] for k in keys) for row in recorded if int(row["index"]) >= 12
+    ]
+    assert [int(row["index"]) for row in table] == list(range(9))
+    assert str(learned.sample.first_decision) == "2024-04-02"
+    assert learned.sample.warmup_bars == 252 + 36 * 21
+
+
+def test_breadth_arms_differ_only_in_the_index_they_trade() -> None:
+    reg = load_registration(REPO_ROOT / "registrations/2026-09-breadth.toml", workspace=Workspace(REPO_ROOT))
+    assert reg.arm_ids == ("sp500_control", "sp400_only", "sp900_union")
+    specs = {arm: reg.arm_specification(arm, workspace=Workspace(REPO_ROOT)) for arm in reg.arm_ids}
+    assert {arm: spec.strategy.universe_index for arm, spec in specs.items()} == {
+        "sp500_control": "sp500",
+        "sp400_only": "sp400",
+        "sp900_union": "sp900",
+    }
+    ids = reg.arm_config_ids(evaluation_context=_context(reg), workspace=Workspace(REPO_ROOT))
+    assert len(set(ids.values())) == 3
+
+
+def test_an_empty_universe_index_override_is_refused(tmp_path: Path) -> None:
+    ws = _characteristics_project(tmp_path)
+    _edit(
+        tmp_path / CHARACTERISTICS,
+        'id = "momentum_control"\nprofile = "examples/reference/profiles/experiment_v1.toml"\n',
+        'id = "momentum_control"\nprofile = "examples/reference/profiles/experiment_v1.toml"\nuniverse_index = ""\n',
+    )
+    with pytest.raises(RegistrationError, match="universe_index"):
+        load_registration(tmp_path / CHARACTERISTICS, workspace=ws)

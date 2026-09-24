@@ -1,0 +1,172 @@
+# The control book of the learned cross-section registration
+# (`registrations/2026-09-learned-xsection.toml`; docs/learned_xsection_design.md).
+#
+# Five components, one per counted probe of the frozen design's section 3, all
+# the same class with the design's pinned values and each differing from X0 in
+# exactly the one value the design's table names:
+#
+#   x0  the pinned configuration: ridge, lambda 1.0, F0 (seven features), 36 cross-sections
+#   x1  lambda 10
+#   x2  F0 without rev_1
+#   x3  18 cross-sections
+#   x4  pinned GBM in place of ridge (depth 2, 200 trees, lr 0.05, min leaf 50, seed 20260718)
+#
+# Every arm scores all five and holds exactly one: the registration's
+# `[arms.components]` table is one-hot. This control weights x0 alone, so the
+# control *is* X0. The rank-to-weight rule, eligibility screen and
+# construction are the momentum sibling's (`examples/characteristics/control.toml`,
+# itself B1's), which is what the design's "the learned score replaces the raw
+# score, nothing else moves" requires.
+
+[strategy]
+name = "learned_xsection_control"
+universe_index = "sp500"
+combination = "position_space"
+renormalize = false
+
+[[strategy.components]]
+id = "x0"
+path = "prism.signal.learned_xsection_node:LearnedCrossSectionNode"
+weight = 1.0
+horizon_bars = 21
+update_every_bars = 21
+valid_for_bars = 21
+to_weights = "decile_long_short"
+
+[strategy.components.params]
+learner = "ridge"
+ridge_lambda = 1.0
+n_cross_sections = 36
+spacing_bars = 21
+horizon_bars = 21
+
+[strategy.components.to_weights_params]
+decile = 0.10
+max_gross = 1.0
+max_symbol_abs_weight = 0.35
+
+[[strategy.components]]
+id = "x1"
+path = "prism.signal.learned_xsection_node:LearnedCrossSectionNode"
+weight = 0.0
+horizon_bars = 21
+update_every_bars = 21
+valid_for_bars = 21
+to_weights = "decile_long_short"
+
+[strategy.components.params]
+learner = "ridge"
+ridge_lambda = 10.0
+n_cross_sections = 36
+spacing_bars = 21
+horizon_bars = 21
+
+[strategy.components.to_weights_params]
+decile = 0.10
+max_gross = 1.0
+max_symbol_abs_weight = 0.35
+
+[[strategy.components]]
+id = "x2"
+path = "prism.signal.learned_xsection_node:LearnedCrossSectionNode"
+weight = 0.0
+horizon_bars = 21
+update_every_bars = 21
+valid_for_bars = 21
+to_weights = "decile_long_short"
+
+[strategy.components.params]
+learner = "ridge"
+ridge_lambda = 1.0
+n_cross_sections = 36
+spacing_bars = 21
+horizon_bars = 21
+features = ["mom_12_1", "mom_6_1", "vol_63", "maxret_21", "high_52w", "dv_63"]
+
+[strategy.components.to_weights_params]
+decile = 0.10
+max_gross = 1.0
+max_symbol_abs_weight = 0.35
+
+[[strategy.components]]
+id = "x3"
+path = "prism.signal.learned_xsection_node:LearnedCrossSectionNode"
+weight = 0.0
+horizon_bars = 21
+update_every_bars = 21
+valid_for_bars = 21
+to_weights = "decile_long_short"
+
+[strategy.components.params]
+learner = "ridge"
+ridge_lambda = 1.0
+n_cross_sections = 18
+spacing_bars = 21
+horizon_bars = 21
+
+[strategy.components.to_weights_params]
+decile = 0.10
+max_gross = 1.0
+max_symbol_abs_weight = 0.35
+
+[[strategy.components]]
+id = "x4"
+path = "prism.signal.learned_xsection_node:LearnedCrossSectionNode"
+weight = 0.0
+horizon_bars = 21
+update_every_bars = 21
+valid_for_bars = 21
+to_weights = "decile_long_short"
+
+[strategy.components.params]
+learner = "gbm"
+n_cross_sections = 36
+spacing_bars = 21
+horizon_bars = 21
+gbm_trees = 200
+gbm_depth = 2
+gbm_learning_rate = 0.05
+gbm_min_leaf = 50
+gbm_seed = 20260718
+
+[strategy.components.to_weights_params]
+decile = 0.10
+max_gross = 1.0
+max_symbol_abs_weight = 0.35
+
+# The screen the recorded B1 run applied (`examples/momentum/demotion_b1.toml`).
+[strategy.eligibility]
+min_price = 5.0
+min_median_dollar_volume = 1000000.0
+dollar_volume_window = 20
+return_history_bars = 252
+listing_seasoning_bars = 0
+membership_required = true
+exclude_asset_classes = []
+
+[construction]
+kind = "heuristic"
+step_order = "construct_band_cap_participation"
+max_gross = 1.0
+max_symbol_abs_weight = 0.35
+
+[construction.band]
+mode = "closed_form"
+gamma_risk = 1.0
+
+[construction.participation]
+max_participation = 0.05
+statistic = "median"
+window_bars = 20
+floor_dollars = 0.0
+base = "initial_capital"
+
+[construction.spread]
+mode = "bucket"
+
+[policy]
+profile = "examples/reference/profiles/experiment_v1.toml"
+costs = "examples/reference/costs/retail_v1.toml"
+execution = "examples/reference/profiles/execution_alpaca.toml"
+monitoring = "examples/reference/policies/monitoring.toml"
+recovery = "examples/reference/policies/recovery.toml"

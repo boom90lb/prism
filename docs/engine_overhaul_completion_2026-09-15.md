@@ -127,8 +127,8 @@ index-served package verification is claimed.
   comparable candidate decision because their full input panels are missing.
 - Authorization, execution-host and freshness choices, `PRISM_RELEASE`, and
   the observation window remain outstanding owner operating work.
-- The known upward dotenv lookup and the legacy heuristic's full-exit behavior
-  remain limitations. The rounding-repair question remains open. The onboarding
+- The legacy heuristic's full-exit behavior remains a limitation. The upward
+  dotenv lookup was bounded to the checkout on 2026-09-16 (incident record). The rounding-repair question remains open. The onboarding
   guide also names CLI handlers that still require Python APIs or remain deferred.
 
 The original live run directory and live environment metadata were checked

@@ -486,3 +486,150 @@ def write_universe_file(symbols: Iterable[str], path: str | Path, *, asof: str, 
         "# silent drop.\n"
     )
     Path(path).write_text(header + "\n".join(syms) + "\n")
+
+
+# --------------------------------------------------------------------------- #
+# Unrecorded exits (the "Selected changes" tables are selected, not complete)
+# --------------------------------------------------------------------------- #
+
+#: Evidence kinds, in the order the ledger reports them. Each is a dated fact
+#: that the ticker was no longer in the reconstructed index from that date.
+EXIT_EVIDENCE_KINDS: tuple[str, ...] = ("promoted_to_sp500", "added_to_sp600", "vendor_last_bar")
+
+
+def resolve_unrecorded_exits(
+    membership: pd.DataFrame,
+    current_members: Iterable[str],
+    *,
+    asof: str | pd.Timestamp,
+    evidence: dict[str, list[tuple[pd.Timestamp, str]]],
+) -> tuple[pd.DataFrame, list[dict[str, object]]]:
+    """Close the intervals a forward sweep left open for tickers that are not current members.
+
+    ``reconstruct_membership`` closes an interval only on a recorded removal,
+    so a ticker whose exit the changes table omits stays a member until the
+    reconstruction horizon: a phantom. The S&P 400 page omits many exits
+    (promotions to the 500, demotions to the 600, acquisitions, renames). An
+    interval open at ``asof`` whose ticker is not in ``current_members`` is
+    closed on the day before the earliest dated exit evidence that falls after
+    the interval's start; an interval with no such evidence is dropped and
+    reported as ``unresolved``. Dropping is a choice with a bias of unknown sign
+    (the name was a member for part of that span), which is why every dropped
+    interval is in the ledger rather than silently absent.
+
+    ``evidence`` maps a normalized ticker to ``(date, kind)`` pairs, each a fact
+    that the ticker had left the index by ``date``; ``kind`` is one of
+    ``EXIT_EVIDENCE_KINDS``. Returns ``(resolved_membership, ledger)``.
+    """
+    horizon = pd.Timestamp(asof)
+    horizon = horizon.tz_localize(None) if horizon.tz is not None else horizon
+    current = {normalize_ticker(t) for t in current_members}
+    frame = membership.copy()
+    frame["ticker"] = frame["ticker"].map(normalize_ticker)
+    frame["start"] = pd.to_datetime(frame["start"])
+    frame["end"] = pd.to_datetime(frame["end"])
+    keep: list[bool] = []
+    ends: list[pd.Timestamp] = []
+    ledger: list[dict[str, object]] = []
+    for row in frame.itertuples(index=False):
+        phantom = row.end >= horizon and row.ticker not in current
+        if not phantom:
+            keep.append(True)
+            ends.append(row.end)
+            continue
+        dated = sorted(
+            (pd.Timestamp(date), str(kind))
+            for date, kind in evidence.get(row.ticker, [])
+            if pd.Timestamp(date) > row.start and pd.Timestamp(date) <= horizon
+        )
+        if dated:
+            exit_date, kind = dated[0]
+            closed = exit_date - pd.Timedelta(days=1)
+            keep.append(True)
+            ends.append(closed)
+            ledger.append(
+                {"ticker": row.ticker, "start": row.start.date().isoformat(), "closed_at": closed.date().isoformat(),
+                 "evidence": kind, "evidence_date": exit_date.date().isoformat()}
+            )
+        else:
+            keep.append(False)
+            ends.append(row.end)
+            ledger.append(
+                {"ticker": row.ticker, "start": row.start.date().isoformat(), "closed_at": None,
+                 "evidence": "unresolved", "evidence_date": None}
+            )
+    frame["end"] = ends
+    resolved = frame.loc[keep].reset_index(drop=True)
+    resolved = resolved[resolved["start"] <= resolved["end"]]
+    return resolved.sort_values(["ticker", "start"], kind="stable").reset_index(drop=True), ledger
+
+
+# --------------------------------------------------------------------------- #
+# Interval algebra across indices (S&P 500 / 400 / 600 are mutually exclusive)
+# --------------------------------------------------------------------------- #
+
+
+def _day_intervals(frame: pd.DataFrame) -> dict[str, list[tuple[pd.Timestamp, pd.Timestamp]]]:
+    out: dict[str, list[tuple[pd.Timestamp, pd.Timestamp]]] = {}
+    for row in frame.itertuples(index=False):
+        start = pd.Timestamp(row.start).normalize()
+        end = pd.Timestamp(row.end).normalize()
+        start = start.tz_localize(None) if start.tz is not None else start
+        end = end.tz_localize(None) if end.tz is not None else end
+        if start <= end:
+            out.setdefault(normalize_ticker(row.ticker), []).append((start, end))
+    return out
+
+
+def _merged(spans: list[tuple[pd.Timestamp, pd.Timestamp]]) -> list[tuple[pd.Timestamp, pd.Timestamp]]:
+    """Union of closed day intervals; touching intervals (end + 1 day == start) merge."""
+    merged: list[tuple[pd.Timestamp, pd.Timestamp]] = []
+    for start, end in sorted(spans):
+        if merged and start <= merged[-1][1] + pd.Timedelta(days=1):
+            merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+        else:
+            merged.append((start, end))
+    return merged
+
+
+def _frame(intervals: dict[str, list[tuple[pd.Timestamp, pd.Timestamp]]]) -> pd.DataFrame:
+    rows = [(ticker, start, end) for ticker, spans in intervals.items() for start, end in spans]
+    frame = pd.DataFrame(rows, columns=["ticker", "start", "end"])
+    return frame.sort_values(["ticker", "start"], kind="stable").reset_index(drop=True)
+
+
+def subtract_membership(minuend: pd.DataFrame, subtrahend: pd.DataFrame) -> pd.DataFrame:
+    """``minuend`` membership with every day the same ticker holds in ``subtrahend`` removed.
+
+    The S&P 500, 400 and 600 are mutually exclusive by construction (the S&P
+    Composite 1500), so a day on which a ticker is an S&P 500 member is not a
+    day it is an S&P 400 member, whatever an incomplete changes table implies.
+    """
+    left = _day_intervals(minuend)
+    right = {ticker: _merged(spans) for ticker, spans in _day_intervals(subtrahend).items()}
+    out: dict[str, list[tuple[pd.Timestamp, pd.Timestamp]]] = {}
+    for ticker, spans in left.items():
+        pieces = _merged(spans)
+        for cut_start, cut_end in right.get(ticker, []):
+            nxt: list[tuple[pd.Timestamp, pd.Timestamp]] = []
+            for start, end in pieces:
+                if cut_end < start or cut_start > end:
+                    nxt.append((start, end))
+                    continue
+                if start < cut_start:
+                    nxt.append((start, cut_start - pd.Timedelta(days=1)))
+                if end > cut_end:
+                    nxt.append((cut_end + pd.Timedelta(days=1), end))
+            pieces = nxt
+        if pieces:
+            out[ticker] = pieces
+    return _frame(out)
+
+
+def union_membership(*frames: pd.DataFrame) -> pd.DataFrame:
+    """Per-ticker union of several memberships, overlapping and touching intervals merged."""
+    combined: dict[str, list[tuple[pd.Timestamp, pd.Timestamp]]] = {}
+    for frame in frames:
+        for ticker, spans in _day_intervals(frame).items():
+            combined.setdefault(ticker, []).extend(spans)
+    return _frame({ticker: _merged(spans) for ticker, spans in combined.items()})

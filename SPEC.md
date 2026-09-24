@@ -10,7 +10,7 @@ agent contract that had accumulated through 2026-08 (≈13k lines of governing
 prose over a 14k-line package). Registrations, read records, diagnostics, and
 the certification under `docs/` remain as the research record.
 
-## 1. State of the system (2026-09-03)
+## 1. State of the system (2026-09-23)
 
 - **Live book.** 12−1 cross-sectional momentum (`prism.signal.momentum_node`:
   252-bar lookback, 21-bar skip, top/bottom decile equal-weight long−short,
@@ -42,7 +42,23 @@ the certification under `docs/` remain as the research record.
   standalone carry (net Sharpe 0.04, below the cash hurdle) and the convexity
   admission read fails on the B1 leg — admission refused
   (`docs/trend_t_series_read_2026-09-03.md`; 5 of 6 rows spent; T5 on its
-  clock). Learned cross-section and replication: unbuilt.
+  clock). Replication: unbuilt (no survivorship-complete panel).
+- **Reads of 2026-09-23** (canonical engine, $100,000, 1,056 sessions
+  2022-03 → 2026-06 unless noted; every control reproduces the construction
+  read's decile control exactly). `characteristics_v1` (6 of 6,
+  `docs/characteristics_read_2026-09-23.md`): idiosyncratic volatility alone
+  killed; **residual momentum** net Sharpe 0.829 vs 0.679, max DD 4.3% vs
+  16.3%, N_eff 71 vs 47, not distinguishable from the control (p 0.79).
+  `breadth_v1` (3 of 3, `docs/breadth_read_2026-09-23.md`): S&P 500 ∪ 400
+  raises N_eff 37% and not net Sharpe (0.638). `learned_xsection_v1` X0-X4
+  (5 of 6, 300 sessions, `docs/learned_xsection_read_2026-09-23.md`):
+  fragility survives, admission refused (spanned by momentum, alpha t 0.59).
+  `forward_v1` (`docs/forward_design.md`) registers the two residual-momentum
+  candidates' forward read: interim kill ≥ 126 sessions after 2026-09-24,
+  promotion ≥ 252, deflated against nine rows.
+- **Paper loop rehearsed 2026-09-23** with `--no-submit`: exit 0, nothing
+  sent, 119 orders decided (`docs/operations.md`). Re-arming the schedule is
+  the owner's act.
 
 ## 2. Invariants — a change that violates one is wrong, not the invariant
 
@@ -118,12 +134,14 @@ the certification under `docs/` remain as the research record.
 1. **The registered reads are done** (§1). M6 (≥ 2027-06 data) and T5
    (≥ 2027-07-17) stay on their clocks; nothing waits for them, and T5's B1
    leg is unreadable until M6 extends the B1 stream.
-2. **Breadth.** N_eff ≈ 53 on ~96 names held is the binding constraint. The
+2. **Breadth.** Read 2026-09-23 on free data: the S&P 400 union adds bets and
+   not net Sharpe (§1). N_eff ≈ 53 on ~96 names held was the binding constraint. The
    lever is a point-in-time universe beyond the S&P 500 with the survivorship
    leak counted, not hidden (`prism.scripts.build_sp500_universe` is the
    pattern). A named dataset may be bought if it closes a measured gap and
    total data spend stays ≤ ~$1,000/yr (`docs/data_purchase_evaluation.md`).
-3. **IC.** A composite of slow, bar-derived characteristics at monthly cadence
+3. **IC.** Read 2026-09-23 (§1): residual momentum is the candidate, on its
+   forward clock; long-horizon reversal waits for pre-2020 history. A composite of slow, bar-derived characteristics at monthly cadence
    (momentum variants, long-horizon reversal, idiosyncratic volatility,
    residualized versions of each) as one registered selection set, deflated
    as a whole. Combination happens inside construction

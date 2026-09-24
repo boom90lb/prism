@@ -73,7 +73,12 @@ import numpy as np
 import pandas as pd
 
 from prism.io import sessions
-from prism.io.events import TerminalClaim, distribution_amounts, terminal_claims, total_return_close
+from prism.io.events import (
+    TerminalClaim,
+    distribution_amounts,
+    terminal_claims,
+    total_return_close,
+)
 from prism.io.manifest import Manifest, ManifestError
 
 Mode = Literal["replay_recorded", "research_vintage"]
@@ -993,6 +998,39 @@ class DatasetView:
         ends = _dates(rows["valid_to"])
         contains = (starts.isna() | (starts <= day)) & (ends.isna() | (ends >= day))
         return set(rows.loc[contains, "sid"].astype(str))
+
+    def membership_mask(self, index_id: str, index: pd.Index, columns: Sequence[str]) -> pd.DataFrame:
+        """Bar x sid point-in-time membership under this view: True where the bar lies in an interval.
+
+        The same inclusive-interval rule as :meth:`membership`, evaluated on every
+        bar of ``index`` rather than on the decision date alone. A row for a bar
+        ``s`` at or before the decision date depends only on whether ``s`` lies
+        inside a visible interval, so a component reading rows up to its
+        decision bar reads nothing the decision bar could not know. Sids with no
+        visible interval are False throughout.
+        """
+        stamps = pd.DatetimeIndex(index)
+        days = stamps.tz_localize(None).normalize() if stamps.tz is not None else stamps.normalize()
+        mask = pd.DataFrame(False, index=index, columns=pd.Index(list(columns), dtype=object), dtype=bool)
+        frame = self._table("membership")
+        if frame.empty:
+            return mask
+        rows = frame.loc[(frame["index_id"] == index_id) & frame["sid"].astype(str).isin(set(map(str, columns)))]
+        if rows.empty:
+            return mask
+        starts = _dates(rows["valid_from"])
+        ends = _dates(rows["valid_to"])
+        values = mask.to_numpy(copy=True)
+        position = {str(sid): number for number, sid in enumerate(mask.columns)}
+        for sid, start, end in zip(rows["sid"].astype(str), starts, ends):
+            # `_dates` returns naive dates; `days` is the naive calendar day of each bar.
+            inside = np.ones(len(days), dtype=bool)
+            if not pd.isna(start):
+                inside &= np.asarray(days >= start)
+            if not pd.isna(end):
+                inside &= np.asarray(days <= end)
+            values[:, position[sid]] |= inside
+        return pd.DataFrame(values, index=index, columns=mask.columns)
 
     def listings(self, sids: Sequence[str]) -> pd.DataFrame:
         frame = self._table("listings")

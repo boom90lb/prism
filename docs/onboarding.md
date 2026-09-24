@@ -38,9 +38,10 @@ export PYTHON_DOTENV_DISABLED=1
 ../.venv/bin/prism evaluate specs/etf_core.toml --engine historical_constant_weight --smoke
 ```
 
-Run these in an environment without broker credentials. The CLI normally searches
-for `.env` upward from the current directory; a nested worktree can therefore
-inherit the parent checkout's credentials. `PYTHON_DOTENV_DISABLED=1` disables
+Run these in an environment without broker credentials. The CLI searches for
+`.env` upward from the current directory and stops at the first checkout root
+(a `.git` entry), so a nested worktree does not inherit the parent checkout's
+credentials; a private project with its own `.env` still is one. `PYTHON_DOTENV_DISABLED=1` disables
 loading with the release's installed `python-dotenv`; it does not clear credentials
 already exported in the shell. The synthetic commands require no credentials.
 

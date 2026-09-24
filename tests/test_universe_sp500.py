@@ -269,3 +269,58 @@ def test_write_universe_file_matches_load_universe_contract(tmp_path) -> None:
         if token and token not in loaded:
             loaded.append(token)
     assert loaded == ["A", "B", "X"]
+
+
+def test_unrecorded_exits_close_at_the_earliest_evidence_and_unresolved_phantoms_drop():
+    import pandas as pd
+
+    from prism.io.universe_sp500 import resolve_unrecorded_exits
+
+    membership = pd.DataFrame(
+        [
+            ("KEEP", "2015-01-01", "2026-09-23"),  # a current member: untouched
+            ("PROM", "2016-01-01", "2026-09-23"),  # promoted, then demoted evidence later
+            ("DEAD", "2018-01-01", "2026-09-23"),  # acquired: vendor series ends
+            ("GONE", "2014-01-01", "2026-09-23"),  # no evidence at all
+            ("OLD", "2012-01-01", "2019-06-30"),   # a recorded exit: untouched
+            ("EARLY", "2017-01-01", "2026-09-23"),  # evidence predates the interval: ignored
+        ],
+        columns=["ticker", "start", "end"],
+    )
+    evidence = {
+        "PROM": [(pd.Timestamp("2021-03-22"), "promoted_to_sp500"), (pd.Timestamp("2024-06-24"), "added_to_sp600")],
+        "DEAD": [(pd.Timestamp("2022-10-05"), "vendor_last_bar")],
+        "EARLY": [(pd.Timestamp("2016-05-01"), "added_to_sp600")],
+    }
+    resolved, ledger = resolve_unrecorded_exits(membership, ["KEEP"], asof="2026-09-23", evidence=evidence)
+    ends = {row.ticker: row.end.date().isoformat() for row in resolved.itertuples()}
+    assert ends == {"KEEP": "2026-09-23", "PROM": "2021-03-21", "DEAD": "2022-10-04", "OLD": "2019-06-30"}
+    by = {entry["ticker"]: entry for entry in ledger}
+    assert by["PROM"]["evidence"] == "promoted_to_sp500"
+    assert by["GONE"]["evidence"] == "unresolved" and by["GONE"]["closed_at"] is None
+    assert by["EARLY"]["evidence"] == "unresolved"
+    assert set(by) == {"PROM", "DEAD", "GONE", "EARLY"}
+
+
+def test_subtract_and_union_membership_respect_index_exclusivity():
+    import pandas as pd
+
+    from prism.io.universe_sp500 import subtract_membership, union_membership
+
+    mid = pd.DataFrame(
+        [("GAP", "1990-01-01", "2026-09-23"), ("ZZZ", "2020-01-01", "2020-12-31")], columns=["ticker", "start", "end"]
+    )
+    large = pd.DataFrame(
+        [("GAP", "2000-01-01", "2022-02-02"), ("GAP", "2024-01-01", "2024-06-30")], columns=["ticker", "start", "end"]
+    )
+    clean = subtract_membership(mid, large)
+    spans = [(r.ticker, r.start.date().isoformat(), r.end.date().isoformat()) for r in clean.itertuples()]
+    assert spans == [
+        ("GAP", "1990-01-01", "1999-12-31"),
+        ("GAP", "2022-02-03", "2023-12-31"),
+        ("GAP", "2024-07-01", "2026-09-23"),
+        ("ZZZ", "2020-01-01", "2020-12-31"),
+    ]
+    union = union_membership(clean, large)
+    spans = [(r.ticker, r.start.date().isoformat(), r.end.date().isoformat()) for r in union.itertuples()]
+    assert spans == [("GAP", "1990-01-01", "2026-09-23"), ("ZZZ", "2020-01-01", "2020-12-31")]

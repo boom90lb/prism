@@ -1,0 +1,227 @@
+# The characteristics composite (SPEC.md §5.3; docs/characteristics_design.md).
+#
+# What this file is for. It declares the space the search may occupy: six arms
+# that differ only in the weight each of three declared characteristics carries
+# in one position-space book, the inputs frozen across them, and the rules that
+# stop the search and gate promotion. Strict mode is defined against this
+# declaration: a run is refused unless its resolved `config_id` equals that of
+# a declared arm at a declared capital scenario. A weight, a window, a fourth
+# characteristic or a different rank-to-weight rule is a declared arm or it is
+# not run; adding one after seeing a result is a new registration with its own
+# id, never an edit of this file.
+#
+# What the experiment asks. Whether residual momentum, idiosyncratic volatility,
+# or a fixed equal-weight composite of either or both with the existing 12-1
+# momentum book changes the net outcome of that book on its own frozen dataset,
+# fold geometry, cost stack and accounting engine. The comparison is
+# same-sample: it can kill a configuration and it cannot promote one. No arm
+# promotes out of this registration; see [promotion_rule].
+id = "2026-09-characteristics"
+created = 2026-09-16
+selection_set = "characteristics_v1"
+strict = true
+# One attempt is one `arm_id`. Six arms, six attempts, no reserve: the set closes
+# when the six have run. A retry after a crash carries kind = "retry" and
+# spends none.
+trial_budget = 6
+
+# The three components every arm scores. `expected_sign` is positive for all
+# three because each node emits its characteristic with the long leg on top:
+# the idiosyncratic-volatility node emits *minus* the residual standard
+# deviation so that the decile rule is long low volatility (the node docstring
+# fixes that convention). `path` and `scoring_basis` restate what the control
+# specification and the class declare; a disagreement refuses the registration.
+[[components]]
+id = "momentum"
+path = "prism.signal.momentum_node:MomentumSignalNode"
+expected_sign = "positive"
+scoring_basis = "price"
+
+[[components]]
+id = "residual_momentum"
+path = "prism.signal.residual_momentum_node:ResidualMomentumSignalNode"
+expected_sign = "positive"
+scoring_basis = "price"
+
+[[components]]
+id = "idiosyncratic_vol"
+path = "prism.signal.idiosyncratic_vol_node:IdiosyncraticVolSignalNode"
+expected_sign = "positive"
+scoring_basis = "price"
+
+# Every arm is heuristic, so no calibration is read; the risk model acts only
+# through the experiment profile's variance-budget limit, exactly as it did for
+# the decile control of `registrations/2026-09-construction.toml`. The block is
+# restated in full because the loader requires it and because a reader of the
+# two registrations should see the same shared inputs.
+[shared]
+risk_model = "examples/reference/risk/factor_diagonal.toml"
+calibration_family = "calibrations/shared_slope_point.toml"
+standardize = "rank_normal"
+weighting = "per_date_equal"
+shrink_pseudo_periods = 12.0
+block_periods = 3
+min_training_periods = 12
+min_blocks = 4
+risk_aversion = 0.0
+eps = 1.0e-8
+max_at_cap_fraction = 0.35
+eligibility_exit = "reduce_only"
+
+# Arm 1. The control: the momentum book alone, under the experiment profile.
+[[arms]]
+id = "momentum_control"
+profile = "examples/reference/profiles/experiment_v1.toml"
+
+[arms.construction]
+kind = "heuristic"
+to_weights = "decile_long_short"
+decile = 0.10
+
+[arms.components]
+momentum = 1.0
+residual_momentum = 0.0
+idiosyncratic_vol = 0.0
+
+# Arm 2. Residual momentum alone: the standalone read of the characteristic.
+[[arms]]
+id = "residual_momentum_only"
+profile = "examples/reference/profiles/experiment_v1.toml"
+
+[arms.construction]
+kind = "heuristic"
+to_weights = "decile_long_short"
+decile = 0.10
+
+[arms.components]
+momentum = 0.0
+residual_momentum = 1.0
+idiosyncratic_vol = 0.0
+
+# Arm 3. Idiosyncratic volatility alone.
+[[arms]]
+id = "idiosyncratic_vol_only"
+profile = "examples/reference/profiles/experiment_v1.toml"
+
+[arms.construction]
+kind = "heuristic"
+to_weights = "decile_long_short"
+decile = 0.10
+
+[arms.components]
+momentum = 0.0
+residual_momentum = 0.0
+idiosyncratic_vol = 1.0
+
+# Arm 4. Momentum and residual momentum, equal weight.
+[[arms]]
+id = "momentum_residual_momentum"
+profile = "examples/reference/profiles/experiment_v1.toml"
+
+[arms.construction]
+kind = "heuristic"
+to_weights = "decile_long_short"
+decile = 0.10
+
+[arms.components]
+momentum = 0.5
+residual_momentum = 0.5
+idiosyncratic_vol = 0.0
+
+# Arm 5. Momentum and idiosyncratic volatility, equal weight.
+[[arms]]
+id = "momentum_idiosyncratic_vol"
+profile = "examples/reference/profiles/experiment_v1.toml"
+
+[arms.construction]
+kind = "heuristic"
+to_weights = "decile_long_short"
+decile = 0.10
+
+[arms.components]
+momentum = 0.5
+residual_momentum = 0.0
+idiosyncratic_vol = 0.5
+
+# Arm 6. All three, equal weight.
+[[arms]]
+id = "composite_three"
+profile = "examples/reference/profiles/experiment_v1.toml"
+
+[arms.construction]
+kind = "heuristic"
+to_weights = "decile_long_short"
+decile = 0.10
+
+[arms.components]
+momentum = 0.3333333333333333
+residual_momentum = 0.3333333333333333
+idiosyncratic_vol = 0.3333333333333333
+
+# The sample and fold geometry are the recorded B1 evidence's own, shared with
+# `registrations/2026-09-construction.toml`. `warmup_bars` is 252 + 21, which
+# every component's required history (253 for the two residual nodes, 253 for
+# momentum) satisfies within the table's 312 formation bars.
+[sample]
+history_start = 2020-01-02
+first_decision = 2021-03-30
+last_decision = 2026-06-12
+warmup_bars = 273
+decision_offset_minutes = 0
+
+[folds]
+table = "folds/demotion_b1.toml"
+
+# One capital scenario. The construction experiment's six scenarios moved the
+# decile control's annualized net Sharpe between 0.525 and 0.679 with no
+# ordering (`docs/construction_experiment_read_2026-09-08.md`); this
+# registration asks about characteristics, not capacity, and spends its
+# multiplicity on arms. $100,000 is the scenario the reference book's own
+# rounding exercise is stated at.
+[frozen]
+freeze_record = "data/frozen/characteristics_v1.freeze.json"
+executable_return = "open_to_open"
+cost_stack = "examples/reference/costs/retail_v1.toml"
+execution_profile = "examples/reference/profiles/execution_alpaca.toml"
+accounting_engine = "canonical"
+visibility_mode = "research_vintage"
+fold_portfolio = "carry"
+cost_refresh = "fold"
+capital_scenarios = [100000]
+capital_unit = "usd_marked_equity_at_first_decision"
+
+[evidence]
+robust_dsr_threshold = 0.95
+min_obs = 20
+
+[sharpe_bootstrap]
+frequency = "daily"
+block_bars = 42
+n_resamples = 2000
+seed = 20260916
+scheme = "circular"
+paired = true
+
+# Kill rule (docs/characteristics_design.md §5): an arm whose paired
+# studentized 95% interval for (arm minus control) net periodic Sharpe lies
+# entirely below zero is dead. The set closes when the six declared arms have
+# run; no arm may be added.
+[stop_rule]
+kind = "structured"
+min_obs = 20
+note = "The set closes when the six declared arms have run; no arm may be added. An arm whose paired interval against the control lies entirely below zero is killed."
+
+# Same-sample comparison: no arm promotes. A surviving composite arm that beats
+# the control in point estimate is a *candidate* for a new, prospective
+# registration on data after this file's date plus the paper stream (SPEC §4),
+# and nothing recorded here may be cited for that promotion.
+[promotion_rule]
+kind = "none"
+note = "Same-sample characteristics comparison; no arm promotes. A surviving arm becomes a candidate for a new prospective registration and nothing here is cited for it."
+
+[benchmark]
+cash_series = "tbill_3m"
+cash_source = "FRED:DTB3"
+cash_conversion = "discount_to_bond_equivalent_then_daily_accrual"
+day_count = "act/365"
+control = "examples/characteristics/control.toml"

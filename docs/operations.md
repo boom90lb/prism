@@ -248,3 +248,28 @@ random-walk prices, which masked three real bugs (vendor interval string,
 ensemble member persistence, predict-frame column set). When changing
 data/model/backtest plumbing, prefer a real or schema-faithful fixture;
 `tests/test_real_pipeline_regressions.py` guards these specific paths.
+
+## 2026-09-23: `--no-submit` rehearsal after the engine overhaul
+
+Run from the repository root against the live run directory, exactly the
+nightly wrapper's arguments plus `--no-submit`:
+
+```sh
+.venv/bin/python -m prism.scripts.paper_loop --book momentum \
+  --universe-file data/universe/sp500_current.txt \
+  --run-dir runs/paper_loop_momentum2 --spinoff-mask --regime --no-submit
+```
+
+Result (Run, commit `f477e5a` plus an uncommitted research script): exit 0;
+panels 752 bars x 502 symbols through 2026-09-23 from Alpaca; state migrated
+v2 -> v3 in the scratch copy (99 positions, cash 937,669.47, 0 pending);
+equity marked 986,600.94; 7 names held out by the spin-off mask; decision bar
+2026-09-23 would submit 119 orders, 627,630.21 notional, gross 1.0102, with 4
+dust orders dropped by whole-share rounding; live monitor `inconclusive`
+(n = 16). `NOTHING WAS SENT TO THE VENUE`; no `SUBMITTING ORDERS` line; the
+run directory's ledgers are unchanged (only `.lock` was touched).
+
+The first real session after re-arming is therefore a full rebalance of a book
+last refreshed 2026-08-11, not an incremental one. Re-arming the Windows Task
+Scheduler entries for `ops/paper_loop_nightly.sh` (weekdays 18:30 PT) and
+`ops/paper_sweep_morning.sh` (weekdays 06:50 PT) remains the owner's act.

@@ -411,6 +411,7 @@ def _decide(spec: Specification, view: DatasetView, day: str, universe: Sequence
     close = view.panel(members, day, "close")
     volume = view.panel(members, day, "volume")
     eligible = _eligibility_mask(spec.strategy.eligibility, view, close, volume, members)
+    _bind_membership_loaded(spec, view, close)
 
     total: pd.Series | None = None
     holding_weight = 0.0
@@ -2436,6 +2437,11 @@ def _evaluate_stateful(
         calibration = None
         excluded = False
         reason: str | None = None
+        # Fold admission scores every component over the formation window
+        # below; a component that trains on past cross-sections needs the
+        # point-in-time membership mask here as much as at a decision bar. The
+        # view is the fit cutoff's, so no row after the cutoff is bound.
+        _bind_membership(spec, fit_view, plans, close)
         if family is not None:
             fits: dict[str, object] = {}
             records: dict[str, object] = {}
@@ -3115,6 +3121,7 @@ def _score_bar(
     panels: dict[str, pd.DataFrame] = {"price": close}
     if needs_total_return:
         panels["total_return"] = view.total_return(scored, day)
+    _bind_membership(spec, view, plans, close)
     earliest = resolved.session_labels[max(0, position - history + 1)]
     result = compose(
         list(plans),
@@ -3268,6 +3275,42 @@ def _replay_targets(
         index=pd.DatetimeIndex(stamps),
         columns=list(universe),
     )
+
+
+def _bind_membership(spec: Specification, view: DatasetView, plans: Sequence[ComponentPlan], close: pd.DataFrame) -> None:
+    """Bind the bar x sid point-in-time membership mask to every component that declares it needs one.
+
+    A component whose fit reaches back over past cross-sections (the learned
+    cross-section node) must train only on names that were index members on
+    those bars; the panel it is handed spans every sid in the evaluated
+    universe, including names that join the index after the decision bar. The
+    mask's rows up to the decision bar depend only on whether each bar lies in
+    a visible membership interval, so binding it adds nothing the decision bar
+    could not know (N1). A spec with no universe index binds an all-True mask:
+    its universe is the declared list, which has no membership history.
+    """
+    wanting = [plan.component for plan in plans if bool(getattr(plan.component, "uses_membership", False))]
+    if not wanting:
+        return
+    if spec.strategy.universe_index is None:
+        mask = pd.DataFrame(True, index=close.index, columns=close.columns, dtype=bool)
+    else:
+        mask = view.membership_mask(spec.strategy.universe_index, close.index, list(close.columns))
+    for component in wanting:
+        component.bind_membership(mask)
+
+
+def _bind_membership_loaded(spec: Specification, view: DatasetView, close: pd.DataFrame) -> None:
+    """:func:`_bind_membership` for the stateless path, which scores loaded components directly."""
+    wanting = [loaded.component for loaded in spec.components if bool(getattr(loaded.component, "uses_membership", False))]
+    if not wanting:
+        return
+    if spec.strategy.universe_index is None:
+        mask = pd.DataFrame(True, index=close.index, columns=close.columns, dtype=bool)
+    else:
+        mask = view.membership_mask(spec.strategy.universe_index, close.index, list(close.columns))
+    for component in wanting:
+        component.bind_membership(mask)
 
 
 def _close_and_volume(view: DatasetView, members: Sequence[str], day: str) -> tuple[pd.DataFrame, pd.DataFrame]:

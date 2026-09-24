@@ -1,0 +1,119 @@
+# The control book of the characteristics composite registration
+# (`registrations/2026-09-characteristics.toml`; docs/characteristics_design.md).
+#
+# This is the recorded B1 momentum book — every momentum value below is the
+# one `examples/momentum/demotion_b1.toml` restates from
+# `results/demotion_b1/config.json` — with two further characteristic nodes
+# declared beside it at weight zero. The zeros are the point: every arm of the
+# registration runs this same three-component book and differs only in the
+# `[arms.components]` weights it assigns, so the freeze materializes all three
+# score panels once, every arm scores every component on every decision bar,
+# and the control arm holds exactly the momentum book. A component at weight
+# zero contributes nothing to the composed target (position-space sum,
+# `renormalize = false`) and nothing to gross.
+#
+# Nothing here is chosen against a result. The residual-momentum node's window
+# and skip are momentum's own (252 / 21); the idiosyncratic-volatility node's
+# estimation window is the same 252 bars and its dispersion window is one
+# quarter (63). Both are the published characteristics' conventional
+# parameters, declared once, before any run.
+
+[strategy]
+name = "characteristics_control"
+universe_index = "sp500"
+combination = "position_space"
+renormalize = false
+
+[[strategy.components]]
+id = "momentum"
+path = "prism.signal.momentum_node:MomentumSignalNode"
+weight = 1.0
+horizon_bars = 21
+update_every_bars = 21
+valid_for_bars = 21
+to_weights = "decile_long_short"
+
+[strategy.components.params]
+lookback_bars = 252
+skip_bars = 21
+horizon_bars = 21
+
+[strategy.components.to_weights_params]
+decile = 0.10
+max_gross = 1.0
+max_symbol_abs_weight = 0.35
+
+[[strategy.components]]
+id = "residual_momentum"
+path = "prism.signal.residual_momentum_node:ResidualMomentumSignalNode"
+weight = 0.0
+horizon_bars = 21
+update_every_bars = 21
+valid_for_bars = 21
+to_weights = "decile_long_short"
+
+[strategy.components.params]
+lookback_bars = 252
+skip_bars = 21
+horizon_bars = 21
+
+[strategy.components.to_weights_params]
+decile = 0.10
+max_gross = 1.0
+max_symbol_abs_weight = 0.35
+
+[[strategy.components]]
+id = "idiosyncratic_vol"
+path = "prism.signal.idiosyncratic_vol_node:IdiosyncraticVolSignalNode"
+weight = 0.0
+horizon_bars = 21
+update_every_bars = 21
+valid_for_bars = 21
+to_weights = "decile_long_short"
+
+[strategy.components.params]
+estimation_bars = 252
+vol_bars = 63
+horizon_bars = 21
+
+[strategy.components.to_weights_params]
+decile = 0.10
+max_gross = 1.0
+max_symbol_abs_weight = 0.35
+
+# The screen the recorded B1 run applied (`examples/momentum/demotion_b1.toml`).
+[strategy.eligibility]
+min_price = 5.0
+min_median_dollar_volume = 1000000.0
+dollar_volume_window = 20
+return_history_bars = 252
+listing_seasoning_bars = 0
+membership_required = true
+exclude_asset_classes = []
+
+[construction]
+kind = "heuristic"
+step_order = "construct_band_cap_participation"
+max_gross = 1.0
+max_symbol_abs_weight = 0.35
+
+[construction.band]
+mode = "closed_form"
+gamma_risk = 1.0
+
+[construction.participation]
+max_participation = 0.05
+statistic = "median"
+window_bars = 20
+floor_dollars = 0.0
+base = "initial_capital"
+
+[construction.spread]
+mode = "bucket"
+
+[policy]
+profile = "examples/reference/profiles/experiment_v1.toml"
+costs = "examples/reference/costs/retail_v1.toml"
+execution = "examples/reference/profiles/execution_alpaca.toml"
+monitoring = "examples/reference/policies/monitoring.toml"
+recovery = "examples/reference/policies/recovery.toml"

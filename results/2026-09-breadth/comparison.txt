@@ -1,0 +1,25 @@
+registration 2026-09-breadth  sha256 2d34314e79b2
+selection set breadth_v1  arms sp500_control, sp400_only, sp900_union
+held fixed: accounting_engine=canonical, capital=100000.0, data_id=d8e74fc489c48e2eef13922b44a37b2dfe5e0ae5b4b94e289e0bd4e1f3071c5c, executable_return=next_open_fill_marked_close_to_close, vintage=breadth_v1_2026-06-16, visibility_mode=research_vintage
+differs by design: cost_refresh, engine
+promotion check: no arm promotes (rule kind='none')
+excluded folds (shared across every arm: True): 0, 1, 2, 3
+
+   capital arm                      sharpe  ann.ret     cost  turnover  at_cap   ex_sd  repair none/scale/drop  flat
+--------------------------------------------------------------------------------------------------------------------
+   100,000 sp400_only               0.5753   0.0362   0.0315     33.34   0.000     nan        51/0/0     0
+   100,000 sp500_control            0.6789   0.0428   0.0209     31.64   0.000     nan        51/0/0     0
+   100,000 sp900_union              0.6379   0.0402   0.0257     32.56   0.000     nan        51/0/0     0
+
+studentized Sharpe differences, circular_moving blocks of 42 bars, 2000 resamples, seed 20260923, hac_lags 41, decision interval 21 bars, studentized_circular_block_bootstrap
+  the statistic is the per-bar (periodic) Sharpe difference; the annualized column is the same interval scaled by sqrt(252)
+   capital difference                                       diff    lower    upper      p  diff/yr  lower/yr  upper/yr
+----------------------------------------------------------------------------------------------------------------------
+   100,000 sp500_control_minus_sp400_only                 0.0065  -0.0295   0.0394  0.724   0.1036   -0.4690    0.6260
+   100,000 sp500_control_minus_sp900_union                0.0026  -0.0165   0.0181  0.777   0.0410   -0.2612    0.2867
+   100,000 sp400_only_minus_sp900_union                  -0.0039  -0.0243   0.0161  0.711  -0.0626   -0.3855    0.2558
+
+intervals computed: 3
+warning: run-f8560b90110d4f6f: fill_source=simulated; fills are not actual fills
+warning: run-4c6ae7920439493c: fill_source=simulated; fills are not actual fills
+warning: run-4e615a90adb840d5: fill_source=simulated; fills are not actual fills

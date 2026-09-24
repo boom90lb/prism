@@ -1,0 +1,60 @@
+{
+  "component_panel_sha256": {
+    "x0": "2bf9b72c2f531a6c00d256ce745d0035460f856697a6f530aa678d4b59ce5e70",
+    "x1": "bb42116f269c9f211ed1c7cf53eca7c4a044bbd0fe9e1558a1215491584aa7d4",
+    "x2": "79ae597cb3697fbbe15f5061529c1e3ee27d48d42f0876a61ddaf92e69ce025c",
+    "x3": "ecb010e788148383a0bd96979077498f8a98bbc9cc2a7a0bee1bf30bcd3e3971",
+    "x4": "47139ee12055ec3856a0a745d5478346bb198038e63a2702e27e931232d6eb6b"
+  },
+  "components": [
+    {
+      "component_id": "x0",
+      "horizon_bars": 21,
+      "import_path": "prism.signal.learned_xsection_node:LearnedCrossSectionNode",
+      "source_sha256": null,
+      "update_every_bars": 21
+    },
+    {
+      "component_id": "x1",
+      "horizon_bars": 21,
+      "import_path": "prism.signal.learned_xsection_node:LearnedCrossSectionNode",
+      "source_sha256": null,
+      "update_every_bars": 21
+    },
+    {
+      "component_id": "x2",
+      "horizon_bars": 21,
+      "import_path": "prism.signal.learned_xsection_node:LearnedCrossSectionNode",
+      "source_sha256": null,
+      "update_every_bars": 21
+    },
+    {
+      "component_id": "x3",
+      "horizon_bars": 21,
+      "import_path": "prism.signal.learned_xsection_node:LearnedCrossSectionNode",
+      "source_sha256": null,
+      "update_every_bars": 21
+    },
+    {
+      "component_id": "x4",
+      "horizon_bars": 21,
+      "import_path": "prism.signal.learned_xsection_node:LearnedCrossSectionNode",
+      "source_sha256": null,
+      "update_every_bars": 21
+    }
+  ],
+  "data_id": "bedf8c4c0f0c2195ce5aace938f4ad38e23e6b69b57075080073004692d46eef",
+  "first_row": "2024-04-02",
+  "fold_table_sha256": "889a926f8040383c0f6e7d31ecb5795d42e86aec4c76f34f42756271feefde8b",
+  "last_row": "2026-06-05",
+  "n_decision_rows": 27,
+  "n_universe": 574,
+  "note": "the panel is materialized from this dataset, this universe and this component identity under the recorded visibility mode; every arm recomputes the same score at each decision bar from the same frozen dataset rather than reading this file, and panel_sha256 is what a reader re-derives",
+  "panel_sha256": "543f98d16e4f7a674ed5ce344a38ce99cf5c96e48026e36c8bedbe9b6a69a06a",
+  "registration_id": "2026-09-learned-xsection",
+  "selection_set": "learned_xsection_v1",
+  "universe_sha256": "dc4d27ae378934b3302fec87cbd4a96389b8ef220c826569e32fdd76703f95b8",
+  "vintage": "demotion_b1_2026-06-16",
+  "visibility_mode": "research_vintage",
+  "warnings": []
+}

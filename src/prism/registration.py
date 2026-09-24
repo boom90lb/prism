@@ -48,6 +48,7 @@ from __future__ import annotations
 import datetime as dt
 import json
 import logging
+import math
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
@@ -197,6 +198,15 @@ class Arm:
     construction: Mapping[str, Any]
     calibration: Path | None = None
     confidence: float | None = None
+    #: ``[arms.components]``: the weight each declared component carries in this
+    #: arm's position-space composition, or None to run the control's own
+    #: weights. Every declared component is listed when the table is present,
+    #: so a zero is an explicit exclusion and never an omission.
+    component_weights: Mapping[str, float] | None = None
+    #: ``universe_index``: the index this arm trades, replacing the control's.
+    #: None runs the control's own universe. The dataset must carry membership
+    #: for it, which the evaluator's universe resolution refuses loudly if not.
+    universe_index: str | None = None
 
 
 @dataclass(frozen=True)
@@ -507,7 +517,7 @@ def load_registration(path: Path | str, *, workspace: Workspace | None = None) -
 
     components = _parse_components(table, where=where)
     shared = _parse_shared(table, root=ws.root, where=where)
-    arms = _parse_arms(table, shared=shared, root=ws.root, where=where)
+    arms = _parse_arms(table, shared=shared, root=ws.root, where=where, component_ids=tuple(c.id for c in components))
     sample = _parse_sample(table, where=where)
     folds_block = _require_table(table, "folds", where=where)
     _reject_unknown(folds_block, {"table"}, where=f"{where} [folds]")
@@ -605,7 +615,14 @@ def _parse_shared(table: Mapping[str, Any], *, root: Path, where: str) -> Shared
     )
 
 
-def _parse_arms(table: Mapping[str, Any], *, shared: Shared, root: Path, where: str) -> tuple[Arm, ...]:
+def _parse_arms(
+    table: Mapping[str, Any],
+    *,
+    shared: Shared,
+    root: Path,
+    where: str,
+    component_ids: tuple[str, ...] = (),
+) -> tuple[Arm, ...]:
     rows = table.get("arms")
     if not isinstance(rows, list) or not rows:
         raise RegistrationError(
@@ -618,7 +635,11 @@ def _parse_arms(table: Mapping[str, Any], *, shared: Shared, root: Path, where: 
         label = f"{where} [[arms]] #{index}"
         if not isinstance(row, Mapping):
             raise RegistrationError(f"{label} is {row!r}, not a table")
-        _reject_unknown(row, {"id", "profile", "calibration", "confidence", "risk_model", "construction"}, where=label)
+        _reject_unknown(
+            row,
+            {"id", "profile", "calibration", "confidence", "risk_model", "construction", "components", "universe_index"},
+            where=label,
+        )
         arm_id = _require_str(row, "id", where=label)
         if arm_id in seen:
             raise RegistrationError(f"{label} repeats arm id {arm_id!r}; an arm id is one attempt against the budget")
@@ -660,6 +681,10 @@ def _parse_arms(table: Mapping[str, Any], *, shared: Shared, root: Path, where: 
                     f"{label} declares confidence={confidence}; a one-sided level lies strictly between "
                     "0.5 and 1.0 (§3.4, decision D6)"
                 )
+        weights = _parse_component_weights(row.get("components"), component_ids=component_ids, where=label)
+        universe_index = row.get("universe_index")
+        if universe_index is not None and (not isinstance(universe_index, str) or not universe_index.strip()):
+            raise RegistrationError(f"{label} declares universe_index={universe_index!r}; it names one index id")
         arms.append(
             Arm(
                 id=arm_id,
@@ -670,9 +695,48 @@ def _parse_arms(table: Mapping[str, Any], *, shared: Shared, root: Path, where: 
                 construction={key: value for key, value in construction.items() if key != "kind"},
                 calibration=calibration,
                 confidence=confidence,
+                component_weights=weights,
+                universe_index=None if universe_index is None else str(universe_index),
             )
         )
     return tuple(arms)
+
+
+def _parse_component_weights(
+    value: Any, *, component_ids: tuple[str, ...], where: str
+) -> dict[str, float] | None:
+    """``[arms.components]``: one finite non-negative weight per declared component.
+
+    The table is the arm's whole difference from the control when the arms of a
+    registration vary *which* characteristics the book holds rather than how it
+    is constructed (SPEC §5.3: one registered selection set, deflated as a
+    whole). It lists every declared component, so an arm that drops one says so
+    with a zero; a partial table is refused because an unlisted component would
+    silently keep the control's weight. At least one weight is positive: an arm
+    that holds nothing is not a configuration.
+    """
+    if value is None:
+        return None
+    label = f"{where} [arms.components]"
+    if not isinstance(value, Mapping):
+        raise RegistrationError(f"{label} is {value!r}, not a table of component weights")
+    declared = set(component_ids)
+    listed = set(str(key) for key in value)
+    if listed != declared:
+        raise RegistrationError(
+            f"{label} weights {sorted(listed)} and the registration declares components "
+            f"{sorted(declared)}; every declared component is weighted explicitly (zero excludes it)"
+        )
+    weights: dict[str, float] = {}
+    for key, raw in value.items():
+        if isinstance(raw, bool) or not isinstance(raw, (int, float)) or not math.isfinite(float(raw)):
+            raise RegistrationError(f"{label} declares {key}={raw!r}, which is not a finite number")
+        if float(raw) < 0.0:
+            raise RegistrationError(f"{label} declares {key}={raw!r}; a component weight is non-negative")
+        weights[str(key)] = float(raw)
+    if not any(weight > 0.0 for weight in weights.values()):
+        raise RegistrationError(f"{label} weights every component at zero; the arm would hold nothing")
+    return weights
 
 
 def _parse_sample(table: Mapping[str, Any], *, where: str) -> Sample:
@@ -996,9 +1060,18 @@ def _control_strategy(control: Mapping[str, Any], *, registration: Registration,
             row.pop("to_weights_params", None)
         else:
             _check_heuristic_restatement(row, arm=arm, component_id=component.id, where=where)
+        if arm.component_weights is not None:
+            # The arm's declared weight replaces the control's for this
+            # component; the parser has already required every declared
+            # component to be listed, so there is no partial override.
+            row["weight"] = float(arm.component_weights[component.id])
         resolved.append(row)
     out = dict(strategy)
     out["components"] = resolved
+    if arm.universe_index is not None:
+        # The arm trades another index of the same dataset; everything else
+        # about the control's strategy is unchanged.
+        out["universe_index"] = arm.universe_index
     out["combination"] = "calibrated_convex" if arm.kind == "convex" else "position_space"
     return out
 

@@ -1,0 +1,213 @@
+# The learned cross-section family's kill-class reads X0-X4
+# (docs/learned_xsection_design.md, RATIFIED 2026-07-19, frozen; A4 opt-in
+# RATIFIED 2026-07-22).
+#
+# What this file is. A seam, not a design: it pins how the frozen design's §3
+# counted probes X0-X4 run under the engine's strict registration mode. No
+# trial value moves. Every probe is one declared arm; each arm holds exactly one
+# of five components (`examples/learned_xsection/control.toml`), each of which
+# differs from X0 in exactly the one value the design's table names. The design
+# is the authority; where this file and the design disagree, this file is
+# wrong.
+#
+# Budget. The family's budget is exactly six counted trials, never refilled
+# (design §3). This registration spends five: X0-X4. X5, the promotion read on
+# a sample extended at least one year past 2026-07-19, is the sixth, and it
+# runs under its own later registration against this same selection set.
+#
+# Promotion. None from here. X0-X4 "can kill, they cannot promote" (design §3,
+# A4 criterion (b)); outputs are firewalled from every cross-family
+# adjudication until this family holds the promotion slot for X5 (A4 (c)).
+id = "2026-09-learned-xsection"
+created = 2026-09-23
+selection_set = "learned_xsection_v1"
+strict = true
+trial_budget = 5
+
+[[components]]
+id = "x0"
+path = "prism.signal.learned_xsection_node:LearnedCrossSectionNode"
+expected_sign = "positive"
+scoring_basis = "price"
+
+[[components]]
+id = "x1"
+path = "prism.signal.learned_xsection_node:LearnedCrossSectionNode"
+expected_sign = "positive"
+scoring_basis = "price"
+
+[[components]]
+id = "x2"
+path = "prism.signal.learned_xsection_node:LearnedCrossSectionNode"
+expected_sign = "positive"
+scoring_basis = "price"
+
+[[components]]
+id = "x3"
+path = "prism.signal.learned_xsection_node:LearnedCrossSectionNode"
+expected_sign = "positive"
+scoring_basis = "price"
+
+[[components]]
+id = "x4"
+path = "prism.signal.learned_xsection_node:LearnedCrossSectionNode"
+expected_sign = "positive"
+scoring_basis = "price"
+
+# Every arm is heuristic (decile long-short on the learned score), so no
+# calibration is read and the risk model acts only through the experiment
+# profile's variance budget, as in `registrations/2026-09-characteristics.toml`.
+[shared]
+risk_model = "examples/reference/risk/factor_diagonal.toml"
+calibration_family = "calibrations/shared_slope_point.toml"
+standardize = "rank_normal"
+weighting = "per_date_equal"
+shrink_pseudo_periods = 12.0
+block_periods = 3
+min_training_periods = 12
+min_blocks = 4
+risk_aversion = 0.0
+eps = 1.0e-8
+max_at_cap_fraction = 0.35
+eligibility_exit = "reduce_only"
+
+[[arms]]
+id = "X0"
+profile = "examples/reference/profiles/experiment_v1.toml"
+
+[arms.construction]
+kind = "heuristic"
+to_weights = "decile_long_short"
+decile = 0.10
+
+[arms.components]
+x0 = 1.0
+x1 = 0.0
+x2 = 0.0
+x3 = 0.0
+x4 = 0.0
+
+[[arms]]
+id = "X1"
+profile = "examples/reference/profiles/experiment_v1.toml"
+
+[arms.construction]
+kind = "heuristic"
+to_weights = "decile_long_short"
+decile = 0.10
+
+[arms.components]
+x0 = 0.0
+x1 = 1.0
+x2 = 0.0
+x3 = 0.0
+x4 = 0.0
+
+[[arms]]
+id = "X2"
+profile = "examples/reference/profiles/experiment_v1.toml"
+
+[arms.construction]
+kind = "heuristic"
+to_weights = "decile_long_short"
+decile = 0.10
+
+[arms.components]
+x0 = 0.0
+x1 = 0.0
+x2 = 1.0
+x3 = 0.0
+x4 = 0.0
+
+[[arms]]
+id = "X3"
+profile = "examples/reference/profiles/experiment_v1.toml"
+
+[arms.construction]
+kind = "heuristic"
+to_weights = "decile_long_short"
+decile = 0.10
+
+[arms.components]
+x0 = 0.0
+x1 = 0.0
+x2 = 0.0
+x3 = 1.0
+x4 = 0.0
+
+[[arms]]
+id = "X4"
+profile = "examples/reference/profiles/experiment_v1.toml"
+
+[arms.construction]
+kind = "heuristic"
+to_weights = "decile_long_short"
+decile = 0.10
+
+[arms.components]
+x0 = 0.0
+x1 = 0.0
+x2 = 0.0
+x3 = 0.0
+x4 = 1.0
+
+# The tradable segment (folds/learned_xsection_v1.toml header). `warmup_bars`
+# is the training runway, 252 + 36 * 21.
+[sample]
+history_start = 2020-01-02
+first_decision = 2024-04-02
+last_decision = 2026-06-12
+warmup_bars = 1008
+decision_offset_minutes = 0
+
+[folds]
+table = "folds/learned_xsection_v1.toml"
+
+# The frozen dataset, cost stack, execution profile, engine and capital of
+# `registrations/2026-09-characteristics.toml`, so that registration's
+# `momentum_control` arm is the same-engine, same-profile sibling the design's
+# spanning read needs on the overlapping segment.
+[frozen]
+freeze_record = "data/frozen/learned_xsection_v1.freeze.json"
+executable_return = "open_to_open"
+cost_stack = "examples/reference/costs/retail_v1.toml"
+execution_profile = "examples/reference/profiles/execution_alpaca.toml"
+accounting_engine = "canonical"
+visibility_mode = "research_vintage"
+fold_portfolio = "carry"
+cost_refresh = "fold"
+capital_scenarios = [100000]
+capital_unit = "usd_marked_equity_at_first_decision"
+
+[evidence]
+robust_dsr_threshold = 0.95
+min_obs = 20
+
+[sharpe_bootstrap]
+frequency = "daily"
+block_bars = 42
+n_resamples = 2000
+seed = 20260718
+scheme = "circular"
+paired = true
+
+# Design §4, pre-committed: dropped without appeal if the median net annualized
+# Sharpe of X1-X4 is negative, or if any single probe flips the sign of the net
+# result at magnitude greater than X0's own point estimate. Cost-wall
+# inheritance: cost_to_gross_pnl >= 1 in >= 40% of folds records the cert-001
+# condition-2 read for that configuration.
+[stop_rule]
+kind = "structured"
+min_obs = 20
+note = "Design §4 fragility kill over X1-X4, plus the cost-wall inheritance read. The set's X0-X4 close when the five arms have run."
+
+[promotion_rule]
+kind = "none"
+note = "X0-X4 can kill and cannot promote (design §3, A4 (b)). Promotion is X5 only, under its own registration, on data at least one year past 2026-07-19."
+
+[benchmark]
+cash_series = "tbill_3m"
+cash_source = "FRED:DTB3"
+cash_conversion = "discount_to_bond_equivalent_then_daily_accrual"
+day_count = "act/365"
+control = "examples/learned_xsection/control.toml"

@@ -1,0 +1,260 @@
+{
+  "arms": {
+    "X0": {
+      "annualized_return": 0.1342414303674393,
+      "annualized_vol": 0.13432291482817132,
+      "breadth": {
+        "avg_names_held": 98.32,
+        "n_active_days": 299,
+        "n_eff_book_contribution": 24.514954160903237,
+        "n_ever_held": 381,
+        "top_eigenvalue_shares": [
+          0.15430199139319975,
+          0.08556842854711666,
+          0.04200018479525712
+        ]
+      },
+      "charged_cost_total": 0.007311124859099174,
+      "config_id": "7d0f93abc48bb25e25cea88b4a4a416959565019add29c78fb3d0fb559121e2f",
+      "dsr_vs_set": 0.7693644285116288,
+      "evidence_tier": "net_edge",
+      "excluded_folds": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "gross_sharpe_annualized": 1.0508378173140398,
+      "held_book_ic": {
+        "mean": 0.057793655331557094,
+        "n": 14,
+        "note": "held names only (long leg vs short leg separation), one cross-section per decision bar",
+        "se": 0.06629342830742563
+      },
+      "max_drawdown": 0.06639418033234334,
+      "n_decision_rows": 15,
+      "n_obs": 300,
+      "net_sharpe_annualized": 1.0052389137039246,
+      "net_sharpe_periodic": 0.06332409937774532,
+      "psr_vs_zero": 0.8563821987747597,
+      "run_id": "run-3d17ef1f3a5a4f02",
+      "turnover_total": 13.572852445428264
+    },
+    "X1": {
+      "annualized_return": 0.13519433562604521,
+      "annualized_vol": 0.13474394036128295,
+      "breadth": {
+        "avg_names_held": 98.32,
+        "n_active_days": 299,
+        "n_eff_book_contribution": 24.47134407567106,
+        "n_ever_held": 381,
+        "top_eigenvalue_shares": [
+          0.15459457949551986,
+          0.08560203078735075,
+          0.042272912811917675
+        ]
+      },
+      "charged_cost_total": 0.007333169975284168,
+      "config_id": "f2d89b08eae59618aa03a1ae2b66ac73a62950aca05acc725ab71336a803a8b7",
+      "dsr_vs_set": 0.7703996782218093,
+      "evidence_tier": "net_edge",
+      "excluded_folds": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "gross_sharpe_annualized": 1.0543807687420939,
+      "held_book_ic": {
+        "mean": 0.05976660608709722,
+        "n": 14,
+        "note": "held names only (long leg vs short leg separation), one cross-section per decision bar",
+        "se": 0.06671505978331684
+      },
+      "max_drawdown": 0.0665370891167607,
+      "n_decision_rows": 15,
+      "n_obs": 300,
+      "net_sharpe_annualized": 1.0087593266929586,
+      "net_sharpe_periodic": 0.06354586455110783,
+      "psr_vs_zero": 0.8571208673504755,
+      "run_id": "run-5de9e258aedd4873",
+      "turnover_total": 13.62629418602971
+    },
+    "X2": {
+      "annualized_return": 0.1599463141627986,
+      "annualized_vol": 0.13840224811021107,
+      "breadth": {
+        "avg_names_held": 98.32,
+        "n_active_days": 299,
+        "n_eff_book_contribution": 23.572312919796005,
+        "n_ever_held": 385,
+        "top_eigenvalue_shares": [
+          0.15676015864545317,
+          0.09080651977702364,
+          0.04317791440936351
+        ]
+      },
+      "charged_cost_total": 0.007221521898617859,
+      "config_id": "1f873343c42e529842d810f22b0bb126e85a6a0b4903406f01fcaa09658ae70f",
+      "dsr_vs_set": 0.8091549704554007,
+      "evidence_tier": "net_edge",
+      "excluded_folds": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "gross_sharpe_annualized": 1.1854267239605085,
+      "held_book_ic": {
+        "mean": 0.07787263596669465,
+        "n": 14,
+        "note": "held names only (long leg vs short leg separation), one cross-section per decision bar",
+        "se": 0.07000781287544479
+      },
+      "max_drawdown": 0.07081116484833605,
+      "n_decision_rows": 15,
+      "n_obs": 300,
+      "net_sharpe_annualized": 1.1416776130449395,
+      "net_sharpe_periodic": 0.0719189295601605,
+      "psr_vs_zero": 0.8849020655423272,
+      "run_id": "run-2ffbe998048b4148",
+      "turnover_total": 13.187941233649482
+    },
+    "X3": {
+      "annualized_return": 0.05703873892022293,
+      "annualized_vol": 0.1364214716452519,
+      "breadth": {
+        "avg_names_held": 98.32,
+        "n_active_days": 299,
+        "n_eff_book_contribution": 25.023299110271395,
+        "n_ever_held": 419,
+        "top_eigenvalue_shares": [
+          0.15445151540614724,
+          0.08184775972522003,
+          0.04229726274662122
+        ]
+      },
+      "charged_cost_total": 0.008126421888006625,
+      "config_id": "071c1b9464f3eed2a995b2a52a9ad9b2ac684e898854557638396cb5339c5786",
+      "dsr_vs_set": 0.5706954654850757,
+      "evidence_tier": "net_edge",
+      "excluded_folds": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "gross_sharpe_annualized": 0.524974443833888,
+      "held_book_ic": {
+        "mean": -0.003966728545672556,
+        "n": 14,
+        "note": "held names only (long leg vs short leg separation), one cross-section per decision bar",
+        "se": 0.0728891963482638
+      },
+      "max_drawdown": 0.08078986019374756,
+      "n_decision_rows": 15,
+      "n_obs": 300,
+      "net_sharpe_annualized": 0.474964759918125,
+      "net_sharpe_periodic": 0.029919967530068037,
+      "psr_vs_zero": 0.6952425418278738,
+      "run_id": "run-b471a03573cc45bc",
+      "turnover_total": 16.21030847793249
+    },
+    "X4": {
+      "annualized_return": 0.07983880310363078,
+      "annualized_vol": 0.10088637855604811,
+      "breadth": {
+        "avg_names_held": 98.39,
+        "n_active_days": 299,
+        "n_eff_book_contribution": 35.82725346208239,
+        "n_ever_held": 439,
+        "top_eigenvalue_shares": [
+          0.10188246394332322,
+          0.08647281873448875,
+          0.03973289085126713
+        ]
+      },
+      "charged_cost_total": 0.00866578532729886,
+      "config_id": "ff7c57f8aaeae0457333579fa12af5f19e4abee0577a3bc329e99352c32b4868",
+      "dsr_vs_set": 0.7034768431944344,
+      "evidence_tier": "net_edge",
+      "excluded_folds": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "gross_sharpe_annualized": 0.8842242372224379,
+      "held_book_ic": {
+        "mean": 0.05179959202896961,
+        "n": 14,
+        "note": "held names only (long leg vs short leg separation), one cross-section per decision bar",
+        "se": 0.06579550209454059
+      },
+      "max_drawdown": 0.053631709506741454,
+      "n_decision_rows": 15,
+      "n_obs": 300,
+      "net_sharpe_annualized": 0.8119383526707935,
+      "net_sharpe_periodic": 0.051147308597199424,
+      "psr_vs_zero": 0.8060134450222949,
+      "run_id": "run-b819006753344ca8",
+      "turnover_total": 18.822763146227793
+    }
+  },
+  "dataset": {
+    "data_id": "bedf8c4c0f0c2195ce5aace938f4ad38e23e6b69b57075080073004692d46eef",
+    "root": "data/frozen/demotion_b1"
+  },
+  "deflation": {
+    "method": "deflated_sharpe_ratio_with_n",
+    "n_trials": 5,
+    "trial_periodic_sharpes": {
+      "X0": 0.0633240993777445,
+      "X1": 0.063545864551107,
+      "X2": 0.07191892956015987,
+      "X3": 0.029919967530067093,
+      "X4": 0.05114730859719887
+    }
+  },
+  "records": {
+    "X0": "/home/b90/prism/results/run-3d17ef1f3a5a4f02/record.json",
+    "X1": "/home/b90/prism/results/run-5de9e258aedd4873/record.json",
+    "X2": "/home/b90/prism/results/run-2ffbe998048b4148/record.json",
+    "X3": "/home/b90/prism/results/run-b471a03573cc45bc/record.json",
+    "X4": "/home/b90/prism/results/run-b819006753344ca8/record.json"
+  },
+  "registration": {
+    "arms": [
+      "X0",
+      "X1",
+      "X2",
+      "X3",
+      "X4"
+    ],
+    "id": "2026-09-learned-xsection",
+    "selection_set": "learned_xsection_v1",
+    "trial_budget": 5
+  },
+  "spanning": {
+    "X0~results/2026-09-characteristics/returns/momentum_control.csv": {
+      "alpha_annualized": -0.019199355608454528,
+      "alpha_daily": -7.618791908116876e-05,
+      "alpha_t_newey_west": -0.2752921450920674,
+      "beta": 0.7287828084002883,
+      "beta_t_newey_west": 14.525634844059287,
+      "correlation": 0.7967594341603157,
+      "lags": 21,
+      "n_obs": 300
+    },
+    "X0~results/demotion_b1/returns.csv": {
+      "alpha_annualized": 0.0469095297587914,
+      "alpha_daily": 0.0001861489276142516,
+      "alpha_t_newey_west": 0.5932738239664823,
+      "beta": 0.5066900690993752,
+      "beta_t_newey_west": 12.814042928647382,
+      "correlation": 0.518382864531918,
+      "lags": 21,
+      "n_obs": 300
+    }
+  }
+}

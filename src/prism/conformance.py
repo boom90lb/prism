@@ -817,15 +817,30 @@ def conform_specification(
     close = view.panel(sids, end, "close")
     volume = view.panel(sids, end, "volume")
 
+    # A component that trains on past cross-sections reads point-in-time
+    # membership; bind the same mask the evaluator binds, to the component
+    # under test and to every fresh instance the suite constructs.
+    membership: pd.DataFrame | None = None
+    if any(bool(getattr(loaded.component, "uses_membership", False)) for loaded in spec.components):
+        if spec.strategy.universe_index is None:
+            membership = pd.DataFrame(True, index=close.index, columns=close.columns, dtype=bool)
+        else:
+            membership = view.membership_mask(spec.strategy.universe_index, close.index, list(close.columns))
+
+    def _bound(component: Any) -> Any:
+        if membership is not None and bool(getattr(component, "uses_membership", False)):
+            component.bind_membership(membership)
+        return component
+
     reports = []
     for loaded in spec.components:
         reports.append(
             check_component(
-                loaded.component,
+                _bound(loaded.component),
                 close=close,
                 volume=volume,
                 component_id=loaded.component_id,
-                factory=lambda ls=loaded: instantiate_component(ls.spec, workspace=workspace).component,
+                factory=lambda ls=loaded: _bound(instantiate_component(ls.spec, workspace=workspace).component),
                 check_window_bars=check_window_bars,
                 future_bars=future_bars,
             )

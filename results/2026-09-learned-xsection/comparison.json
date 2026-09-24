@@ -1,0 +1,3368 @@
+{
+  "arms": [
+    {
+      "arm_id": "X0",
+      "by_fold": "unavailable",
+      "capital": 100000.0,
+      "cost_decomposition": {
+        "calibration_source": "unavailable",
+        "cost_refresh": {
+          "cadence": "fold",
+          "charged": {
+            "fallback_bps": 1.0,
+            "max_bps": 10.0,
+            "mean_bps": 2.1955380910128026,
+            "min_bps": 1.0,
+            "mode": "bucket_frame",
+            "n_names": 574
+          },
+          "note": "each fold's cost inputs are estimated on that fold's formation window and recorded above; the cadence says which of them the accounting engine charged. Under 'once' the first window prices the whole stitched simulation, which is causal for every test bar in it; under 'fold' each fold's test bars carry their own buckets",
+          "per_fold": [
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2024-04-01",
+              "fold": 0,
+              "spread_bps": {
+                "buckets": {
+                  "1": 88,
+                  "10": 7,
+                  "2": 318,
+                  "5": 82
+                },
+                "max": 10.0,
+                "mean": 2.4323232323232324,
+                "min": 1.0,
+                "n_names": 495
+              },
+              "start": "2023-01-03"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2024-07-01",
+              "fold": 1,
+              "spread_bps": {
+                "buckets": {
+                  "1": 90,
+                  "10": 7,
+                  "2": 326,
+                  "5": 73
+                },
+                "max": 10.0,
+                "mean": 2.372983870967742,
+                "min": 1.0,
+                "n_names": 496
+              },
+              "start": "2023-04-04"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2024-09-30",
+              "fold": 2,
+              "spread_bps": {
+                "buckets": {
+                  "1": 95,
+                  "10": 7,
+                  "2": 319,
+                  "5": 76
+                },
+                "max": 10.0,
+                "mean": 2.380281690140845,
+                "min": 1.0,
+                "n_names": 497
+              },
+              "start": "2023-07-06"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2024-12-30",
+              "fold": 3,
+              "spread_bps": {
+                "buckets": {
+                  "1": 99,
+                  "10": 6,
+                  "2": 328,
+                  "5": 65
+                },
+                "max": 10.0,
+                "mean": 2.289156626506024,
+                "min": 1.0,
+                "n_names": 498
+              },
+              "start": "2023-10-04"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2025-04-02",
+              "fold": 4,
+              "spread_bps": {
+                "buckets": {
+                  "1": 111,
+                  "10": 5,
+                  "2": 327,
+                  "5": 55
+                },
+                "max": 10.0,
+                "mean": 2.1887550200803214,
+                "min": 1.0,
+                "n_names": 498
+              },
+              "start": "2024-01-04"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2025-07-03",
+              "fold": 5,
+              "spread_bps": {
+                "buckets": {
+                  "1": 114,
+                  "10": 5,
+                  "2": 336,
+                  "5": 44
+                },
+                "max": 10.0,
+                "mean": 2.1162324649298596,
+                "min": 1.0,
+                "n_names": 499
+              },
+              "start": "2024-04-05"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2025-10-02",
+              "fold": 6,
+              "spread_bps": {
+                "buckets": {
+                  "1": 125,
+                  "10": 5,
+                  "2": 335,
+                  "5": 38
+                },
+                "max": 10.0,
+                "mean": 2.05765407554672,
+                "min": 1.0,
+                "n_names": 503
+              },
+              "start": "2024-07-08"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2026-01-02",
+              "fold": 7,
+              "spread_bps": {
+                "buckets": {
+                  "1": 133,
+                  "10": 4,
+                  "2": 338,
+                  "5": 29
+                },
+                "max": 10.0,
+                "mean": 1.9722222222222223,
+                "min": 1.0,
+                "n_names": 504
+              },
+              "start": "2024-10-04"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2026-04-06",
+              "fold": 8,
+              "spread_bps": {
+                "buckets": {
+                  "1": 146,
+                  "10": 4,
+                  "2": 335,
+                  "5": 20
+                },
+                "max": 10.0,
+                "mean": 1.893069306930693,
+                "min": 1.0,
+                "n_names": 505
+              },
+              "start": "2025-01-06"
+            }
+          ],
+          "windows": [
+            {
+              "end": "2024-04-01",
+              "fold": 0,
+              "start": "2023-01-03"
+            },
+            {
+              "end": "2024-07-01",
+              "fold": 1,
+              "start": "2023-04-04"
+            },
+            {
+              "end": "2024-09-30",
+              "fold": 2,
+              "start": "2023-07-06"
+            },
+            {
+              "end": "2024-12-30",
+              "fold": 3,
+              "start": "2023-10-04"
+            },
+            {
+              "end": "2025-04-02",
+              "fold": 4,
+              "start": "2024-01-04"
+            },
+            {
+              "end": "2025-07-03",
+              "fold": 5,
+              "start": "2024-04-05"
+            },
+            {
+              "end": "2025-10-02",
+              "fold": 6,
+              "start": "2024-07-08"
+            },
+            {
+              "end": "2026-01-02",
+              "fold": 7,
+              "start": "2024-10-04"
+            },
+            {
+              "end": "2026-04-06",
+              "fold": 8,
+              "start": "2025-01-06"
+            }
+          ]
+        },
+        "dollar_volume_statistics": {
+          "impact": "unavailable",
+          "participation": {
+            "base": "initial_capital",
+            "floor_dollars": 0.0,
+            "max_participation": 0.05,
+            "statistic": "median",
+            "window_bars": 20
+          },
+          "spread": {
+            "bound": "inclusive_lower",
+            "mode": "bucket",
+            "schedule": [
+              [
+                500000000.0,
+                1.0
+              ],
+              [
+                100000000.0,
+                2.0
+              ],
+              [
+                25000000.0,
+                5.0
+              ],
+              [
+                0.0,
+                10.0
+              ]
+            ],
+            "statistic": "dollar_volume.spread_bucket",
+            "unknown_liquidity": "widest_step",
+            "window": "fold_formation"
+          }
+        },
+        "stack": {
+          "adv_floor_dollars": 100000.0,
+          "adv_impact_coeff": 0.0,
+          "adv_impact_model": "linear",
+          "borrow_rate_bps_annual": 50.0,
+          "commission_bps": 1.0,
+          "default_order_type": "MOO",
+          "slippage_coeff": 10.0,
+          "spread_bps": 1.0,
+          "trading_days_per_year": 252
+        }
+      },
+      "coverage": {
+        "bias_status": "unquantified",
+        "untested_conclusions": [
+          "The comparison is same-sample: three arms read against each other on one frozen score panel, one fold geometry and one cost stack. It can kill a configuration and it cannot promote one; no arm promotes out of this registration (\u00a73.13, [promotion_rule]).",
+          "The calibration's training cross-section is the formation window's point-in-time membership at the fit cutoff, without the per-bar eligibility screen the decision path applies; the screen is applied at every decision bar and to the labels' universe, not bar by bar inside the training pool.",
+          "The frozen dataset carries no cash-distribution events, so the 'credited' label of \u00a73.4 credits zero and the accounting credits zero; the two agree, and neither establishes what a dividend-bearing panel would have produced.",
+          "Fills are simulated at the next open under the declared [fills] policy. No panel here is evidence about actual fills."
+        ]
+      },
+      "exposures": {
+        "avg_gross": 1.0003046775430258,
+        "avg_net": 0.011756091282495924
+      },
+      "flags": {
+        "fill_source": "simulated",
+        "prospective": null,
+        "run_channel": "evidence",
+        "synthetic": false
+      },
+      "gross_sharpe": 0.06619656030654461,
+      "n_periods": 300,
+      "net_mean": 0.0005358199245532301,
+      "net_sharpe": 0.0633240993777445,
+      "run_id": "run-3d17ef1f3a5a4f02",
+      "turnover_mean": 0.04524284148476088
+    },
+    {
+      "arm_id": "X1",
+      "by_fold": "unavailable",
+      "capital": 100000.0,
+      "cost_decomposition": {
+        "calibration_source": "unavailable",
+        "cost_refresh": {
+          "cadence": "fold",
+          "charged": {
+            "fallback_bps": 1.0,
+            "max_bps": 10.0,
+            "mean_bps": 2.1955380910128026,
+            "min_bps": 1.0,
+            "mode": "bucket_frame",
+            "n_names": 574
+          },
+          "note": "each fold's cost inputs are estimated on that fold's formation window and recorded above; the cadence says which of them the accounting engine charged. Under 'once' the first window prices the whole stitched simulation, which is causal for every test bar in it; under 'fold' each fold's test bars carry their own buckets",
+          "per_fold": [
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2024-04-01",
+              "fold": 0,
+              "spread_bps": {
+                "buckets": {
+                  "1": 88,
+                  "10": 7,
+                  "2": 318,
+                  "5": 82
+                },
+                "max": 10.0,
+                "mean": 2.4323232323232324,
+                "min": 1.0,
+                "n_names": 495
+              },
+              "start": "2023-01-03"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2024-07-01",
+              "fold": 1,
+              "spread_bps": {
+                "buckets": {
+                  "1": 90,
+                  "10": 7,
+                  "2": 326,
+                  "5": 73
+                },
+                "max": 10.0,
+                "mean": 2.372983870967742,
+                "min": 1.0,
+                "n_names": 496
+              },
+              "start": "2023-04-04"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2024-09-30",
+              "fold": 2,
+              "spread_bps": {
+                "buckets": {
+                  "1": 95,
+                  "10": 7,
+                  "2": 319,
+                  "5": 76
+                },
+                "max": 10.0,
+                "mean": 2.380281690140845,
+                "min": 1.0,
+                "n_names": 497
+              },
+              "start": "2023-07-06"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2024-12-30",
+              "fold": 3,
+              "spread_bps": {
+                "buckets": {
+                  "1": 99,
+                  "10": 6,
+                  "2": 328,
+                  "5": 65
+                },
+                "max": 10.0,
+                "mean": 2.289156626506024,
+                "min": 1.0,
+                "n_names": 498
+              },
+              "start": "2023-10-04"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2025-04-02",
+              "fold": 4,
+              "spread_bps": {
+                "buckets": {
+                  "1": 111,
+                  "10": 5,
+                  "2": 327,
+                  "5": 55
+                },
+                "max": 10.0,
+                "mean": 2.1887550200803214,
+                "min": 1.0,
+                "n_names": 498
+              },
+              "start": "2024-01-04"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2025-07-03",
+              "fold": 5,
+              "spread_bps": {
+                "buckets": {
+                  "1": 114,
+                  "10": 5,
+                  "2": 336,
+                  "5": 44
+                },
+                "max": 10.0,
+                "mean": 2.1162324649298596,
+                "min": 1.0,
+                "n_names": 499
+              },
+              "start": "2024-04-05"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2025-10-02",
+              "fold": 6,
+              "spread_bps": {
+                "buckets": {
+                  "1": 125,
+                  "10": 5,
+                  "2": 335,
+                  "5": 38
+                },
+                "max": 10.0,
+                "mean": 2.05765407554672,
+                "min": 1.0,
+                "n_names": 503
+              },
+              "start": "2024-07-08"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2026-01-02",
+              "fold": 7,
+              "spread_bps": {
+                "buckets": {
+                  "1": 133,
+                  "10": 4,
+                  "2": 338,
+                  "5": 29
+                },
+                "max": 10.0,
+                "mean": 1.9722222222222223,
+                "min": 1.0,
+                "n_names": 504
+              },
+              "start": "2024-10-04"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2026-04-06",
+              "fold": 8,
+              "spread_bps": {
+                "buckets": {
+                  "1": 146,
+                  "10": 4,
+                  "2": 335,
+                  "5": 20
+                },
+                "max": 10.0,
+                "mean": 1.893069306930693,
+                "min": 1.0,
+                "n_names": 505
+              },
+              "start": "2025-01-06"
+            }
+          ],
+          "windows": [
+            {
+              "end": "2024-04-01",
+              "fold": 0,
+              "start": "2023-01-03"
+            },
+            {
+              "end": "2024-07-01",
+              "fold": 1,
+              "start": "2023-04-04"
+            },
+            {
+              "end": "2024-09-30",
+              "fold": 2,
+              "start": "2023-07-06"
+            },
+            {
+              "end": "2024-12-30",
+              "fold": 3,
+              "start": "2023-10-04"
+            },
+            {
+              "end": "2025-04-02",
+              "fold": 4,
+              "start": "2024-01-04"
+            },
+            {
+              "end": "2025-07-03",
+              "fold": 5,
+              "start": "2024-04-05"
+            },
+            {
+              "end": "2025-10-02",
+              "fold": 6,
+              "start": "2024-07-08"
+            },
+            {
+              "end": "2026-01-02",
+              "fold": 7,
+              "start": "2024-10-04"
+            },
+            {
+              "end": "2026-04-06",
+              "fold": 8,
+              "start": "2025-01-06"
+            }
+          ]
+        },
+        "dollar_volume_statistics": {
+          "impact": "unavailable",
+          "participation": {
+            "base": "initial_capital",
+            "floor_dollars": 0.0,
+            "max_participation": 0.05,
+            "statistic": "median",
+            "window_bars": 20
+          },
+          "spread": {
+            "bound": "inclusive_lower",
+            "mode": "bucket",
+            "schedule": [
+              [
+                500000000.0,
+                1.0
+              ],
+              [
+                100000000.0,
+                2.0
+              ],
+              [
+                25000000.0,
+                5.0
+              ],
+              [
+                0.0,
+                10.0
+              ]
+            ],
+            "statistic": "dollar_volume.spread_bucket",
+            "unknown_liquidity": "widest_step",
+            "window": "fold_formation"
+          }
+        },
+        "stack": {
+          "adv_floor_dollars": 100000.0,
+          "adv_impact_coeff": 0.0,
+          "adv_impact_model": "linear",
+          "borrow_rate_bps_annual": 50.0,
+          "commission_bps": 1.0,
+          "default_order_type": "MOO",
+          "slippage_coeff": 10.0,
+          "spread_bps": 1.0,
+          "trading_days_per_year": 252
+        }
+      },
+      "coverage": {
+        "bias_status": "unquantified",
+        "untested_conclusions": [
+          "The comparison is same-sample: three arms read against each other on one frozen score panel, one fold geometry and one cost stack. It can kill a configuration and it cannot promote one; no arm promotes out of this registration (\u00a73.13, [promotion_rule]).",
+          "The calibration's training cross-section is the formation window's point-in-time membership at the fit cutoff, without the per-bar eligibility screen the decision path applies; the screen is applied at every decision bar and to the labels' universe, not bar by bar inside the training pool.",
+          "The frozen dataset carries no cash-distribution events, so the 'credited' label of \u00a73.4 credits zero and the accounting credits zero; the two agree, and neither establishes what a dividend-bearing panel would have produced.",
+          "Fills are simulated at the next open under the declared [fills] policy. No panel here is evidence about actual fills."
+        ]
+      },
+      "exposures": {
+        "avg_gross": 0.9993739357282082,
+        "avg_net": 0.011590843790012196
+      },
+      "flags": {
+        "fill_source": "simulated",
+        "prospective": null,
+        "run_channel": "evidence",
+        "synthetic": false
+      },
+      "gross_sharpe": 0.06641974526811156,
+      "n_periods": 300,
+      "net_mean": 0.0005393817720428657,
+      "net_sharpe": 0.063545864551107,
+      "run_id": "run-5de9e258aedd4873",
+      "turnover_mean": 0.045420980620099034
+    },
+    {
+      "arm_id": "X2",
+      "by_fold": "unavailable",
+      "capital": 100000.0,
+      "cost_decomposition": {
+        "calibration_source": "unavailable",
+        "cost_refresh": {
+          "cadence": "fold",
+          "charged": {
+            "fallback_bps": 1.0,
+            "max_bps": 10.0,
+            "mean_bps": 2.1955380910128026,
+            "min_bps": 1.0,
+            "mode": "bucket_frame",
+            "n_names": 574
+          },
+          "note": "each fold's cost inputs are estimated on that fold's formation window and recorded above; the cadence says which of them the accounting engine charged. Under 'once' the first window prices the whole stitched simulation, which is causal for every test bar in it; under 'fold' each fold's test bars carry their own buckets",
+          "per_fold": [
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2024-04-01",
+              "fold": 0,
+              "spread_bps": {
+                "buckets": {
+                  "1": 88,
+                  "10": 7,
+                  "2": 318,
+                  "5": 82
+                },
+                "max": 10.0,
+                "mean": 2.4323232323232324,
+                "min": 1.0,
+                "n_names": 495
+              },
+              "start": "2023-01-03"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2024-07-01",
+              "fold": 1,
+              "spread_bps": {
+                "buckets": {
+                  "1": 90,
+                  "10": 7,
+                  "2": 326,
+                  "5": 73
+                },
+                "max": 10.0,
+                "mean": 2.372983870967742,
+                "min": 1.0,
+                "n_names": 496
+              },
+              "start": "2023-04-04"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2024-09-30",
+              "fold": 2,
+              "spread_bps": {
+                "buckets": {
+                  "1": 95,
+                  "10": 7,
+                  "2": 319,
+                  "5": 76
+                },
+                "max": 10.0,
+                "mean": 2.380281690140845,
+                "min": 1.0,
+                "n_names": 497
+              },
+              "start": "2023-07-06"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2024-12-30",
+              "fold": 3,
+              "spread_bps": {
+                "buckets": {
+                  "1": 99,
+                  "10": 6,
+                  "2": 328,
+                  "5": 65
+                },
+                "max": 10.0,
+                "mean": 2.289156626506024,
+                "min": 1.0,
+                "n_names": 498
+              },
+              "start": "2023-10-04"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2025-04-02",
+              "fold": 4,
+              "spread_bps": {
+                "buckets": {
+                  "1": 111,
+                  "10": 5,
+                  "2": 327,
+                  "5": 55
+                },
+                "max": 10.0,
+                "mean": 2.1887550200803214,
+                "min": 1.0,
+                "n_names": 498
+              },
+              "start": "2024-01-04"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2025-07-03",
+              "fold": 5,
+              "spread_bps": {
+                "buckets": {
+                  "1": 114,
+                  "10": 5,
+                  "2": 336,
+                  "5": 44
+                },
+                "max": 10.0,
+                "mean": 2.1162324649298596,
+                "min": 1.0,
+                "n_names": 499
+              },
+              "start": "2024-04-05"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2025-10-02",
+              "fold": 6,
+              "spread_bps": {
+                "buckets": {
+                  "1": 125,
+                  "10": 5,
+                  "2": 335,
+                  "5": 38
+                },
+                "max": 10.0,
+                "mean": 2.05765407554672,
+                "min": 1.0,
+                "n_names": 503
+              },
+              "start": "2024-07-08"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2026-01-02",
+              "fold": 7,
+              "spread_bps": {
+                "buckets": {
+                  "1": 133,
+                  "10": 4,
+                  "2": 338,
+                  "5": 29
+                },
+                "max": 10.0,
+                "mean": 1.9722222222222223,
+                "min": 1.0,
+                "n_names": 504
+              },
+              "start": "2024-10-04"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2026-04-06",
+              "fold": 8,
+              "spread_bps": {
+                "buckets": {
+                  "1": 146,
+                  "10": 4,
+                  "2": 335,
+                  "5": 20
+                },
+                "max": 10.0,
+                "mean": 1.893069306930693,
+                "min": 1.0,
+                "n_names": 505
+              },
+              "start": "2025-01-06"
+            }
+          ],
+          "windows": [
+            {
+              "end": "2024-04-01",
+              "fold": 0,
+              "start": "2023-01-03"
+            },
+            {
+              "end": "2024-07-01",
+              "fold": 1,
+              "start": "2023-04-04"
+            },
+            {
+              "end": "2024-09-30",
+              "fold": 2,
+              "start": "2023-07-06"
+            },
+            {
+              "end": "2024-12-30",
+              "fold": 3,
+              "start": "2023-10-04"
+            },
+            {
+              "end": "2025-04-02",
+              "fold": 4,
+              "start": "2024-01-04"
+            },
+            {
+              "end": "2025-07-03",
+              "fold": 5,
+              "start": "2024-04-05"
+            },
+            {
+              "end": "2025-10-02",
+              "fold": 6,
+              "start": "2024-07-08"
+            },
+            {
+              "end": "2026-01-02",
+              "fold": 7,
+              "start": "2024-10-04"
+            },
+            {
+              "end": "2026-04-06",
+              "fold": 8,
+              "start": "2025-01-06"
+            }
+          ]
+        },
+        "dollar_volume_statistics": {
+          "impact": "unavailable",
+          "participation": {
+            "base": "initial_capital",
+            "floor_dollars": 0.0,
+            "max_participation": 0.05,
+            "statistic": "median",
+            "window_bars": 20
+          },
+          "spread": {
+            "bound": "inclusive_lower",
+            "mode": "bucket",
+            "schedule": [
+              [
+                500000000.0,
+                1.0
+              ],
+              [
+                100000000.0,
+                2.0
+              ],
+              [
+                25000000.0,
+                5.0
+              ],
+              [
+                0.0,
+                10.0
+              ]
+            ],
+            "statistic": "dollar_volume.spread_bucket",
+            "unknown_liquidity": "widest_step",
+            "window": "fold_formation"
+          }
+        },
+        "stack": {
+          "adv_floor_dollars": 100000.0,
+          "adv_impact_coeff": 0.0,
+          "adv_impact_model": "linear",
+          "borrow_rate_bps_annual": 50.0,
+          "commission_bps": 1.0,
+          "default_order_type": "MOO",
+          "slippage_coeff": 10.0,
+          "spread_bps": 1.0,
+          "trading_days_per_year": 252
+        }
+      },
+      "coverage": {
+        "bias_status": "unquantified",
+        "untested_conclusions": [
+          "The comparison is same-sample: three arms read against each other on one frozen score panel, one fold geometry and one cost stack. It can kill a configuration and it cannot promote one; no arm promotes out of this registration (\u00a73.13, [promotion_rule]).",
+          "The calibration's training cross-section is the formation window's point-in-time membership at the fit cutoff, without the per-bar eligibility screen the decision path applies; the screen is applied at every decision bar and to the labels' universe, not bar by bar inside the training pool.",
+          "The frozen dataset carries no cash-distribution events, so the 'credited' label of \u00a73.4 credits zero and the accounting credits zero; the two agree, and neither establishes what a dividend-bearing panel would have produced.",
+          "Fills are simulated at the next open under the declared [fills] policy. No panel here is evidence about actual fills."
+        ]
+      },
+      "exposures": {
+        "avg_gross": 0.9958034446121146,
+        "avg_net": 0.010713245211531523
+      },
+      "flags": {
+        "fill_source": "simulated",
+        "prospective": null,
+        "run_channel": "evidence",
+        "synthetic": false
+      },
+      "gross_sharpe": 0.07467486450213137,
+      "n_periods": 300,
+      "net_mean": 0.0006270267788195153,
+      "net_sharpe": 0.07191892956015987,
+      "run_id": "run-2ffbe998048b4148",
+      "turnover_mean": 0.04395980411216494
+    },
+    {
+      "arm_id": "X3",
+      "by_fold": "unavailable",
+      "capital": 100000.0,
+      "cost_decomposition": {
+        "calibration_source": "unavailable",
+        "cost_refresh": {
+          "cadence": "fold",
+          "charged": {
+            "fallback_bps": 1.0,
+            "max_bps": 10.0,
+            "mean_bps": 2.1955380910128026,
+            "min_bps": 1.0,
+            "mode": "bucket_frame",
+            "n_names": 574
+          },
+          "note": "each fold's cost inputs are estimated on that fold's formation window and recorded above; the cadence says which of them the accounting engine charged. Under 'once' the first window prices the whole stitched simulation, which is causal for every test bar in it; under 'fold' each fold's test bars carry their own buckets",
+          "per_fold": [
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2024-04-01",
+              "fold": 0,
+              "spread_bps": {
+                "buckets": {
+                  "1": 88,
+                  "10": 7,
+                  "2": 318,
+                  "5": 82
+                },
+                "max": 10.0,
+                "mean": 2.4323232323232324,
+                "min": 1.0,
+                "n_names": 495
+              },
+              "start": "2023-01-03"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2024-07-01",
+              "fold": 1,
+              "spread_bps": {
+                "buckets": {
+                  "1": 90,
+                  "10": 7,
+                  "2": 326,
+                  "5": 73
+                },
+                "max": 10.0,
+                "mean": 2.372983870967742,
+                "min": 1.0,
+                "n_names": 496
+              },
+              "start": "2023-04-04"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2024-09-30",
+              "fold": 2,
+              "spread_bps": {
+                "buckets": {
+                  "1": 95,
+                  "10": 7,
+                  "2": 319,
+                  "5": 76
+                },
+                "max": 10.0,
+                "mean": 2.380281690140845,
+                "min": 1.0,
+                "n_names": 497
+              },
+              "start": "2023-07-06"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2024-12-30",
+              "fold": 3,
+              "spread_bps": {
+                "buckets": {
+                  "1": 99,
+                  "10": 6,
+                  "2": 328,
+                  "5": 65
+                },
+                "max": 10.0,
+                "mean": 2.289156626506024,
+                "min": 1.0,
+                "n_names": 498
+              },
+              "start": "2023-10-04"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2025-04-02",
+              "fold": 4,
+              "spread_bps": {
+                "buckets": {
+                  "1": 111,
+                  "10": 5,
+                  "2": 327,
+                  "5": 55
+                },
+                "max": 10.0,
+                "mean": 2.1887550200803214,
+                "min": 1.0,
+                "n_names": 498
+              },
+              "start": "2024-01-04"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2025-07-03",
+              "fold": 5,
+              "spread_bps": {
+                "buckets": {
+                  "1": 114,
+                  "10": 5,
+                  "2": 336,
+                  "5": 44
+                },
+                "max": 10.0,
+                "mean": 2.1162324649298596,
+                "min": 1.0,
+                "n_names": 499
+              },
+              "start": "2024-04-05"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2025-10-02",
+              "fold": 6,
+              "spread_bps": {
+                "buckets": {
+                  "1": 125,
+                  "10": 5,
+                  "2": 335,
+                  "5": 38
+                },
+                "max": 10.0,
+                "mean": 2.05765407554672,
+                "min": 1.0,
+                "n_names": 503
+              },
+              "start": "2024-07-08"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2026-01-02",
+              "fold": 7,
+              "spread_bps": {
+                "buckets": {
+                  "1": 133,
+                  "10": 4,
+                  "2": 338,
+                  "5": 29
+                },
+                "max": 10.0,
+                "mean": 1.9722222222222223,
+                "min": 1.0,
+                "n_names": 504
+              },
+              "start": "2024-10-04"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2026-04-06",
+              "fold": 8,
+              "spread_bps": {
+                "buckets": {
+                  "1": 146,
+                  "10": 4,
+                  "2": 335,
+                  "5": 20
+                },
+                "max": 10.0,
+                "mean": 1.893069306930693,
+                "min": 1.0,
+                "n_names": 505
+              },
+              "start": "2025-01-06"
+            }
+          ],
+          "windows": [
+            {
+              "end": "2024-04-01",
+              "fold": 0,
+              "start": "2023-01-03"
+            },
+            {
+              "end": "2024-07-01",
+              "fold": 1,
+              "start": "2023-04-04"
+            },
+            {
+              "end": "2024-09-30",
+              "fold": 2,
+              "start": "2023-07-06"
+            },
+            {
+              "end": "2024-12-30",
+              "fold": 3,
+              "start": "2023-10-04"
+            },
+            {
+              "end": "2025-04-02",
+              "fold": 4,
+              "start": "2024-01-04"
+            },
+            {
+              "end": "2025-07-03",
+              "fold": 5,
+              "start": "2024-04-05"
+            },
+            {
+              "end": "2025-10-02",
+              "fold": 6,
+              "start": "2024-07-08"
+            },
+            {
+              "end": "2026-01-02",
+              "fold": 7,
+              "start": "2024-10-04"
+            },
+            {
+              "end": "2026-04-06",
+              "fold": 8,
+              "start": "2025-01-06"
+            }
+          ]
+        },
+        "dollar_volume_statistics": {
+          "impact": "unavailable",
+          "participation": {
+            "base": "initial_capital",
+            "floor_dollars": 0.0,
+            "max_participation": 0.05,
+            "statistic": "median",
+            "window_bars": 20
+          },
+          "spread": {
+            "bound": "inclusive_lower",
+            "mode": "bucket",
+            "schedule": [
+              [
+                500000000.0,
+                1.0
+              ],
+              [
+                100000000.0,
+                2.0
+              ],
+              [
+                25000000.0,
+                5.0
+              ],
+              [
+                0.0,
+                10.0
+              ]
+            ],
+            "statistic": "dollar_volume.spread_bucket",
+            "unknown_liquidity": "widest_step",
+            "window": "fold_formation"
+          }
+        },
+        "stack": {
+          "adv_floor_dollars": 100000.0,
+          "adv_impact_coeff": 0.0,
+          "adv_impact_model": "linear",
+          "borrow_rate_bps_annual": 50.0,
+          "commission_bps": 1.0,
+          "default_order_type": "MOO",
+          "slippage_coeff": 10.0,
+          "spread_bps": 1.0,
+          "trading_days_per_year": 252
+        }
+      },
+      "coverage": {
+        "bias_status": "unquantified",
+        "untested_conclusions": [
+          "The comparison is same-sample: three arms read against each other on one frozen score panel, one fold geometry and one cost stack. It can kill a configuration and it cannot promote one; no arm promotes out of this registration (\u00a73.13, [promotion_rule]).",
+          "The calibration's training cross-section is the formation window's point-in-time membership at the fit cutoff, without the per-bar eligibility screen the decision path applies; the screen is applied at every decision bar and to the labels' universe, not bar by bar inside the training pool.",
+          "The frozen dataset carries no cash-distribution events, so the 'credited' label of \u00a73.4 credits zero and the accounting credits zero; the two agree, and neither establishes what a dividend-bearing panel would have produced.",
+          "Fills are simulated at the next open under the declared [fills] policy. No panel here is evidence about actual fills."
+        ]
+      },
+      "exposures": {
+        "avg_gross": 1.0027621186935574,
+        "avg_net": 0.009546983865310008
+      },
+      "flags": {
+        "fill_source": "simulated",
+        "prospective": null,
+        "run_channel": "evidence",
+        "synthetic": false
+      },
+      "gross_sharpe": 0.0330702815011646,
+      "n_periods": 300,
+      "net_mean": 0.0002571245695542155,
+      "net_sharpe": 0.029919967530067093,
+      "run_id": "run-b471a03573cc45bc",
+      "turnover_mean": 0.0540343615931083
+    },
+    {
+      "arm_id": "X4",
+      "by_fold": "unavailable",
+      "capital": 100000.0,
+      "cost_decomposition": {
+        "calibration_source": "unavailable",
+        "cost_refresh": {
+          "cadence": "fold",
+          "charged": {
+            "fallback_bps": 1.0,
+            "max_bps": 10.0,
+            "mean_bps": 2.1955380910128026,
+            "min_bps": 1.0,
+            "mode": "bucket_frame",
+            "n_names": 574
+          },
+          "note": "each fold's cost inputs are estimated on that fold's formation window and recorded above; the cadence says which of them the accounting engine charged. Under 'once' the first window prices the whole stitched simulation, which is causal for every test bar in it; under 'fold' each fold's test bars carry their own buckets",
+          "per_fold": [
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2024-04-01",
+              "fold": 0,
+              "spread_bps": {
+                "buckets": {
+                  "1": 88,
+                  "10": 7,
+                  "2": 318,
+                  "5": 82
+                },
+                "max": 10.0,
+                "mean": 2.4323232323232324,
+                "min": 1.0,
+                "n_names": 495
+              },
+              "start": "2023-01-03"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2024-07-01",
+              "fold": 1,
+              "spread_bps": {
+                "buckets": {
+                  "1": 90,
+                  "10": 7,
+                  "2": 326,
+                  "5": 73
+                },
+                "max": 10.0,
+                "mean": 2.372983870967742,
+                "min": 1.0,
+                "n_names": 496
+              },
+              "start": "2023-04-04"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2024-09-30",
+              "fold": 2,
+              "spread_bps": {
+                "buckets": {
+                  "1": 95,
+                  "10": 7,
+                  "2": 319,
+                  "5": 76
+                },
+                "max": 10.0,
+                "mean": 2.380281690140845,
+                "min": 1.0,
+                "n_names": 497
+              },
+              "start": "2023-07-06"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2024-12-30",
+              "fold": 3,
+              "spread_bps": {
+                "buckets": {
+                  "1": 99,
+                  "10": 6,
+                  "2": 328,
+                  "5": 65
+                },
+                "max": 10.0,
+                "mean": 2.289156626506024,
+                "min": 1.0,
+                "n_names": 498
+              },
+              "start": "2023-10-04"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2025-04-02",
+              "fold": 4,
+              "spread_bps": {
+                "buckets": {
+                  "1": 111,
+                  "10": 5,
+                  "2": 327,
+                  "5": 55
+                },
+                "max": 10.0,
+                "mean": 2.1887550200803214,
+                "min": 1.0,
+                "n_names": 498
+              },
+              "start": "2024-01-04"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2025-07-03",
+              "fold": 5,
+              "spread_bps": {
+                "buckets": {
+                  "1": 114,
+                  "10": 5,
+                  "2": 336,
+                  "5": 44
+                },
+                "max": 10.0,
+                "mean": 2.1162324649298596,
+                "min": 1.0,
+                "n_names": 499
+              },
+              "start": "2024-04-05"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2025-10-02",
+              "fold": 6,
+              "spread_bps": {
+                "buckets": {
+                  "1": 125,
+                  "10": 5,
+                  "2": 335,
+                  "5": 38
+                },
+                "max": 10.0,
+                "mean": 2.05765407554672,
+                "min": 1.0,
+                "n_names": 503
+              },
+              "start": "2024-07-08"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2026-01-02",
+              "fold": 7,
+              "spread_bps": {
+                "buckets": {
+                  "1": 133,
+                  "10": 4,
+                  "2": 338,
+                  "5": 29
+                },
+                "max": 10.0,
+                "mean": 1.9722222222222223,
+                "min": 1.0,
+                "n_names": 504
+              },
+              "start": "2024-10-04"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2026-04-06",
+              "fold": 8,
+              "spread_bps": {
+                "buckets": {
+                  "1": 146,
+                  "10": 4,
+                  "2": 335,
+                  "5": 20
+                },
+                "max": 10.0,
+                "mean": 1.893069306930693,
+                "min": 1.0,
+                "n_names": 505
+              },
+              "start": "2025-01-06"
+            }
+          ],
+          "windows": [
+            {
+              "end": "2024-04-01",
+              "fold": 0,
+              "start": "2023-01-03"
+            },
+            {
+              "end": "2024-07-01",
+              "fold": 1,
+              "start": "2023-04-04"
+            },
+            {
+              "end": "2024-09-30",
+              "fold": 2,
+              "start": "2023-07-06"
+            },
+            {
+              "end": "2024-12-30",
+              "fold": 3,
+              "start": "2023-10-04"
+            },
+            {
+              "end": "2025-04-02",
+              "fold": 4,
+              "start": "2024-01-04"
+            },
+            {
+              "end": "2025-07-03",
+              "fold": 5,
+              "start": "2024-04-05"
+            },
+            {
+              "end": "2025-10-02",
+              "fold": 6,
+              "start": "2024-07-08"
+            },
+            {
+              "end": "2026-01-02",
+              "fold": 7,
+              "start": "2024-10-04"
+            },
+            {
+              "end": "2026-04-06",
+              "fold": 8,
+              "start": "2025-01-06"
+            }
+          ]
+        },
+        "dollar_volume_statistics": {
+          "impact": "unavailable",
+          "participation": {
+            "base": "initial_capital",
+            "floor_dollars": 0.0,
+            "max_participation": 0.05,
+            "statistic": "median",
+            "window_bars": 20
+          },
+          "spread": {
+            "bound": "inclusive_lower",
+            "mode": "bucket",
+            "schedule": [
+              [
+                500000000.0,
+                1.0
+              ],
+              [
+                100000000.0,
+                2.0
+              ],
+              [
+                25000000.0,
+                5.0
+              ],
+              [
+                0.0,
+                10.0
+              ]
+            ],
+            "statistic": "dollar_volume.spread_bucket",
+            "unknown_liquidity": "widest_step",
+            "window": "fold_formation"
+          }
+        },
+        "stack": {
+          "adv_floor_dollars": 100000.0,
+          "adv_impact_coeff": 0.0,
+          "adv_impact_model": "linear",
+          "borrow_rate_bps_annual": 50.0,
+          "commission_bps": 1.0,
+          "default_order_type": "MOO",
+          "slippage_coeff": 10.0,
+          "spread_bps": 1.0,
+          "trading_days_per_year": 252
+        }
+      },
+      "coverage": {
+        "bias_status": "unquantified",
+        "untested_conclusions": [
+          "The comparison is same-sample: three arms read against each other on one frozen score panel, one fold geometry and one cost stack. It can kill a configuration and it cannot promote one; no arm promotes out of this registration (\u00a73.13, [promotion_rule]).",
+          "The calibration's training cross-section is the formation window's point-in-time membership at the fit cutoff, without the per-bar eligibility screen the decision path applies; the screen is applied at every decision bar and to the labels' universe, not bar by bar inside the training pool.",
+          "The frozen dataset carries no cash-distribution events, so the 'credited' label of \u00a73.4 credits zero and the accounting credits zero; the two agree, and neither establishes what a dividend-bearing panel would have produced.",
+          "Fills are simulated at the next open under the declared [fills] policy. No panel here is evidence about actual fills."
+        ]
+      },
+      "exposures": {
+        "avg_gross": 0.969474549023566,
+        "avg_net": -0.0011421027235744999
+      },
+      "flags": {
+        "fill_source": "simulated",
+        "prospective": null,
+        "run_channel": "evidence",
+        "synthetic": false
+      },
+      "gross_sharpe": 0.05570089130729411,
+      "n_periods": 300,
+      "net_mean": 0.00032505365084015424,
+      "net_sharpe": 0.05114730859719887,
+      "run_id": "run-b819006753344ca8",
+      "turnover_mean": 0.06274254382075932
+    }
+  ],
+  "blocks": [
+    {
+      "arms": [
+        "X0",
+        "X1",
+        "X2",
+        "X3",
+        "X4"
+      ],
+      "capital": 100000.0,
+      "sharpe_differences": [
+        {
+          "arm_a": "X0",
+          "arm_b": "X1",
+          "blocks_drawn": 8,
+          "confidence": 0.95,
+          "difference": -0.00022176517336250368,
+          "flags_a": {
+            "fill_source": "simulated",
+            "prospective": null,
+            "run_channel": "evidence",
+            "synthetic": false
+          },
+          "flags_b": {
+            "fill_source": "simulated",
+            "prospective": null,
+            "run_channel": "evidence",
+            "synthetic": false
+          },
+          "holdings_overlap": {
+            "definition": "l1 distance = sum |w_a - w_b| per decision; common weight = sum min(|w_a|, |w_b|) over names held on the same side; name jaccard = |held_a and held_b| / |held_a or held_b|",
+            "mean_common_weight": 0.9932244897959123,
+            "mean_l1_distance": 0.013551020408163198,
+            "mean_name_jaccard": 0.9866122612261224,
+            "status": "computed"
+          },
+          "label": "X0_minus_X1",
+          "lower": -0.002166448505409988,
+          "mean_difference": -3.561847489635668e-06,
+          "method": {
+            "block_bars": 42,
+            "block_periods": 42,
+            "block_scheme": "circular_moving",
+            "confidence": 0.95,
+            "coverage_statement": "Endpoints are directional statements under the resampling assumptions: the pool is stationary enough to resample and block_periods carries the dependence of overlapping labels. They are not a simultaneous interval and say nothing about realized portfolio return coverage.",
+            "decision_interval_bars": 21,
+            "frequency": "daily",
+            "hac_lags": 41,
+            "interval_method": "studentized_circular_block_bootstrap",
+            "min_blocks": 2,
+            "n_resamples": 2000,
+            "seed": 20260718,
+            "units": "bars"
+          },
+          "n_periods": 300,
+          "n_resamples": 2000,
+          "p_value_two_sided": 0.846,
+          "sharpe_a": 0.0633240993777445,
+          "sharpe_b": 0.063545864551107,
+          "standard_error": 0.0011376629980494335,
+          "statistic": "sharpe_difference",
+          "t_statistic": -0.19493046160658167,
+          "upper": 0.0021509710743209875
+        },
+        {
+          "arm_a": "X0",
+          "arm_b": "X2",
+          "blocks_drawn": 8,
+          "confidence": 0.95,
+          "difference": -0.008594830182415372,
+          "flags_a": {
+            "fill_source": "simulated",
+            "prospective": null,
+            "run_channel": "evidence",
+            "synthetic": false
+          },
+          "flags_b": {
+            "fill_source": "simulated",
+            "prospective": null,
+            "run_channel": "evidence",
+            "synthetic": false
+          },
+          "holdings_overlap": {
+            "definition": "l1 distance = sum |w_a - w_b| per decision; common weight = sum min(|w_a|, |w_b|) over names held on the same side; name jaccard = |held_a and held_b| / |held_a or held_b|",
+            "mean_common_weight": 0.8984353741496547,
+            "mean_l1_distance": 0.2031292517006794,
+            "mean_name_jaccard": 0.830463942278617,
+            "status": "computed"
+          },
+          "label": "X0_minus_X2",
+          "lower": -0.041301876948432084,
+          "mean_difference": -9.120685426628524e-05,
+          "method": {
+            "block_bars": 42,
+            "block_periods": 42,
+            "block_scheme": "circular_moving",
+            "confidence": 0.95,
+            "coverage_statement": "Endpoints are directional statements under the resampling assumptions: the pool is stationary enough to resample and block_periods carries the dependence of overlapping labels. They are not a simultaneous interval and say nothing about realized portfolio return coverage.",
+            "decision_interval_bars": 21,
+            "frequency": "daily",
+            "hac_lags": 41,
+            "interval_method": "studentized_circular_block_bootstrap",
+            "min_blocks": 2,
+            "n_resamples": 2000,
+            "seed": 20260718,
+            "units": "bars"
+          },
+          "n_periods": 300,
+          "n_resamples": 2000,
+          "p_value_two_sided": 0.534,
+          "sharpe_a": 0.0633240993777445,
+          "sharpe_b": 0.07191892956015987,
+          "standard_error": 0.011602934995633462,
+          "statistic": "sharpe_difference",
+          "t_statistic": -0.7407462151300399,
+          "upper": 0.012956882776690229
+        },
+        {
+          "arm_a": "X0",
+          "arm_b": "X3",
+          "blocks_drawn": 8,
+          "confidence": 0.95,
+          "difference": 0.033404131847677404,
+          "flags_a": {
+            "fill_source": "simulated",
+            "prospective": null,
+            "run_channel": "evidence",
+            "synthetic": false
+          },
+          "flags_b": {
+            "fill_source": "simulated",
+            "prospective": null,
+            "run_channel": "evidence",
+            "synthetic": false
+          },
+          "holdings_overlap": {
+            "definition": "l1 distance = sum |w_a - w_b| per decision; common weight = sum min(|w_a|, |w_b|) over names held on the same side; name jaccard = |held_a and held_b| / |held_a or held_b|",
+            "mean_common_weight": 0.7394693877550983,
+            "mean_l1_distance": 0.5210612244897931,
+            "mean_name_jaccard": 0.597510074087517,
+            "status": "computed"
+          },
+          "label": "X0_minus_X3",
+          "lower": -0.004813632310861148,
+          "mean_difference": 0.0002786953549990146,
+          "method": {
+            "block_bars": 42,
+            "block_periods": 42,
+            "block_scheme": "circular_moving",
+            "confidence": 0.95,
+            "coverage_statement": "Endpoints are directional statements under the resampling assumptions: the pool is stationary enough to resample and block_periods carries the dependence of overlapping labels. They are not a simultaneous interval and say nothing about realized portfolio return coverage.",
+            "decision_interval_bars": 21,
+            "frequency": "daily",
+            "hac_lags": 41,
+            "interval_method": "studentized_circular_block_bootstrap",
+            "min_blocks": 2,
+            "n_resamples": 2000,
+            "seed": 20260718,
+            "units": "bars"
+          },
+          "n_periods": 300,
+          "n_resamples": 2000,
+          "p_value_two_sided": 0.1735,
+          "sharpe_a": 0.0633240993777445,
+          "sharpe_b": 0.029919967530067093,
+          "standard_error": 0.02169985379025431,
+          "statistic": "sharpe_difference",
+          "t_statistic": 1.5393712865788818,
+          "upper": 0.10484887405941533
+        },
+        {
+          "arm_a": "X0",
+          "arm_b": "X4",
+          "blocks_drawn": 8,
+          "confidence": 0.95,
+          "difference": 0.012176790780545628,
+          "flags_a": {
+            "fill_source": "simulated",
+            "prospective": null,
+            "run_channel": "evidence",
+            "synthetic": false
+          },
+          "flags_b": {
+            "fill_source": "simulated",
+            "prospective": null,
+            "run_channel": "evidence",
+            "synthetic": false
+          },
+          "holdings_overlap": {
+            "definition": "l1 distance = sum |w_a - w_b| per decision; common weight = sum min(|w_a|, |w_b|) over names held on the same side; name jaccard = |held_a and held_b| / |held_a or held_b|",
+            "mean_common_weight": 0.42496598639455613,
+            "mean_l1_distance": 1.1507789036080838,
+            "mean_name_jaccard": 0.28549704836185,
+            "status": "computed"
+          },
+          "label": "X0_minus_X4",
+          "lower": -0.030419172203500648,
+          "mean_difference": 0.00021076627371307584,
+          "method": {
+            "block_bars": 42,
+            "block_periods": 42,
+            "block_scheme": "circular_moving",
+            "confidence": 0.95,
+            "coverage_statement": "Endpoints are directional statements under the resampling assumptions: the pool is stationary enough to resample and block_periods carries the dependence of overlapping labels. They are not a simultaneous interval and say nothing about realized portfolio return coverage.",
+            "decision_interval_bars": 21,
+            "frequency": "daily",
+            "hac_lags": 41,
+            "interval_method": "studentized_circular_block_bootstrap",
+            "min_blocks": 2,
+            "n_resamples": 2000,
+            "seed": 20260718,
+            "units": "bars"
+          },
+          "n_periods": 300,
+          "n_resamples": 2000,
+          "p_value_two_sided": 0.5395,
+          "sharpe_a": 0.0633240993777445,
+          "sharpe_b": 0.05114730859719887,
+          "standard_error": 0.019081552372662076,
+          "statistic": "sharpe_difference",
+          "t_statistic": 0.6381446615418553,
+          "upper": 0.05263143428810135
+        },
+        {
+          "arm_a": "X1",
+          "arm_b": "X2",
+          "blocks_drawn": 8,
+          "confidence": 0.95,
+          "difference": -0.008373065009052869,
+          "flags_a": {
+            "fill_source": "simulated",
+            "prospective": null,
+            "run_channel": "evidence",
+            "synthetic": false
+          },
+          "flags_b": {
+            "fill_source": "simulated",
+            "prospective": null,
+            "run_channel": "evidence",
+            "synthetic": false
+          },
+          "holdings_overlap": {
+            "definition": "l1 distance = sum |w_a - w_b| per decision; common weight = sum min(|w_a|, |w_b|) over names held on the same side; name jaccard = |held_a and held_b| / |held_a or held_b|",
+            "mean_common_weight": 0.8991428571428518,
+            "mean_l1_distance": 0.20171428571428487,
+            "mean_name_jaccard": 0.831634450242041,
+            "status": "computed"
+          },
+          "label": "X1_minus_X2",
+          "lower": -0.04360224118890692,
+          "mean_difference": -8.764500677664957e-05,
+          "method": {
+            "block_bars": 42,
+            "block_periods": 42,
+            "block_scheme": "circular_moving",
+            "confidence": 0.95,
+            "coverage_statement": "Endpoints are directional statements under the resampling assumptions: the pool is stationary enough to resample and block_periods carries the dependence of overlapping labels. They are not a simultaneous interval and say nothing about realized portfolio return coverage.",
+            "decision_interval_bars": 21,
+            "frequency": "daily",
+            "hac_lags": 41,
+            "interval_method": "studentized_circular_block_bootstrap",
+            "min_blocks": 2,
+            "n_resamples": 2000,
+            "seed": 20260718,
+            "units": "bars"
+          },
+          "n_periods": 300,
+          "n_resamples": 2000,
+          "p_value_two_sided": 0.551,
+          "sharpe_a": 0.063545864551107,
+          "sharpe_b": 0.07191892956015987,
+          "standard_error": 0.01191674618638147,
+          "statistic": "sharpe_difference",
+          "t_statistic": -0.7026301372955025,
+          "upper": 0.014169039716676511
+        },
+        {
+          "arm_a": "X1",
+          "arm_b": "X3",
+          "blocks_drawn": 8,
+          "confidence": 0.95,
+          "difference": 0.03362589702103991,
+          "flags_a": {
+            "fill_source": "simulated",
+            "prospective": null,
+            "run_channel": "evidence",
+            "synthetic": false
+          },
+          "flags_b": {
+            "fill_source": "simulated",
+            "prospective": null,
+            "run_channel": "evidence",
+            "synthetic": false
+          },
+          "holdings_overlap": {
+            "definition": "l1 distance = sum |w_a - w_b| per decision; common weight = sum min(|w_a|, |w_b|) over names held on the same side; name jaccard = |held_a and held_b| / |held_a or held_b|",
+            "mean_common_weight": 0.736761904761901,
+            "mean_l1_distance": 0.5264761904761877,
+            "mean_name_jaccard": 0.5942186986683353,
+            "status": "computed"
+          },
+          "label": "X1_minus_X3",
+          "lower": -0.005706333032346397,
+          "mean_difference": 0.00028225720248865026,
+          "method": {
+            "block_bars": 42,
+            "block_periods": 42,
+            "block_scheme": "circular_moving",
+            "confidence": 0.95,
+            "coverage_statement": "Endpoints are directional statements under the resampling assumptions: the pool is stationary enough to resample and block_periods carries the dependence of overlapping labels. They are not a simultaneous interval and say nothing about realized portfolio return coverage.",
+            "decision_interval_bars": 21,
+            "frequency": "daily",
+            "hac_lags": 41,
+            "interval_method": "studentized_circular_block_bootstrap",
+            "min_blocks": 2,
+            "n_resamples": 2000,
+            "seed": 20260718,
+            "units": "bars"
+          },
+          "n_periods": 300,
+          "n_resamples": 2000,
+          "p_value_two_sided": 0.1745,
+          "sharpe_a": 0.063545864551107,
+          "sharpe_b": 0.029919967530067093,
+          "standard_error": 0.021931491349591846,
+          "statistic": "sharpe_difference",
+          "t_statistic": 1.533224370611062,
+          "upper": 0.10447164300730497
+        },
+        {
+          "arm_a": "X1",
+          "arm_b": "X4",
+          "blocks_drawn": 8,
+          "confidence": 0.95,
+          "difference": 0.012398555953908132,
+          "flags_a": {
+            "fill_source": "simulated",
+            "prospective": null,
+            "run_channel": "evidence",
+            "synthetic": false
+          },
+          "flags_b": {
+            "fill_source": "simulated",
+            "prospective": null,
+            "run_channel": "evidence",
+            "synthetic": false
+          },
+          "holdings_overlap": {
+            "definition": "l1 distance = sum |w_a - w_b| per decision; common weight = sum min(|w_a|, |w_b|) over names held on the same side; name jaccard = |held_a and held_b| / |held_a or held_b|",
+            "mean_common_weight": 0.42702040816326364,
+            "mean_l1_distance": 1.146670060070669,
+            "mean_name_jaccard": 0.28757396905331056,
+            "status": "computed"
+          },
+          "label": "X1_minus_X4",
+          "lower": -0.030240423070443827,
+          "mean_difference": 0.0002143281212027115,
+          "method": {
+            "block_bars": 42,
+            "block_periods": 42,
+            "block_scheme": "circular_moving",
+            "confidence": 0.95,
+            "coverage_statement": "Endpoints are directional statements under the resampling assumptions: the pool is stationary enough to resample and block_periods carries the dependence of overlapping labels. They are not a simultaneous interval and say nothing about realized portfolio return coverage.",
+            "decision_interval_bars": 21,
+            "frequency": "daily",
+            "hac_lags": 41,
+            "interval_method": "studentized_circular_block_bootstrap",
+            "min_blocks": 2,
+            "n_resamples": 2000,
+            "seed": 20260718,
+            "units": "bars"
+          },
+          "n_periods": 300,
+          "n_resamples": 2000,
+          "p_value_two_sided": 0.529,
+          "sharpe_a": 0.063545864551107,
+          "sharpe_b": 0.05114730859719887,
+          "standard_error": 0.018978481068141095,
+          "statistic": "sharpe_difference",
+          "t_statistic": 0.6532954828888499,
+          "upper": 0.05152239340163505
+        },
+        {
+          "arm_a": "X2",
+          "arm_b": "X3",
+          "blocks_drawn": 8,
+          "confidence": 0.95,
+          "difference": 0.041998962030092776,
+          "flags_a": {
+            "fill_source": "simulated",
+            "prospective": null,
+            "run_channel": "evidence",
+            "synthetic": false
+          },
+          "flags_b": {
+            "fill_source": "simulated",
+            "prospective": null,
+            "run_channel": "evidence",
+            "synthetic": false
+          },
+          "holdings_overlap": {
+            "definition": "l1 distance = sum |w_a - w_b| per decision; common weight = sum min(|w_a|, |w_b|) over names held on the same side; name jaccard = |held_a and held_b| / |held_a or held_b|",
+            "mean_common_weight": 0.7253333333333296,
+            "mean_l1_distance": 0.5493333333333302,
+            "mean_name_jaccard": 0.5779769703951594,
+            "status": "computed"
+          },
+          "label": "X2_minus_X3",
+          "lower": 0.0012428568130689113,
+          "mean_difference": 0.00036990220926529983,
+          "method": {
+            "block_bars": 42,
+            "block_periods": 42,
+            "block_scheme": "circular_moving",
+            "confidence": 0.95,
+            "coverage_statement": "Endpoints are directional statements under the resampling assumptions: the pool is stationary enough to resample and block_periods carries the dependence of overlapping labels. They are not a simultaneous interval and say nothing about realized portfolio return coverage.",
+            "decision_interval_bars": 21,
+            "frequency": "daily",
+            "hac_lags": 41,
+            "interval_method": "studentized_circular_block_bootstrap",
+            "min_blocks": 2,
+            "n_resamples": 2000,
+            "seed": 20260718,
+            "units": "bars"
+          },
+          "n_periods": 300,
+          "n_resamples": 2000,
+          "p_value_two_sided": 0.0925,
+          "sharpe_a": 0.07191892956015987,
+          "sharpe_b": 0.029919967530067093,
+          "standard_error": 0.01950177400753203,
+          "statistic": "sharpe_difference",
+          "t_statistic": 2.1535970016815815,
+          "upper": 0.10444832464618256
+        },
+        {
+          "arm_a": "X2",
+          "arm_b": "X4",
+          "blocks_drawn": 8,
+          "confidence": 0.95,
+          "difference": 0.020771620962961,
+          "flags_a": {
+            "fill_source": "simulated",
+            "prospective": null,
+            "run_channel": "evidence",
+            "synthetic": false
+          },
+          "flags_b": {
+            "fill_source": "simulated",
+            "prospective": null,
+            "run_channel": "evidence",
+            "synthetic": false
+          },
+          "holdings_overlap": {
+            "definition": "l1 distance = sum |w_a - w_b| per decision; common weight = sum min(|w_a|, |w_b|) over names held on the same side; name jaccard = |held_a and held_b| / |held_a or held_b|",
+            "mean_common_weight": 0.429809523809522,
+            "mean_l1_distance": 1.141091828778152,
+            "mean_name_jaccard": 0.2914432870959789,
+            "status": "computed"
+          },
+          "label": "X2_minus_X4",
+          "lower": -0.020792227457471148,
+          "mean_difference": 0.0003019731279793611,
+          "method": {
+            "block_bars": 42,
+            "block_periods": 42,
+            "block_scheme": "circular_moving",
+            "confidence": 0.95,
+            "coverage_statement": "Endpoints are directional statements under the resampling assumptions: the pool is stationary enough to resample and block_periods carries the dependence of overlapping labels. They are not a simultaneous interval and say nothing about realized portfolio return coverage.",
+            "decision_interval_bars": 21,
+            "frequency": "daily",
+            "hac_lags": 41,
+            "interval_method": "studentized_circular_block_bootstrap",
+            "min_blocks": 2,
+            "n_resamples": 2000,
+            "seed": 20260718,
+            "units": "bars"
+          },
+          "n_periods": 300,
+          "n_resamples": 2000,
+          "p_value_two_sided": 0.285,
+          "sharpe_a": 0.07191892956015987,
+          "sharpe_b": 0.05114730859719887,
+          "standard_error": 0.01878522706427275,
+          "statistic": "sharpe_difference",
+          "t_statistic": 1.1057423416758232,
+          "upper": 0.06080998552884517
+        },
+        {
+          "arm_a": "X3",
+          "arm_b": "X4",
+          "blocks_drawn": 8,
+          "confidence": 0.95,
+          "difference": -0.021227341067131776,
+          "flags_a": {
+            "fill_source": "simulated",
+            "prospective": null,
+            "run_channel": "evidence",
+            "synthetic": false
+          },
+          "flags_b": {
+            "fill_source": "simulated",
+            "prospective": null,
+            "run_channel": "evidence",
+            "synthetic": false
+          },
+          "holdings_overlap": {
+            "definition": "l1 distance = sum |w_a - w_b| per decision; common weight = sum min(|w_a|, |w_b|) over names held on the same side; name jaccard = |held_a and held_b| / |held_a or held_b|",
+            "mean_common_weight": 0.3728027210884338,
+            "mean_l1_distance": 1.255105434220328,
+            "mean_name_jaccard": 0.24772740428616627,
+            "status": "computed"
+          },
+          "label": "X3_minus_X4",
+          "lower": -0.07771224951134564,
+          "mean_difference": -6.792908128593875e-05,
+          "method": {
+            "block_bars": 42,
+            "block_periods": 42,
+            "block_scheme": "circular_moving",
+            "confidence": 0.95,
+            "coverage_statement": "Endpoints are directional statements under the resampling assumptions: the pool is stationary enough to resample and block_periods carries the dependence of overlapping labels. They are not a simultaneous interval and say nothing about realized portfolio return coverage.",
+            "decision_interval_bars": 21,
+            "frequency": "daily",
+            "hac_lags": 41,
+            "interval_method": "studentized_circular_block_bootstrap",
+            "min_blocks": 2,
+            "n_resamples": 2000,
+            "seed": 20260718,
+            "units": "bars"
+          },
+          "n_periods": 300,
+          "n_resamples": 2000,
+          "p_value_two_sided": 0.349,
+          "sharpe_a": 0.029919967530067093,
+          "sharpe_b": 0.05114730859719887,
+          "standard_error": 0.024181028890813194,
+          "statistic": "sharpe_difference",
+          "t_statistic": -0.877851027885601,
+          "upper": 0.020239197182762847
+        }
+      ]
+    }
+  ],
+  "charged_cost_conventions": {
+    "cost_refresh": "fold",
+    "cost_stack": "/home/b90/prism/examples/reference/costs/retail_v1.toml",
+    "cost_stack_sha256": "0ae1bde21e1d6ac83573b7c860e4063bd540ae293cf619c6925765878fb525aa",
+    "execution_profile": "/home/b90/prism/examples/reference/profiles/execution_alpaca.toml",
+    "held_identical": "the frozen cost stack and the rules that apply it, at every capital level and for every arm",
+    "not_identical": "charged dollars: participation is trade dollars over dollar volume from current equity, impact is charged on filled notional, and rounding at the per-sid increment changes filled notional, so charged cost varies with account size by construction. Freezing charged costs at one capital level would defeat the sweep."
+  },
+  "conditions_held_fixed": {
+    "accounting_engine": "canonical",
+    "capital": 100000.0,
+    "cost_refresh": {
+      "cadence": "fold",
+      "charged": {
+        "fallback_bps": 1.0,
+        "max_bps": 10.0,
+        "mean_bps": 2.1955380910128026,
+        "min_bps": 1.0,
+        "mode": "bucket_frame",
+        "n_names": 574
+      },
+      "note": "each fold's cost inputs are estimated on that fold's formation window and recorded above; the cadence says which of them the accounting engine charged. Under 'once' the first window prices the whole stitched simulation, which is causal for every test bar in it; under 'fold' each fold's test bars carry their own buckets",
+      "per_fold": [
+        {
+          "band": {
+            "kind": "scalar",
+            "width": 0.0
+          },
+          "end": "2024-04-01",
+          "fold": 0,
+          "spread_bps": {
+            "buckets": {
+              "1": 88,
+              "10": 7,
+              "2": 318,
+              "5": 82
+            },
+            "max": 10.0,
+            "mean": 2.4323232323232324,
+            "min": 1.0,
+            "n_names": 495
+          },
+          "start": "2023-01-03"
+        },
+        {
+          "band": {
+            "kind": "scalar",
+            "width": 0.0
+          },
+          "end": "2024-07-01",
+          "fold": 1,
+          "spread_bps": {
+            "buckets": {
+              "1": 90,
+              "10": 7,
+              "2": 326,
+              "5": 73
+            },
+            "max": 10.0,
+            "mean": 2.372983870967742,
+            "min": 1.0,
+            "n_names": 496
+          },
+          "start": "2023-04-04"
+        },
+        {
+          "band": {
+            "kind": "scalar",
+            "width": 0.0
+          },
+          "end": "2024-09-30",
+          "fold": 2,
+          "spread_bps": {
+            "buckets": {
+              "1": 95,
+              "10": 7,
+              "2": 319,
+              "5": 76
+            },
+            "max": 10.0,
+            "mean": 2.380281690140845,
+            "min": 1.0,
+            "n_names": 497
+          },
+          "start": "2023-07-06"
+        },
+        {
+          "band": {
+            "kind": "scalar",
+            "width": 0.0
+          },
+          "end": "2024-12-30",
+          "fold": 3,
+          "spread_bps": {
+            "buckets": {
+              "1": 99,
+              "10": 6,
+              "2": 328,
+              "5": 65
+            },
+            "max": 10.0,
+            "mean": 2.289156626506024,
+            "min": 1.0,
+            "n_names": 498
+          },
+          "start": "2023-10-04"
+        },
+        {
+          "band": {
+            "kind": "scalar",
+            "width": 0.0
+          },
+          "end": "2025-04-02",
+          "fold": 4,
+          "spread_bps": {
+            "buckets": {
+              "1": 111,
+              "10": 5,
+              "2": 327,
+              "5": 55
+            },
+            "max": 10.0,
+            "mean": 2.1887550200803214,
+            "min": 1.0,
+            "n_names": 498
+          },
+          "start": "2024-01-04"
+        },
+        {
+          "band": {
+            "kind": "scalar",
+            "width": 0.0
+          },
+          "end": "2025-07-03",
+          "fold": 5,
+          "spread_bps": {
+            "buckets": {
+              "1": 114,
+              "10": 5,
+              "2": 336,
+              "5": 44
+            },
+            "max": 10.0,
+            "mean": 2.1162324649298596,
+            "min": 1.0,
+            "n_names": 499
+          },
+          "start": "2024-04-05"
+        },
+        {
+          "band": {
+            "kind": "scalar",
+            "width": 0.0
+          },
+          "end": "2025-10-02",
+          "fold": 6,
+          "spread_bps": {
+            "buckets": {
+              "1": 125,
+              "10": 5,
+              "2": 335,
+              "5": 38
+            },
+            "max": 10.0,
+            "mean": 2.05765407554672,
+            "min": 1.0,
+            "n_names": 503
+          },
+          "start": "2024-07-08"
+        },
+        {
+          "band": {
+            "kind": "scalar",
+            "width": 0.0
+          },
+          "end": "2026-01-02",
+          "fold": 7,
+          "spread_bps": {
+            "buckets": {
+              "1": 133,
+              "10": 4,
+              "2": 338,
+              "5": 29
+            },
+            "max": 10.0,
+            "mean": 1.9722222222222223,
+            "min": 1.0,
+            "n_names": 504
+          },
+          "start": "2024-10-04"
+        },
+        {
+          "band": {
+            "kind": "scalar",
+            "width": 0.0
+          },
+          "end": "2026-04-06",
+          "fold": 8,
+          "spread_bps": {
+            "buckets": {
+              "1": 146,
+              "10": 4,
+              "2": 335,
+              "5": 20
+            },
+            "max": 10.0,
+            "mean": 1.893069306930693,
+            "min": 1.0,
+            "n_names": 505
+          },
+          "start": "2025-01-06"
+        }
+      ],
+      "windows": [
+        {
+          "end": "2024-04-01",
+          "fold": 0,
+          "start": "2023-01-03"
+        },
+        {
+          "end": "2024-07-01",
+          "fold": 1,
+          "start": "2023-04-04"
+        },
+        {
+          "end": "2024-09-30",
+          "fold": 2,
+          "start": "2023-07-06"
+        },
+        {
+          "end": "2024-12-30",
+          "fold": 3,
+          "start": "2023-10-04"
+        },
+        {
+          "end": "2025-04-02",
+          "fold": 4,
+          "start": "2024-01-04"
+        },
+        {
+          "end": "2025-07-03",
+          "fold": 5,
+          "start": "2024-04-05"
+        },
+        {
+          "end": "2025-10-02",
+          "fold": 6,
+          "start": "2024-07-08"
+        },
+        {
+          "end": "2026-01-02",
+          "fold": 7,
+          "start": "2024-10-04"
+        },
+        {
+          "end": "2026-04-06",
+          "fold": 8,
+          "start": "2025-01-06"
+        }
+      ]
+    },
+    "data_id": "bedf8c4c0f0c2195ce5aace938f4ad38e23e6b69b57075080073004692d46eef",
+    "executable_return": "next_open_fill_marked_close_to_close",
+    "vintage": "demotion_b1_2026-06-16",
+    "visibility_mode": "research_vintage"
+  },
+  "conditions_that_differ": {
+    "engine": {
+      "run-2ffbe998048b4148": {
+        "decision_coupling": "account_state",
+        "final_cash": 118151.10275359348,
+        "max_stale_marks": 0,
+        "n_decision_bars": 15,
+        "n_events_applied": 0,
+        "n_fills": 1641,
+        "n_orders": 1641,
+        "n_target_rows": 15,
+        "note": "accounting_engine=canonical, decision_coupling=account_state: shares are the state, fills happen at the next open under the declared [fills] policy, holding costs accrue per bar and events are applied on their effective dates. Each decision is constructed inside the simulation against the marked equity and the marked position book of its own bar: the participation restriction is measured on trade dollars over dollar volume from that equity, batch rounding rounds at the per-sid increment against it, and the reduce-only box is written on the held position (\u00a73.7, \u00a73.8).",
+        "pending_orders_at_end": 0,
+        "settings": {
+          "cost_stack": {
+            "borrow_bps_annual": 50.0,
+            "cash_income_bps_annual": 0.0,
+            "commission_bps": 1.0,
+            "dollar_volume": {
+              "impact": {
+                "base": "current_equity",
+                "estimator": "same_bar",
+                "floor_dollars": 100000.0,
+                "refresh": "bar",
+                "source": "close_times_volume",
+                "window": "trailing",
+                "window_bars": 1
+              },
+              "participation": {
+                "base": "current_equity",
+                "estimator": "median",
+                "floor_dollars": 0.0,
+                "refresh": "decision",
+                "source": "close_times_volume",
+                "window": "trailing",
+                "window_bars": 20
+              },
+              "spread_bucket": {
+                "base": "current_equity",
+                "estimator": "median",
+                "floor_dollars": 0.0,
+                "refresh": "decision",
+                "source": "close_times_volume",
+                "window": "trailing",
+                "window_bars": 20
+              }
+            },
+            "financing_bps_annual": 0.0,
+            "holding_cost_settlement": "per_bar",
+            "impact": {
+              "participation_coeff": 0.0,
+              "participation_model": "sqrt",
+              "quadratic_notional_coeff": 10.0,
+              "statistic": "dollar_volume.impact"
+            },
+            "short_proceeds": "collateral_no_rebate",
+            "sources": {},
+            "spread": {
+              "bound": "inclusive_lower",
+              "flat_bps": null,
+              "mode": "bucket",
+              "schedule": [
+                [
+                  500000000.0,
+                  1.0
+                ],
+                [
+                  100000000.0,
+                  2.0
+                ],
+                [
+                  25000000.0,
+                  5.0
+                ],
+                [
+                  0.0,
+                  10.0
+                ]
+              ],
+              "statistic": "dollar_volume.spread_bucket",
+              "unknown_liquidity": "widest_step"
+            },
+            "trading_days_per_year": 252
+          },
+          "cost_stack_id": "4cc998252c75a004496096bdf3ea62b573947d61cb310eb8d78055c58c46a8f0",
+          "fills": {
+            "max_participation_of_bar_volume": 0.0,
+            "missing_open_policy": "reference_price",
+            "model": "full_next_open",
+            "partial_fill_fraction": 1.0,
+            "reject_probability": 0.0,
+            "seed": 0
+          },
+          "min_notional": 1.0,
+          "price_basis": null,
+          "share_increment": 1.0,
+          "zero_crossing_clamp": true
+        }
+      },
+      "run-3d17ef1f3a5a4f02": {
+        "decision_coupling": "account_state",
+        "final_cash": 115929.74003597,
+        "max_stale_marks": 0,
+        "n_decision_bars": 15,
+        "n_events_applied": 0,
+        "n_fills": 1669,
+        "n_orders": 1669,
+        "n_target_rows": 15,
+        "note": "accounting_engine=canonical, decision_coupling=account_state: shares are the state, fills happen at the next open under the declared [fills] policy, holding costs accrue per bar and events are applied on their effective dates. Each decision is constructed inside the simulation against the marked equity and the marked position book of its own bar: the participation restriction is measured on trade dollars over dollar volume from that equity, batch rounding rounds at the per-sid increment against it, and the reduce-only box is written on the held position (\u00a73.7, \u00a73.8).",
+        "pending_orders_at_end": 0,
+        "settings": {
+          "cost_stack": {
+            "borrow_bps_annual": 50.0,
+            "cash_income_bps_annual": 0.0,
+            "commission_bps": 1.0,
+            "dollar_volume": {
+              "impact": {
+                "base": "current_equity",
+                "estimator": "same_bar",
+                "floor_dollars": 100000.0,
+                "refresh": "bar",
+                "source": "close_times_volume",
+                "window": "trailing",
+                "window_bars": 1
+              },
+              "participation": {
+                "base": "current_equity",
+                "estimator": "median",
+                "floor_dollars": 0.0,
+                "refresh": "decision",
+                "source": "close_times_volume",
+                "window": "trailing",
+                "window_bars": 20
+              },
+              "spread_bucket": {
+                "base": "current_equity",
+                "estimator": "median",
+                "floor_dollars": 0.0,
+                "refresh": "decision",
+                "source": "close_times_volume",
+                "window": "trailing",
+                "window_bars": 20
+              }
+            },
+            "financing_bps_annual": 0.0,
+            "holding_cost_settlement": "per_bar",
+            "impact": {
+              "participation_coeff": 0.0,
+              "participation_model": "sqrt",
+              "quadratic_notional_coeff": 10.0,
+              "statistic": "dollar_volume.impact"
+            },
+            "short_proceeds": "collateral_no_rebate",
+            "sources": {},
+            "spread": {
+              "bound": "inclusive_lower",
+              "flat_bps": null,
+              "mode": "bucket",
+              "schedule": [
+                [
+                  500000000.0,
+                  1.0
+                ],
+                [
+                  100000000.0,
+                  2.0
+                ],
+                [
+                  25000000.0,
+                  5.0
+                ],
+                [
+                  0.0,
+                  10.0
+                ]
+              ],
+              "statistic": "dollar_volume.spread_bucket",
+              "unknown_liquidity": "widest_step"
+            },
+            "trading_days_per_year": 252
+          },
+          "cost_stack_id": "4cc998252c75a004496096bdf3ea62b573947d61cb310eb8d78055c58c46a8f0",
+          "fills": {
+            "max_participation_of_bar_volume": 0.0,
+            "missing_open_policy": "reference_price",
+            "model": "full_next_open",
+            "partial_fill_fraction": 1.0,
+            "reject_probability": 0.0,
+            "seed": 0
+          },
+          "min_notional": 1.0,
+          "price_basis": null,
+          "share_increment": 1.0,
+          "zero_crossing_clamp": true
+        }
+      },
+      "run-5de9e258aedd4873": {
+        "decision_coupling": "account_state",
+        "final_cash": 116185.79415659512,
+        "max_stale_marks": 0,
+        "n_decision_bars": 15,
+        "n_events_applied": 0,
+        "n_fills": 1671,
+        "n_orders": 1671,
+        "n_target_rows": 15,
+        "note": "accounting_engine=canonical, decision_coupling=account_state: shares are the state, fills happen at the next open under the declared [fills] policy, holding costs accrue per bar and events are applied on their effective dates. Each decision is constructed inside the simulation against the marked equity and the marked position book of its own bar: the participation restriction is measured on trade dollars over dollar volume from that equity, batch rounding rounds at the per-sid increment against it, and the reduce-only box is written on the held position (\u00a73.7, \u00a73.8).",
+        "pending_orders_at_end": 0,
+        "settings": {
+          "cost_stack": {
+            "borrow_bps_annual": 50.0,
+            "cash_income_bps_annual": 0.0,
+            "commission_bps": 1.0,
+            "dollar_volume": {
+              "impact": {
+                "base": "current_equity",
+                "estimator": "same_bar",
+                "floor_dollars": 100000.0,
+                "refresh": "bar",
+                "source": "close_times_volume",
+                "window": "trailing",
+                "window_bars": 1
+              },
+              "participation": {
+                "base": "current_equity",
+                "estimator": "median",
+                "floor_dollars": 0.0,
+                "refresh": "decision",
+                "source": "close_times_volume",
+                "window": "trailing",
+                "window_bars": 20
+              },
+              "spread_bucket": {
+                "base": "current_equity",
+                "estimator": "median",
+                "floor_dollars": 0.0,
+                "refresh": "decision",
+                "source": "close_times_volume",
+                "window": "trailing",
+                "window_bars": 20
+              }
+            },
+            "financing_bps_annual": 0.0,
+            "holding_cost_settlement": "per_bar",
+            "impact": {
+              "participation_coeff": 0.0,
+              "participation_model": "sqrt",
+              "quadratic_notional_coeff": 10.0,
+              "statistic": "dollar_volume.impact"
+            },
+            "short_proceeds": "collateral_no_rebate",
+            "sources": {},
+            "spread": {
+              "bound": "inclusive_lower",
+              "flat_bps": null,
+              "mode": "bucket",
+              "schedule": [
+                [
+                  500000000.0,
+                  1.0
+                ],
+                [
+                  100000000.0,
+                  2.0
+                ],
+                [
+                  25000000.0,
+                  5.0
+                ],
+                [
+                  0.0,
+                  10.0
+                ]
+              ],
+              "statistic": "dollar_volume.spread_bucket",
+              "unknown_liquidity": "widest_step"
+            },
+            "trading_days_per_year": 252
+          },
+          "cost_stack_id": "4cc998252c75a004496096bdf3ea62b573947d61cb310eb8d78055c58c46a8f0",
+          "fills": {
+            "max_participation_of_bar_volume": 0.0,
+            "missing_open_policy": "reference_price",
+            "model": "full_next_open",
+            "partial_fill_fraction": 1.0,
+            "reject_probability": 0.0,
+            "seed": 0
+          },
+          "min_notional": 1.0,
+          "price_basis": null,
+          "share_increment": 1.0,
+          "zero_crossing_clamp": true
+        }
+      },
+      "run-b471a03573cc45bc": {
+        "decision_coupling": "account_state",
+        "final_cash": 104457.04389512523,
+        "max_stale_marks": 0,
+        "n_decision_bars": 15,
+        "n_events_applied": 0,
+        "n_fills": 1875,
+        "n_orders": 1875,
+        "n_target_rows": 15,
+        "note": "accounting_engine=canonical, decision_coupling=account_state: shares are the state, fills happen at the next open under the declared [fills] policy, holding costs accrue per bar and events are applied on their effective dates. Each decision is constructed inside the simulation against the marked equity and the marked position book of its own bar: the participation restriction is measured on trade dollars over dollar volume from that equity, batch rounding rounds at the per-sid increment against it, and the reduce-only box is written on the held position (\u00a73.7, \u00a73.8).",
+        "pending_orders_at_end": 0,
+        "settings": {
+          "cost_stack": {
+            "borrow_bps_annual": 50.0,
+            "cash_income_bps_annual": 0.0,
+            "commission_bps": 1.0,
+            "dollar_volume": {
+              "impact": {
+                "base": "current_equity",
+                "estimator": "same_bar",
+                "floor_dollars": 100000.0,
+                "refresh": "bar",
+                "source": "close_times_volume",
+                "window": "trailing",
+                "window_bars": 1
+              },
+              "participation": {
+                "base": "current_equity",
+                "estimator": "median",
+                "floor_dollars": 0.0,
+                "refresh": "decision",
+                "source": "close_times_volume",
+                "window": "trailing",
+                "window_bars": 20
+              },
+              "spread_bucket": {
+                "base": "current_equity",
+                "estimator": "median",
+                "floor_dollars": 0.0,
+                "refresh": "decision",
+                "source": "close_times_volume",
+                "window": "trailing",
+                "window_bars": 20
+              }
+            },
+            "financing_bps_annual": 0.0,
+            "holding_cost_settlement": "per_bar",
+            "impact": {
+              "participation_coeff": 0.0,
+              "participation_model": "sqrt",
+              "quadratic_notional_coeff": 10.0,
+              "statistic": "dollar_volume.impact"
+            },
+            "short_proceeds": "collateral_no_rebate",
+            "sources": {},
+            "spread": {
+              "bound": "inclusive_lower",
+              "flat_bps": null,
+              "mode": "bucket",
+              "schedule": [
+                [
+                  500000000.0,
+                  1.0
+                ],
+                [
+                  100000000.0,
+                  2.0
+                ],
+                [
+                  25000000.0,
+                  5.0
+                ],
+                [
+                  0.0,
+                  10.0
+                ]
+              ],
+              "statistic": "dollar_volume.spread_bucket",
+              "unknown_liquidity": "widest_step"
+            },
+            "trading_days_per_year": 252
+          },
+          "cost_stack_id": "4cc998252c75a004496096bdf3ea62b573947d61cb310eb8d78055c58c46a8f0",
+          "fills": {
+            "max_participation_of_bar_volume": 0.0,
+            "missing_open_policy": "reference_price",
+            "model": "full_next_open",
+            "partial_fill_fraction": 1.0,
+            "reject_probability": 0.0,
+            "seed": 0
+          },
+          "min_notional": 1.0,
+          "price_basis": null,
+          "share_increment": 1.0,
+          "zero_crossing_clamp": true
+        }
+      },
+      "run-b819006753344ca8": {
+        "decision_coupling": "account_state",
+        "final_cash": 104752.40176972107,
+        "max_stale_marks": 1,
+        "n_decision_bars": 15,
+        "n_events_applied": 0,
+        "n_fills": 2034,
+        "n_orders": 2034,
+        "n_target_rows": 15,
+        "note": "accounting_engine=canonical, decision_coupling=account_state: shares are the state, fills happen at the next open under the declared [fills] policy, holding costs accrue per bar and events are applied on their effective dates. Each decision is constructed inside the simulation against the marked equity and the marked position book of its own bar: the participation restriction is measured on trade dollars over dollar volume from that equity, batch rounding rounds at the per-sid increment against it, and the reduce-only box is written on the held position (\u00a73.7, \u00a73.8).",
+        "pending_orders_at_end": 0,
+        "settings": {
+          "cost_stack": {
+            "borrow_bps_annual": 50.0,
+            "cash_income_bps_annual": 0.0,
+            "commission_bps": 1.0,
+            "dollar_volume": {
+              "impact": {
+                "base": "current_equity",
+                "estimator": "same_bar",
+                "floor_dollars": 100000.0,
+                "refresh": "bar",
+                "source": "close_times_volume",
+                "window": "trailing",
+                "window_bars": 1
+              },
+              "participation": {
+                "base": "current_equity",
+                "estimator": "median",
+                "floor_dollars": 0.0,
+                "refresh": "decision",
+                "source": "close_times_volume",
+                "window": "trailing",
+                "window_bars": 20
+              },
+              "spread_bucket": {
+                "base": "current_equity",
+                "estimator": "median",
+                "floor_dollars": 0.0,
+                "refresh": "decision",
+                "source": "close_times_volume",
+                "window": "trailing",
+                "window_bars": 20
+              }
+            },
+            "financing_bps_annual": 0.0,
+            "holding_cost_settlement": "per_bar",
+            "impact": {
+              "participation_coeff": 0.0,
+              "participation_model": "sqrt",
+              "quadratic_notional_coeff": 10.0,
+              "statistic": "dollar_volume.impact"
+            },
+            "short_proceeds": "collateral_no_rebate",
+            "sources": {},
+            "spread": {
+              "bound": "inclusive_lower",
+              "flat_bps": null,
+              "mode": "bucket",
+              "schedule": [
+                [
+                  500000000.0,
+                  1.0
+                ],
+                [
+                  100000000.0,
+                  2.0
+                ],
+                [
+                  25000000.0,
+                  5.0
+                ],
+                [
+                  0.0,
+                  10.0
+                ]
+              ],
+              "statistic": "dollar_volume.spread_bucket",
+              "unknown_liquidity": "widest_step"
+            },
+            "trading_days_per_year": 252
+          },
+          "cost_stack_id": "4cc998252c75a004496096bdf3ea62b573947d61cb310eb8d78055c58c46a8f0",
+          "fills": {
+            "max_participation_of_bar_volume": 0.0,
+            "missing_open_policy": "reference_price",
+            "model": "full_next_open",
+            "partial_fill_fraction": 1.0,
+            "reject_probability": 0.0,
+            "seed": 0
+          },
+          "min_notional": 1.0,
+          "price_basis": null,
+          "share_increment": 1.0,
+          "zero_crossing_clamp": true
+        }
+      }
+    }
+  },
+  "exit_conditions": {
+    "arms": {
+      "X0": {
+        "by_capital": {
+          "100000": {
+            "at_cap_fraction_max": 0.0,
+            "at_cap_fraction_median": 0.0,
+            "binding_conditions": {
+              "max_gross": 4,
+              "net_band": 8
+            },
+            "charged_cost_fraction": 0.007311124859099174,
+            "concentration_dominated": null,
+            "ex_ante_sd_median": null,
+            "flat_from_straddling_endpoints": 0,
+            "max_at_cap_fraction": null,
+            "n_decisions": 15,
+            "n_obs": 300,
+            "net_sharpe": {
+              "annualized": 1.0052389137039246,
+              "periodic": 0.06332409937774532,
+              "se_method": "none_reported",
+              "se_note": "the studentized block-bootstrap interval is computed by 'prism compare' over the recorded return path (validation/compare.py); this record reports the point estimate"
+            },
+            "paths": {
+              "normal": 15
+            },
+            "repair": {
+              "attempted": 15,
+              "by_response": {
+                "none": 15
+              },
+              "dropped_batch": 0,
+              "no_action": 0,
+              "note": "counted over decision dates from portfolio/rounding.py::round_batch, the second of the two independent validations of \u00a73.7",
+              "scaled_batch": 0,
+              "succeeded": 15
+            },
+            "straddling_decisions": 0,
+            "turnover": {
+              "average": 0.04524284148476088,
+              "boundary": 0.0,
+              "interior": 13.572852445428264,
+              "total": 13.572852445428264
+            }
+          }
+        },
+        "kind": "heuristic"
+      },
+      "X1": {
+        "by_capital": {
+          "100000": {
+            "at_cap_fraction_max": 0.0,
+            "at_cap_fraction_median": 0.0,
+            "binding_conditions": {
+              "max_gross": 4,
+              "net_band": 8
+            },
+            "charged_cost_fraction": 0.007333169975284168,
+            "concentration_dominated": null,
+            "ex_ante_sd_median": null,
+            "flat_from_straddling_endpoints": 0,
+            "max_at_cap_fraction": null,
+            "n_decisions": 15,
+            "n_obs": 300,
+            "net_sharpe": {
+              "annualized": 1.0087593266929586,
+              "periodic": 0.06354586455110783,
+              "se_method": "none_reported",
+              "se_note": "the studentized block-bootstrap interval is computed by 'prism compare' over the recorded return path (validation/compare.py); this record reports the point estimate"
+            },
+            "paths": {
+              "normal": 15
+            },
+            "repair": {
+              "attempted": 15,
+              "by_response": {
+                "none": 15
+              },
+              "dropped_batch": 0,
+              "no_action": 0,
+              "note": "counted over decision dates from portfolio/rounding.py::round_batch, the second of the two independent validations of \u00a73.7",
+              "scaled_batch": 0,
+              "succeeded": 15
+            },
+            "straddling_decisions": 0,
+            "turnover": {
+              "average": 0.045420980620099034,
+              "boundary": 0.0,
+              "interior": 13.62629418602971,
+              "total": 13.62629418602971
+            }
+          }
+        },
+        "kind": "heuristic"
+      },
+      "X2": {
+        "by_capital": {
+          "100000": {
+            "at_cap_fraction_max": 0.0,
+            "at_cap_fraction_median": 0.0,
+            "binding_conditions": {
+              "max_gross": 5,
+              "net_band": 6
+            },
+            "charged_cost_fraction": 0.007221521898617859,
+            "concentration_dominated": null,
+            "ex_ante_sd_median": null,
+            "flat_from_straddling_endpoints": 0,
+            "max_at_cap_fraction": null,
+            "n_decisions": 15,
+            "n_obs": 300,
+            "net_sharpe": {
+              "annualized": 1.1416776130449395,
+              "periodic": 0.0719189295601605,
+              "se_method": "none_reported",
+              "se_note": "the studentized block-bootstrap interval is computed by 'prism compare' over the recorded return path (validation/compare.py); this record reports the point estimate"
+            },
+            "paths": {
+              "normal": 15
+            },
+            "repair": {
+              "attempted": 15,
+              "by_response": {
+                "none": 15
+              },
+              "dropped_batch": 0,
+              "no_action": 0,
+              "note": "counted over decision dates from portfolio/rounding.py::round_batch, the second of the two independent validations of \u00a73.7",
+              "scaled_batch": 0,
+              "succeeded": 15
+            },
+            "straddling_decisions": 0,
+            "turnover": {
+              "average": 0.04395980411216494,
+              "boundary": 0.0,
+              "interior": 13.187941233649482,
+              "total": 13.187941233649482
+            }
+          }
+        },
+        "kind": "heuristic"
+      },
+      "X3": {
+        "by_capital": {
+          "100000": {
+            "at_cap_fraction_max": 0.0,
+            "at_cap_fraction_median": 0.0,
+            "binding_conditions": {
+              "max_gross": 3,
+              "net_band": 8
+            },
+            "charged_cost_fraction": 0.008126421888006625,
+            "concentration_dominated": null,
+            "ex_ante_sd_median": null,
+            "flat_from_straddling_endpoints": 0,
+            "max_at_cap_fraction": null,
+            "n_decisions": 15,
+            "n_obs": 300,
+            "net_sharpe": {
+              "annualized": 0.474964759918125,
+              "periodic": 0.029919967530068037,
+              "se_method": "none_reported",
+              "se_note": "the studentized block-bootstrap interval is computed by 'prism compare' over the recorded return path (validation/compare.py); this record reports the point estimate"
+            },
+            "paths": {
+              "normal": 15
+            },
+            "repair": {
+              "attempted": 15,
+              "by_response": {
+                "none": 15
+              },
+              "dropped_batch": 0,
+              "no_action": 0,
+              "note": "counted over decision dates from portfolio/rounding.py::round_batch, the second of the two independent validations of \u00a73.7",
+              "scaled_batch": 0,
+              "succeeded": 15
+            },
+            "straddling_decisions": 0,
+            "turnover": {
+              "average": 0.0540343615931083,
+              "boundary": 0.0,
+              "interior": 16.21030847793249,
+              "total": 16.21030847793249
+            }
+          }
+        },
+        "kind": "heuristic"
+      },
+      "X4": {
+        "by_capital": {
+          "100000": {
+            "at_cap_fraction_max": 0.0,
+            "at_cap_fraction_median": 0.0,
+            "binding_conditions": {
+              "max_gross": 5,
+              "net_band": 7
+            },
+            "charged_cost_fraction": 0.00866578532729886,
+            "concentration_dominated": null,
+            "ex_ante_sd_median": null,
+            "flat_from_straddling_endpoints": 0,
+            "max_at_cap_fraction": null,
+            "n_decisions": 15,
+            "n_obs": 300,
+            "net_sharpe": {
+              "annualized": 0.8119383526707935,
+              "periodic": 0.051147308597199424,
+              "se_method": "none_reported",
+              "se_note": "the studentized block-bootstrap interval is computed by 'prism compare' over the recorded return path (validation/compare.py); this record reports the point estimate"
+            },
+            "paths": {
+              "normal": 15
+            },
+            "repair": {
+              "attempted": 15,
+              "by_response": {
+                "none": 15
+              },
+              "dropped_batch": 0,
+              "no_action": 0,
+              "note": "counted over decision dates from portfolio/rounding.py::round_batch, the second of the two independent validations of \u00a73.7",
+              "scaled_batch": 0,
+              "succeeded": 15
+            },
+            "straddling_decisions": 0,
+            "turnover": {
+              "average": 0.0627425438207593,
+              "boundary": 0.0,
+              "interior": 18.822763146227796,
+              "total": 18.822763146227793
+            }
+          }
+        },
+        "kind": "heuristic"
+      }
+    },
+    "excluded_folds": {
+      "note": "folds excluded by min_training_periods or min_blocks are excluded for all three arms alike; admission is decided from the shared calibration family and never from an arm's own confidence (decision D6)",
+      "per_run": {
+        "X0@100000": [
+          {
+            "index": 0,
+            "reason": "training pool holds 1 decision periods with a complete observation, below the declared min_training_periods=12"
+          },
+          {
+            "index": 1,
+            "reason": "training pool holds 4 decision periods with a complete observation, below the declared min_training_periods=12"
+          },
+          {
+            "index": 2,
+            "reason": "training pool holds 7 decision periods with a complete observation, below the declared min_training_periods=12"
+          },
+          {
+            "index": 3,
+            "reason": "training pool holds 10 decision periods with a complete observation, below the declared min_training_periods=12"
+          }
+        ],
+        "X1@100000": [
+          {
+            "index": 0,
+            "reason": "training pool holds 1 decision periods with a complete observation, below the declared min_training_periods=12"
+          },
+          {
+            "index": 1,
+            "reason": "training pool holds 4 decision periods with a complete observation, below the declared min_training_periods=12"
+          },
+          {
+            "index": 2,
+            "reason": "training pool holds 7 decision periods with a complete observation, below the declared min_training_periods=12"
+          },
+          {
+            "index": 3,
+            "reason": "training pool holds 10 decision periods with a complete observation, below the declared min_training_periods=12"
+          }
+        ],
+        "X2@100000": [
+          {
+            "index": 0,
+            "reason": "training pool holds 1 decision periods with a complete observation, below the declared min_training_periods=12"
+          },
+          {
+            "index": 1,
+            "reason": "training pool holds 4 decision periods with a complete observation, below the declared min_training_periods=12"
+          },
+          {
+            "index": 2,
+            "reason": "training pool holds 7 decision periods with a complete observation, below the declared min_training_periods=12"
+          },
+          {
+            "index": 3,
+            "reason": "training pool holds 10 decision periods with a complete observation, below the declared min_training_periods=12"
+          }
+        ],
+        "X3@100000": [
+          {
+            "index": 0,
+            "reason": "training pool holds 1 decision periods with a complete observation, below the declared min_training_periods=12"
+          },
+          {
+            "index": 1,
+            "reason": "training pool holds 4 decision periods with a complete observation, below the declared min_training_periods=12"
+          },
+          {
+            "index": 2,
+            "reason": "training pool holds 7 decision periods with a complete observation, below the declared min_training_periods=12"
+          },
+          {
+            "index": 3,
+            "reason": "training pool holds 10 decision periods with a complete observation, below the declared min_training_periods=12"
+          }
+        ],
+        "X4@100000": [
+          {
+            "index": 0,
+            "reason": "training pool holds 1 decision periods with a complete observation, below the declared min_training_periods=12"
+          },
+          {
+            "index": 1,
+            "reason": "training pool holds 4 decision periods with a complete observation, below the declared min_training_periods=12"
+          },
+          {
+            "index": 2,
+            "reason": "training pool holds 7 decision periods with a complete observation, below the declared min_training_periods=12"
+          },
+          {
+            "index": 3,
+            "reason": "training pool holds 10 decision periods with a complete observation, below the declared min_training_periods=12"
+          }
+        ]
+      },
+      "shared": true
+    }
+  },
+  "holdings_overlap_index": {
+    "n_decision_bars_by_capital": {
+      "100000": 15
+    },
+    "note": "the holdings-overlap panel is computed on the decision bars every arm decided on; a row an arm decided and another did not is counted here rather than dropped silently",
+    "rows_outside_the_shared_index": {
+      "/home/b90/prism/results/run-2ffbe998048b4148/record.json": 0,
+      "/home/b90/prism/results/run-3d17ef1f3a5a4f02/record.json": 0,
+      "/home/b90/prism/results/run-5de9e258aedd4873/record.json": 0,
+      "/home/b90/prism/results/run-b471a03573cc45bc/record.json": 0,
+      "/home/b90/prism/results/run-b819006753344ca8/record.json": 0
+    }
+  },
+  "is_evidence_row": false,
+  "kind": "reevaluation",
+  "method": {
+    "block_bars": 42,
+    "block_periods": 42,
+    "block_scheme": "circular_moving",
+    "confidence": 0.95,
+    "coverage_statement": "Endpoints are directional statements under the resampling assumptions: the pool is stationary enough to resample and block_periods carries the dependence of overlapping labels. They are not a simultaneous interval and say nothing about realized portfolio return coverage.",
+    "decision_interval_bars": 21,
+    "frequency": "daily",
+    "hac_lags": 41,
+    "interval_method": "studentized_circular_block_bootstrap",
+    "min_blocks": 2,
+    "n_resamples": 2000,
+    "seed": 20260718,
+    "units": "bars"
+  },
+  "promotion_check": {
+    "kind": "none",
+    "note": "X0-X4 can kill and cannot promote (design \u00a73, A4 (b)). Promotion is X5 only, under its own registration, on data at least one year past 2026-07-19.",
+    "outcome": "no arm promotes",
+    "promotes": false,
+    "reason": "a same-sample comparison can kill a configuration and can never promote one; the reference book's promotion stays under the existing prospective rules of SPEC.md",
+    "recorded_by": "prism compare --promotion-check"
+  },
+  "registration": {
+    "arms": [
+      "X0",
+      "X1",
+      "X2",
+      "X3",
+      "X4"
+    ],
+    "capital_scenarios": [
+      100000.0
+    ],
+    "id": "2026-09-learned-xsection",
+    "selection_set": "learned_xsection_v1",
+    "sha256": "397ccf7a9087fd84d6cc836666e1d6128d1e279bdc0c1fed2d037ffed9041a7b",
+    "trial_budget": 5
+  },
+  "runs": {
+    "attempts": [
+      "X0",
+      "X1",
+      "X2",
+      "X3",
+      "X4"
+    ],
+    "n_rows": 20,
+    "note": "an attempt is one arm_id; six capital scenarios of one arm spend one attempt between them, and a repeated execution of the same configuration is a row and not an attempt (\u00a73.12)",
+    "other_finished_rows": [],
+    "read_by_this_comparison": [
+      "run-2ffbe998048b4148",
+      "run-3d17ef1f3a5a4f02",
+      "run-5de9e258aedd4873",
+      "run-b471a03573cc45bc",
+      "run-b819006753344ca8"
+    ],
+    "trial_log": "/home/b90/prism/trials/learned_xsection_v1.jsonl"
+  },
+  "selection": {
+    "n_intervals": 10
+  },
+  "warnings": [
+    "run-3d17ef1f3a5a4f02: fill_source=simulated; fills are not actual fills",
+    "run-5de9e258aedd4873: fill_source=simulated; fills are not actual fills",
+    "run-2ffbe998048b4148: fill_source=simulated; fills are not actual fills",
+    "run-b471a03573cc45bc: fill_source=simulated; fills are not actual fills",
+    "run-b819006753344ca8: fill_source=simulated; fills are not actual fills"
+  ],
+  "writes_trial_row": false
+}

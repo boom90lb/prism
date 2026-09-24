@@ -1,0 +1,69 @@
+# The control book of the breadth registration (`registrations/2026-09-breadth.toml`;
+# docs/breadth_design.md).
+#
+# The recorded B1 momentum book, value for value (`examples/momentum/demotion_b1.toml`
+# restated through `examples/characteristics/control.toml`), on the S&P 500. The
+# registration's arms trade the same book on other indices of the same frozen
+# dataset through `[[arms]].universe_index`; nothing else about the book moves.
+
+[strategy]
+name = "breadth_control"
+universe_index = "sp500"
+combination = "position_space"
+renormalize = false
+
+[[strategy.components]]
+id = "momentum"
+path = "prism.signal.momentum_node:MomentumSignalNode"
+weight = 1.0
+horizon_bars = 21
+update_every_bars = 21
+valid_for_bars = 21
+to_weights = "decile_long_short"
+
+[strategy.components.params]
+lookback_bars = 252
+skip_bars = 21
+horizon_bars = 21
+
+[strategy.components.to_weights_params]
+decile = 0.10
+max_gross = 1.0
+max_symbol_abs_weight = 0.35
+
+# The screen the recorded B1 run applied (`examples/momentum/demotion_b1.toml`).
+[strategy.eligibility]
+min_price = 5.0
+min_median_dollar_volume = 1000000.0
+dollar_volume_window = 20
+return_history_bars = 252
+listing_seasoning_bars = 0
+membership_required = true
+exclude_asset_classes = []
+
+[construction]
+kind = "heuristic"
+step_order = "construct_band_cap_participation"
+max_gross = 1.0
+max_symbol_abs_weight = 0.35
+
+[construction.band]
+mode = "closed_form"
+gamma_risk = 1.0
+
+[construction.participation]
+max_participation = 0.05
+statistic = "median"
+window_bars = 20
+floor_dollars = 0.0
+base = "initial_capital"
+
+[construction.spread]
+mode = "bucket"
+
+[policy]
+profile = "examples/reference/profiles/experiment_v1.toml"
+costs = "examples/reference/costs/retail_v1.toml"
+execution = "examples/reference/profiles/execution_alpaca.toml"
+monitoring = "examples/reference/policies/monitoring.toml"
+recovery = "examples/reference/policies/recovery.toml"

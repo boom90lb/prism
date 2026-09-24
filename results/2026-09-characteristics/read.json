@@ -1,0 +1,282 @@
+{
+  "arms": {
+    "composite_three": {
+      "annualized_return": 0.015622578983261137,
+      "annualized_vol": 0.06490705378034894,
+      "breadth": {
+        "avg_names_held": 206.2159090909091,
+        "n_active_days": 1055,
+        "n_eff_book_contribution": 43.16938416934994,
+        "n_ever_held": 541,
+        "top_eigenvalue_shares": [
+          0.10696083918253169,
+          0.0657064662157145,
+          0.03893519612557958
+        ]
+      },
+      "charged_cost_total": 0.019177694520179565,
+      "config_id": "281951e1de929afe66bbe0bef5cc4ad0f19b3e5ef35b9777f107a1e2a8ea6c5d",
+      "dsr_vs_set": 0.20869584915449924,
+      "evidence_tier": "net_edge",
+      "excluded_folds": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "gross_sharpe_annualized": 0.34194662620549765,
+      "held_book_ic": {
+        "mean": 0.03188879312805268,
+        "n": 50,
+        "note": "held names only (long leg vs short leg separation), one cross-section per decision bar",
+        "se": 0.026343047707244126
+      },
+      "max_drawdown": 0.08618521503504672,
+      "n_decision_rows": 51,
+      "n_obs": 1056,
+      "net_sharpe_annualized": 0.2713145309256626,
+      "net_sharpe_periodic": 0.01709120895017729,
+      "psr_vs_zero": 0.7095735056095029,
+      "run_id": "run-edbd169604a54265",
+      "turnover_total": 30.094400677584282
+    },
+    "idiosyncratic_vol_only": {
+      "annualized_return": -0.06300078450845092,
+      "annualized_vol": 0.11122185451051864,
+      "breadth": {
+        "avg_names_held": 96.48011363636364,
+        "n_active_days": 1055,
+        "n_eff_book_contribution": 32.06736175013196,
+        "n_ever_held": 438,
+        "top_eigenvalue_shares": [
+          0.1320391421993879,
+          0.06705856003698095,
+          0.03641099225782299
+        ]
+      },
+      "charged_cost_total": 0.020212934334399017,
+      "config_id": "55517a1e028856ae9e52f9ce22168515aade88ab2e35f1130af9570796fbddcd",
+      "dsr_vs_set": 0.007284489027636861,
+      "evidence_tier": "mechanics_clean",
+      "excluded_folds": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "gross_sharpe_annualized": -0.4861001108540731,
+      "held_book_ic": {
+        "mean": -0.006317549535401305,
+        "n": 50,
+        "note": "held names only (long leg vs short leg separation), one cross-section per decision bar",
+        "se": 0.041039229513476674
+      },
+      "max_drawdown": 0.3277851941331361,
+      "n_decision_rows": 51,
+      "n_obs": 1056,
+      "net_sharpe_annualized": -0.5294809525699358,
+      "net_sharpe_periodic": -0.033354164867753236,
+      "psr_vs_zero": 0.1403966999989576,
+      "run_id": "run-4eb1844298664770",
+      "turnover_total": 28.60845386324145
+    },
+    "momentum_control": {
+      "annualized_return": 0.07950630881200271,
+      "annualized_vol": 0.12405411857071744,
+      "breadth": {
+        "avg_names_held": 96.48011363636364,
+        "n_active_days": 1055,
+        "n_eff_book_contribution": 46.680152080828776,
+        "n_ever_held": 469,
+        "top_eigenvalue_shares": [
+          0.08057650287816558,
+          0.06712267962390477,
+          0.059515315952344175
+        ]
+      },
+      "charged_cost_total": 0.02087415040222544,
+      "config_id": "3f0769555b14da3b61d369c12f756083f5b18a5ccf27c58116136307677d14f2",
+      "dsr_vs_set": 0.5073416313816886,
+      "evidence_tier": "net_edge",
+      "excluded_folds": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "gross_sharpe_annualized": 0.7192046331340604,
+      "held_book_ic": {
+        "mean": 0.04879462886394483,
+        "n": 50,
+        "note": "held names only (long leg vs short leg separation), one cross-section per decision bar",
+        "se": 0.040661427413445805
+      },
+      "max_drawdown": 0.1628088572999481,
+      "n_decision_rows": 51,
+      "n_obs": 1056,
+      "net_sharpe_annualized": 0.678903045095232,
+      "net_sharpe_periodic": 0.04276687194396316,
+      "psr_vs_zero": 0.9152382157293872,
+      "run_id": "run-9f425894430542de",
+      "turnover_total": 31.640400951652538
+    },
+    "momentum_idiosyncratic_vol": {
+      "annualized_return": 0.008596726094201257,
+      "annualized_vol": 0.08367857397065072,
+      "breadth": {
+        "avg_names_held": 156.2244318181818,
+        "n_active_days": 1055,
+        "n_eff_book_contribution": 32.9413687849202,
+        "n_ever_held": 529,
+        "top_eigenvalue_shares": [
+          0.13390586896975287,
+          0.06454180470706343,
+          0.03654242013799041
+        ]
+      },
+      "charged_cost_total": 0.01844174524877146,
+      "config_id": "8c24713d15e87f0b1953db5d5137e129263652f1970573e1ffb81e5736de8524",
+      "dsr_vs_set": 0.1416511236740044,
+      "evidence_tier": "net_edge",
+      "excluded_folds": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "gross_sharpe_annualized": 0.1968030417109815,
+      "held_book_ic": {
+        "mean": 0.0321699980567477,
+        "n": 50,
+        "note": "held names only (long leg vs short leg separation), one cross-section per decision bar",
+        "se": 0.03410295990738857
+      },
+      "max_drawdown": 0.12306490194451913,
+      "n_decision_rows": 51,
+      "n_obs": 1056,
+      "net_sharpe_annualized": 0.1441742207732889,
+      "net_sharpe_periodic": 0.009082122229348686,
+      "psr_vs_zero": 0.6157319968896162,
+      "run_id": "run-1ce581cf28fd4189",
+      "turnover_total": 27.63598474428423
+    },
+    "momentum_residual_momentum": {
+      "annualized_return": 0.05752570330882523,
+      "annualized_vol": 0.07764134622103688,
+      "breadth": {
+        "avg_names_held": 157.13636363636363,
+        "n_active_days": 1055,
+        "n_eff_book_contribution": 53.179688072029855,
+        "n_ever_held": 540,
+        "top_eigenvalue_shares": [
+          0.07308566900912862,
+          0.0689595861906158,
+          0.04891767017960076
+        ]
+      },
+      "charged_cost_total": 0.022153056784931985,
+      "config_id": "0c8571a97490d333ad7ddf6bd620b3d8e1f9fc8d2fc2d1d04bb9700a8142d81d",
+      "dsr_vs_set": 0.5715812284808752,
+      "evidence_tier": "net_edge",
+      "excluded_folds": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "gross_sharpe_annualized": 0.8278118979622876,
+      "held_book_ic": {
+        "mean": 0.043357043948043635,
+        "n": 50,
+        "note": "held names only (long leg vs short leg separation), one cross-section per decision bar",
+        "se": 0.02628912134425584
+      },
+      "max_drawdown": 0.09112761491732246,
+      "n_decision_rows": 51,
+      "n_obs": 1056,
+      "net_sharpe_annualized": 0.7593204008430882,
+      "net_sharpe_periodic": 0.0478326891916355,
+      "psr_vs_zero": 0.9370306096472143,
+      "run_id": "run-903032f363154ce6",
+      "turnover_total": 35.830285882470704
+    },
+    "residual_momentum_only": {
+      "annualized_return": 0.038309367141588835,
+      "annualized_vol": 0.04664412053318251,
+      "breadth": {
+        "avg_names_held": 96.46022727272727,
+        "n_active_days": 1055,
+        "n_eff_book_contribution": 71.0216981424643,
+        "n_ever_held": 526,
+        "top_eigenvalue_shares": [
+          0.06618124973087564,
+          0.05389561419992206,
+          0.033797668901360656
+        ]
+      },
+      "charged_cost_total": 0.024929982159796974,
+      "config_id": "19333051bad855c4e1123f5546765a98f2e095c6492bc9ede9f2176d6f0532fc",
+      "dsr_vs_set": 0.6264513604817783,
+      "evidence_tier": "net_edge",
+      "excluded_folds": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "gross_sharpe_annualized": 0.9577774386303662,
+      "held_book_ic": {
+        "mean": 0.03757021558733312,
+        "n": 50,
+        "note": "held names only (long leg vs short leg separation), one cross-section per decision bar",
+        "se": 0.02182123153559664
+      },
+      "max_drawdown": 0.04269363348194943,
+      "n_decision_rows": 51,
+      "n_obs": 1056,
+      "net_sharpe_annualized": 0.8293464964387787,
+      "net_sharpe_periodic": 0.052243918578088654,
+      "psr_vs_zero": 0.953162778872611,
+      "run_id": "run-2749d7a356d342e7",
+      "turnover_total": 42.895380828977366
+    }
+  },
+  "dataset": {
+    "data_id": "bedf8c4c0f0c2195ce5aace938f4ad38e23e6b69b57075080073004692d46eef",
+    "root": "data/frozen/demotion_b1"
+  },
+  "deflation": {
+    "method": "deflated_sharpe_ratio_with_n",
+    "n_trials": 6,
+    "trial_periodic_sharpes": {
+      "composite_three": 0.017091208950176916,
+      "idiosyncratic_vol_only": -0.033354164867752875,
+      "momentum_control": 0.04276687194396271,
+      "momentum_idiosyncratic_vol": 0.009082122229348273,
+      "momentum_residual_momentum": 0.04783268919163456,
+      "residual_momentum_only": 0.052243918578087384
+    }
+  },
+  "records": {
+    "composite_three": "/home/b90/prism/results/run-edbd169604a54265/record.json",
+    "idiosyncratic_vol_only": "/home/b90/prism/results/run-4eb1844298664770/record.json",
+    "momentum_control": "/home/b90/prism/results/run-9f425894430542de/record.json",
+    "momentum_idiosyncratic_vol": "/home/b90/prism/results/run-1ce581cf28fd4189/record.json",
+    "momentum_residual_momentum": "/home/b90/prism/results/run-903032f363154ce6/record.json",
+    "residual_momentum_only": "/home/b90/prism/results/run-2749d7a356d342e7/record.json"
+  },
+  "registration": {
+    "arms": [
+      "momentum_control",
+      "residual_momentum_only",
+      "idiosyncratic_vol_only",
+      "momentum_residual_momentum",
+      "momentum_idiosyncratic_vol",
+      "composite_three"
+    ],
+    "id": "2026-09-characteristics",
+    "selection_set": "characteristics_v1",
+    "trial_budget": 6
+  },
+  "spanning": {}
+}

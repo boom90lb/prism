@@ -419,3 +419,58 @@ def batched_factor_ols(
     beta = coef[1:]
     residuals = R - design @ coef
     return alpha, beta, residuals
+
+
+def trailing_factor_residuals(
+    closes: pd.DataFrame,
+    volumes: pd.DataFrame,
+    config: ResidualStatArbConfig,
+    membership_mask: pd.DataFrame | None = None,
+    *,
+    window: int | None = None,
+) -> pd.DataFrame:
+    """Residual daily returns over the trailing ``window`` bars, for the names
+    eligible at the panel's last row (``window`` x eligible names).
+
+    One trailing-window fit at the decision bar and nothing else: the top
+    ``config.n_factors`` eigenportfolios are struck on the window's own
+    correlation matrix (``estimate_eigenportfolios``), factor returns are
+    formed over the same window, and every name is regressed on them in one
+    batched OLS (``batched_factor_ols``). The residuals are in-sample to the
+    window by construction; that is what a characteristic computed *from*
+    residuals (residual momentum, idiosyncratic volatility) needs, and it is
+    causal at the decision bar because the window ends there (N1).
+
+    The intercept is *retained* in the residual: what comes back is
+    ``R - F @ beta``, the return the factors do not explain, with the name's own
+    mean return still in it. Subtracting the fitted alpha would make every
+    residual sum to zero over the window by construction, and a residual
+    momentum read over the formation bars would then be minus the residual
+    over the skipped bars, i.e. short-term reversal wearing momentum's name
+    (Blitz, Huij and Martens 2011 keep the intercept for exactly this reason).
+    A dispersion characteristic is unaffected either way.
+
+    Names are the eligibility screen's at the last row, further restricted to
+    those with a fully finite return window (the screen's full-history rule
+    already implies this; the restriction is a guard, not a policy). Returns an
+    empty frame indexed by the window's bars when fewer than
+    ``n_factors + 2`` names qualify, so a caller cannot fit a rank-deficient
+    regression by accident (N7: the thin cross-section is visible as
+    all-NaN scores, never as a silently degenerate fit).
+    """
+    length = int(config.corr_window if window is None else window)
+    if length < config.n_factors + 5:
+        raise ValueError(f"window must be >= n_factors + 5 = {config.n_factors + 5}, got {length}")
+    if len(closes) < length + 1:
+        raise ValueError(f"panel has {len(closes)} rows; residualizing {length} returns needs >= {length + 1}")
+    eligible = compute_eligibility(closes, volumes, config, membership_mask).iloc[-1].astype(bool)
+    returns = compute_returns(closes).iloc[-length:]
+    names = [sid for sid, flag in eligible.items() if bool(flag)]
+    R = returns[names]
+    R = R.loc[:, R.notna().all(axis=0)]
+    if R.shape[1] < config.n_factors + 2:
+        return pd.DataFrame(index=returns.index, columns=pd.Index([], dtype=object), dtype=float)
+    Q, _ = estimate_eigenportfolios(R.to_numpy(dtype=float), config.n_factors)
+    F = factor_returns_from_window(R.to_numpy(dtype=float), Q)
+    alpha, _, residuals = batched_factor_ols(R.to_numpy(dtype=float), F)
+    return pd.DataFrame(residuals + alpha[None, :], index=R.index, columns=R.columns)

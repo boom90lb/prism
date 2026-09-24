@@ -1,0 +1,36 @@
+registration 2026-09-learned-xsection  sha256 397ccf7a9087
+selection set learned_xsection_v1  arms X0, X1, X2, X3, X4
+held fixed: accounting_engine=canonical, capital=100000.0, cost_refresh={cadence, charged, note, per_fold, windows} (see the record), data_id=bedf8c4c0f0c2195ce5aace938f4ad38e23e6b69b57075080073004692d46eef, executable_return=next_open_fill_marked_close_to_close, vintage=demotion_b1_2026-06-16, visibility_mode=research_vintage
+differs by design: engine
+promotion check: no arm promotes (rule kind='none')
+excluded folds (shared across every arm: True): 0, 1, 2, 3
+
+   capital arm                      sharpe  ann.ret     cost  turnover  at_cap   ex_sd  repair none/scale/drop  flat
+--------------------------------------------------------------------------------------------------------------------
+   100,000 X0                       1.0052   0.0633   0.0073     13.57   0.000     nan        15/0/0     0
+   100,000 X1                       1.0088   0.0635   0.0073     13.63   0.000     nan        15/0/0     0
+   100,000 X2                       1.1417   0.0719   0.0072     13.19   0.000     nan        15/0/0     0
+   100,000 X3                       0.4750   0.0299   0.0081     16.21   0.000     nan        15/0/0     0
+   100,000 X4                       0.8119   0.0511   0.0087     18.82   0.000     nan        15/0/0     0
+
+studentized Sharpe differences, circular_moving blocks of 42 bars, 2000 resamples, seed 20260718, hac_lags 41, decision interval 21 bars, studentized_circular_block_bootstrap
+  the statistic is the per-bar (periodic) Sharpe difference; the annualized column is the same interval scaled by sqrt(252)
+   capital difference                                       diff    lower    upper      p  diff/yr  lower/yr  upper/yr
+----------------------------------------------------------------------------------------------------------------------
+   100,000 X0_minus_X1                                   -0.0002  -0.0022   0.0022  0.846  -0.0035   -0.0344    0.0341
+   100,000 X0_minus_X2                                   -0.0086  -0.0413   0.0130  0.534  -0.1364   -0.6556    0.2057
+   100,000 X0_minus_X3                                    0.0334  -0.0048   0.1048  0.173   0.5303   -0.0764    1.6644
+   100,000 X0_minus_X4                                    0.0122  -0.0304   0.0526  0.539   0.1933   -0.4829    0.8355
+   100,000 X1_minus_X2                                   -0.0084  -0.0436   0.0142  0.551  -0.1329   -0.6922    0.2249
+   100,000 X1_minus_X3                                    0.0336  -0.0057   0.1045  0.174   0.5338   -0.0906    1.6584
+   100,000 X1_minus_X4                                    0.0124  -0.0302   0.0515  0.529   0.1968   -0.4801    0.8179
+   100,000 X2_minus_X3                                    0.0420   0.0012   0.1044  0.092   0.6667    0.0197    1.6581
+   100,000 X2_minus_X4                                    0.0208  -0.0208   0.0608  0.285   0.3297   -0.3301    0.9653
+   100,000 X3_minus_X4                                   -0.0212  -0.0777   0.0202  0.349  -0.3370   -1.2336    0.3213
+
+intervals computed: 10
+warning: run-3d17ef1f3a5a4f02: fill_source=simulated; fills are not actual fills
+warning: run-5de9e258aedd4873: fill_source=simulated; fills are not actual fills
+warning: run-2ffbe998048b4148: fill_source=simulated; fills are not actual fills
+warning: run-b471a03573cc45bc: fill_source=simulated; fills are not actual fills
+warning: run-b819006753344ca8: fill_source=simulated; fills are not actual fills

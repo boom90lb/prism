@@ -1,0 +1,387 @@
+{
+  "asof": "2026-09-23",
+  "counts": {
+    "unresolved": 42,
+    "promoted_to_sp500": 5,
+    "added_to_sp600": 6
+  },
+  "rules": [
+    "SPEC \u00a75.2: breadth beyond the S&P 500 with the survivorship leak counted, not\nhidden. The S&P 500 builder (`prism.scripts.build_sp500_universe`) is the\npattern; this script adds the one step the S&P 400 page needs that the S&P 500\npage mostly does not. Wikipedia's S&P 400 \"Selected past changes\" table omits\nmany exits (promotions to the 500, demotions to the 600, acquisitions,\nrenames), and a forward sweep keeps every such interval open to the as-of\ndate. Those phantoms are closed on dated evidence, in this fixed order of\nprecedence-by-date (the earliest wins), decided before any return is read:",
+    "1. ``promoted_to_sp500`` -- the start of the ticker's next S&P 500 interval\n   (`data/universe/sp500_membership_<asof>.parquet`);\n2. ``added_to_sp600`` -- the ticker's addition date in the S&P 600 page's\n   changes table;\n3. ``vendor_last_bar`` -- the last bar the price vendor holds, when it ends at\n   least ten sessions before the pull's end (an acquisition or delisting).",
+    "An interval with none of these is dropped and recorded ``unresolved``.\nPrices are read only for existence and last date; no return enters any rule."
+  ],
+  "vendor_exit_slack_days": 14,
+  "ledger": [
+    {
+      "ticker": "AAXN",
+      "start": "2019-07-01",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "ABMD",
+      "start": "2016-03-30",
+      "closed_at": "2018-05-30",
+      "evidence": "promoted_to_sp500",
+      "evidence_date": "2018-05-31"
+    },
+    {
+      "ticker": "ADS",
+      "start": "2020-06-22",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "AOS",
+      "start": "2013-11-04",
+      "closed_at": "2017-07-25",
+      "evidence": "promoted_to_sp500",
+      "evidence_date": "2017-07-26"
+    },
+    {
+      "ticker": "APY",
+      "start": "2018-05-10",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "BRKS",
+      "start": "2021-01-07",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "BTU",
+      "start": "2014-09-19",
+      "closed_at": "2024-01-22",
+      "evidence": "added_to_sp600",
+      "evidence_date": "2024-01-23"
+    },
+    {
+      "ticker": "CARS",
+      "start": "2017-06-02",
+      "closed_at": "2021-12-01",
+      "evidence": "added_to_sp600",
+      "evidence_date": "2021-12-02"
+    },
+    {
+      "ticker": "CBST",
+      "start": "2013-09-26",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "CFX",
+      "start": "2019-03-18",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "CHK",
+      "start": "2023-08-21",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "CNC",
+      "start": "2014-09-03",
+      "closed_at": "2016-03-29",
+      "evidence": "promoted_to_sp500",
+      "evidence_date": "2016-03-30"
+    },
+    {
+      "ticker": "CSAL",
+      "start": "2015-04-24",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "CTB",
+      "start": "2017-02-13",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "CVET",
+      "start": "2019-02-11",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "DDS",
+      "start": "2017-02-28",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "DF",
+      "start": "2013-05-23",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "DNOW",
+      "start": "2014-05-30",
+      "closed_at": "2020-06-21",
+      "evidence": "added_to_sp600",
+      "evidence_date": "2020-06-22"
+    },
+    {
+      "ticker": "DO",
+      "start": "2016-09-30",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "DV",
+      "start": "2012-09-28",
+      "closed_at": "2023-01-30",
+      "evidence": "added_to_sp600",
+      "evidence_date": "2023-01-31"
+    },
+    {
+      "ticker": "ELY",
+      "start": "2021-06-15",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "ENDP",
+      "start": "2017-03-02",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "ERI",
+      "start": "2018-08-20",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "FEIC",
+      "start": "2014-04-01",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "FII",
+      "start": "2012-12-31",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "FOSL",
+      "start": "2016-01-05",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "GPS",
+      "start": "2022-02-03",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "HFC",
+      "start": "2021-06-04",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "HTA",
+      "start": "2022-07-21",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "HYH",
+      "start": "2014-10-31",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "IGT",
+      "start": "2014-06-20",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "JCOM",
+      "start": "2015-12-14",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "JDSU",
+      "start": "2013-12-20",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "LW",
+      "start": "2016-11-10",
+      "closed_at": "2018-12-02",
+      "evidence": "promoted_to_sp500",
+      "evidence_date": "2018-12-03"
+    },
+    {
+      "ticker": "MNK",
+      "start": "2017-07-26",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "OAS",
+      "start": "2018-05-01",
+      "closed_at": "2019-12-22",
+      "evidence": "added_to_sp600",
+      "evidence_date": "2019-12-23"
+    },
+    {
+      "ticker": "OZRK",
+      "start": "2015-05-29",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "POL",
+      "start": "2014-04-30",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "PSTG",
+      "start": "2024-01-05",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "RDC",
+      "start": "2014-08-18",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "SAI",
+      "start": "2013-09-20",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "SGMS",
+      "start": "2018-01-03",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "TPX",
+      "start": "2012-05-15",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "TYL",
+      "start": "2014-12-04",
+      "closed_at": "2020-06-21",
+      "evidence": "promoted_to_sp500",
+      "evidence_date": "2020-06-22"
+    },
+    {
+      "ticker": "UA/UAA",
+      "start": "2022-06-21",
+      "closed_at": "2025-12-21",
+      "evidence": "added_to_sp600",
+      "evidence_date": "2025-12-22"
+    },
+    {
+      "ticker": "WBMD",
+      "start": "2016-04-04",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "WETF",
+      "start": "2015-06-11",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "WNR",
+      "start": "2014-11-24",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "WTW",
+      "start": "2018-09-18",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "WWE",
+      "start": "2018-08-01",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "WXS",
+      "start": "2012-03-26",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "WYND",
+      "start": "2018-05-31",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    },
+    {
+      "ticker": "ZI",
+      "start": "2023-06-19",
+      "closed_at": null,
+      "evidence": "unresolved",
+      "evidence_date": null
+    }
+  ]
+}

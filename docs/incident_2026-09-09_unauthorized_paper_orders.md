@@ -38,7 +38,7 @@ matching the owner's recorded `state.json`. After cancellation it held 99 positi
 cash 937,669.47. On 2026-09-15 it holds 0 open orders, 99 positions and cash 937,669.47.
 Equity differs across those readings only by mark to market on the held book.
 
-## Root causes, both still worth acting on
+## Root causes, both now acted on
 
 **1. A verification instruction assumed a command would stop where it does not.** The
 instruction said to confirm the command "reaches its credential check". Nothing in
@@ -50,14 +50,14 @@ outright when the run directory held neither `state.json` nor `equity.jsonl` at 
 start, which is the property that made this incident large (an empty run directory
 reconciles against nothing, so the whole book is emitted from flat).
 
-**2. Credentials cross the worktree isolation boundary, and still do.** `.env` discovery
-walks up from the current directory, so from
+**2. Credentials crossed the worktree isolation boundary.** `.env` discovery
+walked up from the current directory without bound, so from
 `/home/b90/prism/.claude/worktrees/engine-overhaul` it finds `/home/b90/prism/.env`, the
 live checkout's credentials (Run, 2026-09-15: `dotenv.find_dotenv(usecwd=True)` from the
 worktree returns `/home/b90/prism/.env`). An isolated development checkout therefore
 inherits the live account. Stage 1 chose the cwd walk deliberately, because a
 package-relative walk breaks under a wheel install, and recorded the tradeoff; the
-consequence for worktrees was not drawn out. This is unfixed.
+consequence for worktrees was not drawn out. **Fixed 2026-09-16**: discovery now stops at the first directory holding a `.git` entry (`prism.workspace.find_dotenv_within_checkout`), so a linked worktree or nested checkout never reads a parent checkout's `.env`; `tests/test_workspace.py::test_load_env_never_crosses_a_checkout_boundary` reproduces the incident layout and asserts nothing is loaded.
 
 ## What was not done
 

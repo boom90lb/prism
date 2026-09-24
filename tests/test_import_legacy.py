@@ -392,3 +392,54 @@ def test_the_stage_two_slice_still_writes_its_own_ticker_keyed_dataset(tmp_path:
     stage_three = import_legacy(tmp_path / "stage3", cache_dir=cache, vintage="legacy_v1")
     assert stage_three.symbol_to_sid["AAA"].startswith("sec_")
     assert stage_three.manifest.id != stage_two.manifest.id
+
+
+def test_extra_indexes_share_one_dataset_and_each_answers_its_own_membership(tmp_path: Path, cache: Path) -> None:
+    """One set of bars, several index ids: arms that differ only in universe read identical bars."""
+    from prism.io.dataset import Dataset
+
+    mid = pd.DataFrame(
+        {"ticker": ["BBB"], "start": pd.to_datetime(["2024-01-01"]), "end": pd.to_datetime(["2024-06-28"])}
+    )
+    mid_path = _write(mid, cache / "universe" / "sp400_membership_2024-06-28.parquet")
+    report = build_legacy_dataset(
+        tmp_path / "multi",
+        symbols=["AAA", "BBB"],
+        cache_dir=cache,
+        start=SAMPLE_START,
+        end=SAMPLE_END,
+        vintage="multi",
+        index_id="sp500",
+        membership_file=cache / "universe" / "sp500_membership_2024-06-28.parquet",
+        extra_indexes={"sp400": mid_path},
+    )
+    ds = Dataset.open(tmp_path / "multi")
+    assert ds.manifest.coverage["index_membership"] == {"sp500": 2, "sp400": 1}
+    assert set(ds.manifest.assumptions["membership_files_sha256"]) == {"sp500", "sp400"}
+    view = ds.view("research_vintage", "2024-03-01", vintage="multi")
+    assert view.membership("sp400") == {"BBB"}
+    assert view.membership("sp500") == {"AAA", "BBB"}
+    single = build_legacy_dataset(
+        tmp_path / "single",
+        symbols=["AAA", "BBB"],
+        cache_dir=cache,
+        start=SAMPLE_START,
+        end=SAMPLE_END,
+        vintage="multi",
+        index_id="sp500",
+        membership_file=cache / "universe" / "sp500_membership_2024-06-28.parquet",
+    )
+    assert "membership_files_sha256" not in single.manifest.assumptions
+    assert report.manifest.id != single.manifest.id
+    with pytest.raises(Exception, match="declared twice"):
+        build_legacy_dataset(
+            tmp_path / "dup",
+            symbols=["AAA"],
+            cache_dir=cache,
+            start=SAMPLE_START,
+            end=SAMPLE_END,
+            vintage="multi",
+            index_id="sp500",
+            membership_file=cache / "universe" / "sp500_membership_2024-06-28.parquet",
+            extra_indexes={"sp500": mid_path},
+        )

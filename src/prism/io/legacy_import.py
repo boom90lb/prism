@@ -81,7 +81,13 @@ import pandas as pd
 
 from prism.io import sessions
 from prism.io.dataset import BAR_TZ, DEFAULT_BAR_INTERVAL
-from prism.io.events import ISSUER_SOURCE, Event, adjustments_frame, events_frame, issuer_distribution_events
+from prism.io.events import (
+    ISSUER_SOURCE,
+    Event,
+    adjustments_frame,
+    events_frame,
+    issuer_distribution_events,
+)
 from prism.io.local_files import (
     BarBatch,
     IngestMapping,
@@ -198,7 +204,9 @@ def read_legacy_panels(
     with this citation because ``prism`` imports no research module). A symbol
     the cache cannot answer for is reported, never silently skipped.
     """
-    from prism.io.loader import DataLoader  # local: constructing one reads the environment
+    from prism.io.loader import (
+        DataLoader,  # local: constructing one reads the environment
+    )
 
     loader = DataLoader(api_key="", cache_dir=Path(cache_dir))
     frames: dict[str, pd.DataFrame] = {}
@@ -267,8 +275,14 @@ def build_legacy_dataset(
     membership_file: Path | None = None,
     universe_note: str | None = None,
     coverage: dict[str, object] | None = None,
+    extra_indexes: Mapping[str, Path] | None = None,
 ) -> LegacyImportReport:
     """Write a manifest-listed dataset over the legacy caches and return its report.
+
+    ``extra_indexes`` maps further index ids to their membership files; their
+    rows are written to the same ``membership`` table under their own
+    ``index_id``, so one dataset (one set of bars, one ``data_id``) can serve
+    arms that differ only in the index they trade.
 
     ``symbols`` is the resolved universe of the run being reproduced. Every sid
     is its ticker: the caches are ticker-keyed and this import mints no
@@ -307,6 +321,26 @@ def build_legacy_dataset(
         first_session=_day(index[0]),
         last_session=_day(index[-1]),
     )
+    index_sids: dict[str, list[str]] = {
+        index_id: sorted(set(membership_rows["sid"].astype(str))) if len(membership_rows) else []
+    }
+    membership_hashes: dict[str, str | None] = {
+        index_id: None if membership_file is None else _sha256_file(Path(membership_file))
+    }
+    for extra_id, extra_file in dict(extra_indexes or {}).items():
+        if extra_id in index_sids:
+            raise LegacyImportError(f"index id {extra_id!r} is declared twice")
+        extra_rows, extra_n = _membership_rows(
+            Path(extra_file),
+            sids,
+            index_id=extra_id,
+            first_session=_day(index[0]),
+            last_session=_day(index[-1]),
+        )
+        membership_rows = pd.concat([membership_rows, extra_rows], ignore_index=True)
+        n_intervals += extra_n
+        index_sids[extra_id] = sorted(set(extra_rows["sid"].astype(str))) if len(extra_rows) else []
+        membership_hashes[extra_id] = _sha256_file(Path(extra_file))
     tables = {
         "securities": _securities_rows(sids, ingested_at=ingested_at),
         "listings": _listing_rows(sids, ingested_at=ingested_at),
@@ -318,7 +352,7 @@ def build_legacy_dataset(
         rows.to_parquet(path, index=False)
         written.append(path)
 
-    membership_sids = tuple(sorted(set(membership_rows["sid"].astype(str)))) if len(membership_rows) else ()
+    membership_sids = tuple(index_sids[index_id])
     manifest = Manifest(
         provenance="market",
         as_of=str(pd.Timestamp(index[-1]).isoformat()),
@@ -342,12 +376,18 @@ def build_legacy_dataset(
             },
         },
         source_priority={table: [BAR_SOURCE, MEMBERSHIP_SOURCE] for table in (*TABLE_NAMES, "bars")},
-        universe=sha256_bytes(canonical_json({index_id: list(membership_sids)}).encode("utf-8")),
+        universe=sha256_bytes(
+            canonical_json(
+                {index_id: list(membership_sids)} if not extra_indexes else {k: list(v) for k, v in index_sids.items()}
+            ).encode("utf-8")
+        ),
         vintage=vintage,
         coverage={
             "sessions": [labels[0], labels[-1]],
             "n_sessions": len(labels),
-            "index_membership": {index_id: len(membership_sids)},
+            "index_membership": (
+                {index_id: len(membership_sids)} if not extra_indexes else {k: len(v) for k, v in index_sids.items()}
+            ),
             "requested_symbols": len(requested),
             "symbols_without_bars": list(without_bars),
             "dropped_non_session_dates": int(dropped),
@@ -379,6 +419,7 @@ def build_legacy_dataset(
                 "(valid_from null), and no as-of end is opened"
             ),
             "sid_minting": "sid = ticker; every security is provisional and no identifier is minted",
+            **({"membership_files_sha256": membership_hashes} if extra_indexes else {}),
             "not_imported": (
                 "adjustments, cash distributions, the rename/quarantine/changes tables and revision ordering "
                 "across overlapping caches arrive with prism data import-legacy at stage 3"

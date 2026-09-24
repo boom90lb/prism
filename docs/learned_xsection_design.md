@@ -220,3 +220,54 @@ It does not touch the momentum program, its budget, or M6. It does not
 blend anything. It does not buy data or add dependencies beyond the frozen
 stack's. It does not revive the residual sleeve or any daily-cadence trade.
 It runs nothing now. Its budget is fixed at 6 and does not refill.
+
+## 8. Seam: mechanics landed and the X0-X4 runner (2026-09-23)
+
+Pinned under the amendment rule; no §1-§5 value moves.
+
+- **Mechanics.** `prism.signal.learned_xsection_node:LearnedCrossSectionNode`
+  implements §2 exactly: the seven F0 features, rank-transform to
+  `(rank - 1)/(n - 1) - 0.5` over each bar's retained rows, 36 formation bars
+  `t - 21k` whose targets are realized at `t`, ridge without intercept (every
+  column is centered by the rank transform), and the X4 GBM in numpy (squared
+  loss, depth 2, 200 trees, lr 0.05, min leaf 50, no subsampling; the pinned
+  seed is recorded and has nothing random to seed). `learner = "bypass"` is
+  the parity arm. The §5 gates are `tests/test_learned_xsection_node.py`.
+- **Point-in-time membership (a gap §2 did not state).** The training pool
+  reaches 36 months back over a panel that spans every evaluated sid,
+  including names that joined the index after `t`. Training on them would put
+  future index inclusion into the fit. The node declares `uses_membership`,
+  and the engine binds a bar x sid mask built from the dataset's membership
+  intervals (`DatasetView.membership_mask`, bound in `prism.evaluate` and in
+  the conformance suite). A training row at `s` requires membership at `s`.
+- **Geometry.** `folds/learned_xsection_v1.toml` is folds 12-20 of the
+  recorded `folds/demotion_b1.toml`, dates unchanged: the first fold whose test
+  window opens after the first fittable bar (session 252 + 36 x 21 = 1008,
+  2024-01-04). 552 test bars. The closed-form band of folds 12-15 is estimated
+  over formation windows that start before the runway is met, where the
+  learned book is flat; that is the frozen band rule applied to this family's
+  geometry, identical across X0-X4.
+- **Runner.** `registrations/2026-09-learned-xsection.toml`: one arm per probe,
+  each holding exactly one of five components of
+  `examples/learned_xsection/control.toml`; canonical engine, $100,000, the
+  experiment profile of the construction and characteristics registrations.
+  The sibling's frozen stack values (gross 1.0, per-name 0.35, closed-form
+  band, bucket spreads, 5% participation, 21-bar cadence) all hold; the
+  profile's extra preference limits did not bind the decile book in the
+  construction read (`docs/construction_experiment_read_2026-09-08.md`: at-cap
+  0.000, no repair).
+- **Spanning read regressor.** §4's regression runs twice on the overlapping
+  segment: against the certified sibling's returns
+  (`results/demotion_b1/returns.csv`, as written) and against the
+  same-engine, same-profile sibling, `momentum_control` of
+  `registrations/2026-09-characteristics.toml`. The first is the pinned read;
+  the second removes the engine difference and is reported beside it.
+- **Recorded after the run (2026-09-23).** The shared calibration family's
+  admission rule excluded folds 12-15 of this geometry for every probe alike
+  (their formation windows precede the runway), so the scored sample is 300
+  sessions from 2025-04-03, not 552. This seam did not foresee it; the read
+  record states it and nothing was re-run under another geometry
+  (`docs/learned_xsection_read_2026-09-23.md`).
+- **Budget.** This registration spends five of six. X5 is the sixth, under its
+  own registration against `learned_xsection_v1`, readable no earlier than
+  2027-07-19.

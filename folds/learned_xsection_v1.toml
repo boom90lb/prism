@@ -1,0 +1,80 @@
+# The learned cross-section family's fold geometry (docs/learned_xsection_design.md
+# §1, registrations/2026-09-learned-xsection.toml).
+#
+# Folds 12 through 20 of `folds/demotion_b1.toml`, copied with their dates
+# unchanged and their indices renumbered from zero. Nothing here is chosen: the
+# design pins a training pool of 36 cross-sections at 21-bar spacing whose
+# features need 252 bars of history, so the first decision bar that can be
+# fitted is session 252 + 36 * 21 = 1008 of the frozen dataset (2024-01-04).
+# Fold 12 is the first fold whose test window opens on or after that bar
+# (2024-04-02); fold 11 opens at session 1005, three bars short. The design
+# records this in advance: "X0's tradable segment is shorter than the sibling's
+# full window ... the shorter sample is the recorded price of walk-forward
+# fitting, not a free choice."
+id = "learned_xsection_v1"
+source = "folds/demotion_b1.toml folds 12-20"
+timezone = "America/New_York"
+convention = "inclusive_session_dates"
+
+[[fold]]
+index = 0
+formation_start = 2023-01-03
+formation_end = 2024-04-01
+test_start = 2024-04-02
+test_end = 2024-07-01
+
+[[fold]]
+index = 1
+formation_start = 2023-04-04
+formation_end = 2024-07-01
+test_start = 2024-07-02
+test_end = 2024-09-30
+
+[[fold]]
+index = 2
+formation_start = 2023-07-06
+formation_end = 2024-09-30
+test_start = 2024-10-01
+test_end = 2024-12-30
+
+[[fold]]
+index = 3
+formation_start = 2023-10-04
+formation_end = 2024-12-30
+test_start = 2024-12-31
+test_end = 2025-04-02
+
+[[fold]]
+index = 4
+formation_start = 2024-01-04
+formation_end = 2025-04-02
+test_start = 2025-04-03
+test_end = 2025-07-03
+
+[[fold]]
+index = 5
+formation_start = 2024-04-05
+formation_end = 2025-07-03
+test_start = 2025-07-07
+test_end = 2025-10-02
+
+[[fold]]
+index = 6
+formation_start = 2024-07-08
+formation_end = 2025-10-02
+test_start = 2025-10-03
+test_end = 2026-01-02
+
+[[fold]]
+index = 7
+formation_start = 2024-10-04
+formation_end = 2026-01-02
+test_start = 2026-01-05
+test_end = 2026-04-06
+
+[[fold]]
+index = 8
+formation_start = 2025-01-06
+formation_end = 2026-04-06
+test_start = 2026-04-07
+test_end = 2026-06-12

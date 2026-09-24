@@ -155,19 +155,46 @@ def load_env(path: Path | str | None = None) -> Path | None:
     exported credential is not overwritten by a stale file.
 
     With no explicit ``path`` the search starts at the *current directory* and
-    walks up. It deliberately does not walk up from the package: an installed
-    wheel's neighbours are not the operator's project, and a checkout nested
-    inside another project would otherwise inherit that project's
-    credentials. Returns the file loaded, or None when there is none.
+    walks up, but never past a checkout boundary: the walk stops at the first
+    directory holding a ``.git`` entry (a directory in a primary checkout, a
+    file in a linked worktree). It deliberately does not walk up from the
+    package: an installed wheel's neighbours are not the operator's project.
+    The boundary exists because a worktree under ``<repo>/.claude/worktrees/``
+    otherwise inherits ``<repo>/.env`` — the live account's credentials — which
+    is how 116 unauthorized paper orders were submitted on 2026-09-09
+    (``docs/incident_2026-09-09_unauthorized_paper_orders.md``, root cause 2).
+    Returns the file loaded, or None when there is none.
     """
     if path is not None:
         found = Path(path)
         if not found.is_file():
             raise FileNotFoundError(f"no .env at {found}")
     else:
-        discovered = dotenv.find_dotenv(usecwd=True)
-        if not discovered:
+        discovered = find_dotenv_within_checkout(Path.cwd())
+        if discovered is None:
             return None
-        found = Path(discovered)
+        found = discovered
     dotenv.load_dotenv(found)
     return found
+
+
+def find_dotenv_within_checkout(start: Path) -> Path | None:
+    """Walk up from ``start`` for a ``.env``, stopping at the checkout root.
+
+    The first directory that contains ``.env`` wins. The walk ends after
+    examining a directory that contains ``.git`` (file or directory), so a
+    nested checkout or linked worktree never reads a parent checkout's
+    credentials. With no checkout boundary at all the walk runs to the
+    filesystem root, as ``python-dotenv`` does.
+    """
+    directory = Path(start).resolve()
+    while True:
+        candidate = directory / ".env"
+        if candidate.is_file():
+            return candidate
+        if (directory / ".git").exists():
+            return None
+        parent = directory.parent
+        if parent == directory:
+            return None
+        directory = parent

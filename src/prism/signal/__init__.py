@@ -14,7 +14,10 @@ construct (its score is deliberately not sigma-normalized because the decile
 book uses only the cross-sectional rank; see the node docstring);
 ``TrendSignalNode`` is the trend sleeve's
 per-name 12−1 TSMOM node (default-off; docs/trend_design.md), consumed by
-``construct_inverse_vol_targets``.
+``construct_inverse_vol_targets``; ``ResidualMomentumSignalNode`` and
+``IdiosyncraticVolSignalNode`` are the characteristics-composite nodes
+(docs/characteristics_design.md), rank-space like momentum, computed on
+factor-residual returns from a trailing-window PCA fit.
 
 Every node declares what it emits (``output_kind``, ``units``), which close
 panel it wants (``scoring_basis``), whether the rescale property holds, and
@@ -36,7 +39,9 @@ from prism.signal.base import (
     Signal,
     check_declarations,
 )
+from prism.signal.idiosyncratic_vol_node import IdiosyncraticVolSignalNode
 from prism.signal.momentum_node import MomentumSignalNode
+from prism.signal.residual_momentum_node import ResidualMomentumSignalNode
 from prism.signal.residual_node import ResidualSignalNode
 from prism.signal.trend_node import TREND_V1_UNIVERSE, TrendSignalNode
 
@@ -44,8 +49,10 @@ __all__ = [
     "DECLARED_FIELDS",
     "DeclarationError",
     "FITTED_STATES",
+    "IdiosyncraticVolSignalNode",
     "MomentumSignalNode",
     "OUTPUT_KINDS",
+    "ResidualMomentumSignalNode",
     "ResidualSignalNode",
     "SCORING_BASES",
     "Signal",

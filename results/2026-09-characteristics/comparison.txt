@@ -1,0 +1,43 @@
+registration 2026-09-characteristics  sha256 6044a307a3d1
+selection set characteristics_v1  arms momentum_control, residual_momentum_only, idiosyncratic_vol_only, momentum_residual_momentum, momentum_idiosyncratic_vol, composite_three
+held fixed: accounting_engine=canonical, capital=100000.0, cost_refresh={cadence, charged, note, per_fold, windows} (see the record), data_id=bedf8c4c0f0c2195ce5aace938f4ad38e23e6b69b57075080073004692d46eef, executable_return=next_open_fill_marked_close_to_close, vintage=demotion_b1_2026-06-16, visibility_mode=research_vintage
+differs by design: engine
+promotion check: no arm promotes (rule kind='none')
+excluded folds (shared across every arm: True): 0, 1, 2, 3
+
+   capital arm                      sharpe  ann.ret     cost  turnover  at_cap   ex_sd  repair none/scale/drop  flat
+--------------------------------------------------------------------------------------------------------------------
+   100,000 composite_three          0.2713   0.0171   0.0192     30.09   0.000     nan        51/0/0     0
+   100,000 idiosyncratic_vol_only  -0.5295  -0.0334   0.0202     28.61   0.000     nan        51/0/0     0
+   100,000 momentum_control         0.6789   0.0428   0.0209     31.64   0.000     nan        51/0/0     0
+   100,000 momentum_idiosyncratic_vol   0.1442   0.0091   0.0184     27.64   0.000     nan        51/0/0     0
+   100,000 momentum_residual_momentum   0.7593   0.0478   0.0222     35.83   0.000     nan        51/0/0     0
+   100,000 residual_momentum_only   0.8293   0.0522   0.0249     42.90   0.000     nan        51/0/0     0
+
+studentized Sharpe differences, circular_moving blocks of 42 bars, 2000 resamples, seed 20260916, hac_lags 41, decision interval 21 bars, studentized_circular_block_bootstrap
+  the statistic is the per-bar (periodic) Sharpe difference; the annualized column is the same interval scaled by sqrt(252)
+   capital difference                                       diff    lower    upper      p  diff/yr  lower/yr  upper/yr
+----------------------------------------------------------------------------------------------------------------------
+   100,000 momentum_control_minus_residual_momentum_only  -0.0095  -0.0725   0.0643  0.793  -0.1504   -1.1505    1.0205
+   100,000 momentum_control_minus_idiosyncratic_vol_only   0.0761   0.0010   0.1746  0.083   1.2084    0.0154    2.7715
+   100,000 momentum_control_minus_momentum_residual_momentum  -0.0051  -0.0216   0.0141  0.561  -0.0804   -0.3424    0.2243
+   100,000 momentum_control_minus_momentum_idiosyncratic_vol   0.0337  -0.0037   0.0762  0.105   0.5347   -0.0588    1.2100
+   100,000 momentum_control_minus_composite_three         0.0257  -0.0106   0.0665  0.189   0.4076   -0.1686    1.0555
+   100,000 residual_momentum_only_minus_idiosyncratic_vol_only   0.0856  -0.0041   0.1871  0.078   1.3588   -0.0646    2.9706
+   100,000 residual_momentum_only_minus_momentum_residual_momentum   0.0044  -0.0506   0.0526  0.875   0.0700   -0.8029    0.8348
+   100,000 residual_momentum_only_minus_momentum_idiosyncratic_vol   0.0432  -0.0326   0.1164  0.272   0.6852   -0.5168    1.8472
+   100,000 residual_momentum_only_minus_composite_three   0.0352  -0.0242   0.0954  0.260   0.5580   -0.3843    1.5149
+   100,000 idiosyncratic_vol_only_minus_momentum_residual_momentum  -0.0812  -0.1771  -0.0072  0.068  -1.2888   -2.8115   -0.1147
+   100,000 idiosyncratic_vol_only_minus_momentum_idiosyncratic_vol  -0.0424  -0.0964  -0.0002  0.090  -0.6737   -1.5306   -0.0038
+   100,000 idiosyncratic_vol_only_minus_composite_three  -0.0504  -0.1132  -0.0039  0.071  -0.8008   -1.7975   -0.0617
+   100,000 momentum_residual_momentum_minus_momentum_idiosyncratic_vol   0.0388  -0.0014   0.0845  0.083   0.6151   -0.0222    1.3410
+   100,000 momentum_residual_momentum_minus_composite_three   0.0307  -0.0007   0.0685  0.084   0.4880   -0.0109    1.0867
+   100,000 momentum_idiosyncratic_vol_minus_composite_three  -0.0080  -0.0230   0.0090  0.339  -0.1271   -0.3658    0.1425
+
+intervals computed: 15
+warning: run-9f425894430542de: fill_source=simulated; fills are not actual fills
+warning: run-2749d7a356d342e7: fill_source=simulated; fills are not actual fills
+warning: run-4eb1844298664770: fill_source=simulated; fills are not actual fills
+warning: run-903032f363154ce6: fill_source=simulated; fills are not actual fills
+warning: run-1ce581cf28fd4189: fill_source=simulated; fills are not actual fills
+warning: run-edbd169604a54265: fill_source=simulated; fills are not actual fills
