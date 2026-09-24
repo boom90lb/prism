@@ -59,6 +59,15 @@ the certification under `docs/` remain as the research record.
 - **Paper loop rehearsed 2026-09-23** with `--no-submit`: exit 0, nothing
   sent, 119 orders decided (`docs/operations.md`). Re-arming the schedule is
   the owner's act.
+- **Volatility-scaled momentum promoted 2026-09-24** (replication route,
+  `vol_momentum_v1`, 1 of 1, `docs/vol_momentum_read_2026-09-24.md`): the live
+  book's configuration scaled by the Barroso–Santa-Clara rule (12% target, 126
+  sessions, monthly, cap 2). Prior 0.465 (since 2015); fidelity 0.895; F3 0.368
+  against a T-bill hurdle of 0.351, a 0.018 margin. With idle cash earning
+  nothing, the expected edge over T-bills is about 0.5% a year; if idle equity
+  earns the bill rate, it is about 4.7%. Arming the scale, replacing §6's
+  de-gross with it, and changing the live book are owner acts. The forward kill
+  rule is live; its first read is at about 2027-03-24.
 - **Public factor lab ran 2026-09-24** (`sizing_lab_v1`, 8 of 8,
   `docs/public_factor_lab_read_2026-09-24.md`). On French/JKP daily data
   (momentum 1931–2026, residual momentum 1958–2025), the ratified crash

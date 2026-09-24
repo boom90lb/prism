@@ -1,0 +1,127 @@
+{
+  "code_commit": "79ce54b98055d7c5ffdcfe511a31f1265a8c6353",
+  "economics": {
+    "charged_cost_annual": 0.006018338386963531,
+    "cost_drag_sharpe": 0.047359915148136235,
+    "figure_f3": 0.3684870235832696,
+    "hurdle_sharpe": 0.35083333333333344,
+    "pass": true,
+    "reported_beside": {
+      "hurdle_zero_if_cash_earns_bills": 0.0,
+      "pass_at_zero": true
+    },
+    "rf_annual": 0.04210000000000001,
+    "rho_times_prior": 0.4158469387314059,
+    "scaled_vol_annual": 0.12707662942678166
+  },
+  "fidelity": {
+    "daily_corr": 0.8951223391088462,
+    "first": "2022-09-29",
+    "floor": 0.75,
+    "last": "2026-06-12",
+    "n": 929,
+    "pass": true,
+    "weekly_corr": 0.9099704182936647
+  },
+  "in_house": {
+    "first": "2022-09-29",
+    "last": "2026-06-12",
+    "mean_scale": 1.0786203305121758,
+    "n": 929,
+    "n_eff": 46.7,
+    "scale_max": 1.4139478491294426,
+    "scale_min": 0.6849034928384533,
+    "scaled": {
+      "first": "2022-09-29",
+      "last": "2026-06-12",
+      "mean": 0.08420617315214496,
+      "n": 929,
+      "sharpe": 0.6626409083399748,
+      "t": 1.272289169695597,
+      "vol": 0.12707662942678166,
+      "years": 3.6865079365079363
+    },
+    "unscaled_same_window": {
+      "first": "2022-09-29",
+      "last": "2026-06-12",
+      "mean": 0.08379977443048363,
+      "n": 929,
+      "sharpe": 0.681218924665575,
+      "t": 1.3079594832364598,
+      "vol": 0.12301445452594076,
+      "years": 3.6865079365079363
+    }
+  },
+  "momentum_vintage": "This file was created by using the 202607 CRSP database.  It",
+  "no_contradiction": {
+    "annualized": {
+      "lower": -0.1944970617052789,
+      "sharpe_a": 0.6626409083399748,
+      "upper": 1.5639274091377477
+    },
+    "figure_f3": 0.3684870235832696,
+    "interval": {
+      "blocks_drawn": 23,
+      "confidence": 0.95,
+      "difference": 0.04174245361917903,
+      "label": "scaled_in_house_net",
+      "lower": -0.012252163238213147,
+      "mean_difference": 0.00033415148076248,
+      "method": {
+        "block_bars": 42,
+        "block_periods": 42,
+        "block_scheme": "circular_moving",
+        "confidence": 0.95,
+        "coverage_statement": "Endpoints are directional statements under the resampling assumptions: the pool is stationary enough to resample and block_periods carries the dependence of overlapping labels. They are not a simultaneous interval and say nothing about realized portfolio return coverage.",
+        "decision_interval_bars": 21,
+        "frequency": "daily",
+        "hac_lags": 41,
+        "interval_method": "studentized_circular_block_bootstrap",
+        "min_blocks": 2,
+        "n_resamples": 2000,
+        "seed": 20260925,
+        "units": "bars"
+      },
+      "n_periods": 929,
+      "n_resamples": 2000,
+      "p_value_two_sided": 0.132,
+      "sharpe_a": 0.04174245361917903,
+      "sharpe_b": 0.0,
+      "standard_error": 0.026973846454350844,
+      "statistic": "sharpe",
+      "t_statistic": 1.547515801642225,
+      "upper": 0.09851816650323915
+    },
+    "pass": true
+  },
+  "promoted": true,
+  "publication_bar": {
+    "bar_pass": true,
+    "full": {
+      "first": "1931-02-02",
+      "last": "2026-07-31",
+      "mean": 0.11366617189563737,
+      "n": 24935,
+      "sharpe": 0.9013008317966398,
+      "t": 8.965493246733853,
+      "vol": 0.12611346609883506,
+      "years": 98.9484126984127
+    },
+    "pass": true,
+    "post_publication": {
+      "first": "2015-04-01",
+      "last": "2026-07-31",
+      "mean": 0.06071387818505916,
+      "n": 2850,
+      "sharpe": 0.46456994822116626,
+      "t": 1.5623318002828575,
+      "vol": 0.13068834610919627,
+      "years": 11.30952380952381
+    },
+    "prior_basis": "post_publication",
+    "prior_sharpe": 0.46456994822116626
+  },
+  "registration": "2026-09-vol-momentum",
+  "route": "replication",
+  "selection_set": "vol_momentum_v1"
+}
