@@ -1,0 +1,1642 @@
+{
+  "asof": "2026-09-24",
+  "cases": [
+    {
+      "candidates": [
+        {
+          "cik": 20171,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 26,
+          "first_in_interval": "2009-08-10",
+          "last_in_interval": "2015-11-06",
+          "last_periodic_overall": "2015-11-06",
+          "name_now": "CHUBB CORP",
+          "names_during_interval": [
+            "CHUBB CORP"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": false,
+          "ticker_fit_from": null,
+          "ticker_fit_to": null,
+          "wikipedia_name_at_time": true
+        },
+        {
+          "cik": 896159,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 26,
+          "first_in_interval": "2009-08-07",
+          "last_in_interval": "2015-11-04",
+          "last_periodic_overall": "2026-07-28",
+          "name_now": "Chubb Ltd",
+          "names_during_interval": [
+            "ACE LTD",
+            "ACE Ltd"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2009-12-17",
+          "ticker_fit_to": "2016-01-15",
+          "wikipedia_name_at_time": false
+        }
+      ],
+      "decision": null,
+      "end": "2016-01-19",
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "ticker fit: ACE in ['ACE LTD', 'ACE Ltd']",
+        "cik": 896159,
+        "kind": "cik",
+        "name": "Chubb Ltd"
+      },
+      "ticker": "ACE",
+      "wikipedia_names": [
+        "Chubb"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 833444,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 15,
+          "first_in_interval": "2012-11-16",
+          "last_in_interval": "2016-04-29",
+          "last_periodic_overall": "2026-07-29",
+          "name_now": "Johnson Controls International plc",
+          "names_during_interval": [
+            "TYCO INTERNATIONAL plc",
+            "TYCO INTERNATIONAL LTD"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": false,
+          "ticker_fit_from": null,
+          "ticker_fit_to": null,
+          "wikipedia_name_at_time": false
+        },
+        {
+          "cik": 1546640,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 14,
+          "first_in_interval": "2012-11-27",
+          "last_in_interval": "2016-02-02",
+          "last_periodic_overall": "2016-06-14",
+          "name_now": "ADT Corp",
+          "names_during_interval": [
+            "ADT Corp"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2012-10-01",
+          "ticker_fit_to": "2016-05-03",
+          "wikipedia_name_at_time": true
+        }
+      ],
+      "decision": null,
+      "end": "2016-05-03",
+      "start": "2012-10-01",
+      "suggestion": {
+        "basis": "ticker fit: ADT in ['ADT Corp']",
+        "cik": 1546640,
+        "kind": "cik",
+        "name": "ADT Corp"
+      },
+      "ticker": "ADT",
+      "wikipedia_names": [
+        "ADT"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 850693,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 23,
+          "first_in_interval": "2009-08-10",
+          "last_in_interval": "2015-02-19",
+          "last_periodic_overall": "2015-02-19",
+          "name_now": "ALLERGAN INC",
+          "names_during_interval": [
+            "ALLERGAN INC"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2009-06-15",
+          "ticker_fit_to": "2015-03-23",
+          "wikipedia_name_at_time": true
+        },
+        {
+          "cik": 1578845,
+          "covers_end": true,
+          "covers_start": false,
+          "filings_in_interval": 6,
+          "first_in_interval": "2013-10-31",
+          "last_in_interval": "2015-02-18",
+          "last_periodic_overall": "2020-05-07",
+          "name_now": "Allergan plc",
+          "names_during_interval": [
+            "Actavis plc"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": false,
+          "ticker_fit_from": null,
+          "ticker_fit_to": null,
+          "wikipedia_name_at_time": false
+        }
+      ],
+      "decision": null,
+      "end": "2015-03-23",
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "ticker fit: AGN in ['ALLERGAN INC']",
+        "cik": 850693,
+        "kind": "cik",
+        "name": "ALLERGAN INC"
+      },
+      "ticker": "AGN",
+      "wikipedia_names": [
+        "Allergan"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 3453,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 32,
+          "first_in_interval": "2012-08-09",
+          "last_in_interval": "2019-11-08",
+          "last_periodic_overall": "2026-08-04",
+          "name_now": "Matson, Inc.",
+          "names_during_interval": [
+            "Matson, Inc."
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": false,
+          "ticker_fit_from": null,
+          "ticker_fit_to": null,
+          "wikipedia_name_at_time": false
+        },
+        {
+          "cik": 1545654,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 31,
+          "first_in_interval": "2012-08-03",
+          "last_in_interval": "2019-11-01",
+          "last_periodic_overall": "2026-02-27",
+          "name_now": "Alexander & Baldwin, Inc.",
+          "names_during_interval": [
+            "Alexander & Baldwin, Inc."
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2012-06-29",
+          "ticker_fit_to": "2020-02-07",
+          "wikipedia_name_at_time": true
+        }
+      ],
+      "decision": null,
+      "end": "2020-02-07",
+      "start": "2012-06-29",
+      "suggestion": {
+        "basis": "ticker fit: ALEX in ['Alexander & Baldwin, Inc.']",
+        "cik": 1545654,
+        "kind": "cik",
+        "name": "Alexander & Baldwin, Inc."
+      },
+      "ticker": "ALEX",
+      "wikipedia_names": [
+        "Alexander & Baldwin"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 4281,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 14,
+          "first_in_interval": "2016-11-09",
+          "last_in_interval": "2020-02-27",
+          "last_periodic_overall": "2026-08-06",
+          "name_now": "Howmet Aerospace Inc.",
+          "names_during_interval": [
+            "Arconic Inc."
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2016-11-01",
+          "ticker_fit_to": "2020-03-26",
+          "wikipedia_name_at_time": true
+        },
+        {
+          "cik": 1790982,
+          "covers_end": true,
+          "covers_start": false,
+          "filings_in_interval": 1,
+          "first_in_interval": "2020-03-30",
+          "last_in_interval": "2020-03-30",
+          "last_periodic_overall": "2023-07-31",
+          "name_now": "Arconic Corp",
+          "names_during_interval": [
+            "Arconic Rolled Products Corp"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2019-12-01",
+          "ticker_fit_to": "2020-04-01",
+          "wikipedia_name_at_time": false
+        }
+      ],
+      "decision": null,
+      "end": "2020-04-01",
+      "start": "2016-11-01",
+      "suggestion": {
+        "basis": "Wikipedia's name was this filer's name during the interval",
+        "cik": 4281,
+        "kind": "cik",
+        "name": "Howmet Aerospace Inc."
+      },
+      "ticker": "ARNC",
+      "wikipedia_names": [
+        "Arconic"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 1141107,
+          "covers_end": false,
+          "covers_start": true,
+          "filings_in_interval": 6,
+          "first_in_interval": "2014-08-08",
+          "last_in_interval": "2015-11-06",
+          "last_periodic_overall": "2015-11-06",
+          "name_now": "ARRIS GROUP INC",
+          "names_during_interval": [
+            "ARRIS GROUP INC"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2014-06-20",
+          "ticker_fit_to": "2016-03-05",
+          "wikipedia_name_at_time": true
+        },
+        {
+          "cik": 1645494,
+          "covers_end": true,
+          "covers_start": false,
+          "filings_in_interval": 15,
+          "first_in_interval": "2015-11-16",
+          "last_in_interval": "2019-03-29",
+          "last_periodic_overall": "2019-03-29",
+          "name_now": "ARRIS International plc",
+          "names_during_interval": [
+            "ARRIS International Ltd",
+            "ARRIS International plc"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2015-07-19",
+          "ticker_fit_to": "2019-04-11",
+          "wikipedia_name_at_time": true
+        }
+      ],
+      "decision": null,
+      "end": "2019-04-11",
+      "start": "2014-06-20",
+      "suggestion": {
+        "basis": "successor issuer: the predecessor stopped filing and the successor took over",
+        "kind": "split",
+        "segments": [
+          {
+            "cik": 1141107,
+            "from": "2014-06-20",
+            "name": "ARRIS GROUP INC",
+            "to": "2015-11-15"
+          },
+          {
+            "cik": 1645494,
+            "from": "2015-11-16",
+            "name": "ARRIS International plc",
+            "to": "2019-04-11"
+          }
+        ]
+      },
+      "ticker": "ARRS",
+      "wikipedia_names": [
+        "ARRIS Group",
+        "Arris International"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 929940,
+          "covers_end": false,
+          "covers_start": true,
+          "filings_in_interval": 4,
+          "first_in_interval": "2021-08-18",
+          "last_in_interval": "2022-04-27",
+          "last_periodic_overall": "2022-04-27",
+          "name_now": "ASPENTECH Corp",
+          "names_during_interval": [
+            "ASPEN TECHNOLOGY INC /DE/",
+            "ASPENTECH Corp"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": false,
+          "ticker_fit_from": null,
+          "ticker_fit_to": null,
+          "wikipedia_name_at_time": true
+        },
+        {
+          "cik": 1897982,
+          "covers_end": true,
+          "covers_start": false,
+          "filings_in_interval": 12,
+          "first_in_interval": "2022-05-16",
+          "last_in_interval": "2025-02-04",
+          "last_periodic_overall": "2025-02-04",
+          "name_now": "Aspen Technology, Inc.",
+          "names_during_interval": [
+            "Emersub CX, Inc.",
+            "Aspen Technology, Inc."
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": false,
+          "ticker_fit_from": null,
+          "ticker_fit_to": null,
+          "wikipedia_name_at_time": true
+        }
+      ],
+      "decision": null,
+      "end": "2025-03-11",
+      "start": "2021-05-17",
+      "suggestion": {
+        "basis": "successor issuer: the predecessor stopped filing and the successor took over",
+        "kind": "split",
+        "segments": [
+          {
+            "cik": 929940,
+            "from": "2021-05-17",
+            "name": "ASPENTECH Corp",
+            "to": "2022-05-15"
+          },
+          {
+            "cik": 1897982,
+            "from": "2022-05-16",
+            "name": "Aspen Technology, Inc.",
+            "to": "2025-03-11"
+          }
+        ]
+      },
+      "ticker": "AZPN",
+      "wikipedia_names": [
+        "Aspen Technology"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 886158,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 33,
+          "first_in_interval": "2009-07-08",
+          "last_in_interval": "2017-06-30",
+          "last_periodic_overall": "2023-06-14",
+          "name_now": "20230930-DK-Butterfly-1, Inc.",
+          "names_during_interval": [
+            "BED BATH & BEYOND INC"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2009-06-15",
+          "ticker_fit_to": "2017-07-26",
+          "wikipedia_name_at_time": true
+        },
+        {
+          "cik": 1130713,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 35,
+          "first_in_interval": "2009-07-31",
+          "last_in_interval": "2017-05-04",
+          "last_periodic_overall": "2026-08-04",
+          "name_now": "NEIGHBORHOOD INTELLIGENCE, INC.",
+          "names_during_interval": [
+            "OVERSTOCK.COM, INC"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": false,
+          "ticker_fit_from": null,
+          "ticker_fit_to": null,
+          "wikipedia_name_at_time": false
+        }
+      ],
+      "decision": null,
+      "end": "2017-07-26",
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "ticker fit: BBBY in ['BED BATH & BEYOND INC']",
+        "cik": 886158,
+        "kind": "cik",
+        "name": "20230930-DK-Butterfly-1, Inc."
+      },
+      "ticker": "BBBY",
+      "wikipedia_names": [
+        "Bed Bath & Beyond"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 804055,
+          "covers_end": false,
+          "covers_start": true,
+          "filings_in_interval": 5,
+          "first_in_interval": "2009-07-30",
+          "last_in_interval": "2010-07-28",
+          "last_periodic_overall": "2010-07-28",
+          "name_now": "COCA-COLA REFRESHMENTS USA, INC.",
+          "names_during_interval": [
+            "COCA COLA ENTERPRISES INC"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2009-06-15",
+          "ticker_fit_to": "2010-10-05",
+          "wikipedia_name_at_time": true
+        },
+        {
+          "cik": 1491675,
+          "covers_end": true,
+          "covers_start": false,
+          "filings_in_interval": 24,
+          "first_in_interval": "2010-10-28",
+          "last_in_interval": "2016-04-28",
+          "last_periodic_overall": "2016-04-28",
+          "name_now": "COCA-COLA EUROPEAN PARTNERS US, LLC",
+          "names_during_interval": [
+            "COCA-COLA ENTERPRISES, INC.",
+            "International CCE Inc."
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2010-06-30",
+          "ticker_fit_to": "2016-05-26",
+          "wikipedia_name_at_time": true
+        }
+      ],
+      "decision": null,
+      "end": "2016-05-31",
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "successor issuer: the predecessor stopped filing and the successor took over",
+        "kind": "split",
+        "segments": [
+          {
+            "cik": 804055,
+            "from": "1990-01-01",
+            "name": "COCA-COLA REFRESHMENTS USA, INC.",
+            "to": "2010-10-27"
+          },
+          {
+            "cik": 1491675,
+            "from": "2010-10-28",
+            "name": "COCA-COLA EUROPEAN PARTNERS US, LLC",
+            "to": "2016-05-31"
+          }
+        ]
+      },
+      "ticker": "CCE",
+      "wikipedia_names": [
+        "Coca-Cola Enterprises"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 18672,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 29,
+          "first_in_interval": "2009-08-05",
+          "last_in_interval": "2016-02-26",
+          "last_periodic_overall": "2026-08-07",
+          "name_now": "CLECO POWER LLC",
+          "names_during_interval": [
+            "CLECO POWER LLC"
+          ],
+          "subsidiary_form_only": true,
+          "ticker_fit": false,
+          "ticker_fit_from": null,
+          "ticker_fit_to": null,
+          "wikipedia_name_at_time": false
+        },
+        {
+          "cik": 1089819,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 29,
+          "first_in_interval": "2009-08-05",
+          "last_in_interval": "2016-02-26",
+          "last_periodic_overall": "2026-08-07",
+          "name_now": "Cleco Corporate Holdings LLC",
+          "names_during_interval": [
+            "CLECO CORP"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": false,
+          "ticker_fit_from": null,
+          "ticker_fit_to": null,
+          "wikipedia_name_at_time": true
+        }
+      ],
+      "decision": null,
+      "end": "2016-04-14",
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "Wikipedia's name was this filer's name during the interval; co-filing LLC/LP dropped: [18672]",
+        "cik": 1089819,
+        "kind": "cik",
+        "name": "Cleco Corporate Holdings LLC"
+      },
+      "ticker": "CNL",
+      "wikipedia_names": [
+        "CLECO"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 1553023,
+          "covers_end": true,
+          "covers_start": false,
+          "filings_in_interval": 40,
+          "first_in_interval": "2013-03-29",
+          "last_in_interval": "2022-03-23",
+          "last_periodic_overall": "2022-03-23",
+          "name_now": "CyrusOne Holdco LLC",
+          "names_during_interval": [
+            "CyrusOne Inc."
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2012-11-29",
+          "ticker_fit_to": "2022-03-30",
+          "wikipedia_name_at_time": true
+        },
+        {
+          "cik": 1575810,
+          "covers_end": false,
+          "covers_start": false,
+          "filings_in_interval": 10,
+          "first_in_interval": "2013-08-14",
+          "last_in_interval": "2015-11-06",
+          "last_periodic_overall": "2015-11-06",
+          "name_now": "CyrusOne LP",
+          "names_during_interval": [
+            "CyrusOne LP"
+          ],
+          "subsidiary_form_only": true,
+          "ticker_fit": true,
+          "ticker_fit_from": "2013-04-16",
+          "ticker_fit_to": "2016-03-05",
+          "wikipedia_name_at_time": true
+        }
+      ],
+      "decision": null,
+      "end": "2022-03-30",
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "ticker fit: CONE in ['CyrusOne Inc.']; co-filing LLC/LP dropped: [1575810]",
+        "cik": 1553023,
+        "kind": "cik",
+        "name": "CyrusOne Holdco LLC"
+      },
+      "ticker": "CONE",
+      "wikipedia_names": [
+        "CyrusOne"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 784681,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 24,
+          "first_in_interval": "2011-02-16",
+          "last_in_interval": "2016-05-05",
+          "last_periodic_overall": "2016-05-05",
+          "name_now": "CSC HOLDINGS LLC",
+          "names_during_interval": [
+            "CSC HOLDINGS LLC"
+          ],
+          "subsidiary_form_only": true,
+          "ticker_fit": false,
+          "ticker_fit_from": null,
+          "ticker_fit_to": null,
+          "wikipedia_name_at_time": false
+        },
+        {
+          "cik": 1053112,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 24,
+          "first_in_interval": "2011-02-16",
+          "last_in_interval": "2016-05-05",
+          "last_periodic_overall": "2016-05-05",
+          "name_now": "CABLEVISION SYSTEMS CORP /NY",
+          "names_during_interval": [
+            "CABLEVISION SYSTEMS CORP /NY"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": false,
+          "ticker_fit_from": null,
+          "ticker_fit_to": null,
+          "wikipedia_name_at_time": true
+        }
+      ],
+      "decision": null,
+      "end": "2016-06-22",
+      "start": "2010-12-17",
+      "suggestion": {
+        "basis": "Wikipedia's name was this filer's name during the interval; co-filing LLC/LP dropped: [784681]",
+        "cik": 1053112,
+        "kind": "cik",
+        "name": "CABLEVISION SYSTEMS CORP /NY"
+      },
+      "ticker": "CVC",
+      "wikipedia_names": [
+        "Cablevision",
+        "Cablevision Systems"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 30419,
+          "covers_end": false,
+          "covers_start": true,
+          "filings_in_interval": 16,
+          "first_in_interval": "2009-08-04",
+          "last_in_interval": "2013-04-26",
+          "last_periodic_overall": "2013-04-26",
+          "name_now": "DEX ONE Corp",
+          "names_during_interval": [
+            "R H DONNELLEY CORP",
+            "DEX ONE Corp"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": false,
+          "ticker_fit_from": null,
+          "ticker_fit_to": null,
+          "wikipedia_name_at_time": false
+        },
+        {
+          "cik": 1059556,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 40,
+          "first_in_interval": "2009-08-03",
+          "last_in_interval": "2018-10-31",
+          "last_periodic_overall": "2026-07-23",
+          "name_now": "MOODYS CORP /DE/",
+          "names_during_interval": [
+            "MOODYS CORP /DE/"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": false,
+          "ticker_fit_from": null,
+          "ticker_fit_to": null,
+          "wikipedia_name_at_time": false
+        },
+        {
+          "cik": 1115222,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 39,
+          "first_in_interval": "2009-08-05",
+          "last_in_interval": "2018-11-06",
+          "last_periodic_overall": "2018-11-06",
+          "name_now": "DUN & BRADSTREET CORP/NW",
+          "names_during_interval": [
+            "DUN & BRADSTREET CORP/NW"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2009-06-15",
+          "ticker_fit_to": "2019-02-11",
+          "wikipedia_name_at_time": true
+        }
+      ],
+      "decision": null,
+      "end": "2019-02-11",
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "ticker fit: DNB in ['DUN & BRADSTREET CORP/NW']",
+        "cik": 1115222,
+        "kind": "cik",
+        "name": "DUN & BRADSTREET CORP/NW"
+      },
+      "ticker": "DNB",
+      "wikipedia_names": [
+        "Dun & Bradstreet Corp"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 944868,
+          "covers_end": false,
+          "covers_start": true,
+          "filings_in_interval": 2,
+          "first_in_interval": "2009-08-07",
+          "last_in_interval": "2009-11-06",
+          "last_periodic_overall": "2009-11-06",
+          "name_now": "DIRECTV GROUP INC",
+          "names_during_interval": [
+            "DIRECTV GROUP INC"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2009-06-15",
+          "ticker_fit_to": "2010-03-06",
+          "wikipedia_name_at_time": true
+        },
+        {
+          "cik": 1234308,
+          "covers_end": false,
+          "covers_start": true,
+          "filings_in_interval": 13,
+          "first_in_interval": "2009-08-07",
+          "last_in_interval": "2011-11-04",
+          "last_periodic_overall": "2011-11-04",
+          "name_now": "DIRECTV HOLDINGS LLC",
+          "names_during_interval": [
+            "DIRECTV HOLDINGS LLC"
+          ],
+          "subsidiary_form_only": true,
+          "ticker_fit": true,
+          "ticker_fit_from": "2009-06-15",
+          "ticker_fit_to": "2012-03-03",
+          "wikipedia_name_at_time": true
+        },
+        {
+          "cik": 1465112,
+          "covers_end": true,
+          "covers_start": false,
+          "filings_in_interval": 28,
+          "first_in_interval": "2010-02-26",
+          "last_in_interval": "2015-06-04",
+          "last_periodic_overall": "2015-10-20",
+          "name_now": "DIRECTV",
+          "names_during_interval": [
+            "DIRECTV"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2009-10-29",
+          "ticker_fit_to": "2015-07-29",
+          "wikipedia_name_at_time": true
+        }
+      ],
+      "decision": null,
+      "end": "2015-07-29",
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "successor issuer: the predecessor stopped filing and the successor took over; co-filing LLC/LP dropped: [1234308]",
+        "kind": "split",
+        "segments": [
+          {
+            "cik": 944868,
+            "from": "1990-01-01",
+            "name": "DIRECTV GROUP INC",
+            "to": "2010-02-25"
+          },
+          {
+            "cik": 1465112,
+            "from": "2010-02-26",
+            "name": "DIRECTV",
+            "to": "2015-07-29"
+          }
+        ]
+      },
+      "ticker": "DTV",
+      "wikipedia_names": [
+        "DirecTV"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 1105055,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 2,
+          "first_in_interval": "2009-08-10",
+          "last_in_interval": "2009-11-05",
+          "last_periodic_overall": "2012-09-18",
+          "name_now": "DYNEGY HOLDINGS, LLC",
+          "names_during_interval": [
+            "DYNEGY HOLDINGS INC"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2009-06-15",
+          "ticker_fit_to": "2009-12-18",
+          "wikipedia_name_at_time": true
+        },
+        {
+          "cik": 1379895,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 2,
+          "first_in_interval": "2009-08-10",
+          "last_in_interval": "2009-11-05",
+          "last_periodic_overall": "2018-04-27",
+          "name_now": "DYNEGY INC.",
+          "names_during_interval": [
+            "DYNEGY INC."
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2009-06-15",
+          "ticker_fit_to": "2009-12-18",
+          "wikipedia_name_at_time": true
+        }
+      ],
+      "decision": null,
+      "end": "2009-12-18",
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "signals do not separate the candidates; needs judgment",
+        "kind": "none"
+      },
+      "ticker": "DYN",
+      "wikipedia_names": [
+        "Dynegy"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 885721,
+          "covers_end": false,
+          "covers_start": true,
+          "filings_in_interval": 14,
+          "first_in_interval": "2009-07-29",
+          "last_in_interval": "2012-04-02",
+          "last_periodic_overall": "2012-04-02",
+          "name_now": "EXPRESS SCRIPTS INC",
+          "names_during_interval": [
+            "EXPRESS SCRIPTS INC"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": false,
+          "ticker_fit_from": null,
+          "ticker_fit_to": null,
+          "wikipedia_name_at_time": true
+        },
+        {
+          "cik": 1532063,
+          "covers_end": true,
+          "covers_start": false,
+          "filings_in_interval": 27,
+          "first_in_interval": "2012-05-10",
+          "last_in_interval": "2018-10-31",
+          "last_periodic_overall": "2018-10-31",
+          "name_now": "Express Scripts Holding Co.",
+          "names_during_interval": [
+            "Express Scripts Holding Co."
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": false,
+          "ticker_fit_from": null,
+          "ticker_fit_to": null,
+          "wikipedia_name_at_time": true
+        }
+      ],
+      "decision": null,
+      "end": "2018-12-24",
+      "start": "2003-09-25",
+      "suggestion": {
+        "basis": "successor issuer: the predecessor stopped filing and the successor took over",
+        "kind": "split",
+        "segments": [
+          {
+            "cik": 885721,
+            "from": "2003-09-25",
+            "name": "EXPRESS SCRIPTS INC",
+            "to": "2012-05-09"
+          },
+          {
+            "cik": 1532063,
+            "from": "2012-05-10",
+            "name": "Express Scripts Holding Co.",
+            "to": "2018-12-24"
+          }
+        ]
+      },
+      "ticker": "ESRX",
+      "wikipedia_names": [
+        "Express Scripts"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 1578318,
+          "covers_end": false,
+          "covers_start": false,
+          "filings_in_interval": 0,
+          "first_in_interval": null,
+          "last_in_interval": null,
+          "last_periodic_overall": "2016-11-03",
+          "name_now": "Envision Healthcare Holdings, Inc.",
+          "names_during_interval": [
+            "Envision Healthcare Holdings, Inc."
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2016-12-02",
+          "ticker_fit_to": "2017-03-03",
+          "wikipedia_name_at_time": true
+        },
+        {
+          "cik": 1678531,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 8,
+          "first_in_interval": "2017-03-01",
+          "last_in_interval": "2018-08-07",
+          "last_periodic_overall": "2018-08-07",
+          "name_now": "Envision Healthcare Corp",
+          "names_during_interval": [
+            "Envision Healthcare Corp"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2016-12-02",
+          "ticker_fit_to": "2018-10-11",
+          "wikipedia_name_at_time": true
+        }
+      ],
+      "decision": null,
+      "end": "2018-10-11",
+      "start": "2016-12-02",
+      "suggestion": {
+        "basis": "WEAK: the only candidate filing across the whole interval; confirm",
+        "cik": 1678531,
+        "kind": "cik",
+        "name": "Envision Healthcare Corp"
+      },
+      "ticker": "EVHC",
+      "wikipedia_names": [
+        "Envision Healthcare"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 891103,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 41,
+          "first_in_interval": "2009-06-30",
+          "last_in_interval": "2017-11-09",
+          "last_periodic_overall": "2026-08-05",
+          "name_now": "Match Group, Inc.",
+          "names_during_interval": [
+            "IAC/INTERACTIVECORP"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": false,
+          "ticker_fit_from": null,
+          "ticker_fit_to": null,
+          "wikipedia_name_at_time": false
+        },
+        {
+          "cik": 1434729,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 35,
+          "first_in_interval": "2009-08-06",
+          "last_in_interval": "2017-11-08",
+          "last_periodic_overall": "2017-11-08",
+          "name_now": "HSN, Inc.",
+          "names_during_interval": [
+            "HSN, Inc."
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": false,
+          "ticker_fit_from": null,
+          "ticker_fit_to": null,
+          "wikipedia_name_at_time": true
+        }
+      ],
+      "decision": null,
+      "end": "2018-01-02",
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "Wikipedia's name was this filer's name during the interval",
+        "cik": 1434729,
+        "kind": "cik",
+        "name": "HSN, Inc."
+      },
+      "ticker": "HSNI",
+      "wikipedia_names": [
+        "HSN Inc"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 1103982,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 12,
+          "first_in_interval": "2012-11-08",
+          "last_in_interval": "2015-04-30",
+          "last_periodic_overall": "2026-07-28",
+          "name_now": "Mondelez International, Inc.",
+          "names_during_interval": [
+            "Mondelez International, Inc."
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": false,
+          "ticker_fit_from": null,
+          "ticker_fit_to": null,
+          "wikipedia_name_at_time": false
+        },
+        {
+          "cik": 1545158,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 12,
+          "first_in_interval": "2012-11-09",
+          "last_in_interval": "2015-04-28",
+          "last_periodic_overall": "2015-04-28",
+          "name_now": "Kraft Foods Group, Inc.",
+          "names_during_interval": [
+            "Kraft Foods Group, Inc."
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2012-10-02",
+          "ticker_fit_to": "2015-07-06",
+          "wikipedia_name_at_time": true
+        }
+      ],
+      "decision": null,
+      "end": "2015-07-06",
+      "start": "2012-10-02",
+      "suggestion": {
+        "basis": "ticker fit: KRFT in ['Kraft Foods Group, Inc.']",
+        "cik": 1545158,
+        "kind": "cik",
+        "name": "Kraft Foods Group, Inc."
+      },
+      "ticker": "KRFT",
+      "wikipedia_names": [
+        "Kraft Foods"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 944314,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 58,
+          "first_in_interval": "2009-08-07",
+          "last_in_interval": "2023-05-03",
+          "last_periodic_overall": "2023-05-03",
+          "name_now": "LIFE STORAGE, INC.",
+          "names_during_interval": [
+            "SOVRAN SELF STORAGE INC",
+            "LIFE STORAGE, INC."
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": false,
+          "ticker_fit_from": null,
+          "ticker_fit_to": null,
+          "wikipedia_name_at_time": true
+        },
+        {
+          "cik": 1060224,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 32,
+          "first_in_interval": "2009-08-07",
+          "last_in_interval": "2023-05-03",
+          "last_periodic_overall": "2023-05-03",
+          "name_now": "LIFE STORAGE LP",
+          "names_during_interval": [
+            "SOVRAN ACQUISITION LTD PARTNERSHIP",
+            "LIFE STORAGE LP"
+          ],
+          "subsidiary_form_only": true,
+          "ticker_fit": false,
+          "ticker_fit_from": null,
+          "ticker_fit_to": null,
+          "wikipedia_name_at_time": true
+        }
+      ],
+      "decision": null,
+      "end": "2023-07-24",
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "Wikipedia's name was this filer's name during the interval; co-filing LLC/LP dropped: [1060224]",
+        "cik": 944314,
+        "kind": "cik",
+        "name": "LIFE STORAGE, INC."
+      },
+      "ticker": "LSI",
+      "wikipedia_names": [
+        "Life Storage"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 1169055,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 33,
+          "first_in_interval": "2009-08-07",
+          "last_in_interval": "2017-05-05",
+          "last_periodic_overall": "2023-03-09",
+          "name_now": "Noble Finance Co",
+          "names_during_interval": [
+            "NOBLE CORP"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2009-06-15",
+          "ticker_fit_to": "2017-05-16",
+          "wikipedia_name_at_time": true
+        },
+        {
+          "cik": 1458891,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 34,
+          "first_in_interval": "2009-08-07",
+          "last_in_interval": "2017-05-05",
+          "last_periodic_overall": "2022-08-09",
+          "name_now": "Noble Corp",
+          "names_during_interval": [
+            "Noble Corp plc",
+            "Noble Corp / Switzerland"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2009-06-15",
+          "ticker_fit_to": "2017-05-16",
+          "wikipedia_name_at_time": true
+        }
+      ],
+      "decision": null,
+      "end": "2017-05-16",
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "signals do not separate the candidates; needs judgment",
+        "kind": "none"
+      },
+      "ticker": "NE",
+      "wikipedia_names": [
+        "Noble Corporation"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 1472595,
+          "covers_end": false,
+          "covers_start": true,
+          "filings_in_interval": 4,
+          "first_in_interval": "2021-08-03",
+          "last_in_interval": "2022-05-09",
+          "last_periodic_overall": "2022-05-09",
+          "name_now": "R1 RCM Holdco Inc.",
+          "names_during_interval": [
+            "R1 RCM INC."
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2021-05-07",
+          "ticker_fit_to": "2022-06-14",
+          "wikipedia_name_at_time": true
+        },
+        {
+          "cik": 1910851,
+          "covers_end": true,
+          "covers_start": false,
+          "filings_in_interval": 13,
+          "first_in_interval": "2022-08-03",
+          "last_in_interval": "2024-11-05",
+          "last_periodic_overall": "2024-11-05",
+          "name_now": "R1 RCM Inc. /DE",
+          "names_during_interval": [
+            "R1 RCM Inc. /DE"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2022-04-22",
+          "ticker_fit_to": "2024-11-20",
+          "wikipedia_name_at_time": true
+        }
+      ],
+      "decision": null,
+      "end": "2024-11-20",
+      "start": "2021-05-07",
+      "suggestion": {
+        "basis": "successor issuer: the predecessor stopped filing and the successor took over",
+        "kind": "split",
+        "segments": [
+          {
+            "cik": 1472595,
+            "from": "2021-05-07",
+            "name": "R1 RCM Holdco Inc.",
+            "to": "2022-08-02"
+          },
+          {
+            "cik": 1910851,
+            "from": "2022-08-03",
+            "name": "R1 RCM Inc. /DE",
+            "to": "2024-11-20"
+          }
+        ]
+      },
+      "ticker": "RCM",
+      "wikipedia_names": [
+        "R1 RCM"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 1355001,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 3,
+          "first_in_interval": "2018-11-02",
+          "last_in_interval": "2019-05-02",
+          "last_periodic_overall": "2025-11-05",
+          "name_now": "Anywhere Real Estate Group LLC",
+          "names_during_interval": [
+            "REALOGY GROUP LLC"
+          ],
+          "subsidiary_form_only": true,
+          "ticker_fit": true,
+          "ticker_fit_from": "2018-09-20",
+          "ticker_fit_to": "2019-06-04",
+          "wikipedia_name_at_time": true
+        },
+        {
+          "cik": 1398987,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 3,
+          "first_in_interval": "2018-11-02",
+          "last_in_interval": "2019-05-02",
+          "last_periodic_overall": "2025-11-05",
+          "name_now": "Anywhere Real Estate Inc.",
+          "names_during_interval": [
+            "Realogy Holdings Corp.",
+            "REALOGY HOLDINGS CORP."
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2018-09-20",
+          "ticker_fit_to": "2019-06-04",
+          "wikipedia_name_at_time": true
+        }
+      ],
+      "decision": null,
+      "end": "2019-06-04",
+      "start": "2018-09-20",
+      "suggestion": {
+        "basis": "ticker fit: RLGY in ['Realogy Holdings Corp.', 'REALOGY HOLDINGS CORP.']; co-filing LLC/LP dropped: [1355001]",
+        "cik": 1398987,
+        "kind": "cik",
+        "name": "Anywhere Real Estate Inc."
+      },
+      "ticker": "RLGY",
+      "wikipedia_names": [
+        "Realogy"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 93451,
+          "covers_end": false,
+          "covers_start": true,
+          "filings_in_interval": 19,
+          "first_in_interval": "2009-08-07",
+          "last_in_interval": "2013-08-02",
+          "last_periodic_overall": "2013-08-02",
+          "name_now": "STERLING BANCORP",
+          "names_during_interval": [
+            "STERLING BANCORP"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2009-06-15",
+          "ticker_fit_to": "2013-11-30",
+          "wikipedia_name_at_time": true
+        },
+        {
+          "cik": 1070154,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 52,
+          "first_in_interval": "2009-08-07",
+          "last_in_interval": "2021-10-29",
+          "last_periodic_overall": "2021-10-29",
+          "name_now": "STERLING BANCORP",
+          "names_during_interval": [
+            "PROVIDENT NEW YORK BANCORP",
+            "STERLING BANCORP"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2013-11-01",
+          "ticker_fit_to": "2022-02-01",
+          "wikipedia_name_at_time": true
+        },
+        {
+          "cik": 1680379,
+          "covers_end": true,
+          "covers_start": false,
+          "filings_in_interval": 16,
+          "first_in_interval": "2018-03-28",
+          "last_in_interval": "2021-11-15",
+          "last_periodic_overall": "2025-03-21",
+          "name_now": "Sterling Bancorp, Inc.",
+          "names_during_interval": [
+            "Sterling Bancorp, Inc."
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2017-11-28",
+          "ticker_fit_to": "2022-02-01",
+          "wikipedia_name_at_time": true
+        }
+      ],
+      "decision": null,
+      "end": "2022-02-01",
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "WEAK: the only candidate filing across the whole interval; confirm",
+        "cik": 1070154,
+        "kind": "cik",
+        "name": "STERLING BANCORP"
+      },
+      "ticker": "STL",
+      "wikipedia_names": [
+        "Sterling Bancorp"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 19612,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 49,
+          "first_in_interval": "2009-08-05",
+          "last_in_interval": "2021-05-07",
+          "last_periodic_overall": "2021-05-07",
+          "name_now": "TCF FINANCIAL CORP",
+          "names_during_interval": [
+            "CHEMICAL FINANCIAL CORP",
+            "TCF FINANCIAL CORP"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2019-08-01",
+          "ticker_fit_to": "2021-06-09",
+          "wikipedia_name_at_time": true
+        },
+        {
+          "cik": 814184,
+          "covers_end": false,
+          "covers_start": true,
+          "filings_in_interval": 42,
+          "first_in_interval": "2009-07-30",
+          "last_in_interval": "2019-07-31",
+          "last_periodic_overall": "2019-07-31",
+          "name_now": "TCF FINANCIAL CORP",
+          "names_during_interval": [
+            "TCF FINANCIAL CORP"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2009-06-15",
+          "ticker_fit_to": "2019-11-28",
+          "wikipedia_name_at_time": true
+        }
+      ],
+      "decision": null,
+      "end": "2021-06-09",
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "name handover: TCF fits 814184 then 19612",
+        "kind": "split",
+        "segments": [
+          {
+            "cik": 814184,
+            "from": "1990-01-01",
+            "name": "TCF FINANCIAL CORP",
+            "to": "2019-07-31"
+          },
+          {
+            "cik": 19612,
+            "from": "2019-08-01",
+            "name": "TCF FINANCIAL CORP",
+            "to": "2021-06-09"
+          }
+        ]
+      },
+      "ticker": "TCF",
+      "wikipedia_names": [
+        "TCF Financial Corporation"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 833444,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 24,
+          "first_in_interval": "2010-11-12",
+          "last_in_interval": "2016-07-29",
+          "last_periodic_overall": "2026-07-29",
+          "name_now": "Johnson Controls International plc",
+          "names_during_interval": [
+            "TYCO INTERNATIONAL plc",
+            "TYCO INTERNATIONAL LTD"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2010-08-26",
+          "ticker_fit_to": "2016-09-06",
+          "wikipedia_name_at_time": true
+        },
+        {
+          "cik": 1608109,
+          "covers_end": false,
+          "covers_start": false,
+          "filings_in_interval": 1,
+          "first_in_interval": "2014-09-12",
+          "last_in_interval": "2014-09-12",
+          "last_periodic_overall": "2014-09-12",
+          "name_now": "Tyco International plc",
+          "names_during_interval": [
+            "Tyco International plc"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2014-05-15",
+          "ticker_fit_to": "2015-01-10",
+          "wikipedia_name_at_time": true
+        }
+      ],
+      "decision": null,
+      "end": "2016-09-06",
+      "start": "2010-08-26",
+      "suggestion": {
+        "basis": "WEAK: the only candidate filing across the whole interval; confirm",
+        "cik": 833444,
+        "kind": "cik",
+        "name": "Johnson Controls International plc"
+      },
+      "ticker": "TYC",
+      "wikipedia_names": [
+        "Tyco International"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 813828,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 42,
+          "first_in_interval": "2009-08-06",
+          "last_in_interval": "2019-11-12",
+          "last_periodic_overall": "2025-07-31",
+          "name_now": "Paramount Global",
+          "names_during_interval": [
+            "CBS CORP"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": false,
+          "ticker_fit_from": null,
+          "ticker_fit_to": null,
+          "wikipedia_name_at_time": false
+        },
+        {
+          "cik": 1339947,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 42,
+          "first_in_interval": "2009-07-28",
+          "last_in_interval": "2019-11-14",
+          "last_periodic_overall": "2019-11-14",
+          "name_now": "Viacom Inc.",
+          "names_during_interval": [
+            "Viacom Inc."
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2009-06-15",
+          "ticker_fit_to": "2019-12-05",
+          "wikipedia_name_at_time": true
+        }
+      ],
+      "decision": null,
+      "end": "2019-12-05",
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "ticker fit: VIAB in ['Viacom Inc.']",
+        "cik": 1339947,
+        "kind": "cik",
+        "name": "Viacom Inc."
+      },
+      "ticker": "VIAB",
+      "wikipedia_names": [
+        "Viacom"
+      ]
+    },
+    {
+      "candidates": [
+        {
+          "cik": 1282266,
+          "covers_end": true,
+          "covers_start": true,
+          "filings_in_interval": 24,
+          "first_in_interval": "2009-08-06",
+          "last_in_interval": "2015-05-07",
+          "last_periodic_overall": "2020-07-30",
+          "name_now": "WINDSTREAM HOLDINGS, INC.",
+          "names_during_interval": [
+            "WINDSTREAM CORP",
+            "WINDSTREAM HOLDINGS, INC."
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2009-06-15",
+          "ticker_fit_to": "2015-06-01",
+          "wikipedia_name_at_time": true
+        },
+        {
+          "cik": 1585644,
+          "covers_end": true,
+          "covers_start": false,
+          "filings_in_interval": 7,
+          "first_in_interval": "2013-11-07",
+          "last_in_interval": "2015-05-07",
+          "last_periodic_overall": "2020-07-30",
+          "name_now": "WINDSTREAM SERVICES, LLC",
+          "names_during_interval": [
+            "WINDSTREAM CORP",
+            "WINDSTREAM SERVICES, LLC"
+          ],
+          "subsidiary_form_only": false,
+          "ticker_fit": true,
+          "ticker_fit_from": "2013-11-07",
+          "ticker_fit_to": "2015-06-01",
+          "wikipedia_name_at_time": true
+        }
+      ],
+      "decision": null,
+      "end": "2015-06-01",
+      "start": "1990-01-01",
+      "suggestion": {
+        "basis": "WEAK: the only candidate filing across the whole interval; confirm",
+        "cik": 1282266,
+        "kind": "cik",
+        "name": "WINDSTREAM HOLDINGS, INC."
+      },
+      "ticker": "WIN",
+      "wikipedia_names": [
+        "Windstream"
+      ]
+    }
+  ],
+  "matches_input": "data/universe/cik_name_matches_2026-09-24.json"
+}
