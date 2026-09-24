@@ -347,7 +347,7 @@ def field_facts(pit: pd.DataFrame, name: str) -> pd.DataFrame:
         frames.append(part)
     combined = pd.concat(frames, ignore_index=True) if frames else pit.iloc[0:0]
     if combined.empty:
-        return combined
+        return combined.assign(kind=pd.Series(dtype=object))  # same columns as a non-empty result
     combined = combined.sort_values(["cik", "start", "end", "alias_rank"], na_position="first", kind="mergesort")
     combined = combined.drop_duplicates(["cik", "start", "end"], keep="first")
     combined["kind"] = period_kind(combined["start"], combined["end"])

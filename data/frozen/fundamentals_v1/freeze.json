@@ -1,0 +1,49 @@
+{
+  "built_at": "2026-09-24T22:01:31.383863+00:00",
+  "dataset": {
+    "as_of": "2026-06-15T00:00:00-04:00",
+    "id": "bedf8c4c0f0c2195ce5aace938f4ad38e23e6b69b57075080073004692d46eef",
+    "path": "data/frozen/demotion_b1"
+  },
+  "inputs": {
+    "edgar_manifest": {
+      "path": "data/edgar/manifest.json",
+      "sha256": "0f4c4818f6ff78e3dc58feff3b4c79197cf3a0da8decdd0009441e735a2038db"
+    },
+    "facts": {
+      "path": "data/edgar/facts.parquet",
+      "sha256": "86e11d530d25161203f65a735f6016a92902cecbe3a94e1a07ebb7f55a7897fe"
+    },
+    "splits": {
+      "path": "data/frozen/fundamentals_v1/splits.parquet",
+      "sha256": "307b85bc45afd59d874971290e8bfc0c303bc4fdc488f26a00f26778460e8d78"
+    },
+    "ticker_cik": {
+      "path": "data/edgar/ticker_cik.parquet",
+      "sha256": "50d55f25b3e272aa355f434c8b0e25e5142cae3ea388cdbb2a8478b2c84f09bf"
+    }
+  },
+  "median_daily_coverage": {
+    "at_gr1": 0.9921875,
+    "be_me": 0.9089108910891089,
+    "chcsho_12m": 0.9436893203883495,
+    "gp_at": 0.6140350877192983,
+    "niq_su": 0.9859437751004017,
+    "oaccruals_at": 0.9919678714859438
+  },
+  "panel": {
+    "companies": 561,
+    "first": "2020-01-02",
+    "last": "2026-06-15",
+    "path": "data/frozen/fundamentals_v1/panel.parquet",
+    "rows": 825523,
+    "securities": 565,
+    "sha256": "06ea92de10b1e2e9f0106c795b7d0b8ddac1a0dc62ef6a929ffc404ed7415df3"
+  },
+  "peak_rss_mb": 819.9,
+  "since": "2019-01-01",
+  "splits": {
+    "rows": 114,
+    "symbols": 90
+  }
+}

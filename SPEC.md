@@ -82,6 +82,10 @@ the certification under `docs/` remain as the research record.
   implemented as published can promote on long-sample public evidence plus
   in-house fidelity and cost tests (§4, replication route); research scope is
   open to any data source and technique that satisfies §§2–4 (§§5, 8).
+- **Contract amended 2026-09-24** (owner decision): a pinned combination can
+  promote on its own replication criteria (§4, Combinations). This lets
+  low-prior themes such as value enter through diversification measured on
+  public data.
 
 ## 2. Invariants — a change that violates one is wrong, not the invariant
 
@@ -178,9 +182,24 @@ the certification under `docs/` remain as the research record.
   4. *No in-house contradiction.* The in-house net Sharpe's 95% interval does
      not lie entirely below the figure from 3.
 
-  A combination of promoted configurations at weights pinned in its
-  registration, not fitted to returns, is promoted when each part is and the
-  combined book is `mechanics_clean`.
+- **Combinations.** A combination at weights pinned in its registration, not
+  fitted to returns, promotes in either of two ways, named in the registration.
+  - *Parts first*: when each part is promoted and the combined book is
+    `mechanics_clean`.
+  - *On its own replication criteria*, when all of these hold:
+    1. every part is a replication-route configuration that passes criteria 1
+       and 2 above;
+    2. the combination's prior Sharpe clears the hurdle. That prior is computed
+       from the parts' public series at the pinned weights over their common
+       window, using post-publication history where each part's spans ten
+       years or more and 0.4 × the full sample otherwise. It is multiplied by
+       the combined book's correlation with the same weighted public
+       combination, and the combined book's cost drag is subtracted;
+    3. the combined book's in-house net Sharpe interval does not lie entirely
+       below the figure from 2.
+
+  Diversification counts this way only through public long-sample evidence,
+  and weights are never fitted to returns.
 - **Certified artifacts are immutable.** Anything under `results/` cited by a
   file in `docs/certifications/` is never rewritten.
 
