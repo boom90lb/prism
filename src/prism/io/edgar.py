@@ -62,6 +62,7 @@ COMPANYFACTS_URL = DATA_HOST + "/api/xbrl/companyfacts/CIK{cik:010d}.json"
 SUBMISSIONS_URL = DATA_HOST + "/submissions/CIK{cik:010d}.json"
 SUBMISSIONS_PAGE_URL = DATA_HOST + "/submissions/{name}"
 TICKERS_URL = "https://www.sec.gov/files/company_tickers.json"
+NAME_INDEX_URL = "https://www.sec.gov/Archives/edgar/cik-lookup-data.txt"
 MAX_REQUESTS_PER_SECOND = 5.0
 NEW_YORK = "America/New_York"
 
@@ -185,9 +186,10 @@ class SecClient:
             self.sleep(backoff)
         raise AssertionError("unreachable")
 
-    def get_json(self, url: str, cache_key: str, refresh: bool = False) -> tuple[dict[str, Any], dict[str, Any]]:
-        """The payload and its provenance (url, fetched_at, sha256, cache path)."""
-        body_path = self.cache_dir / f"{cache_key}.json.gz"
+    def get_bytes(self, url: str, cache_key: str, refresh: bool = False, ext: str = "json"
+                  ) -> tuple[bytes, dict[str, Any]]:
+        """The raw body and its provenance (url, fetched_at, sha256, cache path), cached gzip-compressed."""
+        body_path = self.cache_dir / f"{cache_key}.{ext}.gz"
         meta_path = self.cache_dir / f"{cache_key}.meta.json"
         if not refresh and body_path.exists() and meta_path.exists():
             raw = gzip.decompress(body_path.read_bytes())
@@ -201,11 +203,20 @@ class SecClient:
             body_path.parent.mkdir(parents=True, exist_ok=True)
             body_path.write_bytes(gzip.compress(raw))
             meta_path.write_text(json.dumps(meta, indent=2, sort_keys=True))
+        return raw, {**meta, "cache_path": str(body_path)}
+
+    def get_json(self, url: str, cache_key: str, refresh: bool = False) -> tuple[dict[str, Any], dict[str, Any]]:
+        """The parsed JSON payload and its provenance."""
+        raw, meta = self.get_bytes(url, cache_key, refresh)
         try:
             payload = json.loads(raw)
         except json.JSONDecodeError as exc:
             raise EdgarError(f"{url} did not return JSON") from exc
-        return payload, {**meta, "cache_path": str(body_path)}
+        return payload, meta
+
+    def name_index(self, refresh: bool = False) -> tuple[bytes, dict[str, Any]]:
+        """SEC's every-entity name index (``NAME:CIK:`` per line, ~38 MB)."""
+        return self.get_bytes(NAME_INDEX_URL, "cik_lookup_data", refresh, ext="txt")
 
     def companyfacts(self, cik: int, refresh: bool = False) -> tuple[dict[str, Any], dict[str, Any]]:
         return self.get_json(COMPANYFACTS_URL.format(cik=int(cik)), f"companyfacts/CIK{int(cik):010d}", refresh)

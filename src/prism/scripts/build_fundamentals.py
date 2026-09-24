@@ -172,12 +172,27 @@ def _peak_rss_mb() -> float:
     return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.0
 
 
+def load_name_matches(path: Path | None) -> dict[tuple[str, str], dict[str, Any]]:
+    """Accepted per-interval CIKs from ``prism.scripts.match_delisted_ciks``, keyed by (ticker, start)."""
+    if path is None:
+        return {}
+    payload = json.loads(Path(path).read_text())
+    out = {}
+    for row in payload["accepted"]:
+        key = (normalize_ticker(row["ticker"]), str(pd.Timestamp(row["start"]).date()))
+        out[key] = {"cik": int(row["cik"]), "title": row.get("title"), "source": "name_match"}
+    return out
+
+
 def build(membership: pd.DataFrame, client: edgar.SecClient, out_dir: Path, ledger_path: Path, asof: str,
-          refresh: bool = False, limit: int | None = None) -> dict[str, Any]:
+          refresh: bool = False, limit: int | None = None,
+          name_matches: Mapping[tuple[str, str], Mapping[str, Any]] | None = None) -> dict[str, Any]:
     """One company at a time: filings, interval checks, facts, appended to disk, then released.
 
     Peak memory is one company's payloads plus the small identity tables, not the whole
     universe's facts (the 2026-09-24 build held ~1,100 companies in memory at once).
+    A ``name_matches`` entry assigns its CIK to that one membership interval, ahead of the
+    ticker's current-map candidate, so a reused ticker's earlier holder resolves separately.
     """
     tickers_payload, tickers_meta = client.company_tickers(refresh)
     sec_map = sec_ticker_map(tickers_payload)
@@ -185,26 +200,29 @@ def build(membership: pd.DataFrame, client: edgar.SecClient, out_dir: Path, ledg
     if limit is not None:
         tickers = tickers[:limit]
     candidates = candidate_ciks(tickers, sec_map)
-    spans_by_ticker = {t: g for t, g in membership.assign(_t=membership["ticker"].map(normalize_ticker))
-                       .groupby("_t") if t in candidates}
-    tickers_by_cik: dict[int, list[str]] = {}
-    for ticker in tickers:
-        if candidates[ticker]["cik"] is not None:
-            tickers_by_cik.setdefault(int(candidates[ticker]["cik"]), []).append(ticker)
+    overrides = dict(name_matches or {})
+    spans = membership.assign(ticker=membership["ticker"].map(normalize_ticker))
+    spans = spans[spans["ticker"].isin(tickers)].sort_values(["ticker", "start"], kind="mergesort")
+    assigned: list[dict[str, Any]] = []
+    for span in spans.itertuples():
+        info = overrides.get((span.ticker, str(span.start.date())), candidates[span.ticker])
+        assigned.append({"ticker": span.ticker, "start": span.start, "end": span.end, "cik": info["cik"],
+                         "title": info["title"], "source": info["source"], "reason": info.get("reason")})
+    intervals_by_cik: dict[int, list[dict[str, Any]]] = {}
+    for item in assigned:
+        if item["cik"] is not None and item["end"] >= XBRL_ERA_START:
+            intervals_by_cik.setdefault(int(item["cik"]), []).append(item)
 
-    def interval_rows(ticker: str, filings: pd.DataFrame | None) -> list[dict[str, Any]]:
-        info = candidates[ticker]
+    def interval_rows(items: list[dict[str, Any]], filings: pd.DataFrame | None) -> list[dict[str, Any]]:
         out = []
-        for span in spans_by_ticker[ticker].itertuples():
-            if span.end < XBRL_ERA_START:
+        for item in items:
+            if item["end"] < XBRL_ERA_START:
                 status = "pre_xbrl"
             elif filings is None:
                 status = "unresolved"
             else:
-                status = interval_status(filings, span.start, span.end)
-            out.append({"ticker": ticker, "start": span.start, "end": span.end, "cik": info["cik"],
-                        "title": info["title"], "source": info["source"], "status": status,
-                        "reason": info.get("reason")})
+                status = interval_status(filings, item["start"], item["end"])
+            out.append({**item, "status": status})
         return out
 
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -216,16 +234,14 @@ def build(membership: pd.DataFrame, client: edgar.SecClient, out_dir: Path, ledg
     basis_counts: dict[str, int] = {}
     concepts = edgar.concept_names()
     try:
-        for ticker in tickers:
-            if candidates[ticker]["cik"] is None:
-                rows.extend(interval_rows(ticker, None))
-        for cik in sorted(tickers_by_cik):
+        rows.extend(interval_rows([a for a in assigned if a["cik"] is None or a["end"] < XBRL_ERA_START], None))
+        for cik in sorted(intervals_by_cik):
             try:
                 filings, metas = all_filings(client, cik, refresh)
                 manifest["submissions"][str(cik)] = metas
             except edgar.EdgarNotFound:
                 filings = pd.DataFrame(columns=list(edgar.FILING_COLUMNS))
-            cik_rows = [row for ticker in tickers_by_cik[cik] for row in interval_rows(ticker, filings)]
+            cik_rows = interval_rows(intervals_by_cik[cik], filings)
             rows.extend(cik_rows)
             if not any(row["status"] == "accepted" for row in cik_rows):
                 continue
@@ -305,6 +321,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--ledger-dir", type=Path, default=Path("data/universe"))
     parser.add_argument("--refresh", action="store_true")
     parser.add_argument("--limit", type=int, default=None, help="first N tickers only (smoke runs)")
+    parser.add_argument("--name-matches", type=Path, default=None,
+                        help="cik_name_matches ledger from prism.scripts.match_delisted_ciks (per-interval overrides)")
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
@@ -312,7 +330,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     membership = pd.read_parquet(args.membership)
     suffix = "" if args.limit is None else f"_limit{args.limit}"
     ledger = build(membership, client, args.out_dir, args.ledger_dir / f"edgar_coverage_{args.asof}{suffix}.json",
-                   args.asof, refresh=args.refresh, limit=args.limit)
+                   args.asof, refresh=args.refresh, limit=args.limit,
+                   name_matches=load_name_matches(args.name_matches))
     summary = {k: ledger[k] for k in ("tickers", "xbrl_era_tickers", "accepted_tickers", "coverage_xbrl_era",
                                       "accepted_ciks", "facts_rows", "filings_rows", "peak_rss_mb", "status_counts")}
     print(json.dumps(summary, indent=2, default=str))
