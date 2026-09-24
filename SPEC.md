@@ -59,6 +59,16 @@ the certification under `docs/` remain as the research record.
 - **Paper loop rehearsed 2026-09-23** with `--no-submit`: exit 0, nothing
   sent, 119 orders decided (`docs/operations.md`). Re-arming the schedule is
   the owner's act.
+- **Public factor lab ran 2026-09-24** (`sizing_lab_v1`, 8 of 8,
+  `docs/public_factor_lab_read_2026-09-24.md`). On French/JKP daily data
+  (momentum 1931–2026, residual momentum 1958–2025), the ratified crash
+  de-gross is **contradicted**: it lowers Sharpe before 2020 on both bases and
+  holds half gross ~45% of sessions. Constant-volatility scaling is supported
+  and roughly doubles momentum's Sharpe (0.37 → 0.78; +0.23 after
+  publication). Post-publication priors: momentum 0.35, residual momentum
+  0.18. In-house fidelity: momentum 0.88; residual momentum 0.495, below the
+  §4 floor. §6 still names the contradicted de-gross; changing that is the
+  owner's call.
 - **Contract amended 2026-09-23** (owner decision): a published characteristic
   implemented as published can promote on long-sample public evidence plus
   in-house fidelity and cost tests (§4, replication route); research scope is

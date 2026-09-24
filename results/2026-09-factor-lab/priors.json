@@ -1,0 +1,521 @@
+{
+  "correlation_files": [
+    "corr_2000_2025_daily.csv",
+    "corr_2000_2025_monthly.csv",
+    "corr_2020_2025_daily.csv",
+    "corr_2020_2025_monthly.csv"
+  ],
+  "priors": {
+    "CMA": {
+      "full": {
+        "first": "1963-07-01",
+        "last": "2026-07-31",
+        "mean": 0.030146031746031747,
+        "n": 15876,
+        "sharpe": 0.4924196614086074,
+        "t": 3.9084598942974145,
+        "vol": 0.06122020323030262,
+        "years": 63.0
+      },
+      "post": {
+        "first": "2004-12-01",
+        "last": "2026-07-31",
+        "mean": 0.0016599633027522928,
+        "n": 5450,
+        "sharpe": 0.02593085499614083,
+        "t": 0.12059097801364299,
+        "vol": 0.06401498535236644,
+        "years": 21.626984126984127
+      },
+      "pre": {
+        "first": "1963-07-01",
+        "last": "2004-11-30",
+        "mean": 0.04503660080567812,
+        "n": 10426,
+        "sharpe": 0.7545220031037723,
+        "t": 4.853225814287978,
+        "vol": 0.059688916453618734,
+        "years": 41.37301587301587
+      },
+      "prior_basis": "post_publication",
+      "prior_pass": true,
+      "prior_sharpe": 0.02593085499614083,
+      "publication": "2004-12",
+      "publication_bar_pass": true
+    },
+    "HML": {
+      "full": {
+        "first": "1963-07-01",
+        "last": "2026-07-31",
+        "mean": 0.03766825396825397,
+        "n": 15876,
+        "sharpe": 0.4037524395953957,
+        "t": 3.2046856392151355,
+        "vol": 0.09329542133789136,
+        "years": 63.0
+      },
+      "post": {
+        "first": "1992-06-01",
+        "last": "2026-07-31",
+        "mean": 0.024441246221808884,
+        "n": 8602,
+        "sharpe": 0.21359770595369815,
+        "t": 1.2479466879490022,
+        "vol": 0.1144265389587426,
+        "years": 34.13492063492063
+      },
+      "pre": {
+        "first": "1963-07-01",
+        "last": "1992-05-29",
+        "mean": 0.05331009073412152,
+        "n": 7274,
+        "sharpe": 0.8994913209113422,
+        "t": 4.832627881660576,
+        "vol": 0.059266931758840166,
+        "years": 28.865079365079364
+      },
+      "prior_basis": "post_publication",
+      "prior_pass": true,
+      "prior_sharpe": 0.21359770595369815,
+      "publication": "1992-06",
+      "publication_bar_pass": true
+    },
+    "MKT_RF": {
+      "full": {
+        "first": "1926-07-01",
+        "last": "2026-07-31",
+        "mean": 0.07824304837237603,
+        "n": 26296,
+        "sharpe": 0.45748876169466324,
+        "t": 4.6733144615535815,
+        "vol": 0.1710272577681306,
+        "years": 104.34920634920636
+      },
+      "post": null,
+      "pre": null,
+      "prior_basis": "descriptive_only",
+      "prior_sharpe": null,
+      "publication": null,
+      "publication_bar_pass": true
+    },
+    "RESMOM": {
+      "full": {
+        "first": "1953-05-01",
+        "last": "2025-12-31",
+        "mean": 0.06810700279207671,
+        "n": 18292,
+        "sharpe": 1.102365300751565,
+        "t": 9.391951915273394,
+        "vol": 0.06178260758538306,
+        "years": 72.58730158730158
+      },
+      "post": {
+        "first": "2011-06-01",
+        "last": "2025-12-31",
+        "mean": 0.013550520953827335,
+        "n": 3669,
+        "sharpe": 0.1832281421928528,
+        "t": 0.6991425974161933,
+        "vol": 0.0739543652610145,
+        "years": 14.55952380952381
+      },
+      "pre": {
+        "first": "1953-05-01",
+        "last": "2011-05-31",
+        "mean": 0.08179555725180022,
+        "n": 14623,
+        "sharpe": 1.402948828542527,
+        "t": 10.687098209468878,
+        "vol": 0.05830259492555741,
+        "years": 58.02777777777778
+      },
+      "prior_basis": "post_publication",
+      "prior_pass": true,
+      "prior_sharpe": 0.1832281421928528,
+      "publication": "2011-06",
+      "publication_bar_pass": true
+    },
+    "RMW": {
+      "full": {
+        "first": "1963-07-01",
+        "last": "2026-07-31",
+        "mean": 0.03160793650793651,
+        "n": 15876,
+        "sharpe": 0.48246089083039506,
+        "t": 3.8294146033557244,
+        "vol": 0.0655139869545364,
+        "years": 63.0
+      },
+      "post": {
+        "first": "2013-04-01",
+        "last": "2026-07-31",
+        "mean": 0.019912131147540982,
+        "n": 3355,
+        "sharpe": 0.23694194749631617,
+        "t": 0.8645456811115813,
+        "vol": 0.08403801588509592,
+        "years": 13.313492063492063
+      },
+      "pre": {
+        "first": "1963-07-01",
+        "last": "2013-03-28",
+        "mean": 0.03474182573276895,
+        "n": 12521,
+        "sharpe": 0.58308564705815,
+        "t": 4.110092429286052,
+        "vol": 0.05958271466302138,
+        "years": 49.68650793650794
+      },
+      "prior_basis": "post_publication",
+      "prior_pass": true,
+      "prior_sharpe": 0.23694194749631617,
+      "publication": "2013-04",
+      "publication_bar_pass": true
+    },
+    "SMB": {
+      "full": {
+        "first": "1963-07-01",
+        "last": "2026-07-31",
+        "mean": 0.015833333333333335,
+        "n": 15876,
+        "sharpe": 0.1809902577880195,
+        "t": 1.4365656354977125,
+        "vol": 0.08748168838942563,
+        "years": 63.0
+      },
+      "post": {
+        "first": "1981-03-02",
+        "last": "2026-07-31",
+        "mean": 0.0007793133572114975,
+        "n": 11447,
+        "sharpe": 0.008160568700052438,
+        "t": 0.055000418779979625,
+        "vol": 0.09549743233048082,
+        "years": 45.42460317460318
+      },
+      "pre": {
+        "first": "1963-07-01",
+        "last": "1981-02-27",
+        "mean": 0.05474129600361255,
+        "n": 4429,
+        "sharpe": 0.8816508000965532,
+        "t": 3.69614649311244,
+        "vol": 0.06208954383937225,
+        "years": 17.575396825396826
+      },
+      "prior_basis": "post_publication",
+      "prior_pass": false,
+      "prior_sharpe": 0.008160568700052438,
+      "publication": "1981-03",
+      "publication_bar_pass": false
+    },
+    "STREV": {
+      "full": {
+        "first": "1926-01-26",
+        "last": "2026-07-31",
+        "mean": 0.5611746754966888,
+        "n": 26425,
+        "sharpe": 3.777771303700291,
+        "t": 38.68502580925452,
+        "vol": 0.1485464921995208,
+        "years": 104.86111111111111
+      },
+      "post": {
+        "first": "1990-07-02",
+        "last": "2026-07-31",
+        "mean": 0.1758286594761171,
+        "n": 9086,
+        "sharpe": 1.2239616525155912,
+        "t": 7.349434219765281,
+        "vol": 0.14365536625656444,
+        "years": 36.05555555555556
+      },
+      "pre": {
+        "first": "1926-01-26",
+        "last": "1990-06-29",
+        "mean": 0.7631040775131207,
+        "n": 17339,
+        "sharpe": 5.104905320786639,
+        "t": 42.34473747107806,
+        "vol": 0.14948447220085376,
+        "years": 68.80555555555556
+      },
+      "prior_basis": "post_publication",
+      "prior_pass": true,
+      "prior_sharpe": 1.2239616525155912,
+      "publication": "1990-07",
+      "publication_bar_pass": true
+    },
+    "UMD": {
+      "full": {
+        "first": "1926-11-03",
+        "last": "2026-07-31",
+        "mean": 0.0638230043901508,
+        "n": 26195,
+        "sharpe": 0.5067560862719657,
+        "t": 5.166636460301695,
+        "vol": 0.1259442286321122,
+        "years": 103.9484126984127
+      },
+      "post": {
+        "first": "1993-03-01",
+        "last": "2026-07-31",
+        "mean": 0.0541531914893617,
+        "n": 8413,
+        "sharpe": 0.3464585337498913,
+        "t": 2.0018265139885987,
+        "vol": 0.1563049722090406,
+        "years": 33.38492063492063
+      },
+      "pre": {
+        "first": "1926-11-03",
+        "last": "1993-02-26",
+        "mean": 0.0683979754808233,
+        "n": 17782,
+        "sharpe": 0.6294266616814909,
+        "t": 5.287314789712127,
+        "vol": 0.10866710872733061,
+        "years": 70.56349206349206
+      },
+      "prior_basis": "post_publication",
+      "prior_pass": true,
+      "prior_sharpe": 0.3464585337498913,
+      "publication": "1993-03",
+      "publication_bar_pass": true
+    },
+    "jkp:accruals": {
+      "full": {
+        "first": "1946-01-02",
+        "last": "2025-12-31",
+        "mean": 0.026094682270408984,
+        "n": 20338,
+        "sharpe": 0.7509375698550834,
+        "t": 6.746176260123352,
+        "vol": 0.03474946962028383,
+        "years": 80.7063492063492
+      },
+      "post": null,
+      "pre": null,
+      "prior_basis": "descriptive_only",
+      "prior_sharpe": null,
+      "publication": null,
+      "publication_bar_pass": true
+    },
+    "jkp:debt_issuance": {
+      "full": {
+        "first": "1951-11-01",
+        "last": "2025-12-31",
+        "mean": 0.024001911122535104,
+        "n": 18693,
+        "sharpe": 1.1316338003940207,
+        "t": 9.74642047088751,
+        "vol": 0.021209963076551742,
+        "years": 74.17857142857143
+      },
+      "post": null,
+      "pre": null,
+      "prior_basis": "descriptive_only",
+      "prior_sharpe": null,
+      "publication": null,
+      "publication_bar_pass": true
+    },
+    "jkp:investment": {
+      "full": {
+        "first": "1931-01-02",
+        "last": "2025-12-31",
+        "mean": 0.04193501753769481,
+        "n": 24817,
+        "sharpe": 0.5444641812833535,
+        "t": 5.403108441654325,
+        "vol": 0.07702070949616928,
+        "years": 98.48015873015873
+      },
+      "post": null,
+      "pre": null,
+      "prior_basis": "descriptive_only",
+      "prior_sharpe": null,
+      "publication": null,
+      "publication_bar_pass": true
+    },
+    "jkp:low_leverage": {
+      "full": {
+        "first": "1926-02-01",
+        "last": "2025-12-31",
+        "mean": 0.01641566961312915,
+        "n": 26276,
+        "sharpe": 0.2158158859350958,
+        "t": 2.203752234185153,
+        "vol": 0.07606330526598018,
+        "years": 104.26984126984127
+      },
+      "post": null,
+      "pre": null,
+      "prior_basis": "descriptive_only",
+      "prior_sharpe": null,
+      "publication": null,
+      "publication_bar_pass": false
+    },
+    "jkp:low_risk": {
+      "full": {
+        "first": "1926-02-01",
+        "last": "2025-12-31",
+        "mean": 0.0032060122393855837,
+        "n": 26276,
+        "sharpe": 0.025384940049351757,
+        "t": 0.2592122359576397,
+        "vol": 0.12629583655319504,
+        "years": 104.26984126984127
+      },
+      "post": null,
+      "pre": null,
+      "prior_basis": "descriptive_only",
+      "prior_sharpe": null,
+      "publication": null,
+      "publication_bar_pass": false
+    },
+    "jkp:momentum": {
+      "full": {
+        "first": "1926-04-01",
+        "last": "2025-12-31",
+        "mean": 0.03335276485905267,
+        "n": 26227,
+        "sharpe": 0.3494182884918151,
+        "t": 3.564672780181785,
+        "vol": 0.0954522586754469,
+        "years": 104.07539682539682
+      },
+      "post": null,
+      "pre": null,
+      "prior_basis": "descriptive_only",
+      "prior_sharpe": null,
+      "publication": null,
+      "publication_bar_pass": true
+    },
+    "jkp:profit_growth": {
+      "full": {
+        "first": "1927-01-03",
+        "last": "2025-12-31",
+        "mean": 0.02934143363572371,
+        "n": 26002,
+        "sharpe": 0.4664244756592841,
+        "t": 4.737884164776634,
+        "vol": 0.0629071482457048,
+        "years": 103.18253968253968
+      },
+      "post": null,
+      "pre": null,
+      "prior_basis": "descriptive_only",
+      "prior_sharpe": null,
+      "publication": null,
+      "publication_bar_pass": true
+    },
+    "jkp:profitability": {
+      "full": {
+        "first": "1926-04-01",
+        "last": "2025-12-31",
+        "mean": -0.007821040943760205,
+        "n": 26227,
+        "sharpe": -0.08796375047627009,
+        "t": -0.8973828711681971,
+        "vol": 0.08891209050789714,
+        "years": 104.07539682539682
+      },
+      "post": null,
+      "pre": null,
+      "prior_basis": "descriptive_only",
+      "prior_sharpe": null,
+      "publication": null,
+      "publication_bar_pass": false
+    },
+    "jkp:quality": {
+      "full": {
+        "first": "1927-01-03",
+        "last": "2025-12-31",
+        "mean": 0.018838933327123213,
+        "n": 26002,
+        "sharpe": 0.21442195018516527,
+        "t": 2.178072582762408,
+        "vol": 0.08785916418936936,
+        "years": 103.18253968253968
+      },
+      "post": null,
+      "pre": null,
+      "prior_basis": "descriptive_only",
+      "prior_sharpe": null,
+      "publication": null,
+      "publication_bar_pass": false
+    },
+    "jkp:seasonality": {
+      "full": {
+        "first": "1926-02-01",
+        "last": "2025-12-31",
+        "mean": 0.01831168988127463,
+        "n": 26276,
+        "sharpe": 0.4439985894364428,
+        "t": 4.5337852642593655,
+        "vol": 0.041242675803356124,
+        "years": 104.26984126984127
+      },
+      "post": null,
+      "pre": null,
+      "prior_basis": "descriptive_only",
+      "prior_sharpe": null,
+      "publication": null,
+      "publication_bar_pass": true
+    },
+    "jkp:short_term_reversal": {
+      "full": {
+        "first": "1926-02-01",
+        "last": "2025-12-31",
+        "mean": 0.026317498134997577,
+        "n": 26276,
+        "sharpe": 0.5880730171627497,
+        "t": 6.004966779072793,
+        "vol": 0.04475209262613419,
+        "years": 104.26984126984127
+      },
+      "post": null,
+      "pre": null,
+      "prior_basis": "descriptive_only",
+      "prior_sharpe": null,
+      "publication": null,
+      "publication_bar_pass": true
+    },
+    "jkp:size": {
+      "full": {
+        "first": "1926-01-02",
+        "last": "2025-12-31",
+        "mean": 0.053723100157898954,
+        "n": 26301,
+        "sharpe": 0.7015934286941313,
+        "t": 7.167560590414887,
+        "vol": 0.07657298081866762,
+        "years": 104.36904761904762
+      },
+      "post": null,
+      "pre": null,
+      "prior_basis": "descriptive_only",
+      "prior_sharpe": null,
+      "publication": null,
+      "publication_bar_pass": true
+    },
+    "jkp:value": {
+      "full": {
+        "first": "1926-12-01",
+        "last": "2025-12-31",
+        "mean": 0.01857555079073132,
+        "n": 26028,
+        "sharpe": 0.21346448105320345,
+        "t": 2.1694305446808464,
+        "vol": 0.08701939872658059,
+        "years": 103.28571428571429
+      },
+      "post": null,
+      "pre": null,
+      "prior_basis": "descriptive_only",
+      "prior_sharpe": null,
+      "publication": null,
+      "publication_bar_pass": false
+    }
+  }
+}

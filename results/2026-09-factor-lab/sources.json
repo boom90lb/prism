@@ -1,0 +1,63 @@
+{
+  "code_commit": "c6817f207e37e395ab613c854aac6b893bbb8e29",
+  "sources": {
+    "ff3_daily": {
+      "bytes": 178044,
+      "fetched_at": "2026-09-24T07:03:34.649533+00:00",
+      "path": "data/public/ff3_daily.zip",
+      "sha256": "1916d331c2c51d2aee3d00215897d2b8e5995cb387f1f4569ba46bff5fb049a8",
+      "url": "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_Factors_daily_CSV.zip"
+    },
+    "ff5_daily": {
+      "bytes": 150090,
+      "fetched_at": "2026-09-24T07:03:35.324624+00:00",
+      "path": "data/public/ff5_daily.zip",
+      "sha256": "478350b8d60831351fbf754bc593fc0112b013552c24639c10902e1f26d7f306",
+      "url": "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_5_Factors_2x3_daily_CSV.zip"
+    },
+    "ff_mom_daily": {
+      "bytes": 85202,
+      "fetched_at": "2026-09-24T07:03:35.129164+00:00",
+      "path": "data/public/ff_mom_daily.zip",
+      "sha256": "b039d986db27fc831bcf1f52ba2134916e96fbeba4762fefc942429b0a568a96",
+      "url": "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Momentum_Factor_daily_CSV.zip"
+    },
+    "ff_strev_daily": {
+      "bytes": 85974,
+      "fetched_at": "2026-09-24T07:03:34.708074+00:00",
+      "path": "data/public/ff_strev_daily.zip",
+      "sha256": "5b491fb0d2b412e39e3151edb7e0d8c28f861174ad5dcb77186f1ef084fc970b",
+      "url": "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_ST_Reversal_Factor_daily_CSV.zip"
+    },
+    "jkp_resmom_daily": {
+      "bytes": 297109,
+      "fetched_at": "2026-09-24T07:03:36.381979+00:00",
+      "path": "data/public/jkp_resmom_daily.zip",
+      "sha256": "d8eb0e51260b1137ae3d5bc1d02e3baf696b7b61b1cbb454ff19859125be51a9",
+      "url": "https://jkpfactors-data.s3.amazonaws.com/public/%5Busa%5D_%5Bresff3_12_1%5D_%5Bdaily%5D_%5Bvw_cap%5D.zip"
+    },
+    "jkp_resmom_large_monthly": {
+      "bytes": 14018,
+      "fetched_at": "2026-09-24T07:03:36.768745+00:00",
+      "path": "data/public/jkp_resmom_large_monthly.zip",
+      "sha256": "b8e293d68d1ce16ef1fad4800cf8972240e8e17b3339bcdb3d3862eabf33db80",
+      "url": "https://jkpfactors-data.s3.amazonaws.com/public/factor/%5Busa%5D_%5Bresff3_12_1%5D_%5Blarge%5D.zip"
+    },
+    "jkp_themes_daily": {
+      "bytes": 4438803,
+      "fetched_at": "2026-09-24T07:03:35.739924+00:00",
+      "path": "data/public/jkp_themes_daily.zip",
+      "sha256": "6d479c0ed02ec9f29827e010dafb9f2f3d606bed788ece289be2469398844051",
+      "url": "https://jkpfactors-data.s3.amazonaws.com/public/%5Busa%5D_%5Ball_themes%5D_%5Bdaily%5D_%5Bvw_cap%5D.zip"
+    }
+  },
+  "vintages": {
+    "ff3_daily": "This file was created by using the 202607 CRSP database.",
+    "ff5_daily": "This file was created by using the 202607 CRSP database.",
+    "ff_mom_daily": "This file was created by using the 202607 CRSP database.  It",
+    "ff_strev_daily": "This file was created by using the 202607 CRSP database.  It",
+    "jkp_resmom_daily": null,
+    "jkp_resmom_large_monthly": null,
+    "jkp_themes_daily": null
+  }
+}

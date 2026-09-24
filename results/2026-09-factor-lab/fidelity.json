@@ -1,0 +1,137 @@
+{
+  "floor": 0.5,
+  "records": [
+    {
+      "book": "live_book_b1",
+      "book_sharpe_overlap": 0.46544245642236537,
+      "daily": {
+        "beta": 0.4368882801766967,
+        "corr": 0.6435253022247237,
+        "first": "2021-03-30",
+        "last": "2026-06-12",
+        "n": 1308
+      },
+      "frequency": "daily",
+      "implied_tracking_sharpe": 0.22295483263973342,
+      "meets_floor": true,
+      "reference": "UMD",
+      "reference_prior_sharpe": 0.3464585337498913,
+      "reference_sharpe_overlap": 0.7151356602028508,
+      "weekly": {
+        "beta": 0.5781689085913116,
+        "corr": 0.8267152457730815,
+        "first": "2021-04-02",
+        "last": "2026-06-12",
+        "n": 272
+      }
+    },
+    {
+      "book": "live_book_b1",
+      "book_sharpe_overlap": 0.18221869132622623,
+      "daily": {
+        "beta": 0.5226339940415371,
+        "corr": 0.6280118880893749,
+        "first": "2021-03-30",
+        "last": "2025-12-31",
+        "n": 1196
+      },
+      "frequency": "daily",
+      "implied_tracking_sharpe": null,
+      "meets_floor": true,
+      "reference": "jkp:momentum",
+      "reference_prior_sharpe": null,
+      "reference_sharpe_overlap": 0.41299124857575625,
+      "weekly": {
+        "beta": 0.7292787600880679,
+        "corr": 0.7925460155471953,
+        "first": "2021-04-02",
+        "last": "2026-01-02",
+        "n": 249
+      }
+    },
+    {
+      "book": "momentum_control",
+      "book_sharpe_overlap": 0.6789030450952248,
+      "daily": {
+        "beta": 0.6253737309080397,
+        "corr": 0.8802818008740341,
+        "first": "2022-03-29",
+        "last": "2026-06-12",
+        "n": 1056
+      },
+      "frequency": "daily",
+      "implied_tracking_sharpe": 0.3049811420175316,
+      "meets_floor": true,
+      "reference": "UMD",
+      "reference_prior_sharpe": 0.3464585337498913,
+      "reference_sharpe_overlap": 0.654194327484548,
+      "weekly": {
+        "beta": 0.6112675033455647,
+        "corr": 0.8805623241321779,
+        "first": "2022-04-01",
+        "last": "2026-06-12",
+        "n": 220
+      }
+    },
+    {
+      "book": "momentum_control",
+      "book_sharpe_overlap": 0.2733360305524373,
+      "daily": {
+        "beta": 0.7405698775734554,
+        "corr": 0.8685511317261976,
+        "first": "2022-03-29",
+        "last": "2025-12-31",
+        "n": 944
+      },
+      "frequency": "daily",
+      "implied_tracking_sharpe": null,
+      "meets_floor": true,
+      "reference": "jkp:momentum",
+      "reference_prior_sharpe": null,
+      "reference_sharpe_overlap": 0.309735790768045,
+      "weekly": {
+        "beta": 0.7810690701776455,
+        "corr": 0.8779423028982563,
+        "first": "2022-04-01",
+        "last": "2026-01-02",
+        "n": 197
+      }
+    },
+    {
+      "book": "residual_momentum_only",
+      "book_sharpe_overlap": 0.7020875156929843,
+      "daily": {
+        "beta": 0.23676151174297297,
+        "corr": 0.49538538125694254,
+        "first": "2022-03-29",
+        "last": "2025-12-31",
+        "n": 944
+      },
+      "frequency": "daily",
+      "implied_tracking_sharpe": 0.09076854307720766,
+      "meets_floor": false,
+      "reference": "RESMOM",
+      "reference_prior_sharpe": 0.1832281421928528,
+      "reference_sharpe_overlap": 0.5711619719232961,
+      "weekly": {
+        "beta": 0.22351029335997954,
+        "corr": 0.4737293016931096,
+        "first": "2022-04-01",
+        "last": "2026-01-02",
+        "n": 197
+      }
+    },
+    {
+      "book": "residual_momentum_only",
+      "frequency": "monthly",
+      "monthly": {
+        "beta": 0.0661552971108654,
+        "corr": 0.12927506426503446,
+        "first": "2022-03-31",
+        "last": "2025-12-31",
+        "n": 46
+      },
+      "reference": "jkp_large:resff3_12_1"
+    }
+  ]
+}
