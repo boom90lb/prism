@@ -108,3 +108,82 @@ def test_recent_joiner_accepted_by_prior_quarter_filing():
     later = pd.DataFrame({"form": ["10-K"], "filing_date": pd.to_datetime(["2017-02-28"])})
     assert bf.interval_status(later, pd.Timestamp("1990-01-01"), pd.Timestamp("2016-11-01")) == \
         "no_periodic_filing_in_interval"
+
+
+# --------------------------------------------------------------------- streaming writes
+
+
+def _facts_payload(cik, with_optional):
+    entry = {"end": "2016-12-31", "val": 10.0, "accn": f"{cik}-0", "form": "10-K", "filed": "2017-02-01"}
+    if with_optional:
+        entry.update(fy=2016, fp="FY", frame="CY2016Q4I")
+    return {"cik": cik, "entityName": "x", "facts": {"us-gaap": {"Assets": {"units": {"USD": [entry]}}}}}
+
+
+def _streaming_transport(calls, fail_facts_for=None):
+    tickers = {"0": {"cik_str": 1, "ticker": "AAA", "title": "Alpha"},
+               "1": {"cik_str": 5, "ticker": "GOOG", "title": "Alphabet"},
+               "2": {"cik_str": 5, "ticker": "GOOGL", "title": "Alphabet"}}
+
+    def transport(url, headers, timeout):
+        calls.append(url)
+        if url == edgar.TICKERS_URL:
+            return json.dumps(tickers).encode()
+        for cik in (1, 5):
+            if url == edgar.SUBMISSIONS_URL.format(cik=cik):
+                return json.dumps(_submissions(cik, ["2017-02-01"])).encode()
+            if url == edgar.COMPANYFACTS_URL.format(cik=cik):
+                if cik == fail_facts_for:
+                    raise urllib.error.HTTPError(url, 403, "refused", email.message.Message(), None)
+                return json.dumps(_facts_payload(cik, with_optional=(cik == 1))).encode()
+        raise AssertionError(f"unexpected url {url}")
+
+    return transport
+
+
+STREAM_MEMBERSHIP = pd.DataFrame({
+    "ticker": ["AAA", "GOOG", "GOOGL"],
+    "start": pd.to_datetime(["2015-01-01"] * 3),
+    "end": pd.to_datetime(["2020-01-01"] * 3),
+})
+
+
+def _stream_client(tmp_path, transport):
+    return edgar.SecClient(UA, tmp_path / "raw", transport=transport, clock=lambda: 0.0, sleep=lambda s: None)
+
+
+def test_streamed_outputs_share_one_schema_and_fetch_each_company_once(tmp_path):
+    calls = []
+    ledger = bf.build(STREAM_MEMBERSHIP, _stream_client(tmp_path, _streaming_transport(calls)), tmp_path / "out",
+                      tmp_path / "ledger.json", "2026-09-24")
+    facts = pd.read_parquet(tmp_path / "out" / "facts.parquet")
+    assert sorted(facts["cik"]) == [1, 5]  # one company reports fy/fp/frame, the other leaves them empty
+    assert facts.set_index("cik").loc[5, ["fp", "frame"]].isna().all()
+    assert str(facts["available_at"].dt.tz) == "America/New_York"
+    assert calls.count(edgar.COMPANYFACTS_URL.format(cik=5)) == 1  # GOOG and GOOGL share CIK 5
+    assert calls.count(edgar.SUBMISSIONS_URL.format(cik=5)) == 1
+    assert ledger["facts_rows"] == 2 and ledger["filings_rows"] == 2
+    assert ledger["peak_rss_mb"] > 0
+    assert not list((tmp_path / "out").glob("*.partial"))
+
+
+def test_failed_build_leaves_previous_outputs_intact(tmp_path):
+    out = tmp_path / "out"
+    out.mkdir()
+    (out / "facts.parquet").write_bytes(b"previous complete build")
+    with pytest.raises(edgar.EdgarError):
+        bf.build(STREAM_MEMBERSHIP, _stream_client(tmp_path, _streaming_transport([], fail_facts_for=5)), out,
+                 tmp_path / "ledger.json", "2026-09-24")
+    assert (out / "facts.parquet").read_bytes() == b"previous complete build"
+    assert not list(out.glob("*.partial"))
+    assert not (tmp_path / "ledger.json").exists()
+
+
+def test_build_with_nothing_accepted_writes_empty_typed_outputs(tmp_path):
+    membership = pd.DataFrame({"ticker": ["NOPE"], "start": pd.to_datetime(["2015-01-01"]),
+                               "end": pd.to_datetime(["2020-01-01"])})
+    ledger = bf.build(membership, _stream_client(tmp_path, _streaming_transport([])), tmp_path / "out",
+                      tmp_path / "ledger.json", "2026-09-24")
+    facts = pd.read_parquet(tmp_path / "out" / "facts.parquet")
+    assert len(facts) == 0 and list(facts.columns) == bf.FACTS_SCHEMA.names
+    assert ledger["accepted_tickers"] == 0

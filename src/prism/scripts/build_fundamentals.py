@@ -24,6 +24,11 @@ Steps, each recorded:
    filing's report kept, each stamped with ``available_at`` from its filing's
    acceptance time; filings (forms, acceptance times, 8-K items).
 
+Companies are processed one at a time and appended to disk, so peak memory is one
+company's payloads, not the universe's (the ledger records ``peak_rss_mb``). Every
+output is written to ``<name>.partial`` and renamed into place only when the whole
+build succeeds, so an interrupted build leaves the previous outputs intact.
+
 Outputs: ``{out}/facts.parquet``, ``{out}/filings.parquet``,
 ``{out}/ticker_cik.parquet`` (accepted ticker-interval → CIK rows),
 ``{out}/manifest.json`` (every payload's hash), and the tracked coverage ledger
@@ -35,12 +40,16 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
+import resource
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 from prism.io import edgar
 from prism.io.universe_sp500 import RENAME_TABLE, normalize_ticker
@@ -50,6 +59,19 @@ logger = logging.getLogger(__name__)
 XBRL_ERA_START = pd.Timestamp("2009-06-15")
 LOOKBACK = pd.Timedelta(days=100)
 PERIODIC_FORMS = ("10-K", "10-Q", "10-K/A", "10-Q/A", "10-KT", "10-QT")
+
+_NY = pa.timestamp("ns", tz=edgar.NEW_YORK)
+#: Output schemas, fixed so every company's rows append to one file whatever columns it happens to leave empty.
+FACTS_SCHEMA = pa.schema([
+    ("cik", pa.int64()), ("taxonomy", pa.string()), ("concept", pa.string()), ("unit", pa.string()),
+    ("start", pa.timestamp("ns")), ("end", pa.timestamp("ns")), ("val", pa.float64()), ("accn", pa.string()),
+    ("fy", pa.int64()), ("fp", pa.string()), ("form", pa.string()), ("filed", pa.timestamp("ns")),
+    ("frame", pa.string()), ("available_at", _NY), ("availability_basis", pa.string()),
+])
+FILINGS_SCHEMA = pa.schema([
+    ("cik", pa.int64()), ("accn", pa.string()), ("form", pa.string()), ("filing_date", pa.timestamp("ns")),
+    ("acceptance", _NY), ("report_date", pa.timestamp("ns")), ("items", pa.string()),
+])
 
 
 def sec_key(ticker: str) -> str:
@@ -111,62 +133,128 @@ def all_filings(client: edgar.SecClient, cik: int, refresh: bool) -> tuple[pd.Da
     return edgar.submissions_filings(payload, pages), metas
 
 
+class _TableSink:
+    """Appends frames to one parquet file under a fixed schema, one company at a time.
+
+    Writes go to ``<name>.partial``; :meth:`commit` renames it over the final path, so a
+    build that dies part-way leaves the previous complete file in place.
+    """
+
+    def __init__(self, path: Path, schema: pa.Schema) -> None:
+        self.path = path
+        self.partial = path.with_name(path.name + ".partial")
+        self.schema = schema
+        self.writer: pq.ParquetWriter | None = None
+        self.rows = 0
+
+    def write(self, frame: pd.DataFrame) -> None:
+        table = pa.Table.from_pandas(frame[self.schema.names], schema=self.schema, preserve_index=False)
+        if self.writer is None:
+            self.writer = pq.ParquetWriter(self.partial, table.schema)
+        self.writer.write_table(table)  # type: ignore[union-attr]
+        self.rows += table.num_rows
+
+    def commit(self) -> None:
+        if self.writer is None:
+            self.write(pd.DataFrame({name: pd.Series(dtype=object) for name in self.schema.names}))
+        assert self.writer is not None
+        self.writer.close()
+        os.replace(self.partial, self.path)
+
+    def abort(self) -> None:
+        if self.writer is not None:
+            self.writer.close()
+        self.partial.unlink(missing_ok=True)
+
+
+def _peak_rss_mb() -> float:
+    """Peak resident memory of this process so far (Linux reports kilobytes)."""
+    return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.0
+
+
 def build(membership: pd.DataFrame, client: edgar.SecClient, out_dir: Path, ledger_path: Path, asof: str,
           refresh: bool = False, limit: int | None = None) -> dict[str, Any]:
+    """One company at a time: filings, interval checks, facts, appended to disk, then released.
+
+    Peak memory is one company's payloads plus the small identity tables, not the whole
+    universe's facts (the 2026-09-24 build held ~1,100 companies in memory at once).
+    """
     tickers_payload, tickers_meta = client.company_tickers(refresh)
     sec_map = sec_ticker_map(tickers_payload)
     tickers = sorted(membership["ticker"].map(normalize_ticker).unique())
     if limit is not None:
         tickers = tickers[:limit]
     candidates = candidate_ciks(tickers, sec_map)
-
-    manifest: dict[str, Any] = {"company_tickers": tickers_meta, "submissions": {}, "companyfacts": {}}
-    filings_by_cik: dict[int, pd.DataFrame] = {}
-    rows: list[dict[str, Any]] = []
+    spans_by_ticker = {t: g for t, g in membership.assign(_t=membership["ticker"].map(normalize_ticker))
+                       .groupby("_t") if t in candidates}
+    tickers_by_cik: dict[int, list[str]] = {}
     for ticker in tickers:
+        if candidates[ticker]["cik"] is not None:
+            tickers_by_cik.setdefault(int(candidates[ticker]["cik"]), []).append(ticker)
+
+    def interval_rows(ticker: str, filings: pd.DataFrame | None) -> list[dict[str, Any]]:
         info = candidates[ticker]
-        spans = membership[membership["ticker"].map(normalize_ticker) == ticker]
-        cik = info["cik"]
-        if cik is not None and cik not in filings_by_cik:
-            try:
-                filings_by_cik[cik], metas = all_filings(client, cik, refresh)
-                manifest["submissions"][str(cik)] = metas
-            except edgar.EdgarNotFound:
-                filings_by_cik[cik] = pd.DataFrame(columns=list(edgar.FILING_COLUMNS))
-        for span in spans.itertuples():
+        out = []
+        for span in spans_by_ticker[ticker].itertuples():
             if span.end < XBRL_ERA_START:
                 status = "pre_xbrl"
-            elif cik is None:
+            elif filings is None:
                 status = "unresolved"
             else:
-                status = interval_status(filings_by_cik[cik], span.start, span.end)
-            rows.append({"ticker": ticker, "start": span.start, "end": span.end, "cik": cik, "title": info["title"],
-                         "source": info["source"], "status": status, "reason": info.get("reason")})
-    intervals = pd.DataFrame(rows)
-    intervals["cik"] = intervals["cik"].astype("Int64")
-
-    accepted_ciks = sorted({int(c) for c in intervals.loc[intervals["status"] == "accepted", "cik"]})
-    fact_frames, missing_facts = [], []
-    concepts = edgar.concept_names()
-    for cik in accepted_ciks:
-        try:
-            payload, meta = client.companyfacts(cik, refresh)
-        except edgar.EdgarNotFound:
-            missing_facts.append(cik)
-            continue
-        manifest["companyfacts"][str(cik)] = meta
-        facts = edgar.companyfacts_frame(payload, concepts)
-        fact_frames.append(edgar.attach_availability(facts, filings_by_cik[cik]))
+                status = interval_status(filings, span.start, span.end)
+            out.append({"ticker": ticker, "start": span.start, "end": span.end, "cik": info["cik"],
+                        "title": info["title"], "source": info["source"], "status": status,
+                        "reason": info.get("reason")})
+        return out
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    facts_all = pd.concat(fact_frames, ignore_index=True) if fact_frames else pd.DataFrame()
-    filings_all = pd.concat([filings_by_cik[c] for c in accepted_ciks], ignore_index=True) if accepted_ciks else \
-        pd.DataFrame(columns=list(edgar.FILING_COLUMNS))
-    facts_all.to_parquet(out_dir / "facts.parquet")
-    filings_all.to_parquet(out_dir / "filings.parquet")
-    intervals[intervals["status"] == "accepted"].reset_index(drop=True).to_parquet(out_dir / "ticker_cik.parquet")
+    facts_sink = _TableSink(out_dir / "facts.parquet", FACTS_SCHEMA)
+    filings_sink = _TableSink(out_dir / "filings.parquet", FILINGS_SCHEMA)
+    manifest: dict[str, Any] = {"company_tickers": tickers_meta, "submissions": {}, "companyfacts": {}}
+    rows: list[dict[str, Any]] = []
+    missing_facts: list[int] = []
+    basis_counts: dict[str, int] = {}
+    concepts = edgar.concept_names()
+    try:
+        for ticker in tickers:
+            if candidates[ticker]["cik"] is None:
+                rows.extend(interval_rows(ticker, None))
+        for cik in sorted(tickers_by_cik):
+            try:
+                filings, metas = all_filings(client, cik, refresh)
+                manifest["submissions"][str(cik)] = metas
+            except edgar.EdgarNotFound:
+                filings = pd.DataFrame(columns=list(edgar.FILING_COLUMNS))
+            cik_rows = [row for ticker in tickers_by_cik[cik] for row in interval_rows(ticker, filings)]
+            rows.extend(cik_rows)
+            if not any(row["status"] == "accepted" for row in cik_rows):
+                continue
+            filings_sink.write(filings)
+            try:
+                payload, meta = client.companyfacts(cik, refresh)
+            except edgar.EdgarNotFound:
+                missing_facts.append(cik)
+                continue
+            manifest["companyfacts"][str(cik)] = meta
+            facts = edgar.attach_availability(edgar.companyfacts_frame(payload, concepts), filings)
+            del payload
+            for basis, count in facts["availability_basis"].value_counts().items():
+                basis_counts[str(basis)] = basis_counts.get(str(basis), 0) + int(count)
+            facts_sink.write(facts)
+    except BaseException:
+        facts_sink.abort()
+        filings_sink.abort()
+        raise
+
+    intervals = pd.DataFrame(rows).sort_values(["ticker", "start"], kind="mergesort").reset_index(drop=True)
+    intervals["cik"] = intervals["cik"].astype("Int64")
+    accepted_ciks = sorted({int(c) for c in intervals.loc[intervals["status"] == "accepted", "cik"]})
+    facts_sink.commit()
+    filings_sink.commit()
+    _replace_parquet(intervals[intervals["status"] == "accepted"].reset_index(drop=True),
+                     out_dir / "ticker_cik.parquet")
     manifest["built_at"] = datetime.now(timezone.utc).isoformat()
-    (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True))
+    _replace_text(out_dir / "manifest.json", json.dumps(manifest, indent=2, sort_keys=True))
 
     xbrl_era = intervals[intervals["status"] != "pre_xbrl"]
     xbrl_tickers = sorted(set(xbrl_era["ticker"]))
@@ -180,8 +268,10 @@ def build(membership: pd.DataFrame, client: edgar.SecClient, out_dir: Path, ledg
         "coverage_xbrl_era": (len(accepted_tickers) / len(xbrl_tickers)) if xbrl_tickers else None,
         "accepted_ciks": len(accepted_ciks),
         "ciks_without_companyfacts": missing_facts,
-        "facts_rows": int(len(facts_all)),
-        "availability_basis": facts_all["availability_basis"].value_counts().to_dict() if len(facts_all) else {},
+        "facts_rows": facts_sink.rows,
+        "filings_rows": filings_sink.rows,
+        "availability_basis": basis_counts,
+        "peak_rss_mb": round(_peak_rss_mb(), 1),
         "status_counts": intervals["status"].value_counts().to_dict(),
         "not_accepted": [
             {"ticker": r.ticker, "start": str(r.start.date()), "end": str(r.end.date()),
@@ -190,8 +280,20 @@ def build(membership: pd.DataFrame, client: edgar.SecClient, out_dir: Path, ledg
         ],
     }
     ledger_path.parent.mkdir(parents=True, exist_ok=True)
-    ledger_path.write_text(json.dumps(ledger, indent=2, sort_keys=True))
+    _replace_text(ledger_path, json.dumps(ledger, indent=2, sort_keys=True))
     return ledger
+
+
+def _replace_text(path: Path, text: str) -> None:
+    partial = path.with_name(path.name + ".partial")
+    partial.write_text(text)
+    os.replace(partial, path)
+
+
+def _replace_parquet(frame: pd.DataFrame, path: Path) -> None:
+    partial = path.with_name(path.name + ".partial")
+    frame.to_parquet(partial)
+    os.replace(partial, path)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -212,7 +314,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     ledger = build(membership, client, args.out_dir, args.ledger_dir / f"edgar_coverage_{args.asof}{suffix}.json",
                    args.asof, refresh=args.refresh, limit=args.limit)
     summary = {k: ledger[k] for k in ("tickers", "xbrl_era_tickers", "accepted_tickers", "coverage_xbrl_era",
-                                      "accepted_ciks", "facts_rows", "status_counts")}
+                                      "accepted_ciks", "facts_rows", "filings_rows", "peak_rss_mb", "status_counts")}
     print(json.dumps(summary, indent=2, default=str))
     return 0
 
