@@ -1,6 +1,6 @@
 # CIK review sheet — 2026-09-24
 
-Ticker intervals where more than one SEC filer with a matching name filed during the interval. Each row shows the suggestion and its basis; `decision` in the JSON twin stays empty until the owner approves or overrides it.
+Ticker intervals where more than one SEC filer with a matching name filed during the interval. Each row shows the suggestion and its basis. Decisions are recorded separately, in `cik_review_decisions_2026-09-24.json`, and only those are applied.
 
 | # | ticker | interval | Wikipedia name | suggestion | basis |
 |---|---|---|---|---|---|

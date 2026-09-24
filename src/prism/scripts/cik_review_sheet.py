@@ -3,8 +3,10 @@
 ``prism.scripts.match_delisted_ciks`` refuses an interval when more than one SEC filer
 whose name matches filed during it. Those are corporate-lineage cases (mergers that
 kept the target's name, spin-offs, redomiciles, successor issuers), and they need a
-decision per case. This script lays out the evidence and a suggestion for each; the
-owner's decisions are recorded in the same file and nothing is applied without them::
+decision per case. This script lays out the evidence and a suggestion for each. The
+owner's decisions live in a separate file, ``cik_review_decisions_<asof>.json``, which the
+builder reads with ``--review-decisions``; nothing is applied without them, and
+regenerating this sheet never touches them::
 
     python -m prism.scripts.cik_review_sheet \\
         --matches data/universe/cik_name_matches_2026-09-24.json --asof 2026-09-24
@@ -219,15 +221,15 @@ def build_sheet(matches: Mapping[str, Any], client: edgar.SecClient) -> list[dic
                                       [n["name"] for n in record["wikipedia_names"]]))
         cases.append({"ticker": ticker, "start": record["start"], "end": record["end"],
                       "wikipedia_names": sorted({n["name"] for n in record["wikipedia_names"]}),
-                      "candidates": rows, "suggestion": suggest(ticker, start, end, rows), "decision": None})
+                      "candidates": rows, "suggestion": suggest(ticker, start, end, rows)})
     return cases
 
 
 def render(cases: Sequence[Mapping[str, Any]], asof: str) -> str:
     lines = [f"# CIK review sheet — {asof}", "",
              "Ticker intervals where more than one SEC filer with a matching name filed during the interval. "
-             "Each row shows the suggestion and its basis; `decision` in the JSON twin stays empty until the "
-             "owner approves or overrides it.", "",
+             "Each row shows the suggestion and its basis. Decisions are recorded separately, in "
+             f"`cik_review_decisions_{asof}.json`, and only those are applied.", "",
              "| # | ticker | interval | Wikipedia name | suggestion | basis |", "|---|---|---|---|---|---|"]
     for i, case in enumerate(cases, 1):
         s = case["suggestion"]

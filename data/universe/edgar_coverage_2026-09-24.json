@@ -1,9 +1,9 @@
 {
-  "accepted_ciks": 1419,
-  "accepted_tickers": 1453,
+  "accepted_ciks": 1452,
+  "accepted_tickers": 1481,
   "asof": "2026-09-24",
   "availability_basis": {
-    "acceptance": 3049059,
+    "acceptance": 3087728,
     "filed_date_end": 79
   },
   "ciks_without_companyfacts": [
@@ -11,75 +11,11 @@
     66479,
     1058083
   ],
-  "coverage_xbrl_era": 0.9490529065969955,
-  "facts_rows": 3049138,
-  "filings_rows": 3448853,
+  "coverage_xbrl_era": 0.9673416067929458,
+  "facts_rows": 3087807,
+  "filings_rows": 3488899,
   "membership_rows": 1627,
   "not_accepted": [
-    {
-      "cik": null,
-      "end": "2016-01-19",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "1990-01-01",
-      "status": "unresolved",
-      "ticker": "ACE"
-    },
-    {
-      "cik": 1703056,
-      "end": "2016-05-03",
-      "reason": null,
-      "start": "2012-10-01",
-      "status": "no_periodic_filing_in_interval",
-      "ticker": "ADT"
-    },
-    {
-      "cik": null,
-      "end": "2015-03-23",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "1990-01-01",
-      "status": "unresolved",
-      "ticker": "AGN"
-    },
-    {
-      "cik": null,
-      "end": "2020-02-07",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "2012-06-29",
-      "status": "unresolved",
-      "ticker": "ALEX"
-    },
-    {
-      "cik": null,
-      "end": "2020-04-01",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "2016-11-01",
-      "status": "unresolved",
-      "ticker": "ARNC"
-    },
-    {
-      "cik": null,
-      "end": "2019-04-11",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "2014-06-20",
-      "status": "unresolved",
-      "ticker": "ARRS"
-    },
-    {
-      "cik": null,
-      "end": "2025-03-11",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "2021-05-17",
-      "status": "unresolved",
-      "ticker": "AZPN"
-    },
-    {
-      "cik": null,
-      "end": "2017-07-26",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "1990-01-01",
-      "status": "unresolved",
-      "ticker": "BBBY"
-    },
     {
       "cik": null,
       "end": "2018-01-03",
@@ -154,14 +90,6 @@
     },
     {
       "cik": null,
-      "end": "2016-05-31",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "1990-01-01",
-      "status": "unresolved",
-      "ticker": "CCE"
-    },
-    {
-      "cik": null,
       "end": "2026-06-16",
       "reason": "not_in_sec_current_ticker_map",
       "start": "1997-06-17",
@@ -193,30 +121,6 @@
       "ticker": "CMCSK"
     },
     {
-      "cik": 1953575,
-      "end": "2016-04-14",
-      "reason": null,
-      "start": "1990-01-01",
-      "status": "no_periodic_filing_in_interval",
-      "ticker": "CNL"
-    },
-    {
-      "cik": 2103884,
-      "end": "2022-03-30",
-      "reason": null,
-      "start": "1990-01-01",
-      "status": "no_periodic_filing_in_interval",
-      "ticker": "CONE"
-    },
-    {
-      "cik": null,
-      "end": "2016-06-22",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "2010-12-17",
-      "status": "unresolved",
-      "ticker": "CVC"
-    },
-    {
       "cik": 1666700,
       "end": "2017-09-01",
       "reason": null,
@@ -234,51 +138,11 @@
     },
     {
       "cik": null,
-      "end": "2019-02-11",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "1990-01-01",
-      "status": "unresolved",
-      "ticker": "DNB"
-    },
-    {
-      "cik": null,
-      "end": "2015-07-29",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "1990-01-01",
-      "status": "unresolved",
-      "ticker": "DTV"
-    },
-    {
-      "cik": null,
       "end": "2019-06-03",
       "reason": "not_in_sec_current_ticker_map",
       "start": "2017-09-01",
       "status": "unresolved",
       "ticker": "DWDP"
-    },
-    {
-      "cik": 1818794,
-      "end": "2009-12-18",
-      "reason": null,
-      "start": "1990-01-01",
-      "status": "no_periodic_filing_in_interval",
-      "ticker": "DYN"
-    },
-    {
-      "cik": null,
-      "end": "2018-12-24",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "2003-09-25",
-      "status": "unresolved",
-      "ticker": "ESRX"
-    },
-    {
-      "cik": null,
-      "end": "2018-10-11",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "2016-12-02",
-      "status": "unresolved",
-      "ticker": "EVHC"
     },
     {
       "cik": null,
@@ -362,14 +226,6 @@
     },
     {
       "cik": null,
-      "end": "2018-01-02",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "1990-01-01",
-      "status": "unresolved",
-      "ticker": "HSNI"
-    },
-    {
-      "cik": null,
       "end": "2025-11-28",
       "reason": "not_in_sec_current_ticker_map",
       "start": "1990-01-01",
@@ -386,27 +242,11 @@
     },
     {
       "cik": null,
-      "end": "2015-07-06",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "2012-10-02",
-      "status": "unresolved",
-      "ticker": "KRFT"
-    },
-    {
-      "cik": null,
       "end": "2015-06-11",
       "reason": "not_in_sec_current_ticker_map",
       "start": "2008-06-10",
       "status": "unresolved",
       "ticker": "LO"
-    },
-    {
-      "cik": null,
-      "end": "2023-07-24",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "1990-01-01",
-      "status": "unresolved",
-      "ticker": "LSI"
     },
     {
       "cik": 1941365,
@@ -439,14 +279,6 @@
       "start": "1990-01-01",
       "status": "unresolved",
       "ticker": "NDN"
-    },
-    {
-      "cik": 1895262,
-      "end": "2017-05-16",
-      "reason": null,
-      "start": "1990-01-01",
-      "status": "no_periodic_filing_in_interval",
-      "ticker": "NE"
     },
     {
       "cik": 1569650,
@@ -490,22 +322,6 @@
     },
     {
       "cik": null,
-      "end": "2024-11-20",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "2021-05-07",
-      "status": "unresolved",
-      "ticker": "RCM"
-    },
-    {
-      "cik": null,
-      "end": "2019-06-04",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "2018-09-20",
-      "status": "unresolved",
-      "ticker": "RLGY"
-    },
-    {
-      "cik": null,
       "end": "2016-09-27",
       "reason": "not_in_sec_current_ticker_map",
       "start": "1990-01-01",
@@ -545,22 +361,6 @@
       "ticker": "SRC"
     },
     {
-      "cik": null,
-      "end": "2022-02-01",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "1990-01-01",
-      "status": "unresolved",
-      "ticker": "STL"
-    },
-    {
-      "cik": null,
-      "end": "2021-06-09",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "1990-01-01",
-      "status": "unresolved",
-      "ticker": "TCF"
-    },
-    {
       "cik": 1385157,
       "end": "2009-06-25",
       "reason": null,
@@ -591,22 +391,6 @@
       "start": "1990-01-01",
       "status": "no_periodic_filing_in_interval",
       "ticker": "TW"
-    },
-    {
-      "cik": null,
-      "end": "2016-09-06",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "2010-08-26",
-      "status": "unresolved",
-      "ticker": "TYC"
-    },
-    {
-      "cik": null,
-      "end": "2019-12-05",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "1990-01-01",
-      "status": "unresolved",
-      "ticker": "VIAB"
     },
     {
       "cik": null,
@@ -642,14 +426,6 @@
     },
     {
       "cik": null,
-      "end": "2015-06-01",
-      "reason": "not_in_sec_current_ticker_map",
-      "start": "1990-01-01",
-      "status": "unresolved",
-      "ticker": "WIN"
-    },
-    {
-      "cik": null,
       "end": "2021-08-04",
       "reason": "not_in_sec_current_ticker_map",
       "start": "1990-01-01",
@@ -665,12 +441,12 @@
       "ticker": "X"
     }
   ],
-  "peak_rss_mb": 375.9,
+  "peak_rss_mb": 378.5,
   "status_counts": {
-    "accepted": 1506,
-    "no_periodic_filing_in_interval": 17,
+    "accepted": 1543,
+    "no_periodic_filing_in_interval": 12,
     "pre_xbrl": 40,
-    "unresolved": 64
+    "unresolved": 41
   },
   "tickers": 1565,
   "xbrl_era_tickers": 1531

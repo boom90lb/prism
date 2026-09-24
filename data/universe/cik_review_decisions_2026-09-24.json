@@ -1,0 +1,397 @@
+{
+  "approved_by": "owner",
+  "approved_on": "2026-09-24",
+  "asof": "2026-09-24",
+  "decisions": [
+    {
+      "cik": 896159,
+      "end": "2016-01-19",
+      "kind": "cik",
+      "name": "Chubb Ltd",
+      "reason": "ticker fit: ACE in ['ACE LTD', 'ACE Ltd']",
+      "source": "owner_approved_suggestion",
+      "start": "1990-01-01",
+      "ticker": "ACE"
+    },
+    {
+      "cik": 1546640,
+      "end": "2016-05-03",
+      "kind": "cik",
+      "name": "ADT Corp",
+      "reason": "ticker fit: ADT in ['ADT Corp']",
+      "source": "owner_approved_suggestion",
+      "start": "2012-10-01",
+      "ticker": "ADT"
+    },
+    {
+      "cik": 850693,
+      "end": "2015-03-23",
+      "kind": "cik",
+      "name": "ALLERGAN INC",
+      "reason": "ticker fit: AGN in ['ALLERGAN INC']",
+      "source": "owner_approved_suggestion",
+      "start": "1990-01-01",
+      "ticker": "AGN"
+    },
+    {
+      "cik": 1545654,
+      "end": "2020-02-07",
+      "kind": "cik",
+      "name": "Alexander & Baldwin, Inc.",
+      "reason": "ticker fit: ALEX in ['Alexander & Baldwin, Inc.']",
+      "source": "owner_approved_suggestion",
+      "start": "2012-06-29",
+      "ticker": "ALEX"
+    },
+    {
+      "cik": 4281,
+      "end": "2020-04-01",
+      "kind": "cik",
+      "name": "Howmet Aerospace Inc.",
+      "reason": "Wikipedia's name was this filer's name during the interval",
+      "source": "owner_approved_suggestion",
+      "start": "2016-11-01",
+      "ticker": "ARNC"
+    },
+    {
+      "end": "2019-04-11",
+      "kind": "split",
+      "reason": "successor issuer: the predecessor stopped filing and the successor took over",
+      "segments": [
+        {
+          "cik": 1141107,
+          "from": "2014-06-20",
+          "name": "ARRIS GROUP INC",
+          "to": "2015-11-15"
+        },
+        {
+          "cik": 1645494,
+          "from": "2015-11-16",
+          "name": "ARRIS International plc",
+          "to": "2019-04-11"
+        }
+      ],
+      "source": "owner_approved_suggestion",
+      "start": "2014-06-20",
+      "ticker": "ARRS"
+    },
+    {
+      "end": "2025-03-11",
+      "kind": "split",
+      "reason": "successor issuer: the predecessor stopped filing and the successor took over",
+      "segments": [
+        {
+          "cik": 929940,
+          "from": "2021-05-17",
+          "name": "ASPENTECH Corp",
+          "to": "2022-05-15"
+        },
+        {
+          "cik": 1897982,
+          "from": "2022-05-16",
+          "name": "Aspen Technology, Inc.",
+          "to": "2025-03-11"
+        }
+      ],
+      "source": "owner_approved_suggestion",
+      "start": "2021-05-17",
+      "ticker": "AZPN"
+    },
+    {
+      "cik": 886158,
+      "end": "2017-07-26",
+      "kind": "cik",
+      "name": "20230930-DK-Butterfly-1, Inc.",
+      "reason": "ticker fit: BBBY in ['BED BATH & BEYOND INC']",
+      "source": "owner_approved_suggestion",
+      "start": "1990-01-01",
+      "ticker": "BBBY"
+    },
+    {
+      "end": "2016-05-31",
+      "kind": "split",
+      "reason": "successor issuer: the predecessor stopped filing and the successor took over",
+      "segments": [
+        {
+          "cik": 804055,
+          "from": "1990-01-01",
+          "name": "COCA-COLA REFRESHMENTS USA, INC.",
+          "to": "2010-10-27"
+        },
+        {
+          "cik": 1491675,
+          "from": "2010-10-28",
+          "name": "COCA-COLA EUROPEAN PARTNERS US, LLC",
+          "to": "2016-05-31"
+        }
+      ],
+      "source": "owner_approved_suggestion",
+      "start": "1990-01-01",
+      "ticker": "CCE"
+    },
+    {
+      "cik": 1089819,
+      "end": "2016-04-14",
+      "kind": "cik",
+      "name": "Cleco Corporate Holdings LLC",
+      "reason": "Wikipedia's name was this filer's name during the interval; co-filing LLC/LP dropped: [18672]",
+      "source": "owner_approved_suggestion",
+      "start": "1990-01-01",
+      "ticker": "CNL"
+    },
+    {
+      "cik": 1553023,
+      "end": "2022-03-30",
+      "kind": "cik",
+      "name": "CyrusOne Holdco LLC",
+      "reason": "ticker fit: CONE in ['CyrusOne Inc.']; co-filing LLC/LP dropped: [1575810]",
+      "source": "owner_approved_suggestion",
+      "start": "1990-01-01",
+      "ticker": "CONE"
+    },
+    {
+      "cik": 1053112,
+      "end": "2016-06-22",
+      "kind": "cik",
+      "name": "CABLEVISION SYSTEMS CORP /NY",
+      "reason": "Wikipedia's name was this filer's name during the interval; co-filing LLC/LP dropped: [784681]",
+      "source": "owner_approved_suggestion",
+      "start": "2010-12-17",
+      "ticker": "CVC"
+    },
+    {
+      "cik": 1115222,
+      "end": "2019-02-11",
+      "kind": "cik",
+      "name": "DUN & BRADSTREET CORP/NW",
+      "reason": "ticker fit: DNB in ['DUN & BRADSTREET CORP/NW']",
+      "source": "owner_approved_suggestion",
+      "start": "1990-01-01",
+      "ticker": "DNB"
+    },
+    {
+      "end": "2015-07-29",
+      "kind": "split",
+      "reason": "successor issuer: the predecessor stopped filing and the successor took over; co-filing LLC/LP dropped: [1234308]",
+      "segments": [
+        {
+          "cik": 944868,
+          "from": "1990-01-01",
+          "name": "DIRECTV GROUP INC",
+          "to": "2010-02-25"
+        },
+        {
+          "cik": 1465112,
+          "from": "2010-02-26",
+          "name": "DIRECTV",
+          "to": "2015-07-29"
+        }
+      ],
+      "source": "owner_approved_suggestion",
+      "start": "1990-01-01",
+      "ticker": "DTV"
+    },
+    {
+      "cik": 1379895,
+      "end": "2009-12-18",
+      "kind": "cik",
+      "name": "DYNEGY INC.",
+      "reason": "the listed parent; Dynegy Holdings was its subsidiary (general knowledge, consistent with filings)",
+      "source": "owner_override_of_suggestion",
+      "start": "1990-01-01",
+      "ticker": "DYN"
+    },
+    {
+      "end": "2018-12-24",
+      "kind": "split",
+      "reason": "successor issuer: the predecessor stopped filing and the successor took over",
+      "segments": [
+        {
+          "cik": 885721,
+          "from": "2003-09-25",
+          "name": "EXPRESS SCRIPTS INC",
+          "to": "2012-05-09"
+        },
+        {
+          "cik": 1532063,
+          "from": "2012-05-10",
+          "name": "Express Scripts Holding Co.",
+          "to": "2018-12-24"
+        }
+      ],
+      "source": "owner_approved_suggestion",
+      "start": "2003-09-25",
+      "ticker": "ESRX"
+    },
+    {
+      "cik": 1678531,
+      "end": "2018-10-11",
+      "kind": "cik",
+      "name": "Envision Healthcare Corp",
+      "reason": "WEAK: the only candidate filing across the whole interval; confirm",
+      "source": "owner_approved_suggestion",
+      "start": "2016-12-02",
+      "ticker": "EVHC"
+    },
+    {
+      "cik": 1434729,
+      "end": "2018-01-02",
+      "kind": "cik",
+      "name": "HSN, Inc.",
+      "reason": "Wikipedia's name was this filer's name during the interval",
+      "source": "owner_approved_suggestion",
+      "start": "1990-01-01",
+      "ticker": "HSNI"
+    },
+    {
+      "cik": 1545158,
+      "end": "2015-07-06",
+      "kind": "cik",
+      "name": "Kraft Foods Group, Inc.",
+      "reason": "ticker fit: KRFT in ['Kraft Foods Group, Inc.']",
+      "source": "owner_approved_suggestion",
+      "start": "2012-10-02",
+      "ticker": "KRFT"
+    },
+    {
+      "end": "2023-07-24",
+      "kind": "split",
+      "reason": "the S&P 500 file has LSI (LSI Corp) to 2014-05-08; the S&P 400 file carries Life Storage (SSS until its 2016 rename) under LSI back to 1990; the union merged them",
+      "segments": [
+        {
+          "cik": 703360,
+          "from": "1990-01-01",
+          "name": "LSI CORP",
+          "to": "2014-05-08"
+        },
+        {
+          "cik": 944314,
+          "from": "2014-05-09",
+          "name": "LIFE STORAGE, INC.",
+          "to": "2023-07-24"
+        }
+      ],
+      "source": "owner_override_of_suggestion",
+      "start": "1990-01-01",
+      "ticker": "LSI"
+    },
+    {
+      "cik": 1458891,
+      "end": "2017-05-16",
+      "kind": "cik",
+      "name": "Noble Corp",
+      "reason": "listed parent after the 2009 Swiss redomicile (later Noble Corp plc); 1169055 became the subsidiary",
+      "source": "owner_override_of_suggestion",
+      "start": "1990-01-01",
+      "ticker": "NE"
+    },
+    {
+      "end": "2024-11-20",
+      "kind": "split",
+      "reason": "successor issuer: the predecessor stopped filing and the successor took over",
+      "segments": [
+        {
+          "cik": 1472595,
+          "from": "2021-05-07",
+          "name": "R1 RCM Holdco Inc.",
+          "to": "2022-08-02"
+        },
+        {
+          "cik": 1910851,
+          "from": "2022-08-03",
+          "name": "R1 RCM Inc. /DE",
+          "to": "2024-11-20"
+        }
+      ],
+      "source": "owner_approved_suggestion",
+      "start": "2021-05-07",
+      "ticker": "RCM"
+    },
+    {
+      "cik": 1398987,
+      "end": "2019-06-04",
+      "kind": "cik",
+      "name": "Anywhere Real Estate Inc.",
+      "reason": "ticker fit: RLGY in ['Realogy Holdings Corp.', 'REALOGY HOLDINGS CORP.']; co-filing LLC/LP dropped: [1355001]",
+      "source": "owner_approved_suggestion",
+      "start": "2018-09-20",
+      "ticker": "RLGY"
+    },
+    {
+      "end": "2022-02-01",
+      "kind": "split",
+      "reason": "old Sterling Bancorp until its 2013-10-31 merger into Provident New York Bancorp, which took the Sterling name; 1680379 (Sterling Bancorp, Inc., Michigan) excluded",
+      "segments": [
+        {
+          "cik": 93451,
+          "from": "1990-01-01",
+          "name": "STERLING BANCORP",
+          "to": "2013-10-30"
+        },
+        {
+          "cik": 1070154,
+          "from": "2013-10-31",
+          "name": "STERLING BANCORP",
+          "to": "2022-02-01"
+        }
+      ],
+      "source": "owner_override_of_suggestion",
+      "start": "1990-01-01",
+      "ticker": "STL"
+    },
+    {
+      "end": "2021-06-09",
+      "kind": "split",
+      "reason": "name handover: TCF fits 814184 then 19612",
+      "segments": [
+        {
+          "cik": 814184,
+          "from": "1990-01-01",
+          "name": "TCF FINANCIAL CORP",
+          "to": "2019-07-31"
+        },
+        {
+          "cik": 19612,
+          "from": "2019-08-01",
+          "name": "TCF FINANCIAL CORP",
+          "to": "2021-06-09"
+        }
+      ],
+      "source": "owner_approved_suggestion",
+      "start": "1990-01-01",
+      "ticker": "TCF"
+    },
+    {
+      "cik": 833444,
+      "end": "2016-09-06",
+      "kind": "cik",
+      "name": "Johnson Controls International plc",
+      "reason": "WEAK: the only candidate filing across the whole interval; confirm",
+      "source": "owner_approved_suggestion",
+      "start": "2010-08-26",
+      "ticker": "TYC"
+    },
+    {
+      "cik": 1339947,
+      "end": "2019-12-05",
+      "kind": "cik",
+      "name": "Viacom Inc.",
+      "reason": "ticker fit: VIAB in ['Viacom Inc.']",
+      "source": "owner_approved_suggestion",
+      "start": "1990-01-01",
+      "ticker": "VIAB"
+    },
+    {
+      "cik": 1282266,
+      "end": "2015-06-01",
+      "kind": "cik",
+      "name": "WINDSTREAM HOLDINGS, INC.",
+      "reason": "WEAK: the only candidate filing across the whole interval; confirm",
+      "source": "owner_approved_suggestion",
+      "start": "1990-01-01",
+      "ticker": "WIN"
+    }
+  ],
+  "note": "Owner approved every suggestion with four changes (DYN, NE picked; LSI, STL split) in session.",
+  "review_sheet": "data/universe/cik_review_2026-09-24.json"
+}

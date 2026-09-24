@@ -184,6 +184,51 @@ def load_name_matches(path: Path | None) -> dict[tuple[str, str], dict[str, Any]
     return out
 
 
+def load_review_decisions(path: Path | None) -> dict[tuple[str, str], dict[str, Any]]:
+    """Owner-approved decisions from the CIK review (``prism.scripts.cik_review_sheet``), keyed by (ticker, start).
+
+    Each decision becomes a list of segments that must tile its interval exactly: one
+    segment for a single CIK, several for a split. A decision that does not tile is refused
+    (N7), and so is one whose interval no longer matches the membership (checked in ``build``).
+    """
+    if path is None:
+        return {}
+    payload = json.loads(Path(path).read_text())
+    out = {}
+    for row in payload["decisions"]:
+        start, end = pd.Timestamp(row["start"]), pd.Timestamp(row["end"])
+        if row["kind"] == "split":
+            segments = [{"start": pd.Timestamp(s["from"]), "end": pd.Timestamp(s["to"]), "cik": int(s["cik"]),
+                         "title": s.get("name")} for s in row["segments"]]
+        elif row["kind"] == "cik":
+            segments = [{"start": start, "end": end, "cik": int(row["cik"]), "title": row.get("name")}]
+        else:
+            raise edgar.EdgarError(f"review decision for {row['ticker']} {row['start']} has kind {row['kind']!r}")
+        segments.sort(key=lambda s: s["start"])
+        tiles = segments[0]["start"] == start and segments[-1]["end"] == end and all(
+            b["start"] == a["end"] + pd.Timedelta(days=1) for a, b in zip(segments, segments[1:]))
+        if not tiles:
+            raise edgar.EdgarError(f"review decision for {row['ticker']} {row['start']} does not tile its interval")
+        key = (normalize_ticker(row["ticker"]), str(start.date()))
+        out[key] = {"segments": segments, "end": end, "source": "review_decision", "reason": row.get("reason")}
+    return out
+
+
+def _segments_for(span: Any, override: Mapping[str, Any] | None,
+                  fallback: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """The (start, end, cik, title, source) pieces a membership interval resolves to."""
+    if override is None:
+        override = fallback
+    if "segments" not in override:
+        return [{"start": span.start, "end": span.end, "cik": override["cik"], "title": override["title"],
+                 "source": override["source"], "reason": override.get("reason")}]
+    if override["end"] != span.end:
+        raise edgar.EdgarError(f"review decision for {span.ticker} {span.start.date()} ends {override['end'].date()}, "
+                               f"but the membership interval ends {span.end.date()}; re-review it")
+    return [{**segment, "source": override["source"], "reason": override.get("reason")}
+            for segment in override["segments"]]
+
+
 def build(membership: pd.DataFrame, client: edgar.SecClient, out_dir: Path, ledger_path: Path, asof: str,
           refresh: bool = False, limit: int | None = None,
           name_matches: Mapping[tuple[str, str], Mapping[str, Any]] | None = None) -> dict[str, Any]:
@@ -192,7 +237,8 @@ def build(membership: pd.DataFrame, client: edgar.SecClient, out_dir: Path, ledg
     Peak memory is one company's payloads plus the small identity tables, not the whole
     universe's facts (the 2026-09-24 build held ~1,100 companies in memory at once).
     A ``name_matches`` entry assigns its CIK to that one membership interval, ahead of the
-    ticker's current-map candidate, so a reused ticker's earlier holder resolves separately.
+    ticker's current-map candidate, so a reused ticker's earlier holder resolves separately;
+    an entry with ``segments`` (a review decision) splits the interval between CIKs.
     """
     tickers_payload, tickers_meta = client.company_tickers(refresh)
     sec_map = sec_ticker_map(tickers_payload)
@@ -205,9 +251,9 @@ def build(membership: pd.DataFrame, client: edgar.SecClient, out_dir: Path, ledg
     spans = spans[spans["ticker"].isin(tickers)].sort_values(["ticker", "start"], kind="mergesort")
     assigned: list[dict[str, Any]] = []
     for span in spans.itertuples():
-        info = overrides.get((span.ticker, str(span.start.date())), candidates[span.ticker])
-        assigned.append({"ticker": span.ticker, "start": span.start, "end": span.end, "cik": info["cik"],
-                         "title": info["title"], "source": info["source"], "reason": info.get("reason")})
+        override = overrides.get((span.ticker, str(span.start.date())))
+        for piece in _segments_for(span, override, candidates[span.ticker]):
+            assigned.append({"ticker": span.ticker, **piece})
     intervals_by_cik: dict[int, list[dict[str, Any]]] = {}
     for item in assigned:
         if item["cik"] is not None and item["end"] >= XBRL_ERA_START:
@@ -323,6 +369,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--limit", type=int, default=None, help="first N tickers only (smoke runs)")
     parser.add_argument("--name-matches", type=Path, default=None,
                         help="cik_name_matches ledger from prism.scripts.match_delisted_ciks (per-interval overrides)")
+    parser.add_argument("--review-decisions", type=Path, default=None,
+                        help="owner-approved cik_review_decisions file; takes precedence over name matches")
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
@@ -331,7 +379,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     suffix = "" if args.limit is None else f"_limit{args.limit}"
     ledger = build(membership, client, args.out_dir, args.ledger_dir / f"edgar_coverage_{args.asof}{suffix}.json",
                    args.asof, refresh=args.refresh, limit=args.limit,
-                   name_matches=load_name_matches(args.name_matches))
+                   name_matches={**load_name_matches(args.name_matches),
+                                 **load_review_decisions(args.review_decisions)})
     summary = {k: ledger[k] for k in ("tickers", "xbrl_era_tickers", "accepted_tickers", "coverage_xbrl_era",
                                       "accepted_ciks", "facts_rows", "filings_rows", "peak_rss_mb", "status_counts")}
     print(json.dumps(summary, indent=2, default=str))

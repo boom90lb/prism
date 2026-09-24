@@ -187,3 +187,72 @@ def test_build_with_nothing_accepted_writes_empty_typed_outputs(tmp_path):
     facts = pd.read_parquet(tmp_path / "out" / "facts.parquet")
     assert len(facts) == 0 and list(facts.columns) == bf.FACTS_SCHEMA.names
     assert ledger["accepted_tickers"] == 0
+
+
+# --------------------------------------------------------------------- owner review decisions
+
+
+def _decisions(tmp_path, decisions):
+    path = tmp_path / "decisions.json"
+    path.write_text(json.dumps({"decisions": decisions}))
+    return path
+
+
+LSI_SPLIT = {"ticker": "LSI", "start": "1990-01-01", "end": "2023-07-24", "kind": "split", "reason": "x",
+             "segments": [{"from": "1990-01-01", "to": "2014-05-08", "cik": 703360, "name": "LSI CORP"},
+                          {"from": "2014-05-09", "to": "2023-07-24", "cik": 944314, "name": "LIFE STORAGE"}]}
+
+
+def test_review_decisions_must_tile_their_interval(tmp_path):
+    loaded = bf.load_review_decisions(_decisions(tmp_path, [
+        LSI_SPLIT, {"ticker": "DYN", "start": "1990-01-01", "end": "2009-12-18", "kind": "cik", "cik": 1379895}]))
+    assert [s["cik"] for s in loaded[("LSI", "1990-01-01")]["segments"]] == [703360, 944314]
+    assert len(loaded[("DYN", "1990-01-01")]["segments"]) == 1
+    gap = json.loads(json.dumps(LSI_SPLIT))
+    gap["segments"][1]["from"] = "2014-06-01"
+    with pytest.raises(edgar.EdgarError):
+        bf.load_review_decisions(_decisions(tmp_path, [gap]))
+
+
+def _lsi_transport():
+    subs = {703360: ["2012-05-01", "2014-02-28"], 944314: ["2017-05-01", "2022-05-01"]}
+    facts = {cik: {"cik": cik, "entityName": "x", "facts": {"us-gaap": {"Assets": {"units": {"USD": [
+        {"end": dates[0], "val": 1.0, "accn": f"{cik}-0", "form": "10-Q", "filed": dates[0]}]}}}}}
+        for cik, dates in subs.items()}
+
+    def transport(url, headers, timeout):
+        if url == edgar.TICKERS_URL:
+            return json.dumps({"0": {"cik_str": 944314, "ticker": "LSI", "title": "Life Storage"}}).encode()
+        for cik, dates in subs.items():
+            if url == edgar.SUBMISSIONS_URL.format(cik=cik):
+                return json.dumps(_submissions(cik, dates)).encode()
+            if url == edgar.COMPANYFACTS_URL.format(cik=cik):
+                return json.dumps(facts[cik]).encode()
+        raise AssertionError(url)
+
+    return transport
+
+
+def test_split_decision_maps_one_interval_to_two_companies(tmp_path):
+    membership = pd.DataFrame({"ticker": ["LSI"], "start": pd.to_datetime(["1990-01-01"]),
+                               "end": pd.to_datetime(["2023-07-24"])})
+    client = edgar.SecClient(UA, tmp_path / "raw", transport=_lsi_transport(), clock=lambda: 0.0,
+                             sleep=lambda s: None)
+    decisions = bf.load_review_decisions(_decisions(tmp_path, [LSI_SPLIT]))
+    ledger = bf.build(membership, client, tmp_path / "out", tmp_path / "ledger.json", "2026-09-24",
+                      name_matches=decisions)
+    rows = pd.read_parquet(tmp_path / "out" / "ticker_cik.parquet")
+    assert [(str(r.start.date()), str(r.end.date()), int(r.cik), r.source) for r in rows.itertuples()] == [
+        ("1990-01-01", "2014-05-08", 703360, "review_decision"),
+        ("2014-05-09", "2023-07-24", 944314, "review_decision")]
+    assert ledger["accepted_ciks"] == 2
+
+
+def test_decision_for_a_changed_membership_interval_is_refused(tmp_path):
+    membership = pd.DataFrame({"ticker": ["LSI"], "start": pd.to_datetime(["1990-01-01"]),
+                               "end": pd.to_datetime(["2024-01-01"])})
+    client = edgar.SecClient(UA, tmp_path / "raw", transport=_lsi_transport(), clock=lambda: 0.0,
+                             sleep=lambda s: None)
+    with pytest.raises(edgar.EdgarError):
+        bf.build(membership, client, tmp_path / "out", tmp_path / "ledger.json", "2026-09-24",
+                 name_matches=bf.load_review_decisions(_decisions(tmp_path, [LSI_SPLIT])))
