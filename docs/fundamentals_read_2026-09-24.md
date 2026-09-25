@@ -219,3 +219,19 @@ does not change it.
   - The tables come from the committed run records.
   - The window sensitivities and the public-only bound were run on 2026-09-24 and
     are not written under `results/`. They can be recomputed as described above.
+
+## Addendum 2026-09-25: the cash-yield paragraph, corrected
+
+"If idle equity earned the bill rate, the hurdle would be zero" assumed the short-sale
+proceeds earn bills. Under the cost stack's terms (`short_proceeds =
+"collateral_no_rebate"`) and a retail account's, only the equity the long side leaves unused
+earns: 1 − L/E. SPEC §3 as amended on 2026-09-25 gives the hurdle as
+(rf − y·max(0, 1 − L/E)) / vol.
+
+- **The arms.** `at_gr1` and `chcsho_12m` run at a scale of 2 to reach their volatility, so
+  L = E and nothing is idle; their hurdle is the registered one. `gp_at` runs at scale 1.94,
+  leaving 3% idle, which moves its hurdle by about 0.01 (0.009 at a 3.3% yield, 0.011 at
+  4.21%).
+- **The combination** runs at the 2× gross ceiling, so its hurdle is the registered one.
+- **So none of the four passes stated in the paragraph holds under the corrected
+  convention.** The verdict recorded above (nothing promotes) is unchanged.

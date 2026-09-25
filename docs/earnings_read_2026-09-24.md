@@ -228,3 +228,22 @@ the B1 ceiling used 12 a year.
   member mean.
 - The combination is an overlay of its parts' returns and costs, not one engine book.
 - Fills are modeled.
+
+## Addendum 2026-09-25: two corrections
+
+**1. Cash yield.** "At a zero hurdle (idle equity earning the bill rate), the arm and the
+combination both pass" assumed the short-sale proceeds earn bills.
+- Under the cost stack's `collateral_no_rebate` terms only the equity the long side leaves
+  unused earns (SPEC §3 as amended 2026-09-25).
+- `ear_monthly` runs at scale 2 to reach 9.5% volatility, and the combination runs at the 2×
+  gross ceiling. Both have L = E, so their hurdles are the registered 0.442 and 0.351.
+- Neither passes under the corrected convention, and item 7 above does not hold.
+
+**2. The band as the cost lever** (`docs/construction_band_audit_2026-09-24.md`, F7). Item 6
+said a working no-trade band "acts directly on the binding constraint".
+- The declared closed-form band is 0.1–0.2% of equity wide. Replayed on these arms'
+  recorded targets, it changes turnover by 0% (`ear_monthly`, `announcement_premium`) and
+  −9% (`ear_event`).
+- The costs come from decile-membership churn. The levers are construction rules that
+  damp that churn, such as a rank buffer or the Gârleanu–Pedersen step of SPEC §5.5. Either
+  would be a new registration.

@@ -257,3 +257,21 @@ python -m research.scripts.earnings_read
   universes: each is pinned above, and a change is a new registration.
 - It does not register a trade-timing overlay on the momentum book (SPEC §5.5). That is a
   later registration, which this panel makes possible.
+
+## Addendum 2026-09-25
+
+- **Construction band.** The daily book `examples/earnings/daily.toml` now declares
+  `[construction.band] mode = "off"`.
+  - Its registered `closed_form` never acted on the `account_state` path the runs used
+    (`docs/construction_band_audit_2026-09-24.md`, F1 and F3), so the configuration's
+    behaviour is unchanged.
+  - The engine now refuses a declared band on that path.
+  - The forward reads of §6 run the book as it now reads. Its record's configuration hash
+    differs from the in-house run's for this reason alone.
+- **Forward hurdle.** The forward promotion read of §6 compares periodic net Sharpe with
+  the T-bill hurdle under SPEC §3 as amended on 2026-09-25: (rf − y·max(0, 1 − L/E)) / vol,
+  with the account's cash yield y and the book's recorded average L/E. No forward session
+  existed when this was fixed.
+- **The combination's forward read** is not registered. Under the corrected cash convention
+  its hurdle is unchanged, so its outcome would turn on forward cost drag alone
+  (`docs/earnings_read_2026-09-24.md`, addendum).

@@ -64,8 +64,12 @@ the certification under `docs/` remain as the research record.
   book's configuration scaled by the Barroso–Santa-Clara rule (12% target, 126
   sessions, monthly, cap 2). Prior 0.465 (since 2015); fidelity 0.895; F3 0.368
   against a T-bill hurdle of 0.351, a 0.018 margin. With idle cash earning
-  nothing, the expected edge over T-bills is about 0.5% a year; if idle equity
-  earns the bill rate, it is about 4.7%. Arming the scale, replacing §6's
+  nothing, the expected edge over T-bills is about 0.5% a year. (Corrected
+  2026-09-25: the "about 4.7% if idle equity earns the bill rate" stated here
+  assumed short proceeds earn bills too. Under the cost stack's
+  collateral-without-rebate terms only the equity the long side leaves
+  unused earns, about half at this book's average scale, so the edge is about
+  2% a year.) Arming the scale, replacing §6's
   de-gross with it, and changing the live book are owner acts. The forward kill
   rule is live; its first read is at about 2027-03-24.
 - **Public factor lab ran 2026-09-24** (`sizing_lab_v1`, 8 of 8,
@@ -110,8 +114,23 @@ the certification under `docs/` remain as the research record.
   net 0.27 at 57× turnover a year, −0.10 correlation with momentum) survive
   the in-house kill. At their declared horizons both fail N6's viability
   clause, so they carry to the forward read (≈2027-03 interim), which must
-  meet N6. Costs bind across the family, and the construction band is
-  hard-coded to zero width (`evaluate.py:2515`).
+  meet N6. Costs bind across the family. They come from decile-membership
+  churn, which the declared no-trade band would barely touch
+  (`docs/construction_band_audit_2026-09-24.md`).
+- **Construction band audit 2026-09-24** (`docs/construction_band_audit_2026-09-24.md`).
+  The `account_state` path that every registered run uses applies no no-trade
+  band, while six registrations' records reported `closed_form`. B1's
+  pre-overhaul driver did apply one. The declared band is 0.1–0.2% of equity
+  wide, so it would have changed recorded turnover by 0–9%: the results
+  stand, and the records misdescribe them. The engine now refuses a declared
+  band on that path (N7).
+- **Contract amended 2026-09-25** (owner decision): cash convention (§3).
+  Registrations and reads from this date on credit idle own cash at the
+  account's yield and short proceeds at nothing. Closed sets keep their
+  recorded verdicts. The "passes at a zero hurdle" readings recorded beside
+  earlier verdicts assumed short proceeds earn bills and do not describe this
+  convention. `examples/reference/costs/retail_v2.toml` carries it. Its rates
+  are provisional listed figures until the account statement's are recorded.
 
 ## 2. Invariants — a change that violates one is wrong, not the invariant
 
@@ -149,7 +168,15 @@ the certification under `docs/` remain as the research record.
 - Costs are calibrated per liquidity bucket (`SPREAD_BUCKET_SCHEDULE_V1`,
   `prism.execution.spread` from fills). Every net claim records its spread
   assumption, venue, fee, data convention, universe as-of, and coverage.
-- The after-cost hurdle is the T-bill yield, stated in the packet.
+- The after-cost hurdle is the T-bill yield, stated in the packet, less what the
+  book's idle cash earns. Idle own cash, the equity the long side does not use,
+  earns the account's cash yield *y*; short proceeds are collateral and earn
+  nothing. A long/short book with long side *L* on equity *E* therefore clears
+  bills when its return beats *rf* − *y*·max(0, 1 − *L*/*E*), so its Sharpe
+  hurdle is (*rf* − *y*·max(0, 1 − *L*/*E*)) / vol. At 2× gross *L* = *E* and
+  the hurdle is *rf* / vol. The packet states *y*, its source and the book's
+  average *L*/*E* (owner decision 2026-09-25; registrations before it keep
+  their recorded hurdles).
 - Regime features enter sizing or signals only after positive incremental IC
   in purged WFO.
 - The claim ladder is cumulative: `mechanics_clean` (pipeline runs, N4 holds)

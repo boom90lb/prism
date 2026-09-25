@@ -113,3 +113,22 @@ unknown in the deployment path.
   how closely the S&P 500 book follows it. It does not make them the same
   book.
 - Modeled fills throughout.
+
+## Addendum 2026-09-25: the cash-yield arithmetic, corrected
+
+§3 overstated the cash lever. "A dollar-neutral book at 1× gross leaves roughly all of its
+equity as a cash balance" counts the short-sale proceeds as cash that can earn. The cost
+stack holds short proceeds as collateral without rebate (`short_proceeds =
+"collateral_no_rebate"`), and so does a retail account. The engine already credits cash
+income only on `cash − short_collateral` (`prism/execution/cost_model.py::accrue_holding`).
+
+- **What can earn.** Only the equity the long side leaves unused: 1 − L/E, which is about
+  half at 1× gross (L = E/2) and nothing at 2× gross.
+- **The corrected edge.** The book's in-house mean scale is 1.08
+  (`results/2026-09-vol-momentum/series.csv`), which leaves 46% of equity idle on average.
+  At a yield of 3.3–4.2% that adds 1.5–1.9% a year, so the edge over bills is about 2% a
+  year, not 4.7%.
+- **The promotion is unaffected.** It was decided at the registered hurdle, with idle cash
+  earning nothing.
+- **The convention from 2026-09-25** is SPEC §3 as amended: the hurdle is
+  (rf − y·max(0, 1 − L/E)) / vol.
