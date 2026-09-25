@@ -908,3 +908,24 @@ def test_the_state_coupled_path_refuses_the_reproduction_engine(project: Workspa
     """The reproduction engine carries no marked position book to decide against (§3.8)."""
     with pytest.raises(RunRefused, match="account_state"):
         _evaluate(project, engine="historical_constant_weight", decision_coupling="account_state")
+
+
+def test_the_state_coupled_path_refuses_a_declared_band_it_would_not_apply(project: Workspace) -> None:
+    """The account_state path applies no no-trade band, so declaring one is refused (N7).
+
+    docs/construction_band_audit_2026-09-24.md: records reported a ``closed_form`` band that
+    never acted on this path. A declaration the path cannot honour is refused before a row.
+    """
+    variant = project.root / "specs_band"
+    variant.mkdir()
+    (variant / "book.toml").write_text(
+        BOOK_TOML.replace('[construction]\nkind = "heuristic"\n',
+                          '[construction]\nkind = "heuristic"\n\n[construction.band]\nmode = "closed_form"\n'),
+        encoding="utf-8",
+    )
+    spec = load_spec(variant / "book.toml", workspace=project)
+    with pytest.raises(RunRefused, match="no-trade band"):
+        walk_forward_evaluate(spec, workspace=project, splitter=SPLITTER, fold_table_id="wfe_smoke",
+                              selection_set_id="unit_set", registration_id="unit_set", kind="new",
+                              engine="canonical", canonical=_canonical_settings(),
+                              decision_coupling="account_state", fold_portfolio="carry")

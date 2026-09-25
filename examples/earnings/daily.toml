@@ -80,9 +80,12 @@ step_order = "construct_band_cap_participation"
 max_gross = 1.0
 max_symbol_abs_weight = 0.35
 
+# `off`, 2026-09-25: the account_state path the registered runs use applies no no-trade
+# band, so the `closed_form` declared at registration never acted (behaviour is unchanged;
+# docs/construction_band_audit_2026-09-24.md F1, F3), and the engine now refuses a declared
+# band on that path.
 [construction.band]
-mode = "closed_form"
-gamma_risk = 1.0
+mode = "off"
 
 [construction.participation]
 max_participation = 0.05

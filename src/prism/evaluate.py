@@ -1554,6 +1554,16 @@ def _refuse(
             "decision_coupling='account_state' decides against marked equity and a marked position book, "
             f"which only the canonical engine carries; engine={engine!r} (§3.8)"
         )
+    if decision_coupling == "account_state":
+        declared_band = dict(dict(getattr(spec.construction, "options", None) or {}).get("band") or {})
+        if str(declared_band.get("mode", "off")) != "off":
+            raise RunRefused(
+                f"{spec.path} [construction.band] declares mode={declared_band.get('mode')!r}, but the "
+                "account_state path applies no no-trade band: its heuristic construction applies the "
+                "participation cap only (prism.decisions._heuristic_construction). A declared band that does "
+                "not act is a silent defect (N7; docs/construction_band_audit_2026-09-24.md). Declare "
+                "mode = \"off\" on this path"
+            )
     if spec.strategy.combination != "position_space" and decision_coupling != "account_state":
         raise StageNotAvailableError(
             f"[strategy] combination={spec.strategy.combination!r} runs the calibrated convex flow (F2), whose "
