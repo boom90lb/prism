@@ -1,6 +1,6 @@
-# Current S&P 500 members as of 2026-07-17 with local price data (fetchable
+# Current sp500 members as of 2026-09-25 with local price data (fetchable
 # proxy for the live loop; NOT survivorship-free -- backtests use sp500_pit_*).
-# Built from sp500_membership_2026-07-17.parquet (intervals open at as-of)
+# Built from sp500_membership_2026-09-25.parquet (intervals open at as-of)
 # INTERSECT data/*_1d_*.parquet, minus quarantined symbols. 502 names.
 A
 AAPL
@@ -46,7 +46,6 @@ APTV
 ARE
 ARES
 ATO
-AVB
 AVGO
 AVY
 AWK
@@ -59,13 +58,13 @@ BALL
 BAX
 BBY
 BDX
+BE
 BEN
 BF.B
 BG
 BIIB
 BKNG
 BKR
-BLDR
 BLK
 BMY
 BNY
@@ -154,7 +153,6 @@ DUK
 DVA
 DVN
 DXCM
-EA
 EBAY
 ECHO
 ECL
@@ -168,7 +166,6 @@ EME
 EMR
 EOG
 EQIX
-EQR
 EQT
 ERIE
 ES
@@ -190,6 +187,7 @@ FDS
 FDX
 FDXF
 FE
+FERG
 FFIV
 FICO
 FIS
@@ -248,6 +246,7 @@ ICE
 IDXX
 IEX
 IFF
+ILMN
 INCY
 INTC
 INTU
@@ -357,6 +356,7 @@ ORCL
 ORLY
 OTIS
 OXY
+P
 PANW
 PAYX
 PCAR
@@ -389,6 +389,7 @@ PYPL
 Q
 QCOM
 RCL
+RDDT
 REG
 REGN
 RF
@@ -428,7 +429,6 @@ SWKS
 SYF
 SYK
 SYY
-TAP
 TDG
 TDY
 TECH
@@ -450,7 +450,6 @@ TSCO
 TSLA
 TSN
 TT
-TTD
 TTWO
 TXN
 TXT
@@ -471,6 +470,7 @@ VICI
 VLO
 VLTO
 VMC
+VMRK
 VRSK
 VRSN
 VRT

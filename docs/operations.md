@@ -304,3 +304,15 @@ positions reconcile against `state.json`.
 FERG, RDDT, BE, P and ILMN joined the index, EA, AVB, TAP, TTD and BLDR left,
 and Equity Residential became Vivmark Residential (EQR -> VMRK, 2026-08-18). The
 rehearsed book shorts BLDR and TTD, which are no longer members.
+
+**Re-armed 2026-09-25** (owner decision, same day). Both tasks were enabled
+with `schtasks /Change /TN "<name>" /ENABLE`; the first session is the 18:30 PT
+nightly of 2026-09-25. Before it, `sp500_current.txt` was rebuilt as of
+2026-09-25 (`sp500_membership_2026-09-25.parquet`, revisions recorded in
+`sp500_sources_2026-09-25.json`): minus AVB, BLDR, EA, EQR, TAP, TTD; plus BE,
+FERG, ILMN, P, RDDT, VMRK; 502 names. A `--no-submit` rehearsal on it exited 0
+with 123 orders decided (705,817 notional, gross 1.0102), the held BLDR and TTD
+shorts exiting as out-of-universe names; it ran during market hours, so its
+decision bar was a partial one. The regime clock now restarts on unrecorded
+sessions (docs/regime_step.md §4, `prism.scripts.doctor.regime_streak`), so it
+reads 0/21 before this session and 1/21 after a clean one.

@@ -1,0 +1,60 @@
+{
+  "index": "sp500",
+  "asof": "2026-09-25",
+  "wikipedia": {
+    "constituents": {
+      "title": "List of S&P 500 companies",
+      "url": "https://en.wikipedia.org/w/index.php?oldid=1375923233",
+      "revid": 1375923233,
+      "revision_timestamp": "2026-09-20T22:18:13Z",
+      "asof": "2026-09-25",
+      "path": "/home/b90/prism/data/wikipedia/wikipedia_List_of_S_P_500_companies_rev1375923233.html",
+      "sha256": "60d6a0d5b13963e2a2599dd989955701532d69409ae6716d750423ee6b9a423e"
+    },
+    "changes": {
+      "title": "Historical components of the S&P 500",
+      "url": "https://en.wikipedia.org/w/index.php?oldid=1376064088",
+      "revid": 1376064088,
+      "revision_timestamp": "2026-09-21T20:49:21Z",
+      "asof": "2026-09-25",
+      "path": "/home/b90/prism/data/wikipedia/wikipedia_Historical_components_of_the_S_P_500_rev1376064088.html",
+      "sha256": "68e905ac9c52a2a34c2a3aa9c88b084454f18521c37ebdef376ae778a3f98ae3"
+    }
+  },
+  "supplement_rows": [
+    {
+      "date": "2023-07-10",
+      "added": "EG",
+      "removed": "RE"
+    },
+    {
+      "date": "2024-03-25",
+      "added": "CPAY",
+      "removed": "FLT"
+    },
+    {
+      "date": "2026-06-24",
+      "added": "ECHO",
+      "removed": "SATS"
+    },
+    {
+      "date": "2026-08-18",
+      "added": "VMRK",
+      "removed": "EQR"
+    }
+  ],
+  "history_check": {
+    "checked": true,
+    "through": "2026-07-17",
+    "baseline": {
+      "title": "List of S&P 500 companies",
+      "url": "https://en.wikipedia.org/w/index.php?oldid=1364118843",
+      "revid": 1364118843,
+      "revision_timestamp": "2026-07-14T16:34:24Z",
+      "asof": "2026-07-17",
+      "path": "/home/b90/prism/data/wikipedia/wikipedia_List_of_S_P_500_companies_rev1364118843.html",
+      "sha256": "894d117116eac3051f2e321381a21a1ebab62bdc84ec493c9fb87b51524ee493"
+    },
+    "differences": []
+  }
+}
