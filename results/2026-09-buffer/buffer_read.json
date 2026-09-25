@@ -1,0 +1,412 @@
+{
+  "arms": {
+    "ear_event_buffered": {
+      "buffered": {
+        "cost_per_year": 0.007862715691143676,
+        "gross_sharpe": 0.42242831211965226,
+        "n_obs": 1308,
+        "net_sharpe": 0.2525902197029886,
+        "turnover_per_year": 16.04266556963522
+      },
+      "kill": {
+        "annualized": {
+          "lower": -0.5400738271120497,
+          "sharpe_a": 0.25259021970298584,
+          "upper": 0.9906365928705201
+        },
+        "interval": {
+          "blocks_drawn": 32,
+          "confidence": 0.95,
+          "difference": 0.015911688212887326,
+          "label": "ear_event_buffered",
+          "lower": -0.03402145324174705,
+          "mean_difference": 4.6367548150121104e-05,
+          "method": {
+            "block_bars": 42,
+            "block_periods": 42,
+            "block_scheme": "circular_moving",
+            "confidence": 0.95,
+            "coverage_statement": "Endpoints are directional statements under the resampling assumptions: the pool is stationary enough to resample and block_periods carries the dependence of overlapping labels. They are not a simultaneous interval and say nothing about realized portfolio return coverage.",
+            "decision_interval_bars": 1,
+            "frequency": "daily",
+            "hac_lags": 41,
+            "interval_method": "studentized_circular_block_bootstrap",
+            "min_blocks": 2,
+            "n_resamples": 2000,
+            "seed": 20261001,
+            "units": "bars"
+          },
+          "n_periods": 1308,
+          "n_resamples": 2000,
+          "p_value_two_sided": 0.5205,
+          "sharpe_a": 0.015911688212887326,
+          "sharpe_b": 0.0,
+          "standard_error": 0.02476579037894229,
+          "statistic": "sharpe",
+          "t_statistic": 0.6424865901480222,
+          "upper": 0.06240423962799375
+        },
+        "killed": false
+      },
+      "paired_difference": {
+        "annualized": {
+          "lower": -0.2613422310884156,
+          "sharpe_a": 0.25259021970298584,
+          "upper": 0.2752314452389503
+        },
+        "first": "2021-03-30",
+        "interval": {
+          "blocks_drawn": 32,
+          "confidence": 0.95,
+          "difference": -0.001487069379432479,
+          "label": "ear_event_buffered_minus_ear_event",
+          "lower": -0.016463013108064778,
+          "mean_difference": -6.564462705706575e-06,
+          "method": {
+            "block_bars": 42,
+            "block_periods": 42,
+            "block_scheme": "circular_moving",
+            "confidence": 0.95,
+            "coverage_statement": "Endpoints are directional statements under the resampling assumptions: the pool is stationary enough to resample and block_periods carries the dependence of overlapping labels. They are not a simultaneous interval and say nothing about realized portfolio return coverage.",
+            "decision_interval_bars": 1,
+            "frequency": "daily",
+            "hac_lags": 41,
+            "interval_method": "studentized_circular_block_bootstrap",
+            "min_blocks": 2,
+            "n_resamples": 2000,
+            "seed": 20261001,
+            "units": "bars"
+          },
+          "n_periods": 1308,
+          "n_resamples": 2000,
+          "p_value_two_sided": 0.8715,
+          "sharpe_a": 0.015911688212887326,
+          "sharpe_b": 0.017398757592319805,
+          "standard_error": 0.007660772108504089,
+          "statistic": "sharpe_difference",
+          "t_statistic": -0.19411481745837464,
+          "upper": 0.017337951359217972
+        },
+        "last": "2026-06-12",
+        "n_common": 1308
+      },
+      "unbuffered": {
+        "arm": "ear_event",
+        "cost_per_year": 0.009005184065674424,
+        "gross_sharpe": 0.46247224685080995,
+        "n_obs": 1308,
+        "net_sharpe": 0.2761967142646492,
+        "read": "results/2026-09-earnings-daily",
+        "turnover_per_year": 19.409242654310773
+      }
+    },
+    "ear_monthly_buffered": {
+      "buffered": {
+        "cost_per_year": 0.004883387522889116,
+        "gross_sharpe": 0.742096209900064,
+        "n_obs": 1056,
+        "net_sharpe": 0.6384546720937191,
+        "turnover_per_year": 7.4715738929775135
+      },
+      "kill": {
+        "annualized": {
+          "lower": -0.22315975228687046,
+          "sharpe_a": 0.6384546720937325,
+          "upper": 1.49669943183891
+        },
+        "interval": {
+          "blocks_drawn": 26,
+          "confidence": 0.95,
+          "difference": 0.04021886394636443,
+          "label": "ear_monthly_buffered",
+          "lower": -0.014057743028329447,
+          "mean_difference": 0.00011933776341860059,
+          "method": {
+            "block_bars": 42,
+            "block_periods": 42,
+            "block_scheme": "circular_moving",
+            "confidence": 0.95,
+            "coverage_statement": "Endpoints are directional statements under the resampling assumptions: the pool is stationary enough to resample and block_periods carries the dependence of overlapping labels. They are not a simultaneous interval and say nothing about realized portfolio return coverage.",
+            "decision_interval_bars": 21,
+            "frequency": "daily",
+            "hac_lags": 41,
+            "interval_method": "studentized_circular_block_bootstrap",
+            "min_blocks": 2,
+            "n_resamples": 2000,
+            "seed": 20261001,
+            "units": "bars"
+          },
+          "n_periods": 1056,
+          "n_resamples": 2000,
+          "p_value_two_sided": 0.132,
+          "sharpe_a": 0.04021886394636443,
+          "sharpe_b": 0.0,
+          "standard_error": 0.02702759365088555,
+          "statistic": "sharpe",
+          "t_statistic": 1.4880667685725206,
+          "upper": 0.09428320200136724
+        },
+        "killed": false
+      },
+      "paired_difference": {
+        "annualized": {
+          "lower": -0.17265357392297523,
+          "sharpe_a": 0.6384546720937325,
+          "upper": 0.3442068546907124
+        },
+        "first": "2022-03-29",
+        "interval": {
+          "blocks_drawn": 26,
+          "confidence": 0.95,
+          "difference": 0.004551664804077198,
+          "label": "ear_monthly_buffered_minus_ear_monthly",
+          "lower": -0.010876152846826165,
+          "mean_difference": 8.462722177656558e-06,
+          "method": {
+            "block_bars": 42,
+            "block_periods": 42,
+            "block_scheme": "circular_moving",
+            "confidence": 0.95,
+            "coverage_statement": "Endpoints are directional statements under the resampling assumptions: the pool is stationary enough to resample and block_periods carries the dependence of overlapping labels. They are not a simultaneous interval and say nothing about realized portfolio return coverage.",
+            "decision_interval_bars": 21,
+            "frequency": "daily",
+            "hac_lags": 41,
+            "interval_method": "studentized_circular_block_bootstrap",
+            "min_blocks": 2,
+            "n_resamples": 2000,
+            "seed": 20261001,
+            "units": "bars"
+          },
+          "n_periods": 1056,
+          "n_resamples": 2000,
+          "p_value_two_sided": 0.594,
+          "sharpe_a": 0.04021886394636443,
+          "sharpe_b": 0.035667199142287234,
+          "standard_error": 0.008222891416119585,
+          "statistic": "sharpe_difference",
+          "t_statistic": 0.5535358031305667,
+          "upper": 0.021682993739889793
+        },
+        "last": "2026-06-12",
+        "n_common": 1056
+      },
+      "unbuffered": {
+        "arm": "ear_monthly",
+        "cost_per_year": 0.005284890185082657,
+        "gross_sharpe": 0.5367950715053993,
+        "n_obs": 1245,
+        "net_sharpe": 0.42593174680735385,
+        "read": "results/2026-09-earnings",
+        "turnover_per_year": 8.547926183051334
+      }
+    },
+    "momentum_buffered": {
+      "buffered": {
+        "cost_per_year": 0.004102248670500214,
+        "gross_sharpe": 0.6857107800447884,
+        "n_obs": 1056,
+        "net_sharpe": 0.6482692741547477,
+        "turnover_per_year": 4.859712238605504
+      },
+      "kill": {
+        "annualized": {
+          "lower": -0.1713763453964939,
+          "sharpe_a": 0.6482692741547378,
+          "upper": 1.4196467197627924
+        },
+        "interval": {
+          "blocks_drawn": 26,
+          "confidence": 0.95,
+          "difference": 0.040837125762328286,
+          "label": "momentum_buffered",
+          "lower": -0.010795695012338853,
+          "mean_difference": 0.00028256970748718357,
+          "method": {
+            "block_bars": 42,
+            "block_periods": 42,
+            "block_scheme": "circular_moving",
+            "confidence": 0.95,
+            "coverage_statement": "Endpoints are directional statements under the resampling assumptions: the pool is stationary enough to resample and block_periods carries the dependence of overlapping labels. They are not a simultaneous interval and say nothing about realized portfolio return coverage.",
+            "decision_interval_bars": 21,
+            "frequency": "daily",
+            "hac_lags": 41,
+            "interval_method": "studentized_circular_block_bootstrap",
+            "min_blocks": 2,
+            "n_resamples": 2000,
+            "seed": 20261001,
+            "units": "bars"
+          },
+          "n_periods": 1056,
+          "n_resamples": 2000,
+          "p_value_two_sided": 0.11,
+          "sharpe_a": 0.040837125762328286,
+          "sharpe_b": 0.0,
+          "standard_error": 0.025365471885288884,
+          "statistic": "sharpe",
+          "t_statistic": 1.6099493810723244,
+          "upper": 0.08942933738240365
+        },
+        "killed": false
+      },
+      "paired_difference": {
+        "annualized": {
+          "lower": -0.20662679069562984,
+          "sharpe_a": 0.6482692741547378,
+          "upper": 0.13500740500033367
+        },
+        "first": "2022-03-29",
+        "interval": {
+          "blocks_drawn": 26,
+          "confidence": 0.95,
+          "difference": -0.0019297461816344258,
+          "label": "momentum_buffered_minus_momentum_control",
+          "lower": -0.013016264342476937,
+          "mean_difference": -5.163949431545193e-05,
+          "method": {
+            "block_bars": 42,
+            "block_periods": 42,
+            "block_scheme": "circular_moving",
+            "confidence": 0.95,
+            "coverage_statement": "Endpoints are directional statements under the resampling assumptions: the pool is stationary enough to resample and block_periods carries the dependence of overlapping labels. They are not a simultaneous interval and say nothing about realized portfolio return coverage.",
+            "decision_interval_bars": 21,
+            "frequency": "daily",
+            "hac_lags": 41,
+            "interval_method": "studentized_circular_block_bootstrap",
+            "min_blocks": 2,
+            "n_resamples": 2000,
+            "seed": 20261001,
+            "units": "bars"
+          },
+          "n_periods": 1056,
+          "n_resamples": 2000,
+          "p_value_two_sided": 0.7185,
+          "sharpe_a": 0.040837125762328286,
+          "sharpe_b": 0.04276687194396271,
+          "standard_error": 0.005123162507289877,
+          "statistic": "sharpe_difference",
+          "t_statistic": -0.37667089007786525,
+          "upper": 0.008504667113882404
+        },
+        "last": "2026-06-12",
+        "n_common": 1056
+      },
+      "unbuffered": {
+        "arm": "momentum_control",
+        "cost_per_year": 0.004981331345985616,
+        "gross_sharpe": 0.7192046331340604,
+        "n_obs": 1056,
+        "net_sharpe": 0.678903045095232,
+        "read": "results/2026-09-characteristics",
+        "turnover_per_year": 7.550550227098901
+      }
+    },
+    "premium_buffered": {
+      "buffered": {
+        "cost_per_year": 0.018951458323329253,
+        "gross_sharpe": 0.6425775723823957,
+        "n_obs": 1308,
+        "net_sharpe": 0.18524186409134197,
+        "turnover_per_year": 49.633504242753375
+      },
+      "kill": {
+        "annualized": {
+          "lower": -0.9834112407026663,
+          "sharpe_a": 0.1852418640913385,
+          "upper": 1.4498717323721428
+        },
+        "interval": {
+          "blocks_drawn": 32,
+          "confidence": 0.95,
+          "difference": 0.011669140590088275,
+          "label": "premium_buffered",
+          "lower": -0.06194908522392226,
+          "mean_difference": 3.052666185168736e-05,
+          "method": {
+            "block_bars": 42,
+            "block_periods": 42,
+            "block_scheme": "circular_moving",
+            "confidence": 0.95,
+            "coverage_statement": "Endpoints are directional statements under the resampling assumptions: the pool is stationary enough to resample and block_periods carries the dependence of overlapping labels. They are not a simultaneous interval and say nothing about realized portfolio return coverage.",
+            "decision_interval_bars": 1,
+            "frequency": "daily",
+            "hac_lags": 41,
+            "interval_method": "studentized_circular_block_bootstrap",
+            "min_blocks": 2,
+            "n_resamples": 2000,
+            "seed": 20261001,
+            "units": "bars"
+          },
+          "n_periods": 1308,
+          "n_resamples": 2000,
+          "p_value_two_sided": 0.762,
+          "sharpe_a": 0.011669140590088275,
+          "sharpe_b": 0.0,
+          "standard_error": 0.03520245413091018,
+          "statistic": "sharpe",
+          "t_statistic": 0.3314865647347571,
+          "upper": 0.09133333420950204
+        },
+        "killed": false
+      },
+      "paired_difference": {
+        "annualized": {
+          "lower": -0.41069500416397486,
+          "sharpe_a": 0.1852418640913385,
+          "upper": 0.2383590056576884
+        },
+        "first": "2021-03-30",
+        "interval": {
+          "blocks_drawn": 32,
+          "confidence": 0.95,
+          "difference": -0.005589431798869539,
+          "label": "premium_buffered_minus_announcement_premium",
+          "lower": -0.025871353469393187,
+          "mean_difference": -1.8179578854477673e-05,
+          "method": {
+            "block_bars": 42,
+            "block_periods": 42,
+            "block_scheme": "circular_moving",
+            "confidence": 0.95,
+            "coverage_statement": "Endpoints are directional statements under the resampling assumptions: the pool is stationary enough to resample and block_periods carries the dependence of overlapping labels. They are not a simultaneous interval and say nothing about realized portfolio return coverage.",
+            "decision_interval_bars": 1,
+            "frequency": "daily",
+            "hac_lags": 41,
+            "interval_method": "studentized_circular_block_bootstrap",
+            "min_blocks": 2,
+            "n_resamples": 2000,
+            "seed": 20261001,
+            "units": "bars"
+          },
+          "n_periods": 1308,
+          "n_resamples": 2000,
+          "p_value_two_sided": 0.5625,
+          "sharpe_a": 0.011669140590088275,
+          "sharpe_b": 0.017258572388957814,
+          "standard_error": 0.009943259762158657,
+          "statistic": "sharpe_difference",
+          "t_statistic": -0.5621327343917331,
+          "upper": 0.015015205993401934
+        },
+        "last": "2026-06-12",
+        "n_common": 1308
+      },
+      "unbuffered": {
+        "arm": "announcement_premium",
+        "cost_per_year": 0.021423673371863967,
+        "gross_sharpe": 0.7531029282568197,
+        "n_obs": 1308,
+        "net_sharpe": 0.273971343151127,
+        "read": "results/2026-09-earnings-daily",
+        "turnover_per_year": 57.1478553780117
+      }
+    }
+  },
+  "bootstrap": {
+    "block_bars": 42,
+    "confidence": 0.95,
+    "n_resamples": 2000,
+    "seed": 20261001
+  },
+  "code_commit": "47290e75bdd255dfc399d4705d32a7844b9d871a",
+  "killed": []
+}

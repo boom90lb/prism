@@ -1,0 +1,21 @@
+registration 2026-09-buffer-daily  sha256 1af236805148
+selection set buffer_daily_v1  arms ear_event_buffered, premium_buffered
+held fixed: accounting_engine=canonical, capital=100000.0, cost_refresh={cadence, charged, note, per_fold, windows} (see the record), data_id=bedf8c4c0f0c2195ce5aace938f4ad38e23e6b69b57075080073004692d46eef, executable_return=next_open_fill_marked_close_to_close, vintage=demotion_b1_2026-06-16, visibility_mode=research_vintage
+differs by design: engine
+promotion check: no arm promotes (rule kind='none')
+excluded folds (shared across every arm: True): none
+
+   capital arm                      sharpe  ann.ret     cost  turnover  at_cap   ex_sd  repair none/scale/drop  flat
+--------------------------------------------------------------------------------------------------------------------
+   100,000 ear_event_buffered       0.2526   0.0159   0.0408     83.27   0.000     nan      1308/0/0     0
+   100,000 premium_buffered         0.1852   0.0117   0.0984    257.62   0.000     nan      1308/0/0     0
+
+studentized Sharpe differences, circular_moving blocks of 42 bars, 2000 resamples, seed 20260931, hac_lags 41, decision interval 1 bars, studentized_circular_block_bootstrap
+  the statistic is the per-bar (periodic) Sharpe difference; the annualized column is the same interval scaled by sqrt(252)
+   capital difference                                       diff    lower    upper      p  diff/yr  lower/yr  upper/yr
+----------------------------------------------------------------------------------------------------------------------
+   100,000 ear_event_buffered_minus_premium_buffered      0.0042  -0.0819   0.0855  0.919   0.0673   -1.2999    1.3577
+
+intervals computed: 1
+warning: run-6f4e72ca96214083: fill_source=simulated; fills are not actual fills
+warning: run-a195851811a34615: fill_source=simulated; fills are not actual fills

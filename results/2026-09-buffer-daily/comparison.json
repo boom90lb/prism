@@ -1,0 +1,2302 @@
+{
+  "arms": [
+    {
+      "arm_id": "ear_event_buffered",
+      "by_fold": "unavailable",
+      "capital": 100000.0,
+      "cost_decomposition": {
+        "calibration_source": "unavailable",
+        "cost_refresh": {
+          "cadence": "fold",
+          "charged": {
+            "fallback_bps": 1.0,
+            "max_bps": 10.0,
+            "mean_bps": 2.387835556765587,
+            "min_bps": 1.0,
+            "mode": "bucket_frame",
+            "n_names": 574
+          },
+          "note": "each fold's cost inputs are estimated on that fold's formation window and recorded above; the cadence says which of them the accounting engine charged. Under 'once' the first window prices the whole stitched simulation, which is causal for every test bar in it; under 'fold' each fold's test bars carry their own buckets",
+          "per_fold": [
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2021-03-29",
+              "fold": 0,
+              "spread_bps": {
+                "buckets": {
+                  "1": 75,
+                  "10": 8,
+                  "2": 291,
+                  "5": 101
+                },
+                "max": 10.0,
+                "mean": 2.614736842105263,
+                "min": 1.0,
+                "n_names": 475
+              },
+              "start": "2020-01-02"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2021-06-28",
+              "fold": 1,
+              "spread_bps": {
+                "buckets": {
+                  "1": 81,
+                  "10": 8,
+                  "2": 285,
+                  "5": 104
+                },
+                "max": 10.0,
+                "mean": 2.6171548117154813,
+                "min": 1.0,
+                "n_names": 478
+              },
+              "start": "2020-04-02"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2021-09-27",
+              "fold": 2,
+              "spread_bps": {
+                "buckets": {
+                  "1": 78,
+                  "10": 8,
+                  "2": 286,
+                  "5": 107
+                },
+                "max": 10.0,
+                "mean": 2.640918580375783,
+                "min": 1.0,
+                "n_names": 479
+              },
+              "start": "2020-07-02"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2021-12-27",
+              "fold": 3,
+              "spread_bps": {
+                "buckets": {
+                  "1": 82,
+                  "10": 9,
+                  "2": 289,
+                  "5": 101
+                },
+                "max": 10.0,
+                "mean": 2.6091476091476093,
+                "min": 1.0,
+                "n_names": 481
+              },
+              "start": "2020-10-01"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2022-03-28",
+              "fold": 4,
+              "spread_bps": {
+                "buckets": {
+                  "1": 88,
+                  "10": 8,
+                  "2": 298,
+                  "5": 88
+                },
+                "max": 10.0,
+                "mean": 2.4979253112033195,
+                "min": 1.0,
+                "n_names": 482
+              },
+              "start": "2020-12-31"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2022-06-28",
+              "fold": 5,
+              "spread_bps": {
+                "buckets": {
+                  "1": 88,
+                  "10": 8,
+                  "2": 305,
+                  "5": 83
+                },
+                "max": 10.0,
+                "mean": 2.4648760330578514,
+                "min": 1.0,
+                "n_names": 484
+              },
+              "start": "2021-04-05"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2022-09-27",
+              "fold": 6,
+              "spread_bps": {
+                "buckets": {
+                  "1": 89,
+                  "10": 9,
+                  "2": 296,
+                  "5": 90
+                },
+                "max": 10.0,
+                "mean": 2.522727272727273,
+                "min": 1.0,
+                "n_names": 484
+              },
+              "start": "2021-07-02"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2022-12-27",
+              "fold": 7,
+              "spread_bps": {
+                "buckets": {
+                  "1": 93,
+                  "10": 9,
+                  "2": 304,
+                  "5": 83
+                },
+                "max": 10.0,
+                "mean": 2.4662576687116564,
+                "min": 1.0,
+                "n_names": 489
+              },
+              "start": "2021-10-01"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2023-03-29",
+              "fold": 8,
+              "spread_bps": {
+                "buckets": {
+                  "1": 91,
+                  "10": 8,
+                  "2": 310,
+                  "5": 81
+                },
+                "max": 10.0,
+                "mean": 2.440816326530612,
+                "min": 1.0,
+                "n_names": 490
+              },
+              "start": "2021-12-31"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2023-06-29",
+              "fold": 9,
+              "spread_bps": {
+                "buckets": {
+                  "1": 86,
+                  "10": 8,
+                  "2": 308,
+                  "5": 90
+                },
+                "max": 10.0,
+                "mean": 2.5040650406504064,
+                "min": 1.0,
+                "n_names": 492
+              },
+              "start": "2022-04-01"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2023-09-28",
+              "fold": 10,
+              "spread_bps": {
+                "buckets": {
+                  "1": 80,
+                  "10": 8,
+                  "2": 313,
+                  "5": 91
+                },
+                "max": 10.0,
+                "mean": 2.522357723577236,
+                "min": 1.0,
+                "n_names": 492
+              },
+              "start": "2022-07-05"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2023-12-28",
+              "fold": 11,
+              "spread_bps": {
+                "buckets": {
+                  "1": 82,
+                  "10": 8,
+                  "2": 316,
+                  "5": 88
+                },
+                "max": 10.0,
+                "mean": 2.4979757085020244,
+                "min": 1.0,
+                "n_names": 494
+              },
+              "start": "2022-10-03"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2024-04-01",
+              "fold": 12,
+              "spread_bps": {
+                "buckets": {
+                  "1": 88,
+                  "10": 7,
+                  "2": 318,
+                  "5": 82
+                },
+                "max": 10.0,
+                "mean": 2.4323232323232324,
+                "min": 1.0,
+                "n_names": 495
+              },
+              "start": "2023-01-03"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2024-07-01",
+              "fold": 13,
+              "spread_bps": {
+                "buckets": {
+                  "1": 90,
+                  "10": 7,
+                  "2": 326,
+                  "5": 73
+                },
+                "max": 10.0,
+                "mean": 2.372983870967742,
+                "min": 1.0,
+                "n_names": 496
+              },
+              "start": "2023-04-04"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2024-09-30",
+              "fold": 14,
+              "spread_bps": {
+                "buckets": {
+                  "1": 95,
+                  "10": 7,
+                  "2": 319,
+                  "5": 76
+                },
+                "max": 10.0,
+                "mean": 2.380281690140845,
+                "min": 1.0,
+                "n_names": 497
+              },
+              "start": "2023-07-06"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2024-12-30",
+              "fold": 15,
+              "spread_bps": {
+                "buckets": {
+                  "1": 99,
+                  "10": 6,
+                  "2": 328,
+                  "5": 65
+                },
+                "max": 10.0,
+                "mean": 2.289156626506024,
+                "min": 1.0,
+                "n_names": 498
+              },
+              "start": "2023-10-04"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2025-04-02",
+              "fold": 16,
+              "spread_bps": {
+                "buckets": {
+                  "1": 111,
+                  "10": 5,
+                  "2": 327,
+                  "5": 55
+                },
+                "max": 10.0,
+                "mean": 2.1887550200803214,
+                "min": 1.0,
+                "n_names": 498
+              },
+              "start": "2024-01-04"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2025-07-03",
+              "fold": 17,
+              "spread_bps": {
+                "buckets": {
+                  "1": 114,
+                  "10": 5,
+                  "2": 336,
+                  "5": 44
+                },
+                "max": 10.0,
+                "mean": 2.1162324649298596,
+                "min": 1.0,
+                "n_names": 499
+              },
+              "start": "2024-04-05"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2025-10-02",
+              "fold": 18,
+              "spread_bps": {
+                "buckets": {
+                  "1": 125,
+                  "10": 5,
+                  "2": 335,
+                  "5": 38
+                },
+                "max": 10.0,
+                "mean": 2.05765407554672,
+                "min": 1.0,
+                "n_names": 503
+              },
+              "start": "2024-07-08"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2026-01-02",
+              "fold": 19,
+              "spread_bps": {
+                "buckets": {
+                  "1": 133,
+                  "10": 4,
+                  "2": 338,
+                  "5": 29
+                },
+                "max": 10.0,
+                "mean": 1.9722222222222223,
+                "min": 1.0,
+                "n_names": 504
+              },
+              "start": "2024-10-04"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2026-04-06",
+              "fold": 20,
+              "spread_bps": {
+                "buckets": {
+                  "1": 146,
+                  "10": 4,
+                  "2": 335,
+                  "5": 20
+                },
+                "max": 10.0,
+                "mean": 1.893069306930693,
+                "min": 1.0,
+                "n_names": 505
+              },
+              "start": "2025-01-06"
+            }
+          ],
+          "windows": [
+            {
+              "end": "2021-03-29",
+              "fold": 0,
+              "start": "2020-01-02"
+            },
+            {
+              "end": "2021-06-28",
+              "fold": 1,
+              "start": "2020-04-02"
+            },
+            {
+              "end": "2021-09-27",
+              "fold": 2,
+              "start": "2020-07-02"
+            },
+            {
+              "end": "2021-12-27",
+              "fold": 3,
+              "start": "2020-10-01"
+            },
+            {
+              "end": "2022-03-28",
+              "fold": 4,
+              "start": "2020-12-31"
+            },
+            {
+              "end": "2022-06-28",
+              "fold": 5,
+              "start": "2021-04-05"
+            },
+            {
+              "end": "2022-09-27",
+              "fold": 6,
+              "start": "2021-07-02"
+            },
+            {
+              "end": "2022-12-27",
+              "fold": 7,
+              "start": "2021-10-01"
+            },
+            {
+              "end": "2023-03-29",
+              "fold": 8,
+              "start": "2021-12-31"
+            },
+            {
+              "end": "2023-06-29",
+              "fold": 9,
+              "start": "2022-04-01"
+            },
+            {
+              "end": "2023-09-28",
+              "fold": 10,
+              "start": "2022-07-05"
+            },
+            {
+              "end": "2023-12-28",
+              "fold": 11,
+              "start": "2022-10-03"
+            },
+            {
+              "end": "2024-04-01",
+              "fold": 12,
+              "start": "2023-01-03"
+            },
+            {
+              "end": "2024-07-01",
+              "fold": 13,
+              "start": "2023-04-04"
+            },
+            {
+              "end": "2024-09-30",
+              "fold": 14,
+              "start": "2023-07-06"
+            },
+            {
+              "end": "2024-12-30",
+              "fold": 15,
+              "start": "2023-10-04"
+            },
+            {
+              "end": "2025-04-02",
+              "fold": 16,
+              "start": "2024-01-04"
+            },
+            {
+              "end": "2025-07-03",
+              "fold": 17,
+              "start": "2024-04-05"
+            },
+            {
+              "end": "2025-10-02",
+              "fold": 18,
+              "start": "2024-07-08"
+            },
+            {
+              "end": "2026-01-02",
+              "fold": 19,
+              "start": "2024-10-04"
+            },
+            {
+              "end": "2026-04-06",
+              "fold": 20,
+              "start": "2025-01-06"
+            }
+          ]
+        },
+        "dollar_volume_statistics": {
+          "impact": "unavailable",
+          "participation": {
+            "base": "initial_capital",
+            "floor_dollars": 0.0,
+            "max_participation": 0.05,
+            "statistic": "median",
+            "window_bars": 20
+          },
+          "spread": {
+            "bound": "inclusive_lower",
+            "mode": "bucket",
+            "schedule": [
+              [
+                500000000.0,
+                1.0
+              ],
+              [
+                100000000.0,
+                2.0
+              ],
+              [
+                25000000.0,
+                5.0
+              ],
+              [
+                0.0,
+                10.0
+              ]
+            ],
+            "statistic": "dollar_volume.spread_bucket",
+            "unknown_liquidity": "widest_step",
+            "window": "fold_formation"
+          }
+        },
+        "stack": {
+          "adv_floor_dollars": 100000.0,
+          "adv_impact_coeff": 0.0,
+          "adv_impact_model": "linear",
+          "borrow_rate_bps_annual": 50.0,
+          "commission_bps": 1.0,
+          "default_order_type": "MOO",
+          "slippage_coeff": 10.0,
+          "spread_bps": 1.0,
+          "trading_days_per_year": 252
+        }
+      },
+      "coverage": {
+        "bias_status": "unquantified",
+        "untested_conclusions": [
+          "The comparison is same-sample: three arms read against each other on one frozen score panel, one fold geometry and one cost stack. It can kill a configuration and it cannot promote one; no arm promotes out of this registration (\u00a73.13, [promotion_rule]).",
+          "The calibration's training cross-section is the formation window's point-in-time membership at the fit cutoff, without the per-bar eligibility screen the decision path applies; the screen is applied at every decision bar and to the labels' universe, not bar by bar inside the training pool.",
+          "The frozen dataset carries no cash-distribution events, so the 'credited' label of \u00a73.4 credits zero and the accounting credits zero; the two agree, and neither establishes what a dividend-bearing panel would have produced.",
+          "Fills are simulated at the next open under the declared [fills] policy. No panel here is evidence about actual fills."
+        ]
+      },
+      "exposures": {
+        "avg_gross": 0.9994614692061845,
+        "avg_net": 3.793705252204969e-05
+      },
+      "flags": {
+        "fill_source": "simulated",
+        "prospective": null,
+        "run_channel": "evidence",
+        "synthetic": false
+      },
+      "gross_sharpe": 0.026610482395746954,
+      "n_periods": 1308,
+      "net_mean": 4.6367548150121104e-05,
+      "net_sharpe": 0.015911688212887326,
+      "run_id": "run-6f4e72ca96214083",
+      "turnover_mean": 0.06366137130807621
+    },
+    {
+      "arm_id": "premium_buffered",
+      "by_fold": "unavailable",
+      "capital": 100000.0,
+      "cost_decomposition": {
+        "calibration_source": "unavailable",
+        "cost_refresh": {
+          "cadence": "fold",
+          "charged": {
+            "fallback_bps": 1.0,
+            "max_bps": 10.0,
+            "mean_bps": 2.387835556765587,
+            "min_bps": 1.0,
+            "mode": "bucket_frame",
+            "n_names": 574
+          },
+          "note": "each fold's cost inputs are estimated on that fold's formation window and recorded above; the cadence says which of them the accounting engine charged. Under 'once' the first window prices the whole stitched simulation, which is causal for every test bar in it; under 'fold' each fold's test bars carry their own buckets",
+          "per_fold": [
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2021-03-29",
+              "fold": 0,
+              "spread_bps": {
+                "buckets": {
+                  "1": 75,
+                  "10": 8,
+                  "2": 291,
+                  "5": 101
+                },
+                "max": 10.0,
+                "mean": 2.614736842105263,
+                "min": 1.0,
+                "n_names": 475
+              },
+              "start": "2020-01-02"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2021-06-28",
+              "fold": 1,
+              "spread_bps": {
+                "buckets": {
+                  "1": 81,
+                  "10": 8,
+                  "2": 285,
+                  "5": 104
+                },
+                "max": 10.0,
+                "mean": 2.6171548117154813,
+                "min": 1.0,
+                "n_names": 478
+              },
+              "start": "2020-04-02"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2021-09-27",
+              "fold": 2,
+              "spread_bps": {
+                "buckets": {
+                  "1": 78,
+                  "10": 8,
+                  "2": 286,
+                  "5": 107
+                },
+                "max": 10.0,
+                "mean": 2.640918580375783,
+                "min": 1.0,
+                "n_names": 479
+              },
+              "start": "2020-07-02"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2021-12-27",
+              "fold": 3,
+              "spread_bps": {
+                "buckets": {
+                  "1": 82,
+                  "10": 9,
+                  "2": 289,
+                  "5": 101
+                },
+                "max": 10.0,
+                "mean": 2.6091476091476093,
+                "min": 1.0,
+                "n_names": 481
+              },
+              "start": "2020-10-01"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2022-03-28",
+              "fold": 4,
+              "spread_bps": {
+                "buckets": {
+                  "1": 88,
+                  "10": 8,
+                  "2": 298,
+                  "5": 88
+                },
+                "max": 10.0,
+                "mean": 2.4979253112033195,
+                "min": 1.0,
+                "n_names": 482
+              },
+              "start": "2020-12-31"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2022-06-28",
+              "fold": 5,
+              "spread_bps": {
+                "buckets": {
+                  "1": 88,
+                  "10": 8,
+                  "2": 305,
+                  "5": 83
+                },
+                "max": 10.0,
+                "mean": 2.4648760330578514,
+                "min": 1.0,
+                "n_names": 484
+              },
+              "start": "2021-04-05"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2022-09-27",
+              "fold": 6,
+              "spread_bps": {
+                "buckets": {
+                  "1": 89,
+                  "10": 9,
+                  "2": 296,
+                  "5": 90
+                },
+                "max": 10.0,
+                "mean": 2.522727272727273,
+                "min": 1.0,
+                "n_names": 484
+              },
+              "start": "2021-07-02"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2022-12-27",
+              "fold": 7,
+              "spread_bps": {
+                "buckets": {
+                  "1": 93,
+                  "10": 9,
+                  "2": 304,
+                  "5": 83
+                },
+                "max": 10.0,
+                "mean": 2.4662576687116564,
+                "min": 1.0,
+                "n_names": 489
+              },
+              "start": "2021-10-01"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2023-03-29",
+              "fold": 8,
+              "spread_bps": {
+                "buckets": {
+                  "1": 91,
+                  "10": 8,
+                  "2": 310,
+                  "5": 81
+                },
+                "max": 10.0,
+                "mean": 2.440816326530612,
+                "min": 1.0,
+                "n_names": 490
+              },
+              "start": "2021-12-31"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2023-06-29",
+              "fold": 9,
+              "spread_bps": {
+                "buckets": {
+                  "1": 86,
+                  "10": 8,
+                  "2": 308,
+                  "5": 90
+                },
+                "max": 10.0,
+                "mean": 2.5040650406504064,
+                "min": 1.0,
+                "n_names": 492
+              },
+              "start": "2022-04-01"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2023-09-28",
+              "fold": 10,
+              "spread_bps": {
+                "buckets": {
+                  "1": 80,
+                  "10": 8,
+                  "2": 313,
+                  "5": 91
+                },
+                "max": 10.0,
+                "mean": 2.522357723577236,
+                "min": 1.0,
+                "n_names": 492
+              },
+              "start": "2022-07-05"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2023-12-28",
+              "fold": 11,
+              "spread_bps": {
+                "buckets": {
+                  "1": 82,
+                  "10": 8,
+                  "2": 316,
+                  "5": 88
+                },
+                "max": 10.0,
+                "mean": 2.4979757085020244,
+                "min": 1.0,
+                "n_names": 494
+              },
+              "start": "2022-10-03"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2024-04-01",
+              "fold": 12,
+              "spread_bps": {
+                "buckets": {
+                  "1": 88,
+                  "10": 7,
+                  "2": 318,
+                  "5": 82
+                },
+                "max": 10.0,
+                "mean": 2.4323232323232324,
+                "min": 1.0,
+                "n_names": 495
+              },
+              "start": "2023-01-03"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2024-07-01",
+              "fold": 13,
+              "spread_bps": {
+                "buckets": {
+                  "1": 90,
+                  "10": 7,
+                  "2": 326,
+                  "5": 73
+                },
+                "max": 10.0,
+                "mean": 2.372983870967742,
+                "min": 1.0,
+                "n_names": 496
+              },
+              "start": "2023-04-04"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2024-09-30",
+              "fold": 14,
+              "spread_bps": {
+                "buckets": {
+                  "1": 95,
+                  "10": 7,
+                  "2": 319,
+                  "5": 76
+                },
+                "max": 10.0,
+                "mean": 2.380281690140845,
+                "min": 1.0,
+                "n_names": 497
+              },
+              "start": "2023-07-06"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2024-12-30",
+              "fold": 15,
+              "spread_bps": {
+                "buckets": {
+                  "1": 99,
+                  "10": 6,
+                  "2": 328,
+                  "5": 65
+                },
+                "max": 10.0,
+                "mean": 2.289156626506024,
+                "min": 1.0,
+                "n_names": 498
+              },
+              "start": "2023-10-04"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2025-04-02",
+              "fold": 16,
+              "spread_bps": {
+                "buckets": {
+                  "1": 111,
+                  "10": 5,
+                  "2": 327,
+                  "5": 55
+                },
+                "max": 10.0,
+                "mean": 2.1887550200803214,
+                "min": 1.0,
+                "n_names": 498
+              },
+              "start": "2024-01-04"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2025-07-03",
+              "fold": 17,
+              "spread_bps": {
+                "buckets": {
+                  "1": 114,
+                  "10": 5,
+                  "2": 336,
+                  "5": 44
+                },
+                "max": 10.0,
+                "mean": 2.1162324649298596,
+                "min": 1.0,
+                "n_names": 499
+              },
+              "start": "2024-04-05"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2025-10-02",
+              "fold": 18,
+              "spread_bps": {
+                "buckets": {
+                  "1": 125,
+                  "10": 5,
+                  "2": 335,
+                  "5": 38
+                },
+                "max": 10.0,
+                "mean": 2.05765407554672,
+                "min": 1.0,
+                "n_names": 503
+              },
+              "start": "2024-07-08"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2026-01-02",
+              "fold": 19,
+              "spread_bps": {
+                "buckets": {
+                  "1": 133,
+                  "10": 4,
+                  "2": 338,
+                  "5": 29
+                },
+                "max": 10.0,
+                "mean": 1.9722222222222223,
+                "min": 1.0,
+                "n_names": 504
+              },
+              "start": "2024-10-04"
+            },
+            {
+              "band": {
+                "kind": "scalar",
+                "width": 0.0
+              },
+              "end": "2026-04-06",
+              "fold": 20,
+              "spread_bps": {
+                "buckets": {
+                  "1": 146,
+                  "10": 4,
+                  "2": 335,
+                  "5": 20
+                },
+                "max": 10.0,
+                "mean": 1.893069306930693,
+                "min": 1.0,
+                "n_names": 505
+              },
+              "start": "2025-01-06"
+            }
+          ],
+          "windows": [
+            {
+              "end": "2021-03-29",
+              "fold": 0,
+              "start": "2020-01-02"
+            },
+            {
+              "end": "2021-06-28",
+              "fold": 1,
+              "start": "2020-04-02"
+            },
+            {
+              "end": "2021-09-27",
+              "fold": 2,
+              "start": "2020-07-02"
+            },
+            {
+              "end": "2021-12-27",
+              "fold": 3,
+              "start": "2020-10-01"
+            },
+            {
+              "end": "2022-03-28",
+              "fold": 4,
+              "start": "2020-12-31"
+            },
+            {
+              "end": "2022-06-28",
+              "fold": 5,
+              "start": "2021-04-05"
+            },
+            {
+              "end": "2022-09-27",
+              "fold": 6,
+              "start": "2021-07-02"
+            },
+            {
+              "end": "2022-12-27",
+              "fold": 7,
+              "start": "2021-10-01"
+            },
+            {
+              "end": "2023-03-29",
+              "fold": 8,
+              "start": "2021-12-31"
+            },
+            {
+              "end": "2023-06-29",
+              "fold": 9,
+              "start": "2022-04-01"
+            },
+            {
+              "end": "2023-09-28",
+              "fold": 10,
+              "start": "2022-07-05"
+            },
+            {
+              "end": "2023-12-28",
+              "fold": 11,
+              "start": "2022-10-03"
+            },
+            {
+              "end": "2024-04-01",
+              "fold": 12,
+              "start": "2023-01-03"
+            },
+            {
+              "end": "2024-07-01",
+              "fold": 13,
+              "start": "2023-04-04"
+            },
+            {
+              "end": "2024-09-30",
+              "fold": 14,
+              "start": "2023-07-06"
+            },
+            {
+              "end": "2024-12-30",
+              "fold": 15,
+              "start": "2023-10-04"
+            },
+            {
+              "end": "2025-04-02",
+              "fold": 16,
+              "start": "2024-01-04"
+            },
+            {
+              "end": "2025-07-03",
+              "fold": 17,
+              "start": "2024-04-05"
+            },
+            {
+              "end": "2025-10-02",
+              "fold": 18,
+              "start": "2024-07-08"
+            },
+            {
+              "end": "2026-01-02",
+              "fold": 19,
+              "start": "2024-10-04"
+            },
+            {
+              "end": "2026-04-06",
+              "fold": 20,
+              "start": "2025-01-06"
+            }
+          ]
+        },
+        "dollar_volume_statistics": {
+          "impact": "unavailable",
+          "participation": {
+            "base": "initial_capital",
+            "floor_dollars": 0.0,
+            "max_participation": 0.05,
+            "statistic": "median",
+            "window_bars": 20
+          },
+          "spread": {
+            "bound": "inclusive_lower",
+            "mode": "bucket",
+            "schedule": [
+              [
+                500000000.0,
+                1.0
+              ],
+              [
+                100000000.0,
+                2.0
+              ],
+              [
+                25000000.0,
+                5.0
+              ],
+              [
+                0.0,
+                10.0
+              ]
+            ],
+            "statistic": "dollar_volume.spread_bucket",
+            "unknown_liquidity": "widest_step",
+            "window": "fold_formation"
+          }
+        },
+        "stack": {
+          "adv_floor_dollars": 100000.0,
+          "adv_impact_coeff": 0.0,
+          "adv_impact_model": "linear",
+          "borrow_rate_bps_annual": 50.0,
+          "commission_bps": 1.0,
+          "default_order_type": "MOO",
+          "slippage_coeff": 10.0,
+          "spread_bps": 1.0,
+          "trading_days_per_year": 252
+        }
+      },
+      "coverage": {
+        "bias_status": "unquantified",
+        "untested_conclusions": [
+          "The comparison is same-sample: three arms read against each other on one frozen score panel, one fold geometry and one cost stack. It can kill a configuration and it cannot promote one; no arm promotes out of this registration (\u00a73.13, [promotion_rule]).",
+          "The calibration's training cross-section is the formation window's point-in-time membership at the fit cutoff, without the per-bar eligibility screen the decision path applies; the screen is applied at every decision bar and to the labels' universe, not bar by bar inside the training pool.",
+          "The frozen dataset carries no cash-distribution events, so the 'credited' label of \u00a73.4 credits zero and the accounting credits zero; the two agree, and neither establishes what a dividend-bearing panel would have produced.",
+          "Fills are simulated at the next open under the declared [fills] policy. No panel here is evidence about actual fills."
+        ]
+      },
+      "exposures": {
+        "avg_gross": 0.9797590324502465,
+        "avg_net": 0.027064474484500108
+      },
+      "flags": {
+        "fill_source": "simulated",
+        "prospective": null,
+        "run_channel": "evidence",
+        "synthetic": false
+      },
+      "gross_sharpe": 0.040478582252176785,
+      "n_periods": 1308,
+      "net_mean": 3.052666185168736e-05,
+      "net_sharpe": 0.011669140590088275,
+      "run_id": "run-a195851811a34615",
+      "turnover_mean": 0.19695835016965627
+    }
+  ],
+  "blocks": [
+    {
+      "arms": [
+        "ear_event_buffered",
+        "premium_buffered"
+      ],
+      "capital": 100000.0,
+      "sharpe_differences": [
+        {
+          "arm_a": "ear_event_buffered",
+          "arm_b": "premium_buffered",
+          "blocks_drawn": 32,
+          "confidence": 0.95,
+          "difference": 0.004242547622799051,
+          "flags_a": {
+            "fill_source": "simulated",
+            "prospective": null,
+            "run_channel": "evidence",
+            "synthetic": false
+          },
+          "flags_b": {
+            "fill_source": "simulated",
+            "prospective": null,
+            "run_channel": "evidence",
+            "synthetic": false
+          },
+          "holdings_overlap": {
+            "definition": "l1 distance = sum |w_a - w_b| per decision; common weight = sum min(|w_a|, |w_b|) over names held on the same side; name jaccard = |held_a and held_b| / |held_a or held_b|",
+            "mean_common_weight": 0.10201726327458176,
+            "mean_l1_distance": 1.8018185840167653,
+            "mean_name_jaccard": 0.14315207247468084,
+            "status": "computed"
+          },
+          "label": "ear_event_buffered_minus_premium_buffered",
+          "lower": -0.08188467408330954,
+          "mean_difference": 1.5840886298433744e-05,
+          "method": {
+            "block_bars": 42,
+            "block_periods": 42,
+            "block_scheme": "circular_moving",
+            "confidence": 0.95,
+            "coverage_statement": "Endpoints are directional statements under the resampling assumptions: the pool is stationary enough to resample and block_periods carries the dependence of overlapping labels. They are not a simultaneous interval and say nothing about realized portfolio return coverage.",
+            "decision_interval_bars": 1,
+            "frequency": "daily",
+            "hac_lags": 41,
+            "interval_method": "studentized_circular_block_bootstrap",
+            "min_blocks": 2,
+            "n_resamples": 2000,
+            "seed": 20260931,
+            "units": "bars"
+          },
+          "n_periods": 1308,
+          "n_resamples": 2000,
+          "p_value_two_sided": 0.9195,
+          "sharpe_a": 0.015911688212887326,
+          "sharpe_b": 0.011669140590088275,
+          "standard_error": 0.04198383525411373,
+          "statistic": "sharpe_difference",
+          "t_statistic": 0.10105193099011485,
+          "upper": 0.08552676143961557
+        }
+      ]
+    }
+  ],
+  "charged_cost_conventions": {
+    "cost_refresh": "fold",
+    "cost_stack": "/home/b90/prism/examples/reference/costs/retail_v1.toml",
+    "cost_stack_sha256": "0ae1bde21e1d6ac83573b7c860e4063bd540ae293cf619c6925765878fb525aa",
+    "execution_profile": "/home/b90/prism/examples/reference/profiles/execution_alpaca.toml",
+    "held_identical": "the frozen cost stack and the rules that apply it, at every capital level and for every arm",
+    "not_identical": "charged dollars: participation is trade dollars over dollar volume from current equity, impact is charged on filled notional, and rounding at the per-sid increment changes filled notional, so charged cost varies with account size by construction. Freezing charged costs at one capital level would defeat the sweep."
+  },
+  "conditions_held_fixed": {
+    "accounting_engine": "canonical",
+    "capital": 100000.0,
+    "cost_refresh": {
+      "cadence": "fold",
+      "charged": {
+        "fallback_bps": 1.0,
+        "max_bps": 10.0,
+        "mean_bps": 2.387835556765587,
+        "min_bps": 1.0,
+        "mode": "bucket_frame",
+        "n_names": 574
+      },
+      "note": "each fold's cost inputs are estimated on that fold's formation window and recorded above; the cadence says which of them the accounting engine charged. Under 'once' the first window prices the whole stitched simulation, which is causal for every test bar in it; under 'fold' each fold's test bars carry their own buckets",
+      "per_fold": [
+        {
+          "band": {
+            "kind": "scalar",
+            "width": 0.0
+          },
+          "end": "2021-03-29",
+          "fold": 0,
+          "spread_bps": {
+            "buckets": {
+              "1": 75,
+              "10": 8,
+              "2": 291,
+              "5": 101
+            },
+            "max": 10.0,
+            "mean": 2.614736842105263,
+            "min": 1.0,
+            "n_names": 475
+          },
+          "start": "2020-01-02"
+        },
+        {
+          "band": {
+            "kind": "scalar",
+            "width": 0.0
+          },
+          "end": "2021-06-28",
+          "fold": 1,
+          "spread_bps": {
+            "buckets": {
+              "1": 81,
+              "10": 8,
+              "2": 285,
+              "5": 104
+            },
+            "max": 10.0,
+            "mean": 2.6171548117154813,
+            "min": 1.0,
+            "n_names": 478
+          },
+          "start": "2020-04-02"
+        },
+        {
+          "band": {
+            "kind": "scalar",
+            "width": 0.0
+          },
+          "end": "2021-09-27",
+          "fold": 2,
+          "spread_bps": {
+            "buckets": {
+              "1": 78,
+              "10": 8,
+              "2": 286,
+              "5": 107
+            },
+            "max": 10.0,
+            "mean": 2.640918580375783,
+            "min": 1.0,
+            "n_names": 479
+          },
+          "start": "2020-07-02"
+        },
+        {
+          "band": {
+            "kind": "scalar",
+            "width": 0.0
+          },
+          "end": "2021-12-27",
+          "fold": 3,
+          "spread_bps": {
+            "buckets": {
+              "1": 82,
+              "10": 9,
+              "2": 289,
+              "5": 101
+            },
+            "max": 10.0,
+            "mean": 2.6091476091476093,
+            "min": 1.0,
+            "n_names": 481
+          },
+          "start": "2020-10-01"
+        },
+        {
+          "band": {
+            "kind": "scalar",
+            "width": 0.0
+          },
+          "end": "2022-03-28",
+          "fold": 4,
+          "spread_bps": {
+            "buckets": {
+              "1": 88,
+              "10": 8,
+              "2": 298,
+              "5": 88
+            },
+            "max": 10.0,
+            "mean": 2.4979253112033195,
+            "min": 1.0,
+            "n_names": 482
+          },
+          "start": "2020-12-31"
+        },
+        {
+          "band": {
+            "kind": "scalar",
+            "width": 0.0
+          },
+          "end": "2022-06-28",
+          "fold": 5,
+          "spread_bps": {
+            "buckets": {
+              "1": 88,
+              "10": 8,
+              "2": 305,
+              "5": 83
+            },
+            "max": 10.0,
+            "mean": 2.4648760330578514,
+            "min": 1.0,
+            "n_names": 484
+          },
+          "start": "2021-04-05"
+        },
+        {
+          "band": {
+            "kind": "scalar",
+            "width": 0.0
+          },
+          "end": "2022-09-27",
+          "fold": 6,
+          "spread_bps": {
+            "buckets": {
+              "1": 89,
+              "10": 9,
+              "2": 296,
+              "5": 90
+            },
+            "max": 10.0,
+            "mean": 2.522727272727273,
+            "min": 1.0,
+            "n_names": 484
+          },
+          "start": "2021-07-02"
+        },
+        {
+          "band": {
+            "kind": "scalar",
+            "width": 0.0
+          },
+          "end": "2022-12-27",
+          "fold": 7,
+          "spread_bps": {
+            "buckets": {
+              "1": 93,
+              "10": 9,
+              "2": 304,
+              "5": 83
+            },
+            "max": 10.0,
+            "mean": 2.4662576687116564,
+            "min": 1.0,
+            "n_names": 489
+          },
+          "start": "2021-10-01"
+        },
+        {
+          "band": {
+            "kind": "scalar",
+            "width": 0.0
+          },
+          "end": "2023-03-29",
+          "fold": 8,
+          "spread_bps": {
+            "buckets": {
+              "1": 91,
+              "10": 8,
+              "2": 310,
+              "5": 81
+            },
+            "max": 10.0,
+            "mean": 2.440816326530612,
+            "min": 1.0,
+            "n_names": 490
+          },
+          "start": "2021-12-31"
+        },
+        {
+          "band": {
+            "kind": "scalar",
+            "width": 0.0
+          },
+          "end": "2023-06-29",
+          "fold": 9,
+          "spread_bps": {
+            "buckets": {
+              "1": 86,
+              "10": 8,
+              "2": 308,
+              "5": 90
+            },
+            "max": 10.0,
+            "mean": 2.5040650406504064,
+            "min": 1.0,
+            "n_names": 492
+          },
+          "start": "2022-04-01"
+        },
+        {
+          "band": {
+            "kind": "scalar",
+            "width": 0.0
+          },
+          "end": "2023-09-28",
+          "fold": 10,
+          "spread_bps": {
+            "buckets": {
+              "1": 80,
+              "10": 8,
+              "2": 313,
+              "5": 91
+            },
+            "max": 10.0,
+            "mean": 2.522357723577236,
+            "min": 1.0,
+            "n_names": 492
+          },
+          "start": "2022-07-05"
+        },
+        {
+          "band": {
+            "kind": "scalar",
+            "width": 0.0
+          },
+          "end": "2023-12-28",
+          "fold": 11,
+          "spread_bps": {
+            "buckets": {
+              "1": 82,
+              "10": 8,
+              "2": 316,
+              "5": 88
+            },
+            "max": 10.0,
+            "mean": 2.4979757085020244,
+            "min": 1.0,
+            "n_names": 494
+          },
+          "start": "2022-10-03"
+        },
+        {
+          "band": {
+            "kind": "scalar",
+            "width": 0.0
+          },
+          "end": "2024-04-01",
+          "fold": 12,
+          "spread_bps": {
+            "buckets": {
+              "1": 88,
+              "10": 7,
+              "2": 318,
+              "5": 82
+            },
+            "max": 10.0,
+            "mean": 2.4323232323232324,
+            "min": 1.0,
+            "n_names": 495
+          },
+          "start": "2023-01-03"
+        },
+        {
+          "band": {
+            "kind": "scalar",
+            "width": 0.0
+          },
+          "end": "2024-07-01",
+          "fold": 13,
+          "spread_bps": {
+            "buckets": {
+              "1": 90,
+              "10": 7,
+              "2": 326,
+              "5": 73
+            },
+            "max": 10.0,
+            "mean": 2.372983870967742,
+            "min": 1.0,
+            "n_names": 496
+          },
+          "start": "2023-04-04"
+        },
+        {
+          "band": {
+            "kind": "scalar",
+            "width": 0.0
+          },
+          "end": "2024-09-30",
+          "fold": 14,
+          "spread_bps": {
+            "buckets": {
+              "1": 95,
+              "10": 7,
+              "2": 319,
+              "5": 76
+            },
+            "max": 10.0,
+            "mean": 2.380281690140845,
+            "min": 1.0,
+            "n_names": 497
+          },
+          "start": "2023-07-06"
+        },
+        {
+          "band": {
+            "kind": "scalar",
+            "width": 0.0
+          },
+          "end": "2024-12-30",
+          "fold": 15,
+          "spread_bps": {
+            "buckets": {
+              "1": 99,
+              "10": 6,
+              "2": 328,
+              "5": 65
+            },
+            "max": 10.0,
+            "mean": 2.289156626506024,
+            "min": 1.0,
+            "n_names": 498
+          },
+          "start": "2023-10-04"
+        },
+        {
+          "band": {
+            "kind": "scalar",
+            "width": 0.0
+          },
+          "end": "2025-04-02",
+          "fold": 16,
+          "spread_bps": {
+            "buckets": {
+              "1": 111,
+              "10": 5,
+              "2": 327,
+              "5": 55
+            },
+            "max": 10.0,
+            "mean": 2.1887550200803214,
+            "min": 1.0,
+            "n_names": 498
+          },
+          "start": "2024-01-04"
+        },
+        {
+          "band": {
+            "kind": "scalar",
+            "width": 0.0
+          },
+          "end": "2025-07-03",
+          "fold": 17,
+          "spread_bps": {
+            "buckets": {
+              "1": 114,
+              "10": 5,
+              "2": 336,
+              "5": 44
+            },
+            "max": 10.0,
+            "mean": 2.1162324649298596,
+            "min": 1.0,
+            "n_names": 499
+          },
+          "start": "2024-04-05"
+        },
+        {
+          "band": {
+            "kind": "scalar",
+            "width": 0.0
+          },
+          "end": "2025-10-02",
+          "fold": 18,
+          "spread_bps": {
+            "buckets": {
+              "1": 125,
+              "10": 5,
+              "2": 335,
+              "5": 38
+            },
+            "max": 10.0,
+            "mean": 2.05765407554672,
+            "min": 1.0,
+            "n_names": 503
+          },
+          "start": "2024-07-08"
+        },
+        {
+          "band": {
+            "kind": "scalar",
+            "width": 0.0
+          },
+          "end": "2026-01-02",
+          "fold": 19,
+          "spread_bps": {
+            "buckets": {
+              "1": 133,
+              "10": 4,
+              "2": 338,
+              "5": 29
+            },
+            "max": 10.0,
+            "mean": 1.9722222222222223,
+            "min": 1.0,
+            "n_names": 504
+          },
+          "start": "2024-10-04"
+        },
+        {
+          "band": {
+            "kind": "scalar",
+            "width": 0.0
+          },
+          "end": "2026-04-06",
+          "fold": 20,
+          "spread_bps": {
+            "buckets": {
+              "1": 146,
+              "10": 4,
+              "2": 335,
+              "5": 20
+            },
+            "max": 10.0,
+            "mean": 1.893069306930693,
+            "min": 1.0,
+            "n_names": 505
+          },
+          "start": "2025-01-06"
+        }
+      ],
+      "windows": [
+        {
+          "end": "2021-03-29",
+          "fold": 0,
+          "start": "2020-01-02"
+        },
+        {
+          "end": "2021-06-28",
+          "fold": 1,
+          "start": "2020-04-02"
+        },
+        {
+          "end": "2021-09-27",
+          "fold": 2,
+          "start": "2020-07-02"
+        },
+        {
+          "end": "2021-12-27",
+          "fold": 3,
+          "start": "2020-10-01"
+        },
+        {
+          "end": "2022-03-28",
+          "fold": 4,
+          "start": "2020-12-31"
+        },
+        {
+          "end": "2022-06-28",
+          "fold": 5,
+          "start": "2021-04-05"
+        },
+        {
+          "end": "2022-09-27",
+          "fold": 6,
+          "start": "2021-07-02"
+        },
+        {
+          "end": "2022-12-27",
+          "fold": 7,
+          "start": "2021-10-01"
+        },
+        {
+          "end": "2023-03-29",
+          "fold": 8,
+          "start": "2021-12-31"
+        },
+        {
+          "end": "2023-06-29",
+          "fold": 9,
+          "start": "2022-04-01"
+        },
+        {
+          "end": "2023-09-28",
+          "fold": 10,
+          "start": "2022-07-05"
+        },
+        {
+          "end": "2023-12-28",
+          "fold": 11,
+          "start": "2022-10-03"
+        },
+        {
+          "end": "2024-04-01",
+          "fold": 12,
+          "start": "2023-01-03"
+        },
+        {
+          "end": "2024-07-01",
+          "fold": 13,
+          "start": "2023-04-04"
+        },
+        {
+          "end": "2024-09-30",
+          "fold": 14,
+          "start": "2023-07-06"
+        },
+        {
+          "end": "2024-12-30",
+          "fold": 15,
+          "start": "2023-10-04"
+        },
+        {
+          "end": "2025-04-02",
+          "fold": 16,
+          "start": "2024-01-04"
+        },
+        {
+          "end": "2025-07-03",
+          "fold": 17,
+          "start": "2024-04-05"
+        },
+        {
+          "end": "2025-10-02",
+          "fold": 18,
+          "start": "2024-07-08"
+        },
+        {
+          "end": "2026-01-02",
+          "fold": 19,
+          "start": "2024-10-04"
+        },
+        {
+          "end": "2026-04-06",
+          "fold": 20,
+          "start": "2025-01-06"
+        }
+      ]
+    },
+    "data_id": "bedf8c4c0f0c2195ce5aace938f4ad38e23e6b69b57075080073004692d46eef",
+    "executable_return": "next_open_fill_marked_close_to_close",
+    "vintage": "demotion_b1_2026-06-16",
+    "visibility_mode": "research_vintage"
+  },
+  "conditions_that_differ": {
+    "engine": {
+      "run-6f4e72ca96214083": {
+        "decision_coupling": "account_state",
+        "final_cash": 106516.28082364087,
+        "max_stale_marks": 1,
+        "n_decision_bars": 1308,
+        "n_events_applied": 0,
+        "n_fills": 39071,
+        "n_orders": 39071,
+        "n_target_rows": 1308,
+        "note": "accounting_engine=canonical, decision_coupling=account_state: shares are the state, fills happen at the next open under the declared [fills] policy, holding costs accrue per bar and events are applied on their effective dates. Each decision is constructed inside the simulation against the marked equity and the marked position book of its own bar: the participation restriction is measured on trade dollars over dollar volume from that equity, batch rounding rounds at the per-sid increment against it, and the reduce-only box is written on the held position (\u00a73.7, \u00a73.8).",
+        "pending_orders_at_end": 0,
+        "settings": {
+          "cost_stack": {
+            "borrow_bps_annual": 50.0,
+            "cash_income_bps_annual": 0.0,
+            "commission_bps": 1.0,
+            "dollar_volume": {
+              "impact": {
+                "base": "current_equity",
+                "estimator": "same_bar",
+                "floor_dollars": 100000.0,
+                "refresh": "bar",
+                "source": "close_times_volume",
+                "window": "trailing",
+                "window_bars": 1
+              },
+              "participation": {
+                "base": "current_equity",
+                "estimator": "median",
+                "floor_dollars": 0.0,
+                "refresh": "decision",
+                "source": "close_times_volume",
+                "window": "trailing",
+                "window_bars": 20
+              },
+              "spread_bucket": {
+                "base": "current_equity",
+                "estimator": "median",
+                "floor_dollars": 0.0,
+                "refresh": "decision",
+                "source": "close_times_volume",
+                "window": "trailing",
+                "window_bars": 20
+              }
+            },
+            "financing_bps_annual": 0.0,
+            "holding_cost_settlement": "per_bar",
+            "impact": {
+              "participation_coeff": 0.0,
+              "participation_model": "sqrt",
+              "quadratic_notional_coeff": 10.0,
+              "statistic": "dollar_volume.impact"
+            },
+            "short_proceeds": "collateral_no_rebate",
+            "sources": {},
+            "spread": {
+              "bound": "inclusive_lower",
+              "flat_bps": null,
+              "mode": "bucket",
+              "schedule": [
+                [
+                  500000000.0,
+                  1.0
+                ],
+                [
+                  100000000.0,
+                  2.0
+                ],
+                [
+                  25000000.0,
+                  5.0
+                ],
+                [
+                  0.0,
+                  10.0
+                ]
+              ],
+              "statistic": "dollar_volume.spread_bucket",
+              "unknown_liquidity": "widest_step"
+            },
+            "trading_days_per_year": 252
+          },
+          "cost_stack_id": "4cc998252c75a004496096bdf3ea62b573947d61cb310eb8d78055c58c46a8f0",
+          "fills": {
+            "max_participation_of_bar_volume": 0.0,
+            "missing_open_policy": "reference_price",
+            "model": "full_next_open",
+            "partial_fill_fraction": 1.0,
+            "reject_probability": 0.0,
+            "seed": 0
+          },
+          "min_notional": 1.0,
+          "price_basis": null,
+          "share_increment": 1.0,
+          "zero_crossing_clamp": true
+        }
+      },
+      "run-a195851811a34615": {
+        "decision_coupling": "account_state",
+        "final_cash": 102353.275589179,
+        "max_stale_marks": 1,
+        "n_decision_bars": 1308,
+        "n_events_applied": 0,
+        "n_fills": 52574,
+        "n_orders": 52574,
+        "n_target_rows": 1308,
+        "note": "accounting_engine=canonical, decision_coupling=account_state: shares are the state, fills happen at the next open under the declared [fills] policy, holding costs accrue per bar and events are applied on their effective dates. Each decision is constructed inside the simulation against the marked equity and the marked position book of its own bar: the participation restriction is measured on trade dollars over dollar volume from that equity, batch rounding rounds at the per-sid increment against it, and the reduce-only box is written on the held position (\u00a73.7, \u00a73.8).",
+        "pending_orders_at_end": 0,
+        "settings": {
+          "cost_stack": {
+            "borrow_bps_annual": 50.0,
+            "cash_income_bps_annual": 0.0,
+            "commission_bps": 1.0,
+            "dollar_volume": {
+              "impact": {
+                "base": "current_equity",
+                "estimator": "same_bar",
+                "floor_dollars": 100000.0,
+                "refresh": "bar",
+                "source": "close_times_volume",
+                "window": "trailing",
+                "window_bars": 1
+              },
+              "participation": {
+                "base": "current_equity",
+                "estimator": "median",
+                "floor_dollars": 0.0,
+                "refresh": "decision",
+                "source": "close_times_volume",
+                "window": "trailing",
+                "window_bars": 20
+              },
+              "spread_bucket": {
+                "base": "current_equity",
+                "estimator": "median",
+                "floor_dollars": 0.0,
+                "refresh": "decision",
+                "source": "close_times_volume",
+                "window": "trailing",
+                "window_bars": 20
+              }
+            },
+            "financing_bps_annual": 0.0,
+            "holding_cost_settlement": "per_bar",
+            "impact": {
+              "participation_coeff": 0.0,
+              "participation_model": "sqrt",
+              "quadratic_notional_coeff": 10.0,
+              "statistic": "dollar_volume.impact"
+            },
+            "short_proceeds": "collateral_no_rebate",
+            "sources": {},
+            "spread": {
+              "bound": "inclusive_lower",
+              "flat_bps": null,
+              "mode": "bucket",
+              "schedule": [
+                [
+                  500000000.0,
+                  1.0
+                ],
+                [
+                  100000000.0,
+                  2.0
+                ],
+                [
+                  25000000.0,
+                  5.0
+                ],
+                [
+                  0.0,
+                  10.0
+                ]
+              ],
+              "statistic": "dollar_volume.spread_bucket",
+              "unknown_liquidity": "widest_step"
+            },
+            "trading_days_per_year": 252
+          },
+          "cost_stack_id": "4cc998252c75a004496096bdf3ea62b573947d61cb310eb8d78055c58c46a8f0",
+          "fills": {
+            "max_participation_of_bar_volume": 0.0,
+            "missing_open_policy": "reference_price",
+            "model": "full_next_open",
+            "partial_fill_fraction": 1.0,
+            "reject_probability": 0.0,
+            "seed": 0
+          },
+          "min_notional": 1.0,
+          "price_basis": null,
+          "share_increment": 1.0,
+          "zero_crossing_clamp": true
+        }
+      }
+    }
+  },
+  "exit_conditions": {
+    "arms": {
+      "ear_event_buffered": {
+        "by_capital": {
+          "100000": {
+            "at_cap_fraction_max": 0.0,
+            "at_cap_fraction_median": 0.0,
+            "binding_conditions": {
+              "max_gross": 645,
+              "net_band": 35
+            },
+            "charged_cost_fraction": 0.040811238587364795,
+            "concentration_dominated": null,
+            "ex_ante_sd_median": null,
+            "flat_from_straddling_endpoints": 0,
+            "max_at_cap_fraction": null,
+            "n_decisions": 1308,
+            "n_obs": 1308,
+            "net_sharpe": {
+              "annualized": 0.2525902197029886,
+              "periodic": 0.015911688212887503,
+              "se_method": "none_reported",
+              "se_note": "the studentized block-bootstrap interval is computed by 'prism compare' over the recorded return path (validation/compare.py); this record reports the point estimate"
+            },
+            "paths": {
+              "normal": 1308
+            },
+            "repair": {
+              "attempted": 1308,
+              "by_response": {
+                "none": 1308
+              },
+              "dropped_batch": 0,
+              "no_action": 0,
+              "note": "counted over decision dates from portfolio/rounding.py::round_batch, the second of the two independent validations of \u00a73.7",
+              "scaled_batch": 0,
+              "succeeded": 1308
+            },
+            "straddling_decisions": 0,
+            "turnover": {
+              "average": 0.06366137130807627,
+              "boundary": 0.0,
+              "interior": 83.26907367096373,
+              "total": 83.26907367096375
+            }
+          }
+        },
+        "kind": "heuristic"
+      },
+      "premium_buffered": {
+        "by_capital": {
+          "100000": {
+            "at_cap_fraction_max": 0.0,
+            "at_cap_fraction_median": 0.0,
+            "binding_conditions": {
+              "max_gross": 777,
+              "net_band": 250
+            },
+            "charged_cost_fraction": 0.09836709320204232,
+            "concentration_dominated": null,
+            "ex_ante_sd_median": null,
+            "flat_from_straddling_endpoints": 0,
+            "max_at_cap_fraction": null,
+            "n_decisions": 1308,
+            "n_obs": 1308,
+            "net_sharpe": {
+              "annualized": 0.18524186409134197,
+              "periodic": 0.011669140590088493,
+              "se_method": "none_reported",
+              "se_note": "the studentized block-bootstrap interval is computed by 'prism compare' over the recorded return path (validation/compare.py); this record reports the point estimate"
+            },
+            "paths": {
+              "normal": 1308
+            },
+            "repair": {
+              "attempted": 1308,
+              "by_response": {
+                "none": 1308
+              },
+              "dropped_batch": 0,
+              "no_action": 0,
+              "note": "counted over decision dates from portfolio/rounding.py::round_batch, the second of the two independent validations of \u00a73.7",
+              "scaled_batch": 0,
+              "succeeded": 1308
+            },
+            "straddling_decisions": 0,
+            "turnover": {
+              "average": 0.19695835016965627,
+              "boundary": 0.0,
+              "interior": 257.62152202191044,
+              "total": 257.6215220219104
+            }
+          }
+        },
+        "kind": "heuristic"
+      }
+    },
+    "excluded_folds": {
+      "note": "folds excluded by min_training_periods or min_blocks are excluded for all three arms alike; admission is decided from the shared calibration family and never from an arm's own confidence (decision D6)",
+      "per_run": {
+        "ear_event_buffered@100000": [],
+        "premium_buffered@100000": []
+      },
+      "shared": true
+    }
+  },
+  "holdings_overlap_index": {
+    "n_decision_bars_by_capital": {
+      "100000": 1308
+    },
+    "note": "the holdings-overlap panel is computed on the decision bars every arm decided on; a row an arm decided and another did not is counted here rather than dropped silently",
+    "rows_outside_the_shared_index": {
+      "/home/b90/prism/results/run-6f4e72ca96214083/record.json": 0,
+      "/home/b90/prism/results/run-a195851811a34615/record.json": 0
+    }
+  },
+  "is_evidence_row": false,
+  "kind": "reevaluation",
+  "method": {
+    "block_bars": 42,
+    "block_periods": 42,
+    "block_scheme": "circular_moving",
+    "confidence": 0.95,
+    "coverage_statement": "Endpoints are directional statements under the resampling assumptions: the pool is stationary enough to resample and block_periods carries the dependence of overlapping labels. They are not a simultaneous interval and say nothing about realized portfolio return coverage.",
+    "decision_interval_bars": 1,
+    "frequency": "daily",
+    "hac_lags": 41,
+    "interval_method": "studentized_circular_block_bootstrap",
+    "min_blocks": 2,
+    "n_resamples": 2000,
+    "seed": 20260931,
+    "units": "bars"
+  },
+  "promotion_check": {
+    "kind": "none",
+    "note": "Discovery route: same-sample reads kill, never promote. Promotion is the forward read in docs/buffer_design.md.",
+    "outcome": "no arm promotes",
+    "promotes": false,
+    "reason": "a same-sample comparison can kill a configuration and can never promote one; the reference book's promotion stays under the existing prospective rules of SPEC.md",
+    "recorded_by": "prism compare --promotion-check"
+  },
+  "registration": {
+    "arms": [
+      "ear_event_buffered",
+      "premium_buffered"
+    ],
+    "capital_scenarios": [
+      100000.0
+    ],
+    "id": "2026-09-buffer-daily",
+    "selection_set": "buffer_daily_v1",
+    "sha256": "1af236805148a11e560933f89c0750527a9faf19a1a35dd881a0fa3057dd22c7",
+    "trial_budget": 2
+  },
+  "runs": {
+    "attempts": [
+      "ear_event_buffered",
+      "premium_buffered"
+    ],
+    "n_rows": 4,
+    "note": "an attempt is one arm_id; six capital scenarios of one arm spend one attempt between them, and a repeated execution of the same configuration is a row and not an attempt (\u00a73.12)",
+    "other_finished_rows": [],
+    "read_by_this_comparison": [
+      "run-6f4e72ca96214083",
+      "run-a195851811a34615"
+    ],
+    "trial_log": "/home/b90/prism/trials/buffer_daily_v1.jsonl"
+  },
+  "selection": {
+    "n_intervals": 1
+  },
+  "warnings": [
+    "run-6f4e72ca96214083: fill_source=simulated; fills are not actual fills",
+    "run-a195851811a34615: fill_source=simulated; fills are not actual fills"
+  ],
+  "writes_trial_row": false
+}

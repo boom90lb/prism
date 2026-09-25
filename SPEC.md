@@ -124,6 +124,14 @@ the certification under `docs/` remain as the research record.
   wide, so it would have changed recorded turnover by 0–9%: the results
   stand, and the records misdescribe them. The engine now refuses a declared
   band on that path (N7).
+- **Rank buffer ran 2026-09-25** (`buffer_monthly_v1`, `buffer_daily_v1`,
+  discovery; `docs/buffer_read_2026-09-25.md`). Enter at 10%, hold to 20%
+  (Novy-Marx–Velikov), on momentum and the three earnings signals. Turnover
+  fell 12–36%, gross fell with it, and paired net-Sharpe differences against
+  the unbuffered records are −0.09 to +0.07, none distinguishable from zero.
+  No arm was killed; all four carry to a forward read and fail N6 viability
+  in-house. The live book keeps its construction. The buffer is not the cost
+  lever, and the premium's churn is calendar-driven.
 - **Contract amended 2026-09-25** (owner decision): cash convention (§3).
   Registrations and reads from this date on credit idle own cash at the
   account's yield and short proceeds at nothing. Closed sets keep their

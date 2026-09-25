@@ -1,0 +1,110 @@
+{
+  "arms": {
+    "ear_monthly_buffered": {
+      "annualized_return": 0.029386498152456086,
+      "annualized_vol": 0.04710297801230949,
+      "breadth": {
+        "avg_names_held": 109.20170454545455,
+        "n_active_days": 1055,
+        "n_eff_book_contribution": 71.75229142078246,
+        "n_ever_held": 464,
+        "top_eigenvalue_shares": [
+          0.05807976561547301,
+          0.045117889287980335,
+          0.03772515699182991
+        ]
+      },
+      "charged_cost_total": 0.020463719143535345,
+      "config_id": "02858114c80fa51830339820465dc1d8e06e8714293a978a1b4a5b7d0b66b224",
+      "dsr_vs_set": 0.9022788045086956,
+      "evidence_tier": "net_edge",
+      "excluded_folds": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "gross_sharpe_annualized": 0.742096209900064,
+      "held_book_ic": {
+        "mean": 0.02590752507046488,
+        "n": 50,
+        "note": "held names only (long leg vs short leg separation), one cross-section per decision bar",
+        "se": 0.019160543841429383
+      },
+      "max_drawdown": 0.058792243490614404,
+      "n_decision_rows": 51,
+      "n_obs": 1056,
+      "net_sharpe_annualized": 0.6384546720937191,
+      "net_sharpe_periodic": 0.040218863946363585,
+      "psr_vs_zero": 0.9035421315170458,
+      "run_id": "run-c63f6a7895124cfb",
+      "turnover_total": 31.309452503905774
+    },
+    "momentum_buffered": {
+      "annualized_return": 0.06732709404682513,
+      "annualized_vol": 0.10984257487695379,
+      "breadth": {
+        "avg_names_held": 127.8721590909091,
+        "n_active_days": 1055,
+        "n_eff_book_contribution": 44.1139038969762,
+        "n_ever_held": 469,
+        "top_eigenvalue_shares": [
+          0.08730610406738894,
+          0.07361863903700269,
+          0.05226250710499103
+        ]
+      },
+      "charged_cost_total": 0.017190375381143753,
+      "config_id": "24221ded2cece73af8127e304c38d3f8faa9ee4ff2def9beab6c5be19ad4afd6",
+      "dsr_vs_set": 0.9037117326450026,
+      "evidence_tier": "net_edge",
+      "excluded_folds": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "gross_sharpe_annualized": 0.6857107800447884,
+      "held_book_ic": {
+        "mean": 0.05063344616910251,
+        "n": 50,
+        "note": "held names only (long leg vs short leg separation), one cross-section per decision bar",
+        "se": 0.03842133011543532
+      },
+      "max_drawdown": 0.15890140314848722,
+      "n_decision_rows": 51,
+      "n_obs": 1056,
+      "net_sharpe_annualized": 0.6482692741547477,
+      "net_sharpe_periodic": 0.0408371257623289,
+      "psr_vs_zero": 0.9049503597375697,
+      "run_id": "run-47057ada86244ccc",
+      "turnover_total": 20.364508428442115
+    }
+  },
+  "dataset": {
+    "data_id": "bedf8c4c0f0c2195ce5aace938f4ad38e23e6b69b57075080073004692d46eef",
+    "root": "data/frozen/demotion_b1"
+  },
+  "deflation": {
+    "method": "deflated_sharpe_ratio_with_n",
+    "n_trials": 2,
+    "trial_periodic_sharpes": {
+      "ear_monthly_buffered": 0.04021886394636443,
+      "momentum_buffered": 0.040837125762328286
+    }
+  },
+  "records": {
+    "ear_monthly_buffered": "/home/b90/prism/results/run-c63f6a7895124cfb/record.json",
+    "momentum_buffered": "/home/b90/prism/results/run-47057ada86244ccc/record.json"
+  },
+  "registration": {
+    "arms": [
+      "momentum_buffered",
+      "ear_monthly_buffered"
+    ],
+    "id": "2026-09-buffer-monthly",
+    "selection_set": "buffer_monthly_v1",
+    "trial_budget": 2
+  },
+  "spanning": {}
+}
