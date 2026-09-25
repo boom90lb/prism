@@ -78,7 +78,10 @@ def build(dataset: Path, edgar_dir: Path, out: Path) -> dict[str, Any]:
     releases = releases[releases["cik"].isin(set(wanted["cik"].astype(int).tolist()))]
     dates = ee.announcement_dates(releases, sessions)
     dates_by_cik = {int(part["cik"].iloc[0]): part for _, part in dates.groupby("cik")}
-    logger.info("%d announcements for %d companies", len(dates), len(dates_by_cik))
+    history = ee.company_history(releases)
+    history_by_cik = {int(part["cik"].iloc[0]): part for _, part in history.groupby("cik")}
+    logger.info("%d announcements for %d companies; %d in the expected-date history", len(dates), len(dates_by_cik),
+                len(history))
 
     event_pieces, panel_pieces = [], []
     for sid, ticker in sorted(tickers.items()):
@@ -88,10 +91,9 @@ def build(dataset: Path, edgar_dir: Path, out: Path) -> dict[str, Any]:
         if intervals.empty:
             continue
         events = ee.security_events(sid, intervals, dates_by_cik, sessions, returns[sid].to_numpy(float), market)
-        if events.empty:
-            continue
-        event_pieces.append(events)
-        piece = ee.security_panel(sid, bars[sid], events, sessions)
+        if len(events):
+            event_pieces.append(events)
+        piece = ee.security_panel(sid, bars[sid], intervals, events, history_by_cik, sessions)
         if len(piece):
             panel_pieces.append(piece)
     events_all = pd.concat(event_pieces, ignore_index=True)[list(ee.EVENT_COLUMNS)]
@@ -105,7 +107,9 @@ def build(dataset: Path, edgar_dir: Path, out: Path) -> dict[str, Any]:
     coverage = {}
     for max_age in (60, 126):
         live = member_rows[member_rows["age_sessions"] <= max_age].groupby("date").size()
-        coverage[f"age_le_{max_age}"] = float((live / per_day_members.reindex(live.index)).median())
+        coverage[f"ear_age_le_{max_age}"] = float((live / per_day_members.reindex(live.index)).median())
+    expected = member_rows[member_rows["days_to_expected"].notna()].groupby("date").size()
+    coverage["days_to_expected"] = float((expected / per_day_members.reindex(expected.index)).median())
     years = (sessions[-1] - sessions[0]).days / 365.25
     freeze = {
         "built_at": datetime.now(timezone.utc).isoformat(),
@@ -114,7 +118,9 @@ def build(dataset: Path, edgar_dir: Path, out: Path) -> dict[str, Any]:
             ("filings", edgar_dir / "filings.parquet"), ("ticker_cik", edgar_dir / "ticker_cik.parquet"),
             ("edgar_manifest", edgar_dir / "manifest.json"))},
         "definitions": {"window": list(ee.WINDOW), "min_gap_sessions": ee.MIN_GAP_SESSIONS,
-                        "min_market_names": ee.MIN_MARKET_NAMES},
+                        "min_market_names": ee.MIN_MARKET_NAMES, "anniversary_days": ee.ANNIVERSARY_DAYS,
+                        "realized_within_days": ee.REALIZED_WITHIN_DAYS, "overdue_days": ee.OVERDUE_DAYS,
+                        "duplicate_days": ee.DUPLICATE_DAYS},
         "events": {"path": str(events_path), "sha256": sha256_file(events_path), "rows": int(len(events_all)),
                    "securities": int(events_all["sid"].nunique()),
                    "without_return": int(events_all["ear"].isna().sum()),

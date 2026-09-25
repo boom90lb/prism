@@ -1,0 +1,102 @@
+# The component book of the earnings-announcement discovery registration
+# (`registrations/2026-09-earnings-daily.toml`; docs/earnings_design.md).
+#
+# Two daily event-time components, each run as its own arm (one at weight 1.0, the
+# other at 0.0), both deciding every session:
+#
+# - `ear_event`: the announcement return (Chan, Jegadeesh and Lakonishok 1996) held
+#   for the 60 sessions after it is known (Bernard and Thomas 1989's drift window), so
+#   a new announcement enters at the next open instead of the next monthly re-formation.
+# - `announcement_premium`: minus the days to the next expected announcement
+#   (Beaver 1968; Frazzini and Lamont 2007). The long leg is the imminent announcers,
+#   held through the announcement; the short leg is the names furthest from theirs.
+#
+# Both read the frozen point-in-time panel `data/frozen/earnings_v1/panel.parquet`
+# (pinned by sha256). The daily components sit in their own book so the monthly
+# replication arm is never re-traded daily by a zero-weight component. Everything else
+# is the fundamentals book's (`examples/fundamentals/control.toml`).
+
+[strategy]
+name = "earnings_daily"
+universe_index = "sp500"
+combination = "position_space"
+renormalize = false
+
+[[strategy.components]]
+id = "ear_event"
+path = "prism.signal.earnings_node:EarningsAnnouncementNode"
+weight = 1.0
+horizon_bars = 21
+update_every_bars = 1
+valid_for_bars = 1
+to_weights = "decile_long_short"
+
+[strategy.components.params]
+panel = "data/frozen/earnings_v1/panel.parquet"
+panel_sha256 = "d4703a6cc1374e862d398df1a5bc4069e4e04f0ec1fc1fe9c81614a0fc3d701e"
+max_age_sessions = 60
+horizon_bars = 21
+
+[strategy.components.to_weights_params]
+decile = 0.10
+max_gross = 1.0
+max_symbol_abs_weight = 0.35
+
+[[strategy.components]]
+id = "announcement_premium"
+path = "prism.signal.earnings_node:AnnouncementProximityNode"
+weight = 0.0
+horizon_bars = 5
+update_every_bars = 1
+valid_for_bars = 1
+to_weights = "decile_long_short"
+
+[strategy.components.params]
+panel = "data/frozen/earnings_v1/panel.parquet"
+panel_sha256 = "d4703a6cc1374e862d398df1a5bc4069e4e04f0ec1fc1fe9c81614a0fc3d701e"
+horizon_bars = 5
+
+
+[strategy.components.to_weights_params]
+decile = 0.10
+max_gross = 1.0
+max_symbol_abs_weight = 0.35
+
+# The screen of the momentum control (`examples/characteristics/control.toml`), kept
+# identical so every arm scores the same eligible cross-section as the promoted
+# momentum book it will be combined with.
+[strategy.eligibility]
+min_price = 5.0
+min_median_dollar_volume = 1000000.0
+dollar_volume_window = 20
+return_history_bars = 252
+listing_seasoning_bars = 0
+membership_required = true
+exclude_asset_classes = []
+
+[construction]
+kind = "heuristic"
+step_order = "construct_band_cap_participation"
+max_gross = 1.0
+max_symbol_abs_weight = 0.35
+
+[construction.band]
+mode = "closed_form"
+gamma_risk = 1.0
+
+[construction.participation]
+max_participation = 0.05
+statistic = "median"
+window_bars = 20
+floor_dollars = 0.0
+base = "initial_capital"
+
+[construction.spread]
+mode = "bucket"
+
+[policy]
+profile = "examples/reference/profiles/experiment_v1.toml"
+costs = "examples/reference/costs/retail_v1.toml"
+execution = "examples/reference/profiles/execution_alpaca.toml"
+monitoring = "examples/reference/policies/monitoring.toml"
+recovery = "examples/reference/policies/recovery.toml"

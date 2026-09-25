@@ -1,13 +1,17 @@
 {
-  "built_at": "2026-09-25T00:14:22.137080+00:00",
+  "built_at": "2026-09-25T03:54:11.962676+00:00",
   "dataset": {
     "as_of": "2026-06-15T00:00:00-04:00",
     "id": "bedf8c4c0f0c2195ce5aace938f4ad38e23e6b69b57075080073004692d46eef",
     "path": "data/frozen/demotion_b1"
   },
   "definitions": {
+    "anniversary_days": 364,
+    "duplicate_days": 7,
     "min_gap_sessions": 5,
     "min_market_names": 100,
+    "overdue_days": 5,
+    "realized_within_days": 30,
     "window": [
       -2,
       1
@@ -37,17 +41,18 @@
   },
   "market_sessions_without_value": 0,
   "median_daily_member_coverage": {
-    "age_le_126": 0.9713701431492843,
-    "age_le_60": 0.952
+    "days_to_expected": 0.9734151329243353,
+    "ear_age_le_126": 0.9710743801652892,
+    "ear_age_le_60": 0.952
   },
   "panel": {
     "companies": 560,
-    "first": "2020-01-08",
+    "first": "2020-01-02",
     "last": "2026-06-15",
     "path": "data/frozen/earnings_v1/panel.parquet",
-    "rows": 830419,
+    "rows": 821733,
     "securities": 564,
-    "sha256": "cce32946d76f472e2098342ff956794f3b41b9a81816d35d5f482aca2f185414"
+    "sha256": "d4703a6cc1374e862d398df1a5bc4069e4e04f0ec1fc1fe9c81614a0fc3d701e"
   },
-  "peak_rss_mb": 975.4
+  "peak_rss_mb": 973.0
 }

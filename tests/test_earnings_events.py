@@ -78,7 +78,7 @@ def _panel_inputs(stock):
     market = np.zeros(len(sessions))
     events = ee.security_events("XYZ", intervals, {9: dates}, sessions, stock, market)
     bars = pd.DataFrame({"ts": sessions.tz_localize(NY), "close": 10.0, "volume": 1000.0})
-    return sessions, events, ee.security_panel("XYZ", bars, events, sessions)
+    return sessions, events, ee.security_panel("XYZ", bars, intervals, events, {}, sessions)
 
 
 def test_the_value_is_first_live_at_the_close_of_day_plus_one():
@@ -113,3 +113,31 @@ def test_an_announcement_outside_the_mapping_interval_is_not_the_securitys():
     events = ee.security_events("XYZ", intervals, {9: dates}, sessions, np.zeros(len(sessions)),
                                 np.zeros(len(sessions)))
     assert events.empty
+
+
+def _history(rows):
+    return ee.company_history(_releases([(5, f"r{i}", "8-K", ts) for i, ts in enumerate(rows)]))
+
+
+def test_the_expected_date_is_the_unrealized_anniversary_of_last_years_quarter():
+    history = _history(["2023-04-27 16:05", "2023-07-27 16:05", "2023-10-26 16:05", "2024-01-30 16:05"])
+    dates = pd.DatetimeIndex(["2024-04-19", "2024-05-01"])
+    got = ee.days_to_expected(history, dates)
+    assert got[0] == pytest.approx(6.0)  # 2023-04-27 + 364 days = 2024-04-25
+    # 2024-04-25 passed unannounced by more than five days: the next anniversary, 2024-07-25
+    assert got[1] == pytest.approx((pd.Timestamp("2024-07-25") - pd.Timestamp("2024-05-01")).days)
+
+
+def test_an_announcement_realizes_its_anniversary_only_once_it_is_accepted():
+    history = _history(["2023-04-27 16:05", "2023-07-27 16:05", "2024-04-24 16:05"])
+    before, same_day, after = ee.days_to_expected(history, pd.DatetimeIndex(["2024-04-23", "2024-04-24",
+                                                                             "2024-04-25"]))
+    assert before == pytest.approx(2.0)
+    assert same_day == pytest.approx(1.0)  # accepted at 16:05, after that session's close: not yet known
+    assert after == pytest.approx((pd.Timestamp("2024-07-25") - pd.Timestamp("2024-04-25")).days)
+
+
+def test_a_slightly_late_announcer_ranks_as_overdue_and_no_history_means_no_value():
+    history = _history(["2023-04-27 16:05"])
+    assert ee.days_to_expected(history, pd.DatetimeIndex(["2024-04-28"]))[0] == pytest.approx(-3.0)
+    assert np.isnan(ee.days_to_expected(history.iloc[:0], pd.DatetimeIndex(["2024-04-28"]))[0])

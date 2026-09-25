@@ -1,0 +1,138 @@
+# Earnings-announcement daily event-time arms, discovery route (SPEC.md §4;
+# docs/earnings_design.md).
+#
+# Two arms from the daily book of `examples/earnings/daily.toml`, each deciding every
+# session: the announcement return held 60 sessions from the day it is known
+# (`ear_event`), and the earnings-announcement premium (`announcement_premium`). No
+# free public series follows either construction, so they are discovery-route
+# configurations: this in-house read (the same sample as every earlier read) can kill
+# an arm and can never promote one. Promotion is the forward read of
+# docs/earnings_design.md, on sessions after this registration only.
+#
+# Same frozen dataset, fold geometry, cost stack, execution profile, accounting engine,
+# eligibility screen and capital as the monthly replication arm
+# (`registrations/2026-09-earnings.toml`). Adding an arm, a window or a threshold after
+# seeing a result is a new registration, never an edit of this file.
+id = "2026-09-earnings-daily"
+created = 2026-09-24
+selection_set = "earnings_daily_v1"
+strict = true
+# One attempt is one `arm_id`. Two arms, two attempts, no reserve. A retry after a
+# crash carries kind = "retry" and spends none.
+trial_budget = 2
+
+# Both nodes emit a score whose long leg is the published one: a high announcement
+# return, and an imminent announcement.
+[[components]]
+id = "ear_event"
+path = "prism.signal.earnings_node:EarningsAnnouncementNode"
+expected_sign = "positive"
+scoring_basis = "price"
+
+[[components]]
+id = "announcement_premium"
+path = "prism.signal.earnings_node:AnnouncementProximityNode"
+expected_sign = "positive"
+scoring_basis = "price"
+
+# Restated from `registrations/2026-09-characteristics.toml`: every arm is heuristic,
+# so no calibration is read, and the risk model acts only through the experiment
+# profile's variance-budget limit.
+[shared]
+risk_model = "examples/reference/risk/factor_diagonal.toml"
+calibration_family = "calibrations/shared_slope_point.toml"
+standardize = "rank_normal"
+weighting = "per_date_equal"
+shrink_pseudo_periods = 12.0
+block_periods = 3
+min_training_periods = 12
+min_blocks = 4
+risk_aversion = 0.0
+eps = 1.0e-8
+max_at_cap_fraction = 0.35
+eligibility_exit = "reduce_only"
+
+# Arm 1. Announcement return, event time (Chan, Jegadeesh and Lakonishok 1996; the
+# 60-session window of Bernard and Thomas 1989).
+[[arms]]
+id = "ear_event"
+profile = "examples/reference/profiles/experiment_v1.toml"
+
+[arms.construction]
+kind = "heuristic"
+to_weights = "decile_long_short"
+decile = 0.10
+
+[arms.components]
+ear_event = 1.0
+announcement_premium = 0.0
+
+# Arm 2. Earnings-announcement premium (Beaver 1968; Frazzini and Lamont 2007).
+[[arms]]
+id = "announcement_premium"
+profile = "examples/reference/profiles/experiment_v1.toml"
+
+[arms.construction]
+kind = "heuristic"
+to_weights = "decile_long_short"
+decile = 0.10
+
+[arms.components]
+ear_event = 0.0
+announcement_premium = 1.0
+
+# Sample and fold geometry: as in the monthly arm. Decisions fall on every session from
+# the first decision bar.
+[sample]
+history_start = 2020-01-02
+first_decision = 2021-03-30
+last_decision = 2026-06-12
+warmup_bars = 273
+decision_offset_minutes = 0
+
+[folds]
+table = "folds/demotion_b1.toml"
+
+[frozen]
+freeze_record = "data/frozen/earnings_daily_v1.freeze.json"
+executable_return = "open_to_open"
+cost_stack = "examples/reference/costs/retail_v1.toml"
+execution_profile = "examples/reference/profiles/execution_alpaca.toml"
+accounting_engine = "canonical"
+visibility_mode = "research_vintage"
+fold_portfolio = "carry"
+cost_refresh = "fold"
+capital_scenarios = [100000]
+capital_unit = "usd_marked_equity_at_first_decision"
+
+[evidence]
+robust_dsr_threshold = 0.95
+min_obs = 20
+
+[sharpe_bootstrap]
+frequency = "daily"
+block_bars = 42
+n_resamples = 2000
+seed = 20260927
+scheme = "circular"
+paired = true
+
+# The set closes when both declared arms have run. Kill, on this in-house sample: an
+# arm whose studentized 95% interval for net periodic Sharpe lies entirely below zero.
+[stop_rule]
+kind = "structured"
+min_obs = 20
+note = "The set closes when the two declared arms have run; no arm may be added. Kill: an arm whose in-house studentized 95% interval (42-session circular blocks) for net periodic Sharpe lies entirely below zero. Forward kill rules are in docs/earnings_design.md."
+
+# Discovery route (SPEC §4): nothing here promotes. A surviving arm promotes only on the
+# forward read of docs/earnings_design.md, on sessions after this registration.
+[promotion_rule]
+kind = "none"
+note = "Discovery route: same-sample reads kill, never promote. Promotion is the forward read in docs/earnings_design.md (net_edge, DSR > 0.5 against the rows of earnings_daily_v1, periodic net Sharpe above the T-bill hurdle, live monitor not in contradiction)."
+
+[benchmark]
+cash_series = "tbill_3m"
+cash_source = "FRED:DTB3"
+cash_conversion = "discount_to_bond_equivalent_then_daily_accrual"
+day_count = "act/365"
+control = "examples/earnings/daily.toml"

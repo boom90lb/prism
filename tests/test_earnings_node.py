@@ -7,14 +7,17 @@ import pandas as pd
 import pytest
 
 from prism.signal.base import check_declarations
-from prism.signal.earnings_node import EarningsAnnouncementNode
+from prism.signal.earnings_node import (
+    AnnouncementProximityNode,
+    EarningsAnnouncementNode,
+)
 
 
 @pytest.fixture
 def panel(tmp_path):
     days = pd.to_datetime(["2024-03-01", "2024-03-04"])
     frame = pd.DataFrame({"date": np.repeat(days, 2), "sid": ["A", "B"] * 2, "ear": [0.05, -0.02, 0.05, -0.02],
-                          "age_sessions": [60, 3, 61, 4]})
+                          "age_sessions": [60, 3, 61, 4], "days_to_expected": [5.0, 40.0, 2.0, np.nan]})
     path = tmp_path / "panel.parquet"
     frame.to_parquet(path)
     return path, hashlib.sha256(path.read_bytes()).hexdigest()
@@ -57,3 +60,14 @@ def test_scores_ignore_the_price_level(panel):
     path, digest = panel
     node = EarningsAnnouncementNode(str(path), digest, max_age_sessions=126)
     pd.testing.assert_series_equal(node.score(_close("2024-03-01")), node.score(_close("2024-03-01") * 7.0))
+
+
+def test_proximity_ranks_the_imminent_announcer_highest(panel):
+    path, digest = panel
+    node = AnnouncementProximityNode(str(path), digest)
+    first = node.score(_close("2024-03-01"))
+    assert first["A"] == pytest.approx(-5.0) and first["B"] == pytest.approx(-40.0) and np.isnan(first["C"])
+    assert np.isnan(node.score(_close("2024-03-04"))["B"])
+    check_declarations(node, configured_id=None)
+    with pytest.raises(ValueError):
+        AnnouncementProximityNode(str(path), "0" * 64)

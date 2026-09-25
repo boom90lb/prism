@@ -1,0 +1,105 @@
+# Earnings-announcement return, replication route: the criteria (SPEC.md §4;
+# docs/earnings_design.md).
+#
+# Companion to `registrations/2026-09-earnings.toml`, which declares the one in-house
+# arm. This file pins everything the replication read
+# (`research/scripts/earnings_replication.py`) uses to decide it: the public reference
+# series and its publication date, the four SPEC §4 criteria, the pinned combination
+# (SPEC §4, Combinations) and the forward kill rule. A changed series, date, floor,
+# hurdle, part or weight is a new registration.
+id = "2026-09-earnings-replication"
+created = 2026-09-24
+selection_set = "earnings_v1"
+route = "replication"
+engine_registration = "registrations/2026-09-earnings.toml"
+# The engine arm's record, as `research.scripts.registered_read` writes it.
+engine_read = "results/2026-09-earnings"
+# The combination is one more evaluated configuration: its row goes to its own log so
+# the engine's one-arm budget is untouched.
+combination_trial_log = "trials/earnings_v1_combination.jsonl"
+
+# ------------------------------------------------------------ public reference series
+# Chen and Zimmermann, Open Source Asset Pricing, release 2025.10 (v2.0.0, data through
+# 2024-12): the daily value-weighted portfolios of `AnnouncementReturn`, the sum of the
+# market-adjusted return over the four sessions around each quarterly announcement,
+# carried up to six months and sorted into quintiles re-formed monthly. `portLS` is
+# quintile 5 minus quintile 1, in percent. Value weight, not the paper's equal weight:
+# the in-house arm trades S&P 500 large caps, which dominate the value-weighted series,
+# and an equal-weighted prior would be set by stocks the arm cannot hold. File as
+# fetched 2026-09-24; only its archive listing, this member's columns and date range,
+# and one printed first and last row were read before this registration.
+[characteristic]
+id = "ear_monthly"
+source = "Chan, L., Jegadeesh, N. and Lakonishok, J. (1996). Momentum strategies. Journal of Finance 51(5)."
+publication = "1996-12"
+cz_url = "https://drive.usercontent.google.com/download?id=1XTV40MQdbVz_nLMm6Uyo3QdiIsBEy3CA&export=download&confirm=t"
+cz_sha256 = "e55df94292eea82b8da5c59140ebe69f0062ef7aeec6b93f118c53dfb4f88ed4"
+cz_member = "PredictorVW/AnnouncementReturn_ret.csv"
+
+# ------------------------------------------------------------ SPEC §4 criteria
+[criteria]
+publication_bar_t = 3.0
+publication_bar_min_years = 20.0
+post_publication_min_years = 10.0
+pre_publication_haircut = 0.4
+# Contract minimum; a negative daily correlation is also recorded as a direction mismatch.
+fidelity_floor = 0.5
+# Hurdle: in-house books earn nothing on cash (retail_v1.toml cash_income_bps_annual =
+# 0.0), so the arm must out-earn T-bills at the volatility it can run at: the 12%
+# target, or twice its own unscaled volatility if the Reg T 2x gross ceiling binds
+# first. hurdle Sharpe = rf / min(target_vol, max_scale x own vol).
+target_vol = 0.12
+max_scale = 2.0
+hurdle_window_sessions = 252
+sessions_per_year = 252
+# The cash series is the vol-momentum read's pinned French file (202607 CRSP vintage).
+cash_url = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_Factors_daily_CSV.zip"
+cash_sha256 = "1916d331c2c51d2aee3d00215897d2b8e5995cb387f1f4569ba46bff5fb049a8"
+
+# ------------------------------------------------------------ the pinned combination
+# SPEC §4, Combinations, "on its own replication criteria". Parts: the arm, if it passes
+# criteria 1 and 2 (which read public data and tracking, never in-house performance),
+# and the promoted volatility-scaled momentum (vol_momentum_v1). Two parts, momentum
+# among them, or the combination is not evaluated. The construction is the fundamentals
+# combination's, unchanged.
+[combination]
+min_parts = 2
+momentum_part = "vol_momentum"
+# Each part is scaled to the target by the rule the momentum part already carries
+# (126-session volatility, re-set every 21 sessions, scale capped at 2); the momentum part
+# enters as promoted. Equal weights over parts at a common volatility is equal risk. The
+# average is scaled to the target again, with the scale capped so that total gross (sum
+# of weight x part scale x part gross) stays within 2.
+weights = "equal"
+target_vol = 0.12
+lookback_sessions = 126
+refresh_sessions = 21
+part_max_scale = 2.0
+max_total_gross = 2.0
+scale_change_cost_bps = 10.0
+# The prior is the public combination's Sharpe from the later publication (momentum's,
+# 2015-04) to the public series' common end (2024-12-31) if that spans ten years or
+# more; it spans 2,455 sessions (9.74 years at 252), so the prior is 0.4 x the public
+# combination's Sharpe over the whole common window, as SPEC §4 requires. Costs are the
+# parts' own, averaged with no netting credit (conservative).
+momentum_series = "results/2026-09-vol-momentum/series.csv"
+momentum_series_sha256 = "ded96a7226e7ae70c71422741a46a3ec1620442dbbb0c2e38aae64f49db37395"
+momentum_publication = "2015-04"
+
+[bootstrap]
+block_bars = 42
+n_resamples = 2000
+seed = 20260928
+confidence = 0.95
+
+# ------------------------------------------------------------ forward kill rule
+# Runs after any promotion, on the arm and the combination run forward on sessions from
+# 2026-09-24 (the forward_v1 geometry). The first read is at >= 126 forward sessions,
+# then every 63. Any one condition kills: the forward net Sharpe's 95% interval lies
+# entirely below zero; drawdown exceeds 25%; daily correlation with the reference falls
+# below 0.5 (read against the public series once it extends past 2024-12).
+[kill]
+first_read_min_sessions = 126
+read_every_sessions = 63
+max_drawdown = 0.25
+min_forward_fidelity = 0.5
