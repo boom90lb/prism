@@ -1959,9 +1959,11 @@ def _trailing_dollar_volume(close: pd.DataFrame, volume: pd.DataFrame, *, window
 
     ``min_periods = window`` deliberately: a name without a full window has no
     statistic, and the participation bound refuses an order on it rather than
-    sizing one against a partial estimate (§3.6).
+    sizing one against a partial estimate (§3.6). The last bar's value depends only on
+    the last ``window`` rows, so only those are rolled: it is called on the full history
+    at every decision.
     """
-    dollar = close * volume
+    dollar = (close * volume).iloc[-int(window):]
     rolling = dollar.rolling(int(window), min_periods=int(window))
     frame = rolling.median() if statistic == "median" else rolling.mean()
     return frame.iloc[-1]
