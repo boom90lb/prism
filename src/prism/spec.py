@@ -57,6 +57,7 @@ import numpy as np
 import pandas as pd
 
 from prism.portfolio.construct import (
+    buffered_decile_row,
     cap_book,
     construct_decile_neutral,
     construct_inverse_vol_targets,
@@ -81,7 +82,9 @@ POLICY_KEYS: tuple[str, ...] = ("profile", "costs", "execution", "monitoring", "
 
 #: The rank-to-weight vocabulary of §3.3. Four names, no extension point: a rule
 #: the engine cannot name is a rule nothing can reproduce.
-TO_WEIGHTS_RULES: tuple[str, ...] = ("decile_long_short", "sign_inverse_vol", "top_k_equal_weight", "none")
+TO_WEIGHTS_RULES: tuple[str, ...] = (
+    "decile_long_short", "decile_long_short_buffered", "sign_inverse_vol", "top_k_equal_weight", "none",
+)
 
 #: The three schedule fields the component table carries (§3.3), all required.
 SCHEDULE_FIELDS: tuple[str, ...] = ("horizon_bars", "update_every_bars", "valid_for_bars")
@@ -105,6 +108,12 @@ ELIGIBILITY_DEFAULTS: dict[str, Any] = {
 _REQUIRED = object()
 TO_WEIGHTS_PARAMS: dict[str, dict[str, Any]] = {
     "decile_long_short": {"decile": _REQUIRED, "max_gross": 1.0, "max_symbol_abs_weight": 1.0},
+    "decile_long_short_buffered": {
+        "decile": _REQUIRED,
+        "hold_quantile": _REQUIRED,
+        "max_gross": 1.0,
+        "max_symbol_abs_weight": 1.0,
+    },
     "sign_inverse_vol": {
         "vol_ewma_bars": 63,
         "annualization_bars": 252,
@@ -787,6 +796,13 @@ def resolve_to_weights_params(
             resolved[key] = _coerce_float(value, key=key, where=where)
     if rule == "decile_long_short" and not 0.0 < float(resolved["decile"]) <= 0.5:
         raise SpecError(f"{where}: decile must be in (0, 0.5], got {resolved['decile']!r}")
+    if rule == "decile_long_short_buffered" and not (
+        0.0 < float(resolved["decile"]) <= float(resolved["hold_quantile"]) <= 0.5
+    ):
+        raise SpecError(
+            f"{where}: need 0 < decile <= hold_quantile <= 0.5, got decile={resolved['decile']!r}, "
+            f"hold_quantile={resolved['hold_quantile']!r}"
+        )
     for cap in ("max_gross", "max_symbol_abs_weight"):
         if cap in resolved and not float(resolved[cap]) > 0.0:
             raise SpecError(f"{where}: {cap} must be > 0, got {resolved[cap]!r}")
@@ -802,6 +818,7 @@ def apply_to_weights(
     *,
     close: pd.DataFrame | None = None,
     no_decision: Iterable[str] | None = None,
+    previous: Mapping[str, float] | None = None,
 ) -> pd.Series:
     """Turn one decision bar's cross-section of scores into target weights.
 
@@ -815,6 +832,11 @@ def apply_to_weights(
     ``decile_long_short`` and ``sign_inverse_vol`` delegate to
     ``prism.portfolio.construct``, so the recorded books' weights are reproduced
     exactly rather than re-derived.
+
+    ``decile_long_short_buffered`` is the one stateful rule: ``previous`` is the
+    component's own sub-targets from its last decision (sid -> weight), whose signs say
+    which leg each name was in. It never sees fills or held shares, only the rule's own
+    last output.
     """
     if not isinstance(scores, pd.Series):
         raise SpecError(f"scores must be a pandas Series indexed by sid, got {type(scores).__name__}")
@@ -833,6 +855,20 @@ def apply_to_weights(
             max_symbol_abs_weight=float(resolved["max_symbol_abs_weight"]),
         )
         weights = frame.iloc[0]
+    elif rule == "decile_long_short_buffered":
+        prior = pd.Series(dict(previous or {}), dtype=float).reindex(values.index).fillna(0.0)
+        row = buffered_decile_row(
+            values.to_numpy(dtype=float),
+            np.sign(prior.to_numpy(dtype=float)),
+            decile=float(resolved["decile"]),
+            hold=float(resolved["hold_quantile"]),
+        )
+        capped = cap_book(
+            pd.DataFrame([row], columns=values.index),
+            float(resolved["max_gross"]),
+            float(resolved["max_symbol_abs_weight"]),
+        )
+        weights = capped.iloc[0]
     elif rule == "sign_inverse_vol":
         weights = _sign_inverse_vol(values, close=close, params=resolved)
     else:

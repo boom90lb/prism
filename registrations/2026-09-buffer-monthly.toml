@@ -1,0 +1,138 @@
+# Rank buffer, monthly book, discovery route (SPEC.md §4; docs/buffer_design.md).
+#
+# Buffered versions of the live book's 12-1 momentum decile book (examples/characteristics/control.toml)
+# and the monthly announcement-return arm (examples/earnings/monthly.toml): the decile rule becomes
+# enter in the top (bottom) 10% and hold while in the top (bottom) 20% (Novy-Marx and
+# Velikov 2016's buy/hold spread), with every other setting unchanged. The buffer was
+# chosen after the earnings reads found decile-membership churn binding
+# (docs/earnings_read_2026-09-24.md; docs/construction_band_audit_2026-09-24.md F5), so
+# this is a choice among implementations made on in-house results: discovery route. The
+# in-house read (the same sample as every earlier read) can kill an arm and never
+# promote one; promotion is the forward read of docs/buffer_design.md.
+#
+# Same frozen dataset, fold geometry, cost stack (retail_v1, so the buffer is the only
+# difference), execution profile, accounting engine, eligibility screen and capital as
+# the unbuffered records. Adding an arm, a threshold or a window after seeing a result is
+# a new registration, never an edit of this file.
+id = "2026-09-buffer-monthly"
+created = 2026-09-25
+selection_set = "buffer_monthly_v1"
+strict = true
+# One attempt is one `arm_id`. Two arms, two attempts, no reserve. A retry after a crash
+# carries kind = "retry" and spends none.
+trial_budget = 2
+
+[[components]]
+id = "momentum_buffered"
+path = "prism.signal.momentum_node:MomentumSignalNode"
+expected_sign = "positive"
+scoring_basis = "price"
+
+[[components]]
+id = "ear_monthly_buffered"
+path = "prism.signal.earnings_node:EarningsAnnouncementNode"
+expected_sign = "positive"
+scoring_basis = "price"
+
+# Restated from `registrations/2026-09-characteristics.toml`: every arm is heuristic,
+# so no calibration is read, and the risk model acts only through the experiment
+# profile's variance-budget limit.
+[shared]
+risk_model = "examples/reference/risk/factor_diagonal.toml"
+calibration_family = "calibrations/shared_slope_point.toml"
+standardize = "rank_normal"
+weighting = "per_date_equal"
+shrink_pseudo_periods = 12.0
+block_periods = 3
+min_training_periods = 12
+min_blocks = 4
+risk_aversion = 0.0
+eps = 1.0e-8
+max_at_cap_fraction = 0.35
+eligibility_exit = "reduce_only"
+
+# Arm 1. 12-1 momentum, the live book's signal, buffered.
+[[arms]]
+id = "momentum_buffered"
+profile = "examples/reference/profiles/experiment_v1.toml"
+
+[arms.construction]
+kind = "heuristic"
+to_weights = "decile_long_short_buffered"
+decile = 0.10
+hold_quantile = 0.20
+
+[arms.components]
+momentum_buffered = 1.0
+ear_monthly_buffered = 0.0
+# Arm 2. Announcement return, monthly, buffered.
+[[arms]]
+id = "ear_monthly_buffered"
+profile = "examples/reference/profiles/experiment_v1.toml"
+
+[arms.construction]
+kind = "heuristic"
+to_weights = "decile_long_short_buffered"
+decile = 0.10
+hold_quantile = 0.20
+
+[arms.components]
+momentum_buffered = 0.0
+ear_monthly_buffered = 1.0
+
+[sample]
+history_start = 2020-01-02
+first_decision = 2021-03-30
+last_decision = 2026-06-12
+warmup_bars = 273
+decision_offset_minutes = 0
+
+[folds]
+table = "folds/demotion_b1.toml"
+
+[frozen]
+freeze_record = "data/frozen/buffer_monthly_v1.freeze.json"
+executable_return = "open_to_open"
+cost_stack = "examples/reference/costs/retail_v1.toml"
+execution_profile = "examples/reference/profiles/execution_alpaca.toml"
+accounting_engine = "canonical"
+visibility_mode = "research_vintage"
+fold_portfolio = "carry"
+cost_refresh = "fold"
+capital_scenarios = [100000]
+capital_unit = "usd_marked_equity_at_first_decision"
+
+[evidence]
+robust_dsr_threshold = 0.95
+min_obs = 20
+
+[sharpe_bootstrap]
+frequency = "daily"
+block_bars = 42
+n_resamples = 2000
+seed = 20260930
+scheme = "circular"
+paired = true
+
+# The set closes when both declared arms have run. Kill, on this in-house sample: an
+# arm whose studentized 95% interval for net periodic Sharpe lies entirely below zero.
+# The set closes when both declared arms have run. Kill, on this in-house sample: an arm
+# whose studentized 95% interval for net periodic Sharpe lies entirely below zero
+# (research/scripts/buffer_read.py).
+[stop_rule]
+kind = "structured"
+min_obs = 20
+note = "The set closes when the two declared arms have run; no arm may be added. Kill: an arm whose in-house studentized 95% interval (42-session circular blocks) for net periodic Sharpe lies entirely below zero. Forward kill rules are in docs/buffer_design.md."
+
+# Discovery route (SPEC §4): nothing here promotes. A surviving arm promotes only on the
+# forward read of docs/buffer_design.md, on sessions after this registration.
+[promotion_rule]
+kind = "none"
+note = "Discovery route: same-sample reads kill, never promote. Promotion is the forward read in docs/buffer_design.md."
+
+[benchmark]
+cash_series = "tbill_3m"
+cash_source = "FRED:DTB3"
+cash_conversion = "discount_to_bond_equivalent_then_daily_accrual"
+day_count = "act/365"
+control = "examples/buffer/monthly.toml"

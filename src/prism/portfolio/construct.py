@@ -245,6 +245,37 @@ def _decile_row(scores_t: np.ndarray, decile: float) -> np.ndarray:
     return row
 
 
+def buffered_decile_row(scores_t: np.ndarray, previous_sign: np.ndarray, decile: float, hold: float) -> np.ndarray:
+    """One top/bottom-decile long-short row with a hold buffer, at raw gross 1.0.
+
+    Novy-Marx and Velikov (2016)'s buy/hold spread applied to both legs:
+    - a name enters the long leg in the top ``decile`` of finite scores;
+    - a name already long (``previous_sign > 0``) stays long while it ranks in the top
+      ``hold``;
+    - the short leg mirrors both rules at the bottom.
+
+    Each leg is equal-weighted at 0.5, so the row stays dollar-neutral while the legs'
+    name counts differ. A name without a finite score is flat. With no previous legs this
+    is ``_decile_row`` exactly. A cross-section too thin for one name per side emits a zero
+    row.
+    """
+    if not 0.0 < decile <= hold <= 0.5:
+        raise ValueError(f"need 0 < decile <= hold <= 0.5, got decile={decile}, hold={hold}")
+    row = np.zeros(scores_t.shape[0])
+    finite = np.flatnonzero(np.isfinite(scores_t))
+    n_enter = int(len(finite) * decile)
+    if n_enter < 1:
+        return row
+    n_hold = max(int(len(finite) * hold), n_enter)
+    ranked = finite[np.argsort(scores_t[finite], kind="stable")]
+    previous = np.asarray(previous_sign, dtype=float)
+    longs = set(ranked[-n_enter:].tolist()) | {i for i in ranked[-n_hold:].tolist() if previous[i] > 0}
+    shorts = set(ranked[:n_enter].tolist()) | {i for i in ranked[:n_hold].tolist() if previous[i] < 0}
+    row[sorted(longs)] = 0.5 / len(longs)
+    row[sorted(shorts)] = -0.5 / len(shorts)
+    return row
+
+
 def construct_inverse_vol_targets(
     scores: pd.DataFrame,
     close: pd.DataFrame,

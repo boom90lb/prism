@@ -425,7 +425,7 @@ def _compose_one(
             elif mark == "liquidate":
                 flat.add(str(sid))
 
-    values = _rule_values(plan, raw, close, no_decision=no_decision)
+    values = _rule_values(plan, raw, close, no_decision=no_decision, previous=state.sub_targets)
     if flat:
         values = values.copy()
     for sid in flat:
@@ -559,6 +559,7 @@ def _rule_values(
     close: pd.DataFrame,
     *,
     no_decision: Collection[str],
+    previous: Mapping[str, float] | None = None,
 ) -> pd.Series:
     """The rank-to-weight rule's output for this cross-section.
 
@@ -585,6 +586,7 @@ def _rule_values(
         plan.to_weights_params,
         close=close,
         no_decision=no_decision,
+        previous=previous,
     )
 
 
