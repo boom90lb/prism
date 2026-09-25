@@ -273,3 +273,34 @@ The first real session after re-arming is therefore a full rebalance of a book
 last refreshed 2026-08-11, not an incremental one. Re-arming the Windows Task
 Scheduler entries for `ops/paper_loop_nightly.sh` (weekdays 18:30 PT) and
 `ops/paper_sweep_morning.sh` (weekdays 06:50 PT) remains the owner's act.
+
+## 2026-09-25: why the loop went dark, and a second rehearsal
+
+**Cause.** The scheduler did not fail; both Windows Task Scheduler entries were
+disabled. `schtasks /query /v` reads `Status: Disabled` for
+`\Prism paper loop (nightly)` and `\Prism paper sweep (morning)`, each with
+`Last Run Time` 2026-08-14 and `Last Result 0`. Both task definition files under
+`C:\Windows\System32\Tasks\` were last modified 2026-08-15 23:20:18 PDT, 30 ms
+apart, the signature of one disable act; the Task Scheduler operational event
+log is not enabled on this machine, so who disabled them is not recorded, and no
+commit or tracked note from that weekend mentions it. The actions still run
+`wsl.exe -d Ubuntu -e bash -c '/home/b90/bin/prism_paper_{loop_nightly,sweep_morning}.sh'`,
+and both `~/bin` files are symlinks into `ops/`, so re-enabling restores the
+versioned wrappers unchanged. Both tasks carry `DisallowStartIfOnBatteries`,
+`StartWhenAvailable` and `WakeToRun`.
+
+**Rehearsal** (Run, commit `3a3fca9`, `--no-submit`, the nightly's arguments):
+exit 0; panels 753 bars x 502 symbols through 2026-09-24 from Alpaca; state
+migrated v2 -> v3 in the scratch copy (99 positions, cash 937,669.47); equity
+marked 991,104.81; 7 names held out by the spin-off mask; decision bar
+2026-09-24 would submit 123 orders, 685,504.97 notional, gross 1.0101, with 3
+orders dropped by whole-share rounding; live monitor `inconclusive` (n = 16).
+`NOTHING WAS SENT TO THE VENUE`; no `SUBMITTING ORDERS` line. The health check
+afterwards: 15 pass, 1 warn, 3 fail, the three being the stale NAV ledger (30
+weekdays), 28 missed sessions and the stale nightly log; the venue's 99
+positions reconcile against `state.json`.
+
+**Drift.** `data/universe/sp500_current.txt` is the 2026-07-17 build. Since then
+FERG, RDDT, BE, P and ILMN joined the index, EA, AVB, TAP, TTD and BLDR left,
+and Equity Residential became Vivmark Residential (EQR -> VMRK, 2026-08-18). The
+rehearsed book shorts BLDR and TTD, which are no longer members.
