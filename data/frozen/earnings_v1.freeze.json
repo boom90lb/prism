@@ -1,0 +1,28 @@
+{
+  "component_panel_sha256": {
+    "ear_monthly": "8cde85e27c84e4afe3372971bb0f69bb164c80cf8b40e0152f729d6cc26852eb"
+  },
+  "components": [
+    {
+      "component_id": "ear_monthly",
+      "horizon_bars": 21,
+      "import_path": "prism.signal.earnings_node:EarningsAnnouncementNode",
+      "source_sha256": null,
+      "update_every_bars": 21
+    }
+  ],
+  "data_id": "bedf8c4c0f0c2195ce5aace938f4ad38e23e6b69b57075080073004692d46eef",
+  "first_row": "2021-03-30",
+  "fold_table_sha256": "fec02ca011e8c66309ab9e414403d1a6412a10569ff47bac775fa754ef3384f8",
+  "last_row": "2026-06-05",
+  "n_decision_rows": 63,
+  "n_universe": 574,
+  "note": "the panel is materialized from this dataset, this universe and this component identity under the recorded visibility mode; every arm recomputes the same score at each decision bar from the same frozen dataset rather than reading this file, and panel_sha256 is what a reader re-derives",
+  "panel_sha256": "8cde85e27c84e4afe3372971bb0f69bb164c80cf8b40e0152f729d6cc26852eb",
+  "registration_id": "2026-09-earnings",
+  "selection_set": "earnings_v1",
+  "universe_sha256": "dc4d27ae378934b3302fec87cbd4a96389b8ef220c826569e32fdd76703f95b8",
+  "vintage": "demotion_b1_2026-06-16",
+  "visibility_mode": "research_vintage",
+  "warnings": []
+}

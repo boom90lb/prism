@@ -1,0 +1,233 @@
+{
+  "arms": {
+    "ear_monthly": {
+      "arm": "ear_monthly",
+      "economics": {
+        "charged_cost_annual": 0.005284890185082131,
+        "cost_drag_sharpe": 0.11102785281877377,
+        "figure_f3": 0.11729805407680972,
+        "hurdle_sharpe": 0.44222987043937373,
+        "own_vol_annual": 0.04759967927785149,
+        "pass": false,
+        "reported_beside": {
+          "hurdle_zero_if_cash_earns_bills": 0.0,
+          "pass_at_zero": true
+        },
+        "rf_annual": 0.04210000000000001,
+        "rho_times_prior": 0.2283259068955835,
+        "runnable_vol": 0.09519935855570298,
+        "scaled_vol_annual": 0.04759967927785149
+      },
+      "fidelity": {
+        "daily_corr": 0.5564418645242885,
+        "direction_mismatch": false,
+        "first": "2021-06-29",
+        "floor": 0.5,
+        "last": "2024-12-31",
+        "n": 883,
+        "pass": true,
+        "weekly_corr": 0.5215577639451215
+      },
+      "in_house": {
+        "first": "2021-06-29",
+        "last": "2026-06-12",
+        "mean": 0.020274214542285528,
+        "n": 1245,
+        "sharpe": 0.4259317468073632,
+        "t": 0.946726244998699,
+        "vol": 0.04759967927785149,
+        "years": 4.940476190476191
+      },
+      "no_contradiction": {
+        "annualized": {
+          "lower": -0.35475659796548575,
+          "sharpe_a": 0.4259317468073632,
+          "upper": 1.189550355801239
+        },
+        "figure_f3": 0.11729805407680972,
+        "interval": {
+          "blocks_drawn": 30,
+          "confidence": 0.95,
+          "difference": 0.026831178036657435,
+          "label": "scaled_in_house_net",
+          "lower": -0.022347565099428517,
+          "mean_difference": 8.045323231065686e-05,
+          "method": {
+            "block_bars": 42,
+            "block_periods": 42,
+            "block_scheme": "circular_moving",
+            "confidence": 0.95,
+            "coverage_statement": "Endpoints are directional statements under the resampling assumptions: the pool is stationary enough to resample and block_periods carries the dependence of overlapping labels. They are not a simultaneous interval and say nothing about realized portfolio return coverage.",
+            "decision_interval_bars": 21,
+            "frequency": "daily",
+            "hac_lags": 41,
+            "interval_method": "studentized_circular_block_bootstrap",
+            "min_blocks": 2,
+            "n_resamples": 2000,
+            "seed": 20260928,
+            "units": "bars"
+          },
+          "n_periods": 1245,
+          "n_resamples": 2000,
+          "p_value_two_sided": 0.2615,
+          "sharpe_a": 0.026831178036657435,
+          "sharpe_b": 0.0,
+          "standard_error": 0.024853393102489883,
+          "statistic": "sharpe",
+          "t_statistic": 1.0795780650960456,
+          "upper": 0.07493462889139234
+        },
+        "pass": true
+      },
+      "passes": {
+        "economics": false,
+        "fidelity": true,
+        "no_contradiction": true,
+        "publication_bar": true
+      },
+      "promoted": false,
+      "publication": "1996-12",
+      "publication_bar": {
+        "bar_pass": true,
+        "full": {
+          "first": "1971-09-01",
+          "last": "2024-12-31",
+          "mean": 0.06355280880622766,
+          "n": 13449,
+          "sharpe": 0.6840803122886766,
+          "t": 4.997488668871767,
+          "vol": 0.09290255495528553,
+          "years": 53.36904761904762
+        },
+        "pass": true,
+        "post_publication": {
+          "first": "1996-12-02",
+          "last": "2024-12-31",
+          "mean": 0.04435683009478827,
+          "n": 7067,
+          "sharpe": 0.41033200672415826,
+          "t": 2.1729646908637736,
+          "vol": 0.10809985418614133,
+          "years": 28.043650793650794
+        },
+        "prior_basis": "post_publication",
+        "prior_sharpe": 0.41033200672415826
+      }
+    }
+  },
+  "code_commit": "f2efe9e713d116179b0bdd30a8bb96eaa5e63a92",
+  "combination": {
+    "economics": {
+      "charged_cost_annual": 0.01071819255755166,
+      "cost_drag_sharpe": 0.09003786470922533,
+      "figure_f3": 0.2748640058717273,
+      "hurdle_sharpe": 0.35083333333333344,
+      "pass": false,
+      "reported_beside": {
+        "hurdle_zero_if_cash_earns_bills": 0.0,
+        "pass_at_zero": true
+      },
+      "rf_annual": 0.04210000000000001,
+      "rho_times_prior": 0.36490187058095264,
+      "scaled_vol_annual": 0.11904094563066053
+    },
+    "evaluated": true,
+    "fidelity": {
+      "daily_corr": 0.7698171624574653,
+      "first": "2023-04-03",
+      "floor": 0.5,
+      "last": "2024-12-31",
+      "n": 440,
+      "pass": true,
+      "weekly_corr": 0.7535168510786031
+    },
+    "in_house": {
+      "first": "2023-04-03",
+      "last": "2026-06-12",
+      "mean": 0.09743376482646102,
+      "n": 802,
+      "sharpe": 0.8184895063649906,
+      "t": 1.4601585962019592,
+      "vol": 0.11904094563066053,
+      "years": 3.1825396825396823
+    },
+    "mean_scale": 1.1767431824690868,
+    "no_contradiction": {
+      "annualized": {
+        "lower": -0.07219024525760064,
+        "sharpe_a": 0.8184895063649906,
+        "upper": 1.6536706796968965
+      },
+      "figure_f3": 0.2748640058717273,
+      "interval": {
+        "blocks_drawn": 20,
+        "confidence": 0.95,
+        "difference": 0.05155999248947103,
+        "label": "scaled_in_house_net",
+        "lower": -0.004547558000865981,
+        "mean_difference": 0.00038664192391452785,
+        "method": {
+          "block_bars": 42,
+          "block_periods": 42,
+          "block_scheme": "circular_moving",
+          "confidence": 0.95,
+          "coverage_statement": "Endpoints are directional statements under the resampling assumptions: the pool is stationary enough to resample and block_periods carries the dependence of overlapping labels. They are not a simultaneous interval and say nothing about realized portfolio return coverage.",
+          "decision_interval_bars": 21,
+          "frequency": "daily",
+          "hac_lags": 41,
+          "interval_method": "studentized_circular_block_bootstrap",
+          "min_blocks": 2,
+          "n_resamples": 2000,
+          "seed": 20260928,
+          "units": "bars"
+        },
+        "n_periods": 802,
+        "n_resamples": 2000,
+        "p_value_two_sided": 0.064,
+        "sharpe_a": 0.05155999248947103,
+        "sharpe_b": 0.0,
+        "standard_error": 0.02765532085297913,
+        "statistic": "sharpe",
+        "t_statistic": 1.8643787487975143,
+        "upper": 0.10417146116374135
+      },
+      "pass": true
+    },
+    "parts": [
+      "ear_monthly",
+      "vol_momentum"
+    ],
+    "passes": {
+      "economics": false,
+      "no_contradiction": true,
+      "prior_positive": true
+    },
+    "prior": {
+      "basis": "haircut_full_window",
+      "full_window": {
+        "first": "1972-08-31",
+        "last": "2024-12-31",
+        "mean": 0.1307431470394654,
+        "n": 13195,
+        "sharpe": 1.185027719491492,
+        "t": 8.574976452657406,
+        "vol": 0.11032918883582629,
+        "years": 52.361111111111114
+      },
+      "sharpe": 0.47401108779659684,
+      "window_from": "2015-04-01",
+      "window_years": 9.742063492063492
+    },
+    "promoted": false
+  },
+  "combination_promoted": false,
+  "promoted_arms": [],
+  "public_series": {
+    "first": "1971-09-01",
+    "last": "2024-12-31",
+    "n": 13449
+  },
+  "registration": "2026-09-earnings-replication",
+  "rf_annual": 0.04210000000000001,
+  "selection_set": "earnings_v1"
+}

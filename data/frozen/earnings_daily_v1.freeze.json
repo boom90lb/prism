@@ -1,0 +1,36 @@
+{
+  "component_panel_sha256": {
+    "announcement_premium": "7423253d289c0ecfcbcc99b2d0b0b7b353a90ba2f827c7f1775d16edaccec340",
+    "ear_event": "727b76079afa8935053a01d104a062c1f50e8b4b608e7b3d7a9f045e11773323"
+  },
+  "components": [
+    {
+      "component_id": "ear_event",
+      "horizon_bars": 21,
+      "import_path": "prism.signal.earnings_node:EarningsAnnouncementNode",
+      "source_sha256": null,
+      "update_every_bars": 1
+    },
+    {
+      "component_id": "announcement_premium",
+      "horizon_bars": 5,
+      "import_path": "prism.signal.earnings_node:AnnouncementProximityNode",
+      "source_sha256": null,
+      "update_every_bars": 1
+    }
+  ],
+  "data_id": "bedf8c4c0f0c2195ce5aace938f4ad38e23e6b69b57075080073004692d46eef",
+  "first_row": "2021-03-30",
+  "fold_table_sha256": "fec02ca011e8c66309ab9e414403d1a6412a10569ff47bac775fa754ef3384f8",
+  "last_row": "2026-06-12",
+  "n_decision_rows": 1308,
+  "n_universe": 574,
+  "note": "the panel is materialized from this dataset, this universe and this component identity under the recorded visibility mode; every arm recomputes the same score at each decision bar from the same frozen dataset rather than reading this file, and panel_sha256 is what a reader re-derives",
+  "panel_sha256": "130b023a114f8cebeac7718a1ae4d017c5dd82fc445c010998430f89e7ecdab2",
+  "registration_id": "2026-09-earnings-daily",
+  "selection_set": "earnings_daily_v1",
+  "universe_sha256": "dc4d27ae378934b3302fec87cbd4a96389b8ef220c826569e32fdd76703f95b8",
+  "vintage": "demotion_b1_2026-06-16",
+  "visibility_mode": "research_vintage",
+  "warnings": []
+}

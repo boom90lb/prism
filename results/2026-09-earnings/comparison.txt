@@ -1,0 +1,1 @@
+one arm (ear_monthly): a single-arm registration has no pairwise comparison

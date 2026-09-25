@@ -1,0 +1,100 @@
+{
+  "arms": {
+    "announcement_premium": {
+      "annualized_return": 0.01133447661615894,
+      "annualized_vol": 0.04480020617040575,
+      "breadth": {
+        "avg_names_held": 95.08639143730886,
+        "n_active_days": 1307,
+        "n_eff_book_contribution": 101.24163218728899,
+        "n_ever_held": 545,
+        "top_eigenvalue_shares": [
+          0.060898770915572234,
+          0.040030056888253375,
+          0.02023778927565998
+        ]
+      },
+      "charged_cost_total": 0.11119906654919869,
+      "config_id": "89d57ea95146d13f4f29111d4a18496fc9769fdac5d310b2a8edbf709207ab79",
+      "dsr_vs_set": 0.7327764498642965,
+      "evidence_tier": "net_edge",
+      "excluded_folds": [],
+      "gross_sharpe_annualized": 0.7531029282568197,
+      "held_book_ic": {
+        "mean": 0.03422891526606586,
+        "n": 1287,
+        "note": "held names only (long leg vs short leg separation), one cross-section per decision bar",
+        "se": 0.003495131146702999
+      },
+      "max_drawdown": 0.12171109541841862,
+      "n_decision_rows": 1308,
+      "n_obs": 1308,
+      "net_sharpe_annualized": 0.273971343151127,
+      "net_sharpe_periodic": 0.017258572388957644,
+      "psr_vs_zero": 0.733387939206428,
+      "run_id": "run-70dc3fb06fcb445e",
+      "turnover_total": 296.62458267634645
+    },
+    "ear_event": {
+      "annualized_return": 0.012247056373397847,
+      "annualized_vol": 0.04829480600876127,
+      "breadth": {
+        "avg_names_held": 89.75382262996942,
+        "n_active_days": 1307,
+        "n_eff_book_contribution": 75.48847430338895,
+        "n_ever_held": 487,
+        "top_eigenvalue_shares": [
+          0.0516314575302664,
+          0.04577507511862133,
+          0.034005263975635844
+        ]
+      },
+      "charged_cost_total": 0.04674119348373868,
+      "config_id": "a1cd18836ce17407d4948ff7f8dc2d9eb4b7fcf12103a5d237748862d7434e2d",
+      "dsr_vs_set": 0.734205479489338,
+      "evidence_tier": "net_edge",
+      "excluded_folds": [],
+      "gross_sharpe_annualized": 0.46247224685080995,
+      "held_book_ic": {
+        "mean": 0.0071207026263678565,
+        "n": 1287,
+        "note": "held names only (long leg vs short leg separation), one cross-section per decision bar",
+        "se": 0.004032621994004306
+      },
+      "max_drawdown": 0.07346224951311175,
+      "n_decision_rows": 1308,
+      "n_obs": 1308,
+      "net_sharpe_annualized": 0.2761967142646492,
+      "net_sharpe_periodic": 0.017398757592319708,
+      "psr_vs_zero": 0.7348146185035751,
+      "run_id": "run-c152689ff57d4989",
+      "turnover_total": 100.74321187237497
+    }
+  },
+  "dataset": {
+    "data_id": "bedf8c4c0f0c2195ce5aace938f4ad38e23e6b69b57075080073004692d46eef",
+    "root": "data/frozen/demotion_b1"
+  },
+  "deflation": {
+    "method": "deflated_sharpe_ratio_with_n",
+    "n_trials": 2,
+    "trial_periodic_sharpes": {
+      "announcement_premium": 0.017258572388957814,
+      "ear_event": 0.017398757592319805
+    }
+  },
+  "records": {
+    "announcement_premium": "/home/b90/prism/results/run-70dc3fb06fcb445e/record.json",
+    "ear_event": "/home/b90/prism/results/run-c152689ff57d4989/record.json"
+  },
+  "registration": {
+    "arms": [
+      "ear_event",
+      "announcement_premium"
+    ],
+    "id": "2026-09-earnings-daily",
+    "selection_set": "earnings_daily_v1",
+    "trial_budget": 2
+  },
+  "spanning": {}
+}

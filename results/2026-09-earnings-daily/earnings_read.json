@@ -1,0 +1,229 @@
+{
+  "arms": {
+    "announcement_premium": {
+      "kill": {
+        "annualized": {
+          "lower": -0.8756014658496375,
+          "sharpe_a": 0.2739713431511297,
+          "upper": 1.3992211978466451
+        },
+        "interval": {
+          "blocks_drawn": 32,
+          "confidence": 0.95,
+          "difference": 0.017258572388957814,
+          "label": "net",
+          "lower": -0.05515770776766085,
+          "mean_difference": 4.870624070616503e-05,
+          "method": {
+            "block_bars": 42,
+            "block_periods": 42,
+            "block_scheme": "circular_moving",
+            "confidence": 0.95,
+            "coverage_statement": "Endpoints are directional statements under the resampling assumptions: the pool is stationary enough to resample and block_periods carries the dependence of overlapping labels. They are not a simultaneous interval and say nothing about realized portfolio return coverage.",
+            "decision_interval_bars": 1,
+            "frequency": "daily",
+            "hac_lags": 41,
+            "interval_method": "studentized_circular_block_bootstrap",
+            "min_blocks": 2,
+            "n_resamples": 2000,
+            "seed": 20260929,
+            "units": "bars"
+          },
+          "n_periods": 1308,
+          "n_resamples": 2000,
+          "p_value_two_sided": 0.6235,
+          "sharpe_a": 0.017258572388957814,
+          "sharpe_b": 0.0,
+          "standard_error": 0.03459233733753769,
+          "statistic": "sharpe",
+          "t_statistic": 0.49891316162177235,
+          "upper": 0.08814265044457448
+        },
+        "killed": false
+      },
+      "momentum": {
+        "daily_corr": -0.09721192496712225,
+        "first": "2022-09-29",
+        "last": "2026-06-12",
+        "n": 929
+      }
+    },
+    "ear_event": {
+      "kill": {
+        "annualized": {
+          "lower": -0.4407948839803087,
+          "sharpe_a": 0.27619671426465076,
+          "upper": 0.961128381704962
+        },
+        "interval": {
+          "blocks_drawn": 32,
+          "confidence": 0.95,
+          "difference": 0.017398757592319805,
+          "label": "net",
+          "lower": -0.027767467671463472,
+          "mean_difference": 5.293201085582768e-05,
+          "method": {
+            "block_bars": 42,
+            "block_periods": 42,
+            "block_scheme": "circular_moving",
+            "confidence": 0.95,
+            "coverage_statement": "Endpoints are directional statements under the resampling assumptions: the pool is stationary enough to resample and block_periods carries the dependence of overlapping labels. They are not a simultaneous interval and say nothing about realized portfolio return coverage.",
+            "decision_interval_bars": 1,
+            "frequency": "daily",
+            "hac_lags": 41,
+            "interval_method": "studentized_circular_block_bootstrap",
+            "min_blocks": 2,
+            "n_resamples": 2000,
+            "seed": 20260929,
+            "units": "bars"
+          },
+          "n_periods": 1308,
+          "n_resamples": 2000,
+          "p_value_two_sided": 0.4335,
+          "sharpe_a": 0.017398757592319805,
+          "sharpe_b": 0.0,
+          "standard_error": 0.02364702835167725,
+          "statistic": "sharpe",
+          "t_statistic": 0.7357693040142922,
+          "upper": 0.06054539704755455
+        },
+        "killed": false
+      },
+      "momentum": {
+        "daily_corr": 0.5600526463600168,
+        "first": "2022-09-29",
+        "last": "2026-06-12",
+        "n": 929
+      }
+    }
+  },
+  "code_commit": "f2efe9e713d116179b0bdd30a8bb96eaa5e63a92",
+  "first_session": "2021-03-30",
+  "horizon_profile": {
+    "announcement_premium": {
+      "1": {
+        "mean": 0.006201437566529074,
+        "n": 1307,
+        "se": 0.0018913182342228177,
+        "t": 3.2788969377632924
+      },
+      "10": {
+        "mean": 0.010901806307153853,
+        "n": 1298,
+        "se": 0.004885267968064462,
+        "t": 2.2315677212427585
+      },
+      "2": {
+        "mean": 0.006717422642801608,
+        "n": 1306,
+        "se": 0.0022902410816371386,
+        "t": 2.933063552418585
+      },
+      "21": {
+        "mean": 0.014836895374690318,
+        "n": 1287,
+        "se": 0.006179593854387367,
+        "t": 2.400949920706596
+      },
+      "5": {
+        "mean": 0.008999491865181432,
+        "n": 1303,
+        "se": 0.0033986391127095793,
+        "t": 2.647969250847157
+      },
+      "63": {
+        "mean": 0.008866242012702905,
+        "n": 1245,
+        "se": 0.005661415829550482,
+        "t": 1.5660821037777202
+      }
+    },
+    "ear_event": {
+      "1": {
+        "mean": 0.007585948637574605,
+        "n": 1307,
+        "se": 0.002441133468139572,
+        "t": 3.1075517732162266
+      },
+      "10": {
+        "mean": 0.008340347625714895,
+        "n": 1298,
+        "se": 0.005586340095443017,
+        "t": 1.4929895930465142
+      },
+      "2": {
+        "mean": 0.009039071383956161,
+        "n": 1306,
+        "se": 0.003061291701254595,
+        "t": 2.952698490069313
+      },
+      "21": {
+        "mean": 0.00823974080996582,
+        "n": 1287,
+        "se": 0.007422232360916792,
+        "t": 1.1101432034590804
+      },
+      "5": {
+        "mean": 0.007938866399326,
+        "n": 1303,
+        "se": 0.004261614835697888,
+        "t": 1.862877501933119
+      },
+      "63": {
+        "mean": 0.00458122684605995,
+        "n": 1245,
+        "se": 0.009216609785412904,
+        "t": 0.49706203828989726
+      }
+    },
+    "ear_monthly": {
+      "1": {
+        "mean": 0.007409719127232878,
+        "n": 1307,
+        "se": 0.002359539267355051,
+        "t": 3.14032456664257
+      },
+      "10": {
+        "mean": 0.007160515804331327,
+        "n": 1298,
+        "se": 0.005420413135639377,
+        "t": 1.3210276827887386
+      },
+      "2": {
+        "mean": 0.008606279433927642,
+        "n": 1306,
+        "se": 0.0029530933450904024,
+        "t": 2.9143269203582114
+      },
+      "21": {
+        "mean": 0.00655539815323323,
+        "n": 1287,
+        "se": 0.007350774646846893,
+        "t": 0.8917969150428467
+      },
+      "5": {
+        "mean": 0.006942372072866834,
+        "n": 1303,
+        "se": 0.004111476066151016,
+        "t": 1.6885352027273208
+      },
+      "63": {
+        "mean": 0.003160515850559103,
+        "n": 1245,
+        "se": 0.009443713151351507,
+        "t": 0.3346687685136641
+      }
+    }
+  },
+  "horizons": [
+    1,
+    2,
+    5,
+    10,
+    21,
+    63
+  ],
+  "killed": [],
+  "min_names": 30,
+  "panel_sha256": "d4703a6cc1374e862d398df1a5bc4069e4e04f0ec1fc1fe9c81614a0fc3d701e"
+}

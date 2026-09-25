@@ -98,6 +98,20 @@ the certification under `docs/` remain as the research record.
   tracks JKP at only 0.29. Vol-scaled momentum's prior is 0.401 when cut at
   2025-12, which would put its F3 at 0.312: its promotion margin rests on
   January–July 2026.
+- **Earnings announcements ran 2026-09-24** (`docs/earnings_read_2026-09-24.md`;
+  point-in-time 8-K item 2.02 dates, `data/frozen/earnings_v1/`).
+  `earnings_v1` (replication, closed): the public value-weighted announcement
+  return earned Sharpe 0.41 after 1996. The monthly arm tracks it at 0.556
+  but fails economics (F3 0.117 vs 0.442). Its combination with vol-scaled
+  momentum clears the hurdle before costs (0.365 vs 0.351) and misses after
+  them (F3 0.275); in-house it ran at net Sharpe 0.82 against momentum's
+  0.66, on the same sample. `earnings_daily_v1` (discovery): the daily
+  announcement return (net 0.28) and the announcement premium (gross 0.75,
+  net 0.27 at 57× turnover a year, −0.10 correlation with momentum) survive
+  the in-house kill. At their declared horizons both fail N6's viability
+  clause, so they carry to the forward read (≈2027-03 interim), which must
+  meet N6. Costs bind across the family, and the construction band is
+  hard-coded to zero width (`evaluate.py:2515`).
 
 ## 2. Invariants — a change that violates one is wrong, not the invariant
 

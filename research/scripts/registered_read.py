@@ -172,6 +172,15 @@ def newey_west_intercept(y: pd.Series, x: pd.Series, lags: int) -> dict[str, flo
     }
 
 
+def comparison_or_skip(workspace: Workspace, registration: Any, records: dict[str, Path]) -> tuple[dict[str, Any], str]:
+    """The pairwise arm comparison, or a recorded skip for a registration with one arm (nothing to pair)."""
+    if len(records) < 2:
+        note = f"one arm ({', '.join(records)}): a single-arm registration has no pairwise comparison"
+        return {"skipped": note, "arms": list(records)}, note
+    comparison = build_comparison(workspace=workspace, registration=registration, records=list(records.values()))
+    return comparison, report_text(comparison)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--registration", required=True)
@@ -195,9 +204,9 @@ def main(argv: list[str] | None = None) -> int:
     out = Path(args.out)
     (out / "returns").mkdir(parents=True, exist_ok=True)
 
-    comparison = build_comparison(workspace=workspace, registration=registration, records=list(records.values()))
+    comparison, comparison_text = comparison_or_skip(workspace, registration, records)
     (out / "comparison.json").write_text(json.dumps(comparison, indent=2, sort_keys=True, default=str) + "\n")
-    (out / "comparison.txt").write_text(report_text(comparison) + "\n")
+    (out / "comparison.txt").write_text(comparison_text + "\n")
 
     dataset = Dataset.open(Path(args.dataset))
     net: dict[str, pd.Series] = {}
@@ -261,7 +270,7 @@ def main(argv: list[str] | None = None) -> int:
     print(json.dumps({arm: {k: arms[arm][k] for k in ("net_sharpe_annualized", "dsr_vs_set", "annualized_return",
                                                        "max_drawdown")} | {"n_eff": arms[arm]["breadth"]["n_eff_book_contribution"]}
                       for arm in arms}, indent=2))
-    print(report_text(comparison))
+    print(comparison_text)
     return 0
 
 
