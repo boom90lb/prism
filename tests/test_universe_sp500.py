@@ -324,3 +324,150 @@ def test_subtract_and_union_membership_respect_index_exclusivity():
     union = union_membership(clean, large)
     spans = [(r.ticker, r.start.date().isoformat(), r.end.date().isoformat()) for r in union.itertuples()]
     assert spans == [("GAP", "1990-01-01", "2026-09-23"), ("ZZZ", "2020-01-01", "2020-12-31")]
+
+
+# --------------------------------------------------------------------------- #
+# Revision-pinned reads and upstream-deleted rows (2026-09-25)
+# --------------------------------------------------------------------------- #
+
+HISTORY_HTML = """
+<table class="wikitable">
+  <tr><th>Effective Date</th><th>Added</th><th>Removed</th><th>Reason</th><th>Refs</th></tr>
+  <tr><th>Ticker</th><th>Security</th><th>Ticker</th><th>Security</th></tr>
+  <tr><td>September 21, 2026</td><td>BE</td><td>Bloom Energy</td><td>TAP</td><td>Molson Coors</td><td>Cap</td><td></td></tr>
+  <tr><td>December 2, 2013</td><td>ALLE |</td><td>Allegion</td><td>JCP |</td><td>JCPenney</td><td>Cap</td><td></td></tr>
+</table>
+"""
+
+
+class _Response:
+    def __init__(self, payload=None, text=""):
+        self._payload, self.text = payload, text
+
+    def raise_for_status(self) -> None:
+        pass
+
+    def json(self):
+        return self._payload
+
+
+def _wiki_get(revisions: dict[str, tuple[int, str]], pages: dict[int, str], calls: list[str]):
+    """A stand-in for ``requests.get``: title -> (revid, html) through the API and index endpoints."""
+    from prism.io.universe_sp500 import WIKI_API
+
+    def get(url, params=None, timeout=None, headers=None):
+        calls.append(url if params is None else f"{url}?{params['titles']}@{params['rvstart']}")
+        if url == WIKI_API:
+            revid, stamp = revisions[params["titles"]]
+            return _Response({"query": {"pages": {"1": {"revisions": [{"revid": revid, "timestamp": stamp}]}}}})
+        return _Response(text=pages[int(url.rsplit("oldid=", 1)[1])])
+
+    return get
+
+
+def test_normalize_ticker_drops_stray_table_pipes() -> None:
+    from prism.io.universe_sp500 import normalize_ticker
+
+    assert normalize_ticker("ALLE |") == "ALLE"
+    assert normalize_ticker(" jcp| ") == "JCP"
+    changes = parse_changes_table(extract_tables(HISTORY_HTML))
+    assert set(changes["added"]) == {"BE", "ALLE"} and set(changes["removed"]) == {"TAP", "JCP"}
+
+
+def test_changes_article_switches_on_the_move_date() -> None:
+    from prism.io.universe_sp500 import changes_article
+
+    assert changes_article("sp500", "2026-08-10") == "List of S&P 500 companies"
+    assert changes_article("sp500", "2026-08-11") == "Historical components of the S&P 500"
+    assert changes_article("sp500", "2027-03-24") == "Historical components of the S&P 500"
+    assert changes_article("sp400", "2027-03-24") == "List of S&P 400 companies"
+
+
+def test_fetch_index_tables_reads_both_articles_at_the_pinned_revision(tmp_path) -> None:
+    from prism.io.universe_sp500 import fetch_index_tables
+
+    calls: list[str] = []
+    get = _wiki_get(
+        {"List of S&P 500 companies": (11, "2027-03-20T00:00:00Z"),
+         "Historical components of the S&P 500": (22, "2027-03-01T00:00:00Z")},
+        {11: CONSTITUENTS_HTML, 22: HISTORY_HTML},
+        calls,
+    )
+    current, changes, sources = fetch_index_tables("sp500", "2027-03-24", tmp_path, get=get)
+    assert current == ["MMM", "AOS", "NVDA"]
+    assert len(changes) == 2
+    assert sources["constituents"]["revid"] == 11 and sources["changes"]["revid"] == 22
+    # Pinned to the end of the as-of day, never the live page.
+    assert all("@2027-03-24T23:59:59Z" in c for c in calls if "@" in c)
+    assert (tmp_path / "wikipedia_Historical_components_of_the_S_P_500_rev22.html").exists()
+    # A second read at the same as-of reuses the cached revisions: lookups only.
+    calls.clear()
+    fetch_index_tables("sp500", "2027-03-24", tmp_path, get=get)
+    assert all("@" in c for c in calls)
+
+
+def test_fetch_index_tables_before_the_move_reads_one_revision(tmp_path) -> None:
+    from prism.io.universe_sp500 import fetch_index_tables
+
+    calls: list[str] = []
+    get = _wiki_get({"List of S&P 500 companies": (7, "2026-07-14T16:34:24Z")}, {7: CONSTITUENTS_HTML}, calls)
+    current, changes, sources = fetch_index_tables("sp500", "2026-07-17", tmp_path, get=get)
+    assert sources["changes"] is sources["constituents"]
+    assert len(changes) == 2 and len([c for c in calls if "@" in c]) == 1
+
+
+def test_revision_lookup_fails_loud_without_a_revision() -> None:
+    from prism.io.universe_sp500 import revision_before
+
+    with pytest.raises(ValueError):
+        revision_before({"query": {"pages": {"1": {"missing": ""}}}})
+
+
+def test_supplement_rows_close_the_renamed_seat_and_respect_the_asof() -> None:
+    from prism.io.universe_sp500 import CHANGES_SUPPLEMENT_TABLE, supplement_changes
+
+    assert [(r["date"], r["added"], r["removed"]) for r in CHANGES_SUPPLEMENT_TABLE] == [
+        ("2023-07-10", "EG", "RE"), ("2024-03-25", "CPAY", "FLT"), ("2026-06-24", "ECHO", "SATS"),
+        ("2026-08-18", "VMRK", "EQR")]
+    # The deleted-row defect in miniature: RE joined in 2017 and was renamed EG in 2023.
+    changes = _changes([("2017-06-19", "RE", "")])
+    unrestored = reconstruct_membership(["EG"], changes, end_date=END)
+    assert _interval(unrestored, "RE") == [(pd.Timestamp("2017-06-19"), END)]  # never closes
+    assert _interval(unrestored, "EG") == [(HISTORY_FLOOR, END)]  # the same seat, counted twice
+    fixed = reconstruct_membership(["EG"], supplement_changes(changes, END), end_date=END)
+    assert _interval(fixed, "RE") == [(pd.Timestamp("2017-06-19"), pd.Timestamp("2023-07-10"))]
+    assert _interval(fixed, "EG") == [(pd.Timestamp("2023-07-10"), END)]
+
+    # The never-entered rename: without its row EQR vanishes from history and VMRK is backdated.
+    asof = pd.Timestamp("2026-09-24")
+    erased = reconstruct_membership(["VMRK"], _changes([]), end_date=asof)
+    assert set(erased["ticker"]) == {"VMRK"}
+    kept = reconstruct_membership(["VMRK"], supplement_changes(_changes([]), asof), end_date=asof)
+    assert _interval(kept, "EQR") == [(HISTORY_FLOOR, pd.Timestamp("2026-08-18"))]
+    assert _interval(kept, "VMRK") == [(pd.Timestamp("2026-08-18"), asof)]
+
+    # No row dated after the as-of is added, and a table carrying a row gets no duplicate.
+    early = supplement_changes(_changes([]), "2024-01-01")
+    assert [(pd.Timestamp(d).strftime("%Y-%m-%d"), a) for d, a in zip(early["date"], early["added"])] == [
+        ("2023-07-10", "EG")]
+    full = _changes([(r["date"], r["added"], r["removed"]) for r in CHANGES_SUPPLEMENT_TABLE])
+    assert supplement_changes(full, asof) is full
+
+
+def test_history_differences_find_a_rewrite_through_the_baseline_only() -> None:
+    from prism.io.universe_sp500 import history_differences
+
+    baseline = pd.DataFrame([("EQR", "1990-01-01", "2026-07-17"), ("A", "2010-01-04", "2026-07-17")],
+                            columns=["ticker", "start", "end"])
+    # A later rebuild that extends open intervals and adds post-baseline names agrees.
+    later = pd.DataFrame([("EQR", "1990-01-01", "2026-08-18"), ("VMRK", "2026-08-18", "2026-09-24"),
+                          ("A", "2010-01-04", "2026-09-24")], columns=["ticker", "start", "end"])
+    assert history_differences(later, baseline, "2026-07-17").empty
+    # The unsupplemented rebuild rewrites EQR's seat as VMRK's.
+    rewritten = pd.DataFrame([("VMRK", "1990-01-01", "2026-09-24"), ("A", "2010-01-04", "2026-09-24")],
+                             columns=["ticker", "start", "end"])
+    found = history_differences(rewritten, baseline, "2026-07-17")
+    assert found.to_dict("records") == [
+        {"ticker": "EQR", "start": "1990-01-01", "end": "2026-07-17", "side": "baseline"},
+        {"ticker": "VMRK", "start": "1990-01-01", "end": "2026-07-17", "side": "rebuild"},
+    ]

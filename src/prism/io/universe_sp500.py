@@ -20,10 +20,17 @@ is unavailable. The two tables are extracted with a small stdlib ``html.parser``
 subclass, and every reconstruction function operates on plain DataFrames so the
 logic is unit-testable without network.
 
+Pages are read at the last revision on or before the build's as-of date
+(``fetch_index_tables``), never live. The S&P 500 changes table moved to the
+"Historical components of the S&P 500" article on 2026-08-11, and editors have
+since deleted rename rows from it; ``CHANGES_SUPPLEMENT_TABLE`` puts those
+back, with renames it never carried, and ``history_differences`` finds any new
+rewrite against the reconstruction of a pinned baseline revision.
+
 Reference: Teddy Koker, "Creating a Survivorship-Bias-Free S&P 500 Dataset with
 Python" (2019). Koker used iShares IVV monthly holdings as the membership proxy;
-this module uses the Wikipedia changes table (longer history, single stable
-scrape) and keeps the same explicit rename-table / skip-set discipline.
+this module uses the Wikipedia changes table (longer history) and keeps the
+same explicit rename-table / skip-set discipline.
 """
 
 from __future__ import annotations
@@ -102,9 +109,67 @@ CHANGES_PATCH_TABLE: tuple[dict[str, str], ...] = (
 )
 
 
+# Rows the builder adds to the upstream "Selected changes" table, each applied
+# only when the table being read lacks it and only on builds whose as-of is on
+# or after its date (``supplement_changes``). Two kinds, both ticker renames:
+# rows the baseline revision carried and editors later deleted ("renamings are
+# not index changes"), and renames the table never carried. The reconstruction
+# needs them either way: without the row, the old ticker's interval never
+# closes (or the old ticker vanishes from history) and the new ticker is read
+# as a member since HISTORY_FLOOR. Kept apart from ``CHANGES_PATCH_TABLE``
+# because ``prism.io.legacy_import`` turns every patch into membership events.
+# Never add a row from memory: each cites the revision or filing it comes from.
+CHANGES_SUPPLEMENT_TABLE: tuple[dict[str, str], ...] = (
+    # Everest Re Group -> Everest Group; in revision 1364118843, deleted 2026-08-23 (revision 1370890563).
+    {"date": "2023-07-10", "added": "EG", "removed": "RE"},
+    # FleetCor -> Corpay; in revision 1364118843, deleted 2026-09-21 (revision 1376064088).
+    {"date": "2024-03-25", "added": "CPAY", "removed": "FLT"},
+    # EchoStar SATS -> ECHO; in revision 1364118843, deleted 2026-07-18 (revision 1364845917). See RENAME_TABLE.
+    {"date": "2026-06-24", "added": "ECHO", "removed": "SATS"},
+    # Equity Residential -> Vivmark Residential after the AvalonBay merger, CIK 906107 unchanged: "beginning on
+    # August 18, 2026, the Company Common Shares will trade on the NYSE under the ticker symbol 'VMRK'" (8-K,
+    # accession 0001140361-26-033377, filed 2026-08-17). Never in the table; the list article switched the
+    # constituent row in revision 1369954750.
+    {"date": "2026-08-18", "added": "VMRK", "removed": "EQR"},
+)
+
+# MediaWiki endpoints. Articles are read at the last revision on or before the
+# build's as-of date (end of day UTC), never live, so a rebuild at a past as-of
+# reads what that date's build would have read.
+WIKI_API = "https://en.wikipedia.org/w/api.php"
+WIKI_INDEX = "https://en.wikipedia.org/w/index.php"
+
+#: The article holding each index's constituents table.
+CONSTITUENTS_ARTICLE: dict[str, str] = {
+    "sp500": "List of S&P 500 companies",
+    "sp400": "List of S&P 400 companies",
+}
+
+#: The article holding each index's "Selected changes" table, by the first date
+#: it held it. The S&P 500 table moved to its own article on 2026-08-11
+#: (revision 1368903080 created it; list-article revision 1368903137 removed it).
+CHANGES_ARTICLE: dict[str, tuple[tuple[str, str], ...]] = {
+    "sp500": (
+        ("1990-01-01", "List of S&P 500 companies"),
+        ("2026-08-11", "Historical components of the S&P 500"),
+    ),
+    "sp400": (("1990-01-01", "List of S&P 400 companies"),),
+}
+
+#: The revision every S&P 500 rebuild is checked against: the list article on
+#: 2026-07-14, the revision behind ``sp500_membership_2026-07-17``. A rebuild at
+#: a later as-of must reconstruct the same history through that date
+#: (``history_differences``).
+CHANGES_BASELINE_REVID = 1364118843
+
+
 def normalize_ticker(ticker: str) -> str:
-    """Uppercase + strip; collapse internal whitespace. No vendor remap here."""
-    return re.sub(r"\s+", "", str(ticker).strip().upper())
+    """Uppercase + strip; drop internal whitespace and stray table pipes. No vendor remap here.
+
+    Wiki markup leaks a ``|`` into a few changes-table cells ("ALLE |", "JCP |"
+    in the 2026-08 article); no ticker contains one.
+    """
+    return re.sub(r"[\s|]+", "", str(ticker).strip().upper())
 
 
 # --------------------------------------------------------------------------- #
@@ -226,18 +291,135 @@ def parse_changes_table(tables: list[list[list[str]]]) -> pd.DataFrame:
     raise ValueError("No 'Selected changes' table with Added/Removed columns was found")
 
 
-def fetch_sp500_wikipedia(url: str = WIKI_URL, timeout: float = 30.0) -> tuple[list[str], pd.DataFrame]:
-    """Fetch the Wikipedia page and return ``(current_members, changes_df)``.
+def changes_article(index: str, asof: str | pd.Timestamp) -> str:
+    """The article that held ``index``'s changes table on ``asof`` (``CHANGES_ARTICLE``)."""
+    day = pd.Timestamp(asof).tz_localize(None) if pd.Timestamp(asof).tz is not None else pd.Timestamp(asof)
+    held = [title for start, title in CHANGES_ARTICLE[index] if pd.Timestamp(start) <= day]
+    if not held:
+        raise ValueError(f"no changes article is recorded for {index} on {asof}")
+    return held[-1]
 
-    Network call (the only one in this module). Kept thin so the parsing and
-    reconstruction logic stays unit-testable on raw HTML / DataFrames.
+
+def revision_before(payload: dict) -> tuple[int, str]:
+    """The (revid, timestamp) of the single revision a ``prop=revisions`` API query returned.
+
+    Same contract as ``prism.scripts.match_delisted_ciks.revision_before``; an
+    article with no revision at or before the requested time fails loud (N7).
     """
-    import requests  # local import: keep module importable without network stack
+    try:
+        (page,) = payload["query"]["pages"].values()
+        (revision,) = page["revisions"]
+        return int(revision["revid"]), str(revision["timestamp"])
+    except (KeyError, ValueError, TypeError) as exc:
+        raise ValueError(f"unexpected Wikipedia revisions payload: {payload!r:.300}") from exc
 
-    resp = requests.get(url, timeout=timeout, headers={"User-Agent": "prism/universe-builder"})
-    resp.raise_for_status()
-    tables = extract_tables(resp.text)
-    return parse_constituents_table(tables), parse_changes_table(tables)
+
+def fetch_pinned_article(
+    title: str, asof: str, cache_dir: Path, *, refresh: bool = False, get=None, timeout: float = 30.0
+) -> tuple[str, dict[str, object]]:
+    """The article as of its last revision at or before ``asof`` (end of day UTC), cached by revid.
+
+    Two network reads: the revision lookup, then the revision's HTML unless it is
+    cached. A revision's content never changes, so a cached file is reused
+    across builds; the returned provenance (url, revid, revision timestamp,
+    sha256) is what the builder records. ``get`` is ``requests.get`` unless a
+    test supplies one.
+    """
+    import hashlib
+
+    if get is None:
+        import requests  # local import: keep module importable without network stack
+
+        get = requests.get
+    headers = {"User-Agent": "prism/universe-builder"}
+    params = {"action": "query", "prop": "revisions", "titles": title, "rvlimit": 1, "rvdir": "older",
+              "rvstart": f"{pd.Timestamp(asof).strftime('%Y-%m-%d')}T23:59:59Z", "rvprop": "ids|timestamp",
+              "format": "json"}
+    response = get(WIKI_API, params=params, timeout=timeout, headers=headers)
+    response.raise_for_status()
+    revid, timestamp = revision_before(response.json())
+    slug = re.sub(r"[^A-Za-z0-9]+", "_", title).strip("_")
+    path = Path(cache_dir) / f"wikipedia_{slug}_rev{revid}.html"
+    url = f"{WIKI_INDEX}?oldid={revid}"
+    if refresh or not path.exists():
+        body = get(url, timeout=timeout, headers=headers)
+        body.raise_for_status()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(body.text, encoding="utf-8")
+    html = path.read_text(encoding="utf-8")
+    return html, {"title": title, "url": url, "revid": revid, "revision_timestamp": timestamp,
+                  "asof": str(asof), "path": str(path), "sha256": hashlib.sha256(html.encode()).hexdigest()}
+
+
+def fetch_index_tables(
+    index: str, asof: str, cache_dir: Path, *, refresh: bool = False, get=None
+) -> tuple[list[str], pd.DataFrame, dict[str, dict[str, object]]]:
+    """``(current_members, changes, sources)`` for ``index`` from revisions pinned at ``asof``.
+
+    The constituents come from ``CONSTITUENTS_ARTICLE``; the changes from the
+    article ``CHANGES_ARTICLE`` names for that date, which is the same revision
+    when both tables share an article.
+    """
+    html, constituents_meta = fetch_pinned_article(CONSTITUENTS_ARTICLE[index], asof, cache_dir, refresh=refresh, get=get)
+    current = parse_constituents_table(extract_tables(html))
+    title = changes_article(index, asof)
+    if title != CONSTITUENTS_ARTICLE[index]:
+        html, changes_meta = fetch_pinned_article(title, asof, cache_dir, refresh=refresh, get=get)
+    else:
+        changes_meta = constituents_meta
+    changes = parse_changes_table(extract_tables(html))
+    return current, changes, {"constituents": constituents_meta, "changes": changes_meta}
+
+
+def _event_keys(frame: pd.DataFrame) -> set[tuple[str, str, str]]:
+    dates = pd.to_datetime(frame["date"], errors="coerce").dt.strftime("%Y-%m-%d")
+    added = frame["added"].fillna("").map(normalize_ticker)
+    removed = frame["removed"].fillna("").map(normalize_ticker)
+    return set(zip(dates, added, removed))
+
+
+def supplement_changes(
+    changes: pd.DataFrame, asof: str | pd.Timestamp, supplement: tuple[dict[str, str], ...] = CHANGES_SUPPLEMENT_TABLE
+) -> pd.DataFrame:
+    """Append the ``CHANGES_SUPPLEMENT_TABLE`` rows dated on or before ``asof`` that ``changes`` lacks.
+
+    A revision that still carries a row gets no duplicate, and a row dated after
+    ``asof`` is never added, so an older build reconstructs exactly as it did.
+    Returns a new frame, or the input unchanged when nothing is missing.
+    """
+    day = pd.Timestamp(asof)
+    day = day.tz_localize(None) if day.tz is not None else day
+    present = _event_keys(changes)
+    missing = [row for row in supplement
+               if pd.Timestamp(row["date"]) <= day
+               and (row["date"], normalize_ticker(row["added"]), normalize_ticker(row["removed"])) not in present]
+    if not missing:
+        return changes
+    return apply_changes_patches(changes, patches=tuple(missing))
+
+
+def history_differences(
+    membership: pd.DataFrame, baseline: pd.DataFrame, through: str | pd.Timestamp
+) -> pd.DataFrame:
+    """Intervals on which two reconstructions disagree on or before ``through``.
+
+    Both are clipped at ``through``; ``side`` says which one holds the interval.
+    A rebuild must not rewrite history a published build already fixed: a
+    non-empty answer means the upstream table changed under it (a deleted row,
+    a rename entered only in the constituents table) and is reviewed before the
+    build is used.
+    """
+    cut = pd.Timestamp(through)
+
+    def clipped(frame: pd.DataFrame) -> set[tuple[str, str, str]]:
+        starts, ends = pd.to_datetime(frame["start"]), pd.to_datetime(frame["end"])
+        keep = starts <= cut
+        return {(normalize_ticker(t), s.strftime("%Y-%m-%d"), min(e, cut).strftime("%Y-%m-%d"))
+                for t, s, e in zip(frame["ticker"][keep], starts[keep], ends[keep])}
+
+    ours, theirs = clipped(membership), clipped(baseline)
+    rows = [(*key, "rebuild") for key in ours - theirs] + [(*key, "baseline") for key in theirs - ours]
+    return pd.DataFrame(sorted(rows), columns=["ticker", "start", "end", "side"])
 
 
 # --------------------------------------------------------------------------- #

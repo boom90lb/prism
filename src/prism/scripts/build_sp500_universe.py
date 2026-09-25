@@ -1,8 +1,10 @@
 """Build a survivorship-bias-free S&P 500 universe (Koker method).
 
-Reconstructs point-in-time membership from the Wikipedia "List of S&P 500
-companies" page (current constituents + 'Selected changes'), then writes five
-artifacts under ``data/universe/``:
+Reconstructs point-in-time membership from Wikipedia (the "List of S&P 500
+companies" constituents table and the "Selected changes" table, which moved to
+"Historical components of the S&P 500" on 2026-08-11), read at the last
+revision on or before ``--asof``, never the live page. Writes six artifacts
+under ``data/universe/``:
 
 * ``sp500_pit_<asof>.txt``        -- the ever-member union, in the ``load_universe``
                                      format (feeds ``--universe``).
@@ -18,6 +20,8 @@ artifacts under ``data/universe/``:
 * ``sp500_current.txt``           -- current members with a local bar cache (the
                                      live loop's fetchable-today proxy; undated
                                      because the live wrappers reference it by name).
+* ``sp500_sources_<asof>.json``   -- the Wikipedia revisions read (revid, timestamp,
+                                     sha256), the supplement rows applied, and the history check.
 
 Vendor symbol collisions are handled by three reviewed tables in
 ``prism.io.universe_sp500``: ``RENAME_TABLE`` (old symbol -> successor),
@@ -25,7 +29,12 @@ Vendor symbol collisions are handled by three reviewed tables in
 instrument; never fetched, counted as coverage skips), and
 ``CHANGES_PATCH_TABLE`` (membership-relevant events the Wikipedia changes
 table omits -- e.g. index-invisible ticker renames -- applied before
-reconstruction so intervals open and close under the right symbols).
+reconstruction so intervals open and close under the right symbols). A fourth,
+``CHANGES_SUPPLEMENT_TABLE``, adds the ticker renames the table lacks: rows
+editors deleted after 2026-07-14 and renames never entered. An S&P 500 build at
+or after that baseline refuses to write while its history through the
+baseline differs from the baseline revision's own reconstruction
+(``history_differences``).
 
 Network: fetching Wikipedia and pulling Twelvedata prices needs egress; run with
 the sandbox disabled, or pass ``--html-file`` for an offline membership-only
@@ -46,19 +55,23 @@ import pandas as pd
 
 from prism.io.loader import API_KEY_ENV_VAR, DataLoader
 from prism.io.universe_sp500 import (
+    CHANGES_BASELINE_REVID,
+    CONSTITUENTS_ARTICLE,
     QUARANTINE_TABLE,
     RENAME_TABLE,
-    WIKI_URL,
     apply_changes_patches,
     compute_coverage,
     ever_members,
     extract_tables,
-    fetch_sp500_wikipedia,
+    fetch_index_tables,
+    fetch_pinned_article,
+    history_differences,
     members_active_between,
     normalize_ticker,
     parse_changes_table,
     parse_constituents_table,
     reconstruct_membership,
+    supplement_changes,
     write_universe_file,
 )
 from prism.logging_utils import configure_logging, get_symbol_logger
@@ -67,12 +80,13 @@ from prism.workspace import Workspace, load_env, resolve_workspace
 
 logger = logging.getLogger(__name__)
 
-#: The indices this builder reconstructs, and the Wikipedia page each one reads.
-#: Both pages share the constituents + "Selected changes" layout the parsers pin.
-INDEX_PAGES: dict[str, str] = {
-    "sp500": WIKI_URL,
-    "sp400": "https://en.wikipedia.org/wiki/List_of_S%26P_400_companies",
-}
+#: The indices this builder reconstructs (the articles each reads are
+#: ``CONSTITUENTS_ARTICLE`` and ``CHANGES_ARTICLE``).
+INDICES: tuple[str, ...] = tuple(CONSTITUENTS_ARTICLE)
+
+#: The as-of date whose pinned list-article revision is ``CHANGES_BASELINE_REVID``.
+#: S&P 500 builds at or after it are checked against that revision's changes table.
+CHANGES_BASELINE_ASOF = "2026-07-17"
 
 
 def parse_args() -> argparse.Namespace:
@@ -86,12 +100,17 @@ def parse_args() -> argparse.Namespace:
                         "The price cache is {workspace}/data and the logs are {workspace}/logs.")
     p.add_argument("--out_dir", type=str, default=None,
                    help="Output directory for the universe artifacts (default: {workspace}/data/universe).")
-    p.add_argument("--index", type=str, default="sp500", choices=sorted(INDEX_PAGES),
+    p.add_argument("--index", type=str, default="sp500", choices=sorted(INDICES),
                    help="Which index to reconstruct; every artifact is prefixed with it.")
-    p.add_argument("--wiki_url", type=str, default=None, help="Defaults to the index's own page.")
     p.add_argument("--html_file", type=str, default=None,
-                   help="Read the Wikipedia HTML from a local file instead of the network "
-                        "(reproducible / offline membership build).")
+                   help="Read the constituents (and, without --changes_html_file, the changes) table "
+                        "from a local file instead of the pinned revision (offline membership build).")
+    p.add_argument("--changes_html_file", type=str, default=None,
+                   help="Read the changes table from this local file (with --html_file).")
+    p.add_argument("--baseline_html_file", type=str, default=None,
+                   help="The baseline revision's HTML for the history check, instead of fetching it.")
+    p.add_argument("--refresh_wikipedia", action="store_true",
+                   help="Re-download pinned revisions even when cached.")
     p.add_argument("--skip_prices", action="store_true",
                    help="Build membership + universe file only; skip the price pull and coverage ledger.")
     p.add_argument("--max_names", type=int, default=None, help="Cap the price pull to the first N names (testing).")
@@ -130,11 +149,33 @@ def _write_current_members(
     path.write_text(header + "\n".join(names) + "\n")
 
 
-def _load_tables(args: argparse.Namespace) -> tuple[list[str], pd.DataFrame]:
+def _load_tables(args: argparse.Namespace, cache_dir: Path) -> tuple[list[str], pd.DataFrame, dict[str, object]]:
+    """Constituents, changes and their provenance: local files when given, else revisions pinned at ``--asof``."""
     if args.html_file:
         tables = extract_tables(Path(args.html_file).read_text())
-        return parse_constituents_table(tables), parse_changes_table(tables)
-    return fetch_sp500_wikipedia(args.wiki_url or INDEX_PAGES[args.index])
+        changes_tables = extract_tables(Path(args.changes_html_file).read_text()) if args.changes_html_file else tables
+        sources: dict[str, object] = {"constituents": {"path": args.html_file},
+                                      "changes": {"path": args.changes_html_file or args.html_file}}
+        return parse_constituents_table(tables), parse_changes_table(changes_tables), sources
+    current, changes, pinned = fetch_index_tables(args.index, args.asof, cache_dir, refresh=args.refresh_wikipedia)
+    return current, changes, dict(pinned)
+
+
+def _baseline_membership(args: argparse.Namespace, cache_dir: Path) -> tuple[pd.DataFrame, dict[str, object]]:
+    """Revision ``CHANGES_BASELINE_REVID`` reconstructed at its as-of; a different revision there fails loud."""
+    if args.baseline_html_file:
+        html = Path(args.baseline_html_file).read_text()
+        meta: dict[str, object] = {"path": args.baseline_html_file}
+    else:
+        html, meta = fetch_pinned_article(CONSTITUENTS_ARTICLE["sp500"], CHANGES_BASELINE_ASOF, cache_dir,
+                                          refresh=args.refresh_wikipedia)
+        if meta["revid"] != CHANGES_BASELINE_REVID:
+            raise SystemExit(f"baseline revision at {CHANGES_BASELINE_ASOF} is {meta['revid']}, "
+                             f"not {CHANGES_BASELINE_REVID}: the article's history changed (N7)")
+    tables = extract_tables(html)
+    changes = apply_changes_patches(supplement_changes(parse_changes_table(tables), CHANGES_BASELINE_ASOF))
+    membership = reconstruct_membership(parse_constituents_table(tables), changes, end_date=CHANGES_BASELINE_ASOF)
+    return membership, meta
 
 
 def _pull_prices(
@@ -199,7 +240,17 @@ def main() -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     index = args.index
-    current, changes = _load_tables(args)
+    wiki_cache = workspace.data / "wikipedia"
+    current, changes, sources = _load_tables(args, wiki_cache)
+    history_check: dict[str, object] = {"checked": False}
+    n_upstream = len(changes)
+    if index == "sp500":
+        changes = supplement_changes(changes, args.asof)
+    tail = changes.iloc[n_upstream:]
+    supplemented = [{"date": pd.Timestamp(d).strftime("%Y-%m-%d"), "added": a, "removed": r}
+                    for d, a, r in zip(tail["date"], tail["added"], tail["removed"])]
+    if supplemented:
+        logger.info("added %d supplement row(s) the upstream table lacks: %s", len(supplemented), supplemented)
     n_raw = len(changes)
     # The reviewed changes patches are S&P 500 events (the ACT -> AGN seat);
     # applying them to another index would inject a membership event it never
@@ -209,6 +260,19 @@ def main() -> None:
     if len(changes) != n_raw:
         logger.info("applied %d reviewed changes-table patch event(s)", len(changes) - n_raw)
     membership = reconstruct_membership(current, changes, end_date=args.asof)
+    if index == "sp500" and pd.Timestamp(args.asof) >= pd.Timestamp(CHANGES_BASELINE_ASOF):
+        baseline, baseline_meta = _baseline_membership(args, wiki_cache)
+        differences = history_differences(membership, baseline, CHANGES_BASELINE_ASOF)
+        history_check = {"checked": True, "through": CHANGES_BASELINE_ASOF, "baseline": baseline_meta,
+                         "differences": differences.to_dict("records")}
+        if not differences.empty:
+            raise SystemExit(
+                f"the rebuild's membership through {CHANGES_BASELINE_ASOF} differs from revision "
+                f"{CHANGES_BASELINE_REVID}'s reconstruction on {len(differences)} interval(s):\n"
+                f"{differences.to_string(index=False)}\nThe upstream table changed under the build (a deleted row, "
+                "or a rename entered only in the constituents table). Find the event's primary source and add it "
+                "to CHANGES_SUPPLEMENT_TABLE, or show the change is a correction (N7). Nothing was written."
+            )
     # Remap to vendor symbols so the universe file, membership mask, and price
     # panel all share one symbology (rename table is empty until coverage gaps
     # are reviewed -- identity for now).
@@ -228,9 +292,15 @@ def main() -> None:
         len(window), len(ever), len(membership), universe_path,
     )
 
+    sources_path = out_dir / f"{index}_sources_{args.asof}.json"
+    sources_path.write_text(json.dumps({"index": index, "asof": args.asof, "wikipedia": sources,
+                                        "supplement_rows": supplemented, "history_check": history_check},
+                                       indent=2, default=str) + "\n")
+
     result: dict[str, object] = {
         "index": index,
         "asof": args.asof,
+        "sources_file": str(sources_path),
         "n_current_members": len(current),
         "n_changes": int(len(changes)),
         "n_ever_members": len(ever),
