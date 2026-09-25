@@ -1,0 +1,53 @@
+{
+  "built_at": "2026-09-25T00:14:22.137080+00:00",
+  "dataset": {
+    "as_of": "2026-06-15T00:00:00-04:00",
+    "id": "bedf8c4c0f0c2195ce5aace938f4ad38e23e6b69b57075080073004692d46eef",
+    "path": "data/frozen/demotion_b1"
+  },
+  "definitions": {
+    "min_gap_sessions": 5,
+    "min_market_names": 100,
+    "window": [
+      -2,
+      1
+    ]
+  },
+  "events": {
+    "path": "data/frozen/earnings_v1/events.parquet",
+    "per_security_year": 3.8,
+    "rows": 13963,
+    "securities": 569,
+    "sha256": "9f005f1d300f7c41a2e682484e94aa60e4043e05cc19b5aaa3db0e054e8754e7",
+    "without_return": 98
+  },
+  "inputs": {
+    "edgar_manifest": {
+      "path": "data/edgar/manifest.json",
+      "sha256": "0f4c4818f6ff78e3dc58feff3b4c79197cf3a0da8decdd0009441e735a2038db"
+    },
+    "filings": {
+      "path": "data/edgar/filings.parquet",
+      "sha256": "e2627caa3bebc65932c93eba986319ef5bdb1abf50288369bf4614449bb48620"
+    },
+    "ticker_cik": {
+      "path": "data/edgar/ticker_cik.parquet",
+      "sha256": "50d55f25b3e272aa355f434c8b0e25e5142cae3ea388cdbb2a8478b2c84f09bf"
+    }
+  },
+  "market_sessions_without_value": 0,
+  "median_daily_member_coverage": {
+    "age_le_126": 0.9713701431492843,
+    "age_le_60": 0.952
+  },
+  "panel": {
+    "companies": 560,
+    "first": "2020-01-08",
+    "last": "2026-06-15",
+    "path": "data/frozen/earnings_v1/panel.parquet",
+    "rows": 830419,
+    "securities": 564,
+    "sha256": "cce32946d76f472e2098342ff956794f3b41b9a81816d35d5f482aca2f185414"
+  },
+  "peak_rss_mb": 975.4
+}
