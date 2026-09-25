@@ -17,13 +17,10 @@ Three things it refuses to do, because each would be a fabrication:
 * **Invent a session.** The sessions since the last completed one come from the
   bundled table (``prism.io.sessions``) and are reported as a gap, each one "no
   session ran" — never a clean session, never a fill.
-* **Decide the regime clock.** The doctor's streak is the trailing run of
-  ``clean`` rows in ``regime.jsonl`` (``prism/scripts/doctor.py:312-317``,
-  against ``CLEAN_SESSIONS_REQUIRED`` at ``prism/scripts/doctor.py:76``); a
-  session that never ran appends no row, so a gap neither advances nor resets
-  the count mechanically. Whether it *should* restart the clock is an owner
-  policy call under the operating rules. The report records it as undecided and
-  leaves it there.
+* **Count a session that never ran.** The regime clock is the doctor's
+  (``prism.scripts.doctor.regime_streak``): a session with no ``regime.jsonl``
+  row is not clean, so a gap restarts the count (docs/regime_step.md §4; owner
+  decision 2026-09-25).
 * **Guess a schema.** An unrecognized ``state.json`` ``schema_version`` stops the
   assessment; a best-effort read of an unknown book is the silent wrong answer.
 
@@ -49,7 +46,7 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
 from prism.io import sessions
-from prism.scripts.doctor import CLEAN_SESSIONS_REQUIRED
+from prism.scripts.doctor import CLEAN_SESSIONS_REQUIRED, regime_streak
 from prism.workspace import load_env
 
 EXIT_OK = 0
@@ -170,6 +167,8 @@ class RegimeClock:
     streak: int
     last_bar: str | None
     trailing_unclean: bool
+    run: int = 0
+    missed: int = 0
 
 
 @dataclass(frozen=True)
@@ -352,21 +351,12 @@ def read_nightly_log(path: Path) -> NightlyFacts:
 # derived readings
 
 
-def regime_clock(rows: Sequence[dict[str, Any]]) -> RegimeClock:
-    """The trailing run of ``clean`` rows, computed the way doctor.py:312-317 computes it."""
-    clean = [bool(row.get("clean")) for row in rows]
-    streak = 0
-    for value in reversed(clean):
-        if not value:
-            break
-        streak += 1
-    last_bar = str(rows[-1]["decision_bar"]) if rows and "decision_bar" in rows[-1] else None
-    return RegimeClock(
-        rows=len(rows),
-        streak=streak,
-        last_bar=last_bar,
-        trailing_unclean=bool(clean) and not clean[-1],
-    )
+def regime_clock(rows: Sequence[dict[str, Any]], asof: dt.date) -> RegimeClock:
+    """The doctor's clock (``prism.scripts.doctor.regime_streak``) at ``asof``."""
+    found = regime_streak(rows, as_of=asof)
+    last_clean = bool(rows[-1].get("clean")) if rows else False
+    return RegimeClock(rows=found.rows, streak=found.streak, last_bar=found.last_bar,
+                       trailing_unclean=bool(rows) and not last_clean, run=found.run, missed=len(found.missed))
 
 
 def _parse_bar(value: str | None) -> dt.date | None:
@@ -609,7 +599,7 @@ def build_report(
         rows_by_ledger[name] = rows
     nightly = read_nightly_log(run_dir / "nightly.log")
     gap = session_gap(state=state, equity=ledgers["equity.jsonl"], nightly=nightly, asof=asof)
-    clock = regime_clock(rows_by_ledger["regime.jsonl"])
+    clock = regime_clock(rows_by_ledger["regime.jsonl"], asof)
     git = commit_difference(run_dir=run_dir, traded_commit=nightly.last_run_commit, repo=repo)
 
     coverage_start, coverage_end = sessions.coverage()
@@ -710,21 +700,18 @@ def build_report(
     out.append("REGIME CLEAN-SESSION CLOCK")
     out.append("-" * 78)
     out.append(
-        f"clock                   {clock.streak}/{CLEAN_SESSIONS_REQUIRED} consecutive clean sessions through "
-        f"{clock.last_bar} ({clock.rows} row(s) total)"
+        f"clock                   {clock.streak}/{CLEAN_SESSIONS_REQUIRED} consecutive clean sessions as of "
+        f"{asof.isoformat()} ({clock.rows} row(s) total, last {clock.last_bar})"
     )
-    out.append("mechanics               the streak is the trailing run of clean rows in regime.jsonl")
-    out.append("                        (prism/scripts/doctor.py:312-317; CLEAN_SESSIONS_REQUIRED at :76).")
-    out.append("                        A session that never ran appends no row, so the gap above neither")
-    out.append("                        advanced nor reset this count. The number is unchanged from the last")
-    out.append("                        session that ran.")
+    out.append("rule                    a session counts iff it appended a clean regime.jsonl row; a session")
+    out.append("                        that never ran appended none and is not clean, so it restarts the")
+    out.append("                        count (docs/regime_step.md §4; owner decision 2026-09-25;")
+    out.append("                        prism.scripts.doctor.regime_streak).")
+    if clock.missed:
+        out.append(f"                        The run through {clock.last_bar} was {clock.run}; the {clock.missed}")
+        out.append("                        unrecorded session(s) since restarted it.")
     if clock.trailing_unclean:
         out.append("                        The newest row is not clean; the streak was already 0 before the gap.")
-    out.append("policy                  UNDECIDED. Whether a gap of this length restarts the clock is an owner")
-    out.append("                        decision under the existing operating rules. This assessment records")
-    out.append("                        the question and does not answer it; the engine specification does not")
-    out.append("                        answer it either. Record the decision and its reason before the")
-    out.append("                        precondition is claimed either way.")
     out.append("")
 
     out.append("COMMIT DIFFERENCE")
@@ -768,11 +755,10 @@ def build_report(
 
     out.append("OPEN ITEMS FOR THE OWNER")
     out.append("-" * 78)
-    out.append("1. The regime clean-session clock policy above is UNDECIDED and is not decided here.")
-    out.append("2. Restarting the scheduler is an owner act under the existing operating rules; this")
+    out.append("1. Restarting the scheduler is an owner act under the existing operating rules; this")
     out.append("   assessment does not perform it and does not authorize it.")
     if not network:
-        out.append("3. The venue reconciliation has not been performed (see above); do it before restart.")
+        out.append("2. The venue reconciliation has not been performed (see above); do it before restart.")
     for note in notes:
         out.append(f"NOTE: {note}")
     if sessions.coverage_end() - asof <= dt.timedelta(days=90):

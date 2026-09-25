@@ -370,19 +370,62 @@ def test_regime_clock_absent_warns_at_zero(tmp_path):
     assert result.status == "WARN" and f"0/{CLEAN_SESSIONS_REQUIRED}" in result.detail
 
 
+def _sessions(first, n):
+    from prism.io import sessions
+
+    out = [first]
+    while len(out) < n:
+        out.append(sessions.next_session(out[-1]))
+    return out
+
+
 def test_regime_clock_counts_the_trailing_streak_only(tmp_path):
     # A dirty session restarts the count; earlier clean sessions do not carry.
-    rows = [(f"2026-06-{d:02d}", True) for d in range(1, 6)]
-    rows += [("2026-06-06", False)] + [(f"2026-06-{d:02d}", True) for d in range(7, 10)]
+    days = _sessions(date(2026, 6, 1), 9)
+    rows = [(d.isoformat(), i != 5) for i, d in enumerate(days)]
     _regime(tmp_path, rows)
-    result = check_regime_clock(tmp_path)
+    result = check_regime_clock(tmp_path, today=date(2026, 6, 12))
     assert result.status == "WARN" and f"3/{CLEAN_SESSIONS_REQUIRED}" in result.detail
+    assert "is not clean" in result.detail
 
 
 def test_regime_clock_satisfied_passes(tmp_path):
-    _regime(tmp_path, [(f"2026-06-{d:02d}", True) for d in range(1, 1 + CLEAN_SESSIONS_REQUIRED)])
-    result = check_regime_clock(tmp_path)
+    days = _sessions(date(2026, 6, 1), CLEAN_SESSIONS_REQUIRED)
+    _regime(tmp_path, [(d.isoformat(), True) for d in days])
+    result = check_regime_clock(tmp_path, today=days[-1])
     assert result.status == "PASS" and "satisfied" in result.detail
+
+
+def test_a_session_with_no_row_inside_the_run_restarts_it(tmp_path):
+    # docs/regime_step.md §4: absence of the record is absence of the session.
+    days = _sessions(date(2026, 6, 1), 8)
+    _regime(tmp_path, [(d.isoformat(), True) for i, d in enumerate(days) if i != 4])
+    result = check_regime_clock(tmp_path, today=days[-1])
+    assert f"3/{CLEAN_SESSIONS_REQUIRED}" in result.detail and "no row for the session(s)" in result.detail
+
+
+def test_unrecorded_sessions_since_the_last_row_zero_the_clock(tmp_path):
+    # The 2026-08-14 -> 09-25 outage in miniature: 12 clean rows, then the loop went dark.
+    days = _sessions(date(2026, 7, 30), 12)
+    _regime(tmp_path, [(d.isoformat(), True) for d in days])
+    assert days[-1] == date(2026, 8, 14)
+    dark = check_regime_clock(tmp_path, today=date(2026, 9, 25))
+    assert dark.status == "WARN" and dark.detail.startswith(f"0/{CLEAN_SESSIONS_REQUIRED}")
+    assert "28 session(s) since 2026-08-14 have no regime row" in dark.detail and "was 12" in dark.detail
+    # The evening of the last row and the next morning still stand at 12; a skipped day zeroes it.
+    assert f"12/{CLEAN_SESSIONS_REQUIRED}" in check_regime_clock(tmp_path, today=date(2026, 8, 14)).detail
+    assert f"12/{CLEAN_SESSIONS_REQUIRED}" in check_regime_clock(tmp_path, today=date(2026, 8, 17)).detail
+    assert check_regime_clock(tmp_path, today=date(2026, 8, 18)).detail.startswith(f"0/{CLEAN_SESSIONS_REQUIRED}")
+    # The first session after re-arming starts a new run at 1.
+    _regime(tmp_path, [(d.isoformat(), True) for d in days] + [("2026-09-25", True)])
+    assert f"1/{CLEAN_SESSIONS_REQUIRED}" in check_regime_clock(tmp_path, today=date(2026, 9, 25)).detail
+
+
+def test_a_rerun_row_for_the_same_bar_replaces_the_first(tmp_path):
+    days = _sessions(date(2026, 6, 1), 3)
+    _regime(tmp_path, [(days[0].isoformat(), True), (days[1].isoformat(), False), (days[1].isoformat(), True),
+                       (days[2].isoformat(), True)])
+    assert f"3/{CLEAN_SESSIONS_REQUIRED}" in check_regime_clock(tmp_path, today=days[-1]).detail
 
 
 # ---------------------------------------------------------------------------
@@ -447,7 +490,7 @@ def test_run_checks_offline_composes(tmp_path):
             "2026-07-29T18:30:16-0700 EXIT 0",
         ],
     )
-    _regime(run_dir, [(f"2026-07-{d:02d}", True) for d in range(1, 1 + CLEAN_SESSIONS_REQUIRED)])
+    _regime(run_dir, [(d.isoformat(), True) for d in _sessions(date(2026, 6, 30), CLEAN_SESSIONS_REQUIRED)])
     results = _by_name(
         run_checks(
             run_dir=run_dir,

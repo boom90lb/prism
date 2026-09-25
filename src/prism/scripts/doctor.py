@@ -425,17 +425,70 @@ def check_session_table(*, today: date | None = None) -> CheckResult:
     return _result("session-table", not horizon.warn, horizon.detail(), warn=True)
 
 
-def check_regime_clock(run_dir: Path) -> CheckResult:
-    """Consecutive clean sessions on the handoff §8 precondition-(b) clock.
+@dataclass(frozen=True)
+class RegimeStreak:
+    """The precondition-(b) clock read off ``regime.jsonl`` under docs/regime_step.md §4.
 
-    A session counts iff it appended a regime row with ``clean: true``; a gap in
-    the ledger is not clean either, because absence of the record is absence of
-    the session (docs/regime_step.md §4). Reported, never FAILed — an
-    incomplete clock is the normal state of an honest program, and this check
-    exists so the count is read off the ledger instead of remembered.
+    ``run`` is the trailing run of clean rows on consecutive sessions ending at
+    the last row; ``missed`` lists the sessions after the last row whose close has
+    passed without a row. ``streak`` is what stands now: ``run``, or 0 once a
+    session has gone unrecorded, because absence of the record is absence of the
+    session.
+    """
+
+    streak: int
+    run: int
+    rows: int
+    last_bar: str | None
+    missed: tuple[date, ...]
+    run_break: str | None
+
+
+def regime_streak(rows: Sequence[Mapping[str, object]], *, as_of: date) -> RegimeStreak:
+    """Consecutive clean sessions standing at ``as_of`` (docs/regime_step.md §4; owner decision 2026-09-25).
+
+    A session counts iff it appended a row with ``clean: true``. The run breaks
+    on an unclean row and on a session with no row between two rows; a rerun's
+    later row for the same bar replaces the earlier one. A session is expected
+    once its close has passed, so the horizon is the last session strictly
+    before ``as_of`` — the nightly's own row for ``as_of`` is never counted as
+    missed while the day is open. Raises ``ValueError`` when the session table
+    cannot date a bar; the caller reports that rather than guessing.
+    """
+    from prism.io import sessions
+
+    by_bar: dict[date, bool] = {}
+    for row in rows:
+        by_bar[date.fromisoformat(str(row["decision_bar"])[:10])] = bool(row.get("clean"))
+    bars = sorted(by_bar)
+    if not bars:
+        return RegimeStreak(0, 0, 0, None, (), None)
+    run, run_break, later = 0, None, None
+    for bar in reversed(bars):
+        if not by_bar[bar]:
+            run_break = f"row {bar} is not clean"
+            break
+        if later is not None and sessions.previous_session(later) != bar:
+            run_break = f"no row for the session(s) between {bar} and {later}"
+            break
+        run += 1
+        later = bar
+    last = bars[-1]
+    horizon = sessions.previous_session(as_of)
+    missed = tuple(sessions.sessions_between(sessions.next_session(last), horizon)) if horizon > last else ()
+    return RegimeStreak(0 if missed else run, run, len(by_bar), last.isoformat(), missed, run_break)
+
+
+def check_regime_clock(run_dir: Path, *, today: date | None = None) -> CheckResult:
+    """Consecutive clean sessions on the handoff §8 precondition-(b) clock (:func:`regime_streak`).
+
+    Reported, never FAILed — an incomplete clock is the normal state of an
+    honest program, and this check exists so the count is read off the ledger
+    instead of remembered.
     """
     from prism.live import read_regime_ledger
 
+    today = today or date.today()
     ledger = run_dir / "regime.jsonl"
     frame = read_regime_ledger(ledger)
     if frame.empty:
@@ -446,18 +499,25 @@ def check_regime_clock(run_dir: Path) -> CheckResult:
             "(run the loop with --regime and FRED_API_KEY to start it)",
             warn=True,
         )
-    clean = [bool(v) for v in frame.get("clean", [])]
-    streak = 0
-    for value in reversed(clean):
-        if not value:
-            break
-        streak += 1
-    last_bar = str(frame["decision_bar"].iloc[-1]) if "decision_bar" in frame else "?"
-    detail = (
-        f"{streak}/{CLEAN_SESSIONS_REQUIRED} consecutive clean sessions through {last_bar} "
-        f"({len(clean)} row(s) total)"
-    )
-    if streak >= CLEAN_SESSIONS_REQUIRED:
+    try:
+        clock = regime_streak(frame.to_dict("records"), as_of=today)
+    except (KeyError, ValueError) as exc:
+        return _result("regime-clock", False, f"{ledger}: cannot date the clock ({exc})", warn=True)
+    if clock.missed:
+        detail = (
+            f"0/{CLEAN_SESSIONS_REQUIRED} consecutive clean sessions as of {today.isoformat()}: "
+            f"{len(clock.missed)} session(s) since {clock.last_bar} have no regime row, and absence of the "
+            f"record is absence of the session (docs/regime_step.md §4); the run through {clock.last_bar} "
+            f"was {clock.run} ({clock.rows} row(s) total)"
+        )
+    else:
+        detail = (
+            f"{clock.streak}/{CLEAN_SESSIONS_REQUIRED} consecutive clean sessions through {clock.last_bar} "
+            f"({clock.rows} row(s) total)"
+        )
+        if clock.run_break:
+            detail += f"; the run starts after: {clock.run_break}"
+    if clock.streak >= CLEAN_SESSIONS_REQUIRED:
         return _result("regime-clock", True, detail + " — precondition (b) satisfied")
     return _result("regime-clock", False, detail, warn=True)
 
@@ -799,7 +859,7 @@ def run_checks(
     results.append(check_session_table(today=today))
     results.append(check_nightly_log(run_dir, today=today))
     results.append(check_wrapper_provenance(run_dir))
-    results.append(check_regime_clock(run_dir))
+    results.append(check_regime_clock(run_dir, today=today))
     if network:
         results.extend(check_alpaca_account(universe_file, run_dir))
         results.append(check_twelvedata_quote(env.get("TWELVEDATA_API_KEY"), data_dir))

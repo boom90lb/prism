@@ -346,24 +346,26 @@ def test_regime_clock_is_the_doctors_streak(tmp_path: Path) -> None:
     )
 
     _, report = run_assessment(run_dir, tmp_path)
-    doctor = check_regime_clock(run_dir)
+    doctor = check_regime_clock(run_dir, today=dt.date.fromisoformat(ASOF))
 
-    assert f"2/{psa.CLEAN_SESSIONS_REQUIRED} consecutive clean sessions through 2026-08-14" in report
-    assert doctor.detail.startswith(f"2/{psa.CLEAN_SESSIONS_REQUIRED} consecutive clean sessions through 2026-08-14")
+    # ASOF is 2026-09-08: the sessions since 2026-08-14 went unrecorded, so both read 0 with the run of 2 behind it.
+    assert f"0/{psa.CLEAN_SESSIONS_REQUIRED} consecutive clean sessions as of {ASOF}" in report
+    assert "The run through 2026-08-14 was 2" in report
+    assert doctor.detail.startswith(f"0/{psa.CLEAN_SESSIONS_REQUIRED} consecutive clean sessions as of {ASOF}")
+    assert "was 2" in doctor.detail
 
 
-def test_gap_neither_advances_nor_resets_the_clock_and_the_policy_stays_undecided(tmp_path: Path) -> None:
-    """The clock is the same number before and after fifteen unrun sessions, and nobody decided anything."""
+def test_a_gap_restarts_the_clock(tmp_path: Path) -> None:
+    """docs/regime_step.md §4 (owner decision 2026-09-25): unrun sessions are not clean and restart the count."""
     current = build_run_dir(tmp_path / "current", bars=("2026-09-02", "2026-09-03", "2026-09-04"))
     dark = build_run_dir(tmp_path / "dark")
 
     _, current_report = run_assessment(current, tmp_path / "current")
     _, dark_report = run_assessment(dark, tmp_path / "dark")
 
-    streak = f"3/{psa.CLEAN_SESSIONS_REQUIRED} consecutive clean sessions"
-    assert streak in current_report and streak in dark_report
-    assert "policy                  UNDECIDED" in dark_report
-    assert "does not answer it" in dark_report
+    assert f"3/{psa.CLEAN_SESSIONS_REQUIRED} consecutive clean sessions as of {ASOF}" in current_report
+    assert f"0/{psa.CLEAN_SESSIONS_REQUIRED} consecutive clean sessions as of {ASOF}" in dark_report
+    assert "restarted it" in dark_report and "UNDECIDED" not in dark_report
 
 
 def test_trailing_unclean_row_is_called_out(tmp_path: Path) -> None:
