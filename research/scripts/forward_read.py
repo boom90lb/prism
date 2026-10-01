@@ -54,7 +54,8 @@ drag plus the hurdle, as the in-house reads computed it), and the SPEC §3 hurdl
 ``(rf - y * max(0, 1 - L/E)) / vol`` with rf the mean bond-equivalent yield of
 FRED DTB3 over the forward sessions, y the cash yield of ``retail_v2`` and L/E
 the book's recorded average long exposure. The live monitor contradicts when the
-paper stream's anytime verdict is ``refuted``.
+paper stream's anytime return verdict is ``refuted``, read with the sequence
+``MONITOR_METHOD`` names and recorded with its parameters in the packet.
 
 Subcommands (all refuse before the clock's first read; ``status`` is the dry run)::
 
@@ -91,6 +92,7 @@ from prism.validation.compare import (
     sharpe_difference_interval,
     sharpe_interval,
 )
+from prism.validation.hurdle import tbill_hurdle as shared_tbill_hurdle
 from prism.validation.metrics import (
     deflated_sharpe_ratio_with_n,
     probabilistic_sharpe_ratio,
@@ -108,6 +110,14 @@ HISTORY_START = "2020-01-01"
 COST_STACK_CASH = Path("examples/reference/costs/retail_v2.toml")
 READS_ROOT = Path("results/forward")
 LIVE_RUN_DIR_POINTER = Path("runs/ACTIVE_RUN_DIR")
+#: docs/live_monitor_design.md §4: the return verdict behind every "not in contradiction" conjunct this
+#: script reads is the empirical-Bernstein sequence over consecutive sessions. Pinned by name so a later
+#: change to ``paper_monitor_read``'s default cannot move a registered conjunct silently; the parameters
+#: the verdict was read with travel into the packet (``monitor_verdict``).
+MONITOR_METHOD = "empirical_bernstein"
+#: The keys of the monitor read that the packet records beside the verdict, so the conjunct is
+#: recomputable from the equity ledger alone (N5): which sequence, support, hurdle, alpha, gap count.
+MONITOR_PACKET_KEYS = ("n", "verdict", "method", "bound", "hurdle", "alpha", "n_gaps", "mean", "ci_lower", "ci_upper")
 REGISTERED_PANEL = "data/frozen/earnings_v1/panel.parquet"
 REGISTERED_PANEL_SHA256 = "d4703a6cc1374e862d398df1a5bc4069e4e04f0ec1fc1fe9c81614a0fc3d701e"
 
@@ -499,13 +509,22 @@ def deflation(net: pd.Series, trial_sharpes: Mapping[str, float], n_rows: int) -
 
 
 def tbill_hurdle(rf_annual: float, cash_yield: float, long_over_equity: float, vol_annual: float) -> dict[str, float]:
-    """SPEC §3 as amended 2026-09-25: annualized Sharpe hurdle ``(rf - y * max(0, 1 - L/E)) / vol``."""
-    idle = max(0.0, 1.0 - float(long_over_equity))
-    excess = float(rf_annual) - float(cash_yield) * idle
-    sharpe = excess / float(vol_annual) if vol_annual > 0 else float("nan")
-    return {"rf_annual": float(rf_annual), "cash_yield": float(cash_yield), "long_over_equity": float(long_over_equity),
-            "idle_fraction": idle, "return_hurdle_annual": excess, "vol_annual": float(vol_annual),
-            "sharpe_annual": sharpe, "sharpe_periodic": sharpe / math.sqrt(PER_YEAR)}
+    """SPEC §3 as amended 2026-09-25: annualized Sharpe hurdle ``(rf - y * max(0, 1 - L/E)) / vol``.
+
+    A thin wrapper over the shared :func:`prism.validation.hurdle.tbill_hurdle`, keeping this
+    module's recorded output shape. The volatility is the forward sessions' realized
+    annualized standard deviation. A non-positive volatility is refused (SPEC N7) rather
+    than returned as NaN: a degenerate forward series has no readable hurdle.
+    """
+    try:
+        found = shared_tbill_hurdle(rf_annual, cash_yield, long_over_equity, vol_annual,
+                                    periods_per_year=PER_YEAR, vol_basis="realized_annualized")
+    except ValueError as exc:
+        raise ReadRefused(f"hurdle is not computable: {exc} (N7)") from exc
+    i = found.inputs
+    return {"rf_annual": i.rf_annual, "cash_yield": i.cash_yield, "long_over_equity": i.long_over_equity,
+            "idle_fraction": found.idle_fraction, "return_hurdle_annual": found.return_hurdle_annual,
+            "vol_annual": i.vol_annual, "sharpe_annual": found.sharpe_annual, "sharpe_periodic": found.sharpe_periodic}
 
 
 def average_long_over_equity(weights: pd.DataFrame) -> float:
@@ -731,8 +750,8 @@ def monitor_verdict() -> tuple[str, dict[str, Any]]:
     from prism.live.monitor import paper_monitor_read
 
     run_dir = Path(LIVE_RUN_DIR_POINTER.read_text().strip())
-    found = paper_monitor_read(run_dir / "equity.jsonl")
-    return str(found["verdict"]), {"run_dir": str(run_dir), **{k: found[k] for k in ("n", "verdict") if k in found}}
+    found = paper_monitor_read(run_dir / "equity.jsonl", method=MONITOR_METHOD)
+    return str(found["verdict"]), {"run_dir": str(run_dir), **{k: found[k] for k in MONITOR_PACKET_KEYS if k in found}}
 
 
 def tbill_rate(first: dt.date, last: dt.date) -> tuple[float, dict[str, Any]]:

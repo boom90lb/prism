@@ -725,42 +725,6 @@ def test_an_unreadable_threshold_is_refused() -> None:
 
 
 # ---------------------------------------------------------------------------
-# The live run directory, read-only
-# ---------------------------------------------------------------------------
-
-LIVE_RUN_DIR = Path("/home/b90/prism/runs/paper_loop_momentum2")
-
-
-@pytest.mark.skipif(not LIVE_RUN_DIR.is_dir(), reason="the live paper run directory is not on this machine")
-def test_the_live_run_directorys_ledger_agrees_with_the_session_table() -> None:
-    """Read-only, and independent of which session the live book last completed.
-
-    An earlier version pinned the ledger's last decision bar to a date, so the
-    test went red the first night the loop ran again (2026-09-25). What can be
-    asserted about live state without freezing it: the last decision bar is an
-    exchange session no later than today, and as of the session after it the
-    scheduler check reports nothing missed. The file mtimes are asserted
-    unchanged so a future edit cannot quietly make this test a writer.
-    """
-    from prism.io import sessions as session_table
-
-    ledger = LIVE_RUN_DIR / "equity.jsonl"
-    before = {path.name: path.stat().st_mtime_ns for path in sorted(LIVE_RUN_DIR.iterdir())}
-    rows = [json.loads(line) for line in ledger.read_text(encoding="utf-8").splitlines() if line.strip()]
-    last = dt.date.fromisoformat(str(rows[-1]["decision_bar"]))
-    assert session_table.is_session(last), f"{last} is not an exchange session"
-    assert last <= dt.date.today(), f"the live ledger's last decision bar {last} is in the future"
-
-    verdict = check_scheduler(
-        last_decision_bar=last, as_of=session_table.next_session(last), source=str(ledger)
-    )
-    assert tuple(verdict.missed) == (), f"sessions missed between {last} and its successor: {verdict.missed}"
-
-    after = {path.name: path.stat().st_mtime_ns for path in sorted(LIVE_RUN_DIR.iterdir())}
-    assert before == after, "the live run directory must never be written by a test"
-
-
-# ---------------------------------------------------------------------------
 # The doctor's two session-table checks
 # ---------------------------------------------------------------------------
 

@@ -18,12 +18,23 @@ here through ``main`` — the way the nightly wrapper reaches these shells:
 3. Submitting from a run directory with no prior session is refused, before any
    venue read, unless the operator says otherwise.
 
+And since 2026-09-30 three more, in the same style:
+
+4. Neither ``--submit`` nor ``--no-submit`` exits 2 before a credential is read.
+   The mode is an argument; a bare invocation cannot trade.
+5. A submitting run must point at the directory ``runs/ACTIVE_RUN_DIR`` names
+   (``require_active_run_dir``), and nothing but pointing the switch gets past it.
+6. Client order ids carry a digest of the run directory's name
+   (``scoped_order_id_prefix``), and orders recorded under the bare book prefix
+   are still served by the sweep.
+
 Nothing here opens a socket: the broker and the bar source are doubles injected
 into the entry-point module, and the panels are in memory.
 """
 
 from __future__ import annotations
 
+import functools
 import logging
 from pathlib import Path
 from types import SimpleNamespace
@@ -34,7 +45,13 @@ import pytest
 
 from prism.live.authorization import PAPER_BASE_URL
 from prism.live.broker import AccountIdentity, Broker, Fill, Order, transmits_to_venue
-from prism.live.loop import SUBMISSION_ANNOUNCEMENT, LiveLoopContext, submit_pending
+from prism.live.daily import PartialBarError, require_published_panel
+from prism.live.loop import (
+    SUBMISSION_ANNOUNCEMENT,
+    LiveLoopContext,
+    read_shadow_ledger,
+    submit_pending,
+)
 from prism.live.no_submit import (
     NO_SUBMIT,
     WOULD_SUBMIT,
@@ -42,9 +59,18 @@ from prism.live.no_submit import (
     VenueWriteRefused,
     mirror_run_dir,
 )
-from prism.live.safety import SafetyViolation, require_established_run_dir, sample_run_dir_history
+from prism.live.safety import (
+    SafetyViolation,
+    require_established_run_dir,
+    sample_run_dir_history,
+)
 from prism.live.state import LoopState, StateStore
 from prism.scripts import paper_loop, paper_sweep
+from prism.scripts.paper_books import (
+    ALPACA_CLIENT_ORDER_ID_MAX_CHARS,
+    longest_client_order_id,
+    scoped_order_id_prefix,
+)
 
 SYMBOLS = ["AAA", "BBB", "CCC", "DDD", "EEE", "FFF", "GGG", "HHH", "III", "JJJ"]
 ACCOUNT_ID = "PA-TEST-0001"
@@ -200,6 +226,20 @@ def _loop_argv(run_dir: Path, *extra: str) -> list[str]:
     ]
 
 
+def _point_switch(run_dir: Path, *, absolute: bool = False) -> Path:
+    """Name ``run_dir`` in the switch beside it, the way ``runs/ACTIVE_RUN_DIR`` names the live book.
+
+    Relative content is relative to the parent of the directory holding the
+    switch (the repository root for ``runs/ACTIVE_RUN_DIR``); absolute content
+    is taken as given.
+    """
+    pointer = run_dir.parent / "ACTIVE_RUN_DIR"
+    pointer.parent.mkdir(parents=True, exist_ok=True)
+    content = str(run_dir.resolve()) if absolute else str(run_dir.relative_to(run_dir.parent.parent))
+    pointer.write_text(content + "\n", encoding="utf-8")
+    return pointer
+
+
 def _announcements(caplog) -> list[str]:
     return [r.getMessage() for r in caplog.records if SUBMISSION_ANNOUNCEMENT in r.getMessage()]
 
@@ -310,11 +350,16 @@ def test_the_normal_path_calls_submit_and_announces_the_venue(venue: VenueDouble
     once per order, and the run announces itself on exactly one line naming the
     endpoint, the account, the decision bar and the order count.
     """
-    run_dir = tmp_path / "throwaway"
+    run_dir = tmp_path / "runs" / "throwaway"
+    _point_switch(run_dir)
     with caplog.at_level(logging.INFO):
-        assert paper_loop.main(_loop_argv(run_dir, "--allow-new-run-dir")) == 0
+        assert paper_loop.main(_loop_argv(run_dir, "--submit", "--allow-new-run-dir")) == 0
 
     assert venue.submitted, "the control submitted nothing; it controls for nothing"
+    # Every id this run sent is scoped to the run directory it was decided from.
+    prefix = scoped_order_id_prefix("mom:", run_dir)
+    assert all(o.client_order_id.startswith(prefix) for o in venue.submitted)
+    assert all(len(o.client_order_id) <= ALPACA_CLIENT_ORDER_ID_MAX_CHARS for o in venue.submitted)
     lines = _announcements(caplog)
     assert len(lines) == 1
     announcement = lines[0]
@@ -324,6 +369,59 @@ def test_the_normal_path_calls_submit_and_announces_the_venue(venue: VenueDouble
     assert f"decision_bar={venue.submitted[0].decision_bar}" in announcement
     # And the rehearsal's vocabulary is nowhere in a run that traded.
     assert _would_submit_lines(caplog) == []
+    # The partial-bar rail ran and found a completed bar (the fixture's last bar is a past session).
+    assert any(
+        r.getMessage().startswith("panel publication:") and "partial=False" in r.getMessage() for r in caplog.records
+    )
+
+
+# The fixture panel's last bar (2025-07-14) seen mid-session: that bar is still being traded.
+_INTRADAY_ON_THE_FIXTURE_BAR = pd.Timestamp("2025-07-14 10:00", tz="America/New_York")
+
+
+def test_a_submitting_run_refuses_an_in_progress_bar_before_any_decision(
+    venue: VenueDouble, tmp_path: Path, monkeypatch
+) -> None:
+    """The partial-bar rail at ``paper_loop.main`` is reached and refuses.
+
+    A market-hours catch-up with ``--submit`` would decide on an intraday price
+    (the 2026-09-25 rehearsal did). The earlier rails are satisfied first (the
+    switch points here, the new directory is opted in) so the refusal below is
+    this rail's and not another's: the match pins its message, and the venue
+    reads prove the rail sits after them. Nothing is sent and nothing but the
+    lock is left in the run directory.
+    """
+    run_dir = tmp_path / "runs" / "throwaway"
+    _point_switch(run_dir)
+    venue.forbid_writes = True
+    monkeypatch.setattr(
+        paper_loop,
+        "require_published_panel",
+        functools.partial(require_published_panel, now=_INTRADAY_ON_THE_FIXTURE_BAR),
+    )
+    with pytest.raises(PartialBarError, match="still in progress"):
+        paper_loop.main(_loop_argv(run_dir, "--submit", "--allow-new-run-dir"))
+    assert venue.reads, "the rail sits after the venue reads; a refusal before them is a different rail"
+    assert venue.submitted == []
+    left_behind = sorted(p.name for p in run_dir.iterdir()) if run_dir.is_dir() else []
+    assert [name for name in left_behind if name != ".lock"] == []
+
+
+def test_a_rehearsal_on_an_in_progress_bar_warns_and_completes(
+    venue: VenueDouble, tmp_path: Path, caplog, monkeypatch
+) -> None:
+    """``--no-submit`` is let through the same rail with a warning, so a daytime rehearsal still runs."""
+    run_dir = tmp_path / "runs" / "throwaway"
+    venue.forbid_writes = True
+    monkeypatch.setattr(
+        paper_loop,
+        "require_published_panel",
+        functools.partial(require_published_panel, now=_INTRADAY_ON_THE_FIXTURE_BAR),
+    )
+    with caplog.at_level(logging.INFO):
+        assert paper_loop.main(_loop_argv(run_dir, "--no-submit")) == 0
+    assert any("PARTIAL BAR" in r.getMessage() for r in caplog.records)
+    assert venue.submitted == []
 
 
 def test_the_announcement_is_absent_from_a_no_submit_run(venue: VenueDouble, tmp_path: Path, caplog) -> None:
@@ -337,16 +435,68 @@ def test_the_announcement_is_absent_from_a_no_submit_run(venue: VenueDouble, tmp
 def test_an_established_run_directory_needs_no_opt_in(venue: VenueDouble, tmp_path: Path, caplog) -> None:
     """The nightly's own shape: a run directory with prior sessions just runs.
 
-    ``ops/paper_loop_nightly.sh`` passes ``--run-dir "$(cat runs/ACTIVE_RUN_DIR)"``
-    and no other flag, so the provenance rail must be inert for it.
+    ``ops/paper_loop_nightly.sh`` passes ``--submit --run-dir "$(cat
+    runs/ACTIVE_RUN_DIR)"`` and nothing else about provenance, so with the
+    switch naming the directory both rails must be inert for it.
     """
     run_dir = tmp_path / "runs" / "paper_loop_momentum"
     run_dir.mkdir(parents=True)
     StateStore(run_dir / "state.json").save(LoopState())
+    _point_switch(run_dir)
     with caplog.at_level(logging.INFO):
-        assert paper_loop.main(_loop_argv(run_dir)) == 0
+        assert paper_loop.main(_loop_argv(run_dir, "--submit")) == 0
     assert venue.submitted
     assert len(_announcements(caplog)) == 1
+
+
+def _run_session(monkeypatch, run_dir: Path, n_bars: int, *flags: str) -> pd.DataFrame:
+    """One ``paper_loop.main`` session over a panel ending ``n_bars`` business days after 2024-01-02.
+
+    The venue fixture binds one 400-bar panel, so each later session re-injects
+    its own source: the next bar is the next business day.
+    """
+    close, volume = _panels(n_bars)
+    source = SimpleNamespace(from_env=lambda **kw: BarSourceDouble(close, volume))
+    monkeypatch.setattr(paper_loop, "AlpacaBarSource", source, raising=True)
+    assert paper_loop.main(_loop_argv(run_dir, *flags)) == 0
+    return close
+
+
+def test_three_sessions_write_one_shadow_row_into_the_run_directory(
+    venue: VenueDouble, tmp_path: Path, monkeypatch
+) -> None:
+    """The shadow ledger ``main`` wires (``shadow_ledger=work_dir / "shadow.jsonl"``) lands in the run directory.
+
+    A row needs a refresh decided strictly before the previous session, so the
+    first one comes on session three (docs/live_monitor_design.md); with
+    ``--decision-every 1`` session two also refreshed, so that row is a
+    transition. Panels of 400, 401 and 402 bars end on 2025-07-14/15/16,
+    consecutive exchange sessions, which the shadow's consecutive-session check
+    requires.
+    """
+    run_dir = _established(tmp_path)
+    _point_switch(run_dir)
+    first, second, third = (_run_session(monkeypatch, run_dir, n, "--submit") for n in (400, 401, 402))
+    rows = read_shadow_ledger(run_dir / "shadow.jsonl")
+    assert len(rows) == 1
+    assert rows["decision_bar"].iloc[0] == third.index[-1].strftime("%Y-%m-%d")
+    assert rows["prev_bar"].iloc[0] == second.index[-1].strftime("%Y-%m-%d")
+    assert rows["refresh_bar"].iloc[0] == first.index[-1].strftime("%Y-%m-%d")
+    assert bool(rows["transition"].iloc[0]) is True
+    assert rows["n_names_missing"].iloc[0] == 0
+
+
+def test_a_rehearsal_writes_its_shadow_row_to_the_mirror_not_the_run_directory(
+    venue: VenueDouble, tmp_path: Path, monkeypatch
+) -> None:
+    """Session three as a rehearsal: its shadow row goes to the scratch mirror, and the run directory stays clean."""
+    run_dir = _established(tmp_path)
+    _point_switch(run_dir)
+    for n in (400, 401):
+        _run_session(monkeypatch, run_dir, n, "--submit")
+    venue.forbid_writes = True
+    _run_session(monkeypatch, run_dir, 402, "--no-submit")
+    assert not (run_dir / "shadow.jsonl").exists()
 
 
 # ---------------------------------------------------------------------------
@@ -358,7 +508,7 @@ def test_submitting_from_a_directory_with_no_prior_session_is_refused(venue: Ven
     """The rail fires before the venue is read at all."""
     venue.forbid_writes = True
     with pytest.raises(SafetyViolation, match="not the continuation of an established paper session"):
-        paper_loop.main(_loop_argv(tmp_path / "throwaway"))
+        paper_loop.main(_loop_argv(tmp_path / "throwaway", "--submit"))
     assert venue.reads == [], "the rail must refuse before any venue read"
     assert venue.submitted == []
 
@@ -366,7 +516,7 @@ def test_submitting_from_a_directory_with_no_prior_session_is_refused(venue: Ven
 def test_the_sweep_refuses_the_same_directory(venue: VenueDouble, tmp_path: Path) -> None:
     venue.forbid_writes = True
     with pytest.raises(SafetyViolation, match="the paper sweep refuses to submit"):
-        paper_sweep.main(["--run-dir", str(tmp_path / "throwaway")])
+        paper_sweep.main(["--run-dir", str(tmp_path / "throwaway"), "--submit"])
     assert venue.reads == []
 
 
@@ -430,10 +580,13 @@ def test_sweep_no_submit_never_calls_submit_and_preserves_the_run_dir(
 
 
 def test_sweep_normal_path_submits_and_announces(venue: VenueDouble, tmp_path: Path, caplog) -> None:
+    """Also the legacy-id case: the parents carry the bare ``mom:`` prefix orders
+    recorded before 2026-09-30 have at the venue, and the sweep serves them."""
     run_dir = tmp_path / "runs" / "paper_loop_momentum"
     _seed_pending(run_dir, venue)
+    _point_switch(run_dir)
     with caplog.at_level(logging.INFO):
-        assert paper_sweep.main(["--run-dir", str(run_dir)]) == 0
+        assert paper_sweep.main(["--run-dir", str(run_dir), "--submit"]) == 0
     assert [o.client_order_id for o in venue.submitted] == [
         "mom:2024-07-01:AAA:S1",
         "mom:2024-07-01:BBB:S1",
@@ -488,3 +641,168 @@ def test_a_pass_that_offers_nothing_announces_nothing(tmp_path: Path, caplog) ->
         outcome = submit_pending(ctx, state, [order])
     assert outcome.submitted == () and outcome.accepted == ("x:1",)
     assert _announcements(caplog) == []
+
+
+# ---------------------------------------------------------------------------
+# 6. the mode is an argument
+# ---------------------------------------------------------------------------
+
+
+def _established(tmp_path: Path, name: str = "paper_loop_momentum") -> Path:
+    run_dir = tmp_path / "runs" / name
+    run_dir.mkdir(parents=True)
+    StateStore(run_dir / "state.json").save(LoopState())
+    return run_dir
+
+
+def test_the_loop_refuses_to_run_with_neither_mode_flag(venue: VenueDouble, tmp_path: Path, capsys) -> None:
+    """A bare invocation exits 2 and reads nothing: the pre-2026-09-30 default (trade) is gone."""
+    run_dir = _established(tmp_path)
+    _point_switch(run_dir)
+    venue.forbid_writes = True
+    assert paper_loop.main(_loop_argv(run_dir)) == 2
+    assert venue.reads == [] and venue.submitted == []
+    err = capsys.readouterr().err
+    assert "--submit" in err and "--no-submit" in err and "trades the paper account" in err
+
+
+def test_the_sweep_refuses_to_run_with_neither_mode_flag(venue: VenueDouble, tmp_path: Path, capsys) -> None:
+    run_dir = tmp_path / "runs" / "paper_loop_momentum"
+    _seed_pending(run_dir, venue)
+    _point_switch(run_dir)
+    venue.forbid_writes = True
+    assert paper_sweep.main(["--run-dir", str(run_dir)]) == 2
+    assert venue.reads == [] and venue.submitted == []
+    assert "--submit" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("entry", [paper_loop, paper_sweep])
+def test_both_mode_flags_together_are_a_usage_error(entry, tmp_path: Path) -> None:
+    """argparse's mutually exclusive group: a command cannot both trade and rehearse."""
+    argv = ["--run-dir", str(tmp_path / "runs" / "x"), "--submit", "--no-submit"]
+    if entry is paper_loop:
+        argv += ["--symbols", "AAA"]
+    with pytest.raises(SystemExit) as refusal:
+        entry.main(argv)
+    assert refusal.value.code == 2
+
+
+def test_allow_new_run_dir_is_refused_on_a_rehearsal(venue: VenueDouble, tmp_path: Path, capsys) -> None:
+    """A flag that arms trading has no business on a command meant not to trade."""
+    venue.forbid_writes = True
+    assert paper_loop.main(_loop_argv(tmp_path / "runs" / "throwaway", "--no-submit", "--allow-new-run-dir")) == 2
+    assert (
+        paper_sweep.main(["--run-dir", str(tmp_path / "runs" / "throwaway"), "--no-submit", "--allow-new-run-dir"])
+        == 2
+    )
+    assert venue.reads == []
+    assert "--allow-new-run-dir" in capsys.readouterr().err
+
+
+# ---------------------------------------------------------------------------
+# 7. the active switch binds submission to one run directory
+# ---------------------------------------------------------------------------
+
+
+def test_a_submitting_loop_needs_the_switch_to_name_its_directory(venue: VenueDouble, tmp_path: Path) -> None:
+    """An established directory that nothing names is refused before the first venue read."""
+    run_dir = _established(tmp_path)
+    venue.forbid_writes = True
+    with pytest.raises(SafetyViolation, match="ACTIVE_RUN_DIR") as refusal:
+        paper_loop.main(_loop_argv(run_dir, "--submit"))
+    assert str(run_dir.resolve()) in str(refusal.value)
+    assert venue.reads == [] and venue.submitted == []
+
+
+def test_a_switch_naming_another_directory_refuses(venue: VenueDouble, tmp_path: Path) -> None:
+    run_dir = _established(tmp_path)
+    other = tmp_path / "runs" / "paper_loop_momentum2"
+    _point_switch(other)
+    venue.forbid_writes = True
+    with pytest.raises(SafetyViolation, match="not this directory") as refusal:
+        paper_loop.main(_loop_argv(run_dir, "--submit"))
+    message = str(refusal.value)
+    assert "runs/paper_loop_momentum2" in message and str(run_dir.resolve()) in message
+    assert venue.reads == []
+
+
+def test_an_absolute_switch_names_the_directory_too(venue: VenueDouble, tmp_path: Path, caplog) -> None:
+    run_dir = _established(tmp_path)
+    _point_switch(run_dir, absolute=True)
+    with caplog.at_level(logging.INFO):
+        assert paper_loop.main(_loop_argv(run_dir, "--submit")) == 0
+    assert venue.submitted
+
+
+def test_a_rehearsal_does_not_consult_the_switch(venue: VenueDouble, tmp_path: Path) -> None:
+    """Rehearsing against any directory is exactly what --no-submit exists for."""
+    run_dir = _established(tmp_path)
+    venue.forbid_writes = True
+    assert not (tmp_path / "runs" / "ACTIVE_RUN_DIR").exists()
+    assert paper_loop.main(_loop_argv(run_dir, "--no-submit")) == 0
+
+
+def test_a_submitting_sweep_needs_the_switch_too(venue: VenueDouble, tmp_path: Path) -> None:
+    run_dir = tmp_path / "runs" / "paper_loop_momentum"
+    _seed_pending(run_dir, venue)
+    venue.forbid_writes = True
+    with pytest.raises(SafetyViolation, match="the paper sweep refuses to submit.*ACTIVE_RUN_DIR"):
+        paper_sweep.main(["--run-dir", str(run_dir), "--submit"])
+    assert venue.reads == []
+
+
+# ---------------------------------------------------------------------------
+# 8. run-scoped client order ids
+# ---------------------------------------------------------------------------
+
+
+def test_scoped_prefix_is_a_function_of_the_run_directory_name_only(tmp_path: Path) -> None:
+    here = scoped_order_id_prefix("mom:", tmp_path / "runs" / "paper_loop_momentum2")
+    moved = scoped_order_id_prefix("mom:", Path("/elsewhere/checkout/runs/paper_loop_momentum2"))
+    relative = scoped_order_id_prefix("mom:", "runs/paper_loop_momentum2")
+    assert here == moved == relative, "a relocated checkout must keep producing the same ids"
+    assert here.startswith("mom:") and here.endswith(":") and len(here) == len("mom:") + 8 + 1
+    assert scoped_order_id_prefix("mom:", "runs/paper_loop_momentum") != here
+    assert scoped_order_id_prefix("trd:", "runs/paper_loop_momentum2") != here
+    # Pinned so a change to the digest is a visible decision, not drift: the live book's prefix.
+    assert here == "mom:faf4b45b:"
+
+
+def test_the_longest_scoped_id_stays_under_the_venue_limit() -> None:
+    for book in ("mom:", "trd:", ""):
+        prefix = scoped_order_id_prefix(book, "runs/paper_loop_momentum2")
+        longest = longest_client_order_id(prefix)
+        assert longest.endswith(":XXXXX:S1") and len(longest) <= ALPACA_CLIENT_ORDER_ID_MAX_CHARS
+    with pytest.raises(ValueError, match="over the venue"):
+        scoped_order_id_prefix("x" * 40, "runs/paper_loop_momentum2")
+    with pytest.raises(ValueError, match="no basename"):
+        scoped_order_id_prefix("mom:", "/")
+
+
+def test_legacy_and_scoped_ids_coexist_in_one_pending_set(venue: VenueDouble, tmp_path: Path, caplog) -> None:
+    """A parent recorded under the bare prefix and one under the scoped prefix are both swept."""
+    run_dir = tmp_path / "runs" / "paper_loop_momentum2"
+    run_dir.mkdir(parents=True)
+    prefix = scoped_order_id_prefix("mom:", run_dir)
+    orders = [
+        Order(
+            client_order_id="mom:2026-09-25:AAA",
+            symbol="AAA",
+            qty=10.0,
+            decision_bar="2026-09-25",
+            reference_price=100.0,
+        ),
+        Order(
+            client_order_id=f"{prefix}2026-09-25:BBB",
+            symbol="BBB",
+            qty=10.0,
+            decision_bar="2026-09-25",
+            reference_price=100.0,
+        ),
+    ]
+    StateStore(run_dir / "state.json").save(LoopState(pending_orders=orders, pending_decision_bar="2026-09-25"))
+    venue._known = {o.client_order_id for o in orders}
+    _point_switch(run_dir)
+    with caplog.at_level(logging.INFO):
+        assert paper_sweep.main(["--run-dir", str(run_dir), "--submit"]) == 0
+    assert [o.client_order_id for o in venue.submitted] == ["mom:2026-09-25:AAA:S1", f"{prefix}2026-09-25:BBB:S1"]

@@ -21,9 +21,21 @@ set -u
 SELF="$(readlink -f "${BASH_SOURCE[0]}")"
 REPO="${PRISM_REPO:-$(cd "$(dirname "$SELF")/.." && pwd)}"
 # Single switch shared with the nightly wrapper: runs/ACTIVE_RUN_DIR names the
-# live run-dir (one line, relative to the repo).
-RUN_DIR="$(cat "$REPO/runs/ACTIVE_RUN_DIR" 2>/dev/null || echo runs/paper_loop_momentum)"
-LOG_DIR="$REPO/$RUN_DIR"
+# live run-dir (one line, relative to the repo or absolute — the same contract
+# as prism.live.safety.require_active_run_dir). Since 2026-09-30 a missing or
+# empty switch refuses the session (below, once the alert helpers are loaded)
+# instead of falling back to the retired runs/paper_loop_momentum: the Python
+# entry point refuses to submit from any directory the switch does not name, so
+# the fallback could only have produced a refused session pointed at a dead
+# book. The refusal is logged beside the switch's own location, since there is
+# no run directory to log into.
+ACTIVE_RUN_DIR_FILE="$REPO/runs/ACTIVE_RUN_DIR"
+RUN_DIR="$(cat "$ACTIVE_RUN_DIR_FILE" 2>/dev/null || true)"
+case "$RUN_DIR" in
+    '')  LOG_DIR="$REPO/runs" ;;
+    /*)  LOG_DIR="$RUN_DIR" ;;
+    *)   LOG_DIR="$REPO/$RUN_DIR" ;;
+esac
 LOG="$LOG_DIR/sweep.log"
 mkdir -p "$LOG_DIR"
 ts() { date "+%Y-%m-%dT%H:%M:%S%z"; }
@@ -35,8 +47,18 @@ set -a
 [ -f "$REPO/.env" ] && . "$REPO/.env"
 set +a
 
+if [ -z "$RUN_DIR" ]; then
+    echo "$(ts) FAIL: $ACTIVE_RUN_DIR_FILE is missing or empty; refusing to run rather than falling back to a retired run directory. Write the live run directory (e.g. runs/paper_loop_momentum2) as its single line." >>"$LOG"
+    alert "$LOG" "$LOG_DIR" \
+        "prism session refused (no active run directory)" \
+        "$ACTIVE_RUN_DIR_FILE is missing or empty, so nothing names the live book. Write the run directory's path, relative to $REPO or absolute, as the file's single line (docs/operations.md, 2026-09-30)."
+    heartbeat "$LOG" 4 "${PRISM_HEARTBEAT_URL_SWEEP:-}"
+    exit 4
+fi
+
 if [ -z "${APCA_API_KEY_ID:-}" ] || [ -z "${APCA_API_SECRET_KEY:-}" ]; then
     echo "$(ts) SKIP: APCA credentials not present in $REPO/.env" >>"$LOG"
+    heartbeat "$LOG" 3 "${PRISM_HEARTBEAT_URL_SWEEP:-}"
     exit 3
 fi
 
@@ -71,6 +93,7 @@ if [ ! -x "$PY" ]; then
     alert "$LOG" "$LOG_DIR" \
         "prism session refused (release $PRISM_RELEASE unusable)" \
         "PRISM_RELEASE=$PRISM_RELEASE resolved to $PY under root $RELEASE_ROOT. Install the release there, or set PRISM_RELEASE=checkout to run the working tree."
+    heartbeat "$LOG" 4 "${PRISM_HEARTBEAT_URL_SWEEP:-}"
     exit 4
 fi
 # cd to $REPO for both paths: --run-dir and --universe-file are repo-relative,
@@ -84,6 +107,7 @@ COMMIT="$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo unknown)"
 [ -n "$(git -C "$REPO" status --porcelain -uno 2>/dev/null)" ] && COMMIT="${COMMIT}+dirty"
 echo "$(ts) SWEEP: run-dir=$RUN_DIR wrapper=$SELF commit=$COMMIT release=$PRISM_RELEASE engine=$ENGINE_VERSION" >>"$LOG"
 "$PY" -m prism.scripts.paper_sweep \
+    --submit \
     --run-dir "$RUN_DIR" \
     >>"$LOG" 2>&1
 rc=$?
@@ -105,6 +129,16 @@ if [ "$rc" -ne 0 ] || [ "$health_rc" -ne 0 ]; then
 fi
 # Deliberately no clear_alert here: the nightly owns the healthy path. A morning
 # that looks fine must never retire an alert raised by the session that trades.
+# No artifact sync here either: the nightly's sync carries the morning's fills
+# off-box the same evening.
 
-[ "$rc" -ne 0 ] && exit "$rc"
-exit "$health_rc"
+# Sweep verdict first, then health. The heartbeat carries the final code to the
+# morning's own dead-man's monitor (PRISM_HEARTBEAT_URL_SWEEP), last of all.
+final_rc=0
+if [ "$rc" -ne 0 ]; then
+    final_rc=$rc
+else
+    final_rc=$health_rc
+fi
+heartbeat "$LOG" "$final_rc" "${PRISM_HEARTBEAT_URL_SWEEP:-}"
+exit "$final_rc"

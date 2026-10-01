@@ -443,8 +443,11 @@ def check_order_sizing_parity(
 
     Two inputs are named rather than assumed. The sizing knobs are the shipped
     momentum book's (``min_order_notional`` 1.0, ``whole_shares`` True,
-    ``order_id_prefix`` "mom:", ``paper_books.BookParams``), which the capture's
-    own client order ids confirm. And a held name the session exited carries no
+    ``order_id_prefix`` "mom:" on the recorded sessions; since 2026-09-30 live
+    ids carry a run-directory digest after the book prefix,
+    ``paper_books.scoped_order_id_prefix``, and this comparison keys on symbol,
+    not on the prefix, ``paper_books.BookParams``), which the capture's own
+    client order ids confirm. And a held name the session exited carries no
     price in the targets ledger, because that ledger prices the book and not the
     exits, so those names take their decision price from the order ledger's own
     ``reference_price``; the count is reported per session and it is a weaker

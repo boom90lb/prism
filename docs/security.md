@@ -68,7 +68,8 @@ is wrong by construction.
   artifact class that cannot be regenerated, only re-accumulated — are
   snapshotted to a dedicated backup repository and pushed off-box to a
   private remote (`prism-artifacts`) by the nightly sync
-  (`~/bin/prism_artifacts_sync.sh`, wired into the nightly runner and
+  (`ops/artifacts_sync.sh` since 2026-09-30, replacing the operator-local
+  `~/bin/prism_artifacts_sync.sh`; wired into the nightly runner and
   unconditional on loop exit status — a red loop is exactly when the ledger
   copy matters most); ratification commits carry never-retargeted
   `ratify/*` tags on origin with OpenTimestamps proofs in-tree

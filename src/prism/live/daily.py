@@ -45,11 +45,13 @@ Cadence and ordering (one call per session, after the close):
 5. **Decide/submit.** ``decide_and_submit`` persists the decision before
    the first submit and submits idempotently (N2 crash window).
 6. **Monitor.** After the mark-to-market NAV is appended to the equity
-   ledger, the anytime-valid confidence sequence reads the accruing stream
-   (:mod:`prism.live.monitor`) as *additive telemetry* beside the ratified
-   rolling-PSR promotion read (docs/momentum_design.md). Time-uniform
-   coverage makes a per-cycle read safe; it moves no ratified statistic and
-   starts no counted trial (SPEC §10).
+   ledger, the cycle records the shadow return (the decided book marked on
+   the same closes, ``<run_dir>/shadow.jsonl``) and reads the live monitor
+   (:mod:`prism.live.monitor`, registered in docs/live_monitor_design.md): the
+   return monitor's confidence sequence over consecutive-session NAV returns
+   and the tracking read of paper minus shadow. Shielded like the regime
+   provider: a failure is logged loudly and recorded, never raised into the
+   cycle. It gates no order.
 
 Fit cadence is deliberately *not* owned here: the caller passes a fitted
 Signal, and which model serves "today" is the operator's explicit staleness
@@ -65,10 +67,13 @@ must-be-priced rather than droppable.
 
 from __future__ import annotations
 
+import datetime as dt
 import logging
 import math
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Callable, Collection, Mapping, Sequence
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 
@@ -80,19 +85,33 @@ from prism.assembly import (
     raw_book_weights,
 )
 from prism.composition import ComponentPlan
+from prism.io import sessions
 from prism.live.broker import Broker, Fill, Order, transmits_to_venue
 from prism.live.loop import (
     LiveLoopContext,
     append_concordance_ledger,
     append_equity_ledger,
     append_regime_ledger,
+    append_shadow_ledger,
     decide_and_submit,
+    read_equity_ledger,
     read_targets_ledger,
     require_price,
     settle,
 )
-from prism.live.monitor import book_concordance, paper_monitor_read
-from prism.live.safety import SafetyConfig, check_orders, halt_reason
+from prism.live.monitor import (
+    bar_date,
+    book_concordance,
+    paper_monitor_read,
+    shadow_session_return,
+)
+from prism.live.panel_log import (
+    PanelLogConflict,
+    PanelRecord,
+    latest_record,
+    record_panel,
+)
+from prism.live.safety import SafetyConfig, SafetyViolation, check_orders, halt_reason
 from prism.live.state import LoopState
 from prism.signal.base import Signal
 
@@ -180,6 +199,10 @@ class DailyCycleResult:
     # session, or the regime read carried failure entries).
     regime: dict | None = None
     regime_scale: float | None = None
+    # The index row of the bar panel this cycle decided on
+    # (``prism.live.panel_log``): None when no run directory was available to
+    # record it in.
+    panel: dict | None = None
 
 
 @dataclass(frozen=True)
@@ -388,6 +411,95 @@ def warn_if_stale_panel(close: pd.DataFrame, *, max_calendar_days: int = 4) -> i
     return stale_days
 
 
+#: The exchange's wall clock. Session dates and close times are stated in it.
+EXCHANGE_TZ = "America/New_York"
+
+
+class PartialBarError(SafetyViolation):
+    """The panel's last bar is not a completed, published session bar.
+
+    A :class:`~prism.live.safety.SafetyViolation` because the remedy is the
+    same as for every other pre-trade rail: nothing was decided, nothing was
+    sent, and the operator re-runs after the close or passes ``--no-submit``.
+    """
+
+
+def require_published_panel(
+    close: pd.DataFrame,
+    *,
+    now: dt.datetime | pd.Timestamp | None = None,
+    allow_partial: bool = False,
+    publication_delay_minutes: int = 30,
+) -> dict[str, Any]:
+    """Refuse to decide on a daily bar that is still being traded.
+
+    The bar fetch asks for no end date, so a run during market hours receives
+    today's row with the price as of the last print, not the close. A decision
+    taken on it is not the close-to-next-open decision the whole evaluation
+    assumes (every backtest number was produced at the close), and the
+    2026-09-25 catch-up rehearsal did exactly that. The stale-panel warning
+    beside this cannot catch it: a bar from this morning is zero days old.
+
+    The rule: the last bar's date must be an exchange session, and when ``now``
+    falls on that date it must be at least ``publication_delay_minutes`` past
+    that session's close (``prism.io.sessions.session_close`` knows the 13:00
+    early closes). A last bar from an earlier date is complete at any hour.
+    A bar dated after ``now`` is refused outright: no clock can make it
+    complete. Under ``allow_partial`` (the rehearsal path) an in-progress bar
+    is logged as a WARNING instead of raised, so a daytime ``--no-submit`` still
+    exercises the command but says plainly what it decided on.
+
+    ``now`` must be timezone-aware; it defaults to the current time in
+    ``EXCHANGE_TZ``. Returns ``{last_bar, published_at, now, partial}`` for the
+    session log.
+    """
+    zone = ZoneInfo(EXCHANGE_TZ)
+    last = pd.Timestamp(close.index[-1])
+    last_date = (last.tz_convert(zone) if last.tzinfo is not None else last).date()
+    if now is None:
+        now_ts = pd.Timestamp.now(tz=zone)
+    else:
+        now_ts = pd.Timestamp(now)
+        if now_ts.tzinfo is None:
+            raise ValueError("require_published_panel: `now` must be timezone-aware; a naive clock has no session")
+        now_ts = now_ts.tz_convert(zone)
+    if not sessions.is_session(last_date):
+        raise PartialBarError(
+            f"the panel's last bar is dated {last_date.isoformat()}, which is not an exchange session "
+            f"({sessions.status(last_date)}); a decision needs a completed session bar (N1)"
+        )
+    close_at = dt.datetime.combine(last_date, sessions.session_close(last_date), tzinfo=zone)
+    published_at = pd.Timestamp(close_at) + pd.Timedelta(minutes=publication_delay_minutes)
+    partial = now_ts < published_at
+    report = {
+        "last_bar": last_date.isoformat(),
+        "published_at": published_at.isoformat(),
+        "now": now_ts.isoformat(),
+        "partial": bool(partial),
+    }
+    if now_ts.date() < last_date:
+        raise PartialBarError(
+            f"the panel's last bar is dated {last_date.isoformat()}, after the clock ({now_ts.isoformat()}); "
+            "a bar from the future is a feed or clock defect, not a decision input (N7)"
+        )
+    if partial:
+        if not allow_partial:
+            raise PartialBarError(
+                f"the panel's last bar {last_date.isoformat()} is still in progress at {now_ts.isoformat()}: "
+                f"that session closes at {close_at.time().isoformat(timespec='minutes')} ET and its bar counts "
+                f"as published from {published_at.isoformat()}. Deciding now would trade a close-to-open "
+                "decision on an intraday price. Re-run after that time, or pass --no-submit to rehearse."
+            )
+        logger.warning(
+            "PARTIAL BAR: this rehearsal decided on %s before its session closed (now %s, published from %s); "
+            "the orders logged below are not the ones the close would produce",
+            last_date.isoformat(),
+            now_ts.isoformat(),
+            published_at.isoformat(),
+        )
+    return report
+
+
 def run_daily_cycle(
     ctx: LiveLoopContext,
     signal: Signal,
@@ -399,6 +511,7 @@ def run_daily_cycle(
     unrankable: Callable[[str], Collection[str]] | None = None,
     regime: Callable[[str], dict] | None = None,
     regime_gross_scale: Callable[[dict], float] | None = None,
+    run_dir: Path | None = None,
 ) -> DailyCycleResult:
     """Run one settle → mark → score → construct → decide/submit cycle.
 
@@ -448,6 +561,15 @@ def run_daily_cycle(
     read the refresh constructs at the configured gross with a loud
     warning — a telemetry failure de-arms the action, it never silently
     de-grosses. Requires ``regime``; a non-finite scale raises (N7).
+
+    ``run_dir`` is where the panel this cycle decides on is recorded
+    (``prism.live.panel_log``, under ``<run_dir>/panels/``) before anything is
+    settled, marked or decided, so every decision in the run directory can be
+    re-derived from the exact bars it saw. It defaults to the directory that
+    holds ``ctx.targets_ledger``, which is the run directory for every shipped
+    driver (and the scratch mirror under a rehearsal); with neither, nothing is
+    recorded and ``DailyCycleResult.panel`` is None. A failure to record raises
+    before any state changes: the cycle decides only on a recorded panel.
     """
     if regime_gross_scale is not None and regime is None:
         raise ValueError(
@@ -463,8 +585,18 @@ def run_daily_cycle(
         )
     decision_bar = decision_bar or str(close.index[-1].date())
 
-    # 1. Settle the previous bar's decision.
+    # 0. Record the panel this cycle decides on, before any state moves. The
+    # refresh row in targets.jsonl cites its digest (step 4). The persisted
+    # state is loaded first because the recorder needs to know whether this
+    # bar's write-ahead step already ran: a re-run of such a bar resumes or
+    # holds and decides nothing from the panel fetched now.
     state = ctx.store.load()
+    decided_already = state is not None and state.pending_decision_bar == decision_bar
+    panel_record = _record_decision_panel(
+        ctx, run_dir, decision_bar, close, volume, decided_already=decided_already
+    )
+
+    # 1. Settle the previous bar's decision.
     settled = _settle_prior(ctx, state, decision_bar)
 
     # 2. Mark broker truth at today's closes.
@@ -524,6 +656,7 @@ def run_daily_cycle(
             order_guard=(
                 None if safety is None else (lambda order_list: check_orders(order_list, equity, safety))
             ),
+            panel=_panel_provenance(panel_record),
         )
         logger.info(
             "decision %s: %d orders %s, equity %.2f, gross %.4f",
@@ -546,21 +679,11 @@ def run_daily_cycle(
     monitor_read: dict | None = None
     if ctx.equity_ledger is not None:
         append_equity_ledger(ctx.equity_ledger, decision_bar, equity, cash)
-        # Arm the anytime-valid monitor as additive telemetry beside the ratified
-        # rolling-PSR promotion read (docs/momentum_design.md): time-uniform
-        # coverage makes a per-cycle read safe to log, it moves no ratified
-        # statistic and starts no counted trial. Becoming a binding promotion/kill
-        # read is deferred to a future program's pre-registration.
-        monitor_read = paper_monitor_read(ctx.equity_ledger)
-        logger.info(
-            "monitor %s: verdict=%s n=%s mean=%s ci=[%s, %s]",
-            decision_bar,
-            monitor_read.get("verdict"),
-            monitor_read.get("n"),
-            monitor_read.get("mean"),
-            monitor_read.get("ci_lower"),
-            monitor_read.get("ci_upper"),
-        )
+        # The live monitor (docs/live_monitor_design.md): today's shadow row, then
+        # the return and tracking reads. Telemetry, shielded like the regime
+        # provider: it can never take down a cycle whose orders are already
+        # persisted and whose NAV is already marked.
+        monitor_read = _monitor_read(ctx, decision_bar, close)
     return DailyCycleResult(
         decision_bar=decision_bar,
         settled_fills=settled,
@@ -573,7 +696,82 @@ def run_daily_cycle(
         masked=masked,
         regime=regime_state,
         regime_scale=regime_scale,
+        # The index row minus its wall-clock stamp: two cycles over identical
+        # inputs must produce identical results (the bit-identity tests compare
+        # them field by field), and recorded_at is the one field that cannot.
+        panel=None if panel_record is None else {k: v for k, v in panel_record.to_row().items() if k != "recorded_at"},
     )
+
+
+def _record_decision_panel(
+    ctx: LiveLoopContext,
+    run_dir: Path | None,
+    decision_bar: str,
+    close: pd.DataFrame,
+    volume: pd.DataFrame | None,
+    *,
+    decided_already: bool = False,
+) -> PanelRecord | None:
+    """Step 0: persist the bars this cycle decides on (``prism.live.panel_log``).
+
+    The run directory is ``run_dir``, else the directory holding the targets
+    ledger (every shipped driver puts both in the run directory). With neither
+    there is nowhere to record and None is returned. Recording raises on any
+    write failure, so a cycle that reaches the decision has its inputs on disk.
+
+    ``decided_already`` says the persisted state's write-ahead step already ran
+    for this bar (``pending_decision_bar == decision_bar``). Such a re-run
+    resumes the persisted orders or holds the filled book; it makes no decision
+    from the panel fetched now. So when that panel differs from the recorded one
+    (a vendor revision, a fetch window that moved, a held name that changed in
+    the fetch universe) the conflict is logged at ERROR with both digests and
+    the recorded panel is returned: it is the one the decision was made on and
+    stays its provenance, and the refetched panel is not recorded (a second
+    index row for the bar would break the delta chain). Without a persisted
+    decision for the bar a fresh decision would be made on the new content, so
+    the conflict raises as before (N7).
+    """
+    # Imported here rather than beside ``record_panel`` above so the import block
+    # stays untouched while another change lands in it; hoist when convenient.
+
+    directory = run_dir
+    if directory is None and ctx.targets_ledger is not None:
+        directory = Path(ctx.targets_ledger).parent
+    if directory is None:
+        return None
+    panel: dict[str, pd.DataFrame] = {"close": close}
+    if volume is not None:
+        panel["volume"] = volume
+    try:
+        return record_panel(directory, decision_bar, panel)
+    except PanelLogConflict as exc:
+        if not decided_already:
+            raise
+        recorded = latest_record(directory)
+        if recorded is None or recorded.decision_bar != decision_bar:
+            raise  # the conflict names this bar, so its record must be the newest; anything else is a log defect
+        logger.error(
+            "panel for %s differs from the one recorded for its persisted decision: recorded sha256 %s "
+            "(%d bars from %s), refetched now %d bars from %s (%s). This cycle resumes or holds that decision "
+            "and decides nothing from the refetched panel, so the recorded panel stays the decision's provenance "
+            "and the refetched one is not recorded. A vendor revision or a fetch window that moved explains "
+            "a small difference; anything larger is a feed defect (N7)",
+            decision_bar,
+            recorded.sha256,
+            recorded.n_bars,
+            recorded.first_bar,
+            len(close),
+            str(pd.Timestamp(close.index[0]).date()),
+            exc,
+        )
+        return recorded
+
+
+def _panel_provenance(record: PanelRecord | None) -> dict[str, Any] | None:
+    """The fields the refresh row in ``targets.jsonl`` carries for its panel."""
+    if record is None:
+        return None
+    return {"panel_sha256": record.sha256, "panel_file": record.file}
 
 
 def _settle_prior(ctx: LiveLoopContext, state: LoopState | None, decision_bar: str) -> list[Fill]:
@@ -653,6 +851,138 @@ def _concordance_read(ctx: LiveLoopContext, prev_weights: pd.Series, decision_ba
         None if concordance["weight_corr"] is None else round(concordance["weight_corr"], 4),
     )
     return concordance
+
+
+def _shadow_record(ctx: LiveLoopContext, decision_bar: str, close: pd.DataFrame) -> dict | None:
+    """Record today's shadow return: the decided book's return on the same closes as the paper book's.
+
+    The shadow for the session ending at ``decision_bar`` holds the latest
+    refresh book decided STRICTLY before the previous bar's close, from that
+    close to today's (``prism.live.monitor.shadow_session_return``), so it is the
+    book the paper account should have carried through the whole session. The
+    session is a *transition* when a refresh was decided at the previous bar:
+    its next-open fills switched the held book mid-session, and the tracking
+    read sets such sessions aside as the execution wedge. Nothing is recorded,
+    and the reason is logged, when there is no previous session in the equity
+    ledger, when it is not the exchange session right before today (a gap is not
+    a day), or when no refresh book predates it. The returned row is what was
+    appended to ``ctx.shadow_ledger`` (idempotent per decision bar).
+    """
+    if ctx.equity_ledger is None or ctx.targets_ledger is None or ctx.shadow_ledger is None:
+        return None
+    equity = read_equity_ledger(ctx.equity_ledger)
+    if equity.empty:
+        return None
+    earlier = equity[equity["decision_bar"].astype(str) < decision_bar].sort_values("decision_bar")
+    if earlier.empty:
+        logger.info("shadow %s: no earlier session in the equity ledger; nothing to shadow yet", decision_bar)
+        return None
+    prev_bar = str(earlier["decision_bar"].iloc[-1])
+    prev_date, today_date = bar_date(prev_bar), bar_date(decision_bar)
+    if not (sessions.is_session(prev_date) and sessions.next_session(prev_date) == today_date):
+        logger.info(
+            "shadow %s: previous ledger bar %s is not the preceding exchange session; a gap is not a day, "
+            "no shadow row",
+            decision_bar,
+            prev_bar,
+        )
+        return None
+    refreshes = read_targets_ledger(ctx.targets_ledger)
+    prior = [row for row in refreshes if str(row["refresh_bar"]) < prev_bar]
+    if not prior:
+        logger.info("shadow %s: no refresh book decided before %s; no shadow row", decision_bar, prev_bar)
+        return None
+    baseline = prior[-1]
+    transition = any(str(row["refresh_bar"]) == prev_bar for row in refreshes)
+    nav_now = float(equity.loc[equity["decision_bar"].astype(str) == decision_bar, "equity"].iloc[-1])
+    nav_prev = float(earlier["equity"].iloc[-1])
+    shadow = shadow_session_return(close, baseline["targets"], decision_bar, prev_bar)
+    row = {
+        "prev_bar": prev_bar,
+        "shadow_return": shadow["shadow_return"],
+        "paper_return": nav_now / nav_prev - 1.0,
+        "transition": transition,
+        "refresh_bar": str(baseline["refresh_bar"]),
+        "n_names_used": shadow["n_names_used"],
+        "n_names_missing": shadow["n_names_missing"],
+        "gross_missing": shadow["gross_missing"],
+    }
+    append_shadow_ledger(ctx.shadow_ledger, decision_bar, row)
+    logger.info(
+        "shadow %s (from %s, book of %s%s): shadow=%.6f paper=%.6f diff=%.6f names %d used / %d missing",
+        decision_bar,
+        prev_bar,
+        row["refresh_bar"],
+        ", transition" if transition else "",
+        row["shadow_return"],
+        row["paper_return"],
+        row["paper_return"] - row["shadow_return"],
+        row["n_names_used"],
+        row["n_names_missing"],
+    )
+    return row
+
+
+def _monitor_read(ctx: LiveLoopContext, decision_bar: str, close: pd.DataFrame) -> dict:
+    """The live monitor after this cycle's NAV mark, shielded so it can never kill a cycle.
+
+    Records the shadow row, then reads the return monitor and, when a shadow
+    ledger is wired, the tracking monitor (``paper_monitor_read`` attaches it
+    under ``tracking``). Either part raising is a defect in telemetry, not in the
+    book: it is logged at WARNING with its type and the read carries
+    ``verdict = "unavailable"`` and the error, so a broken monitor is visible in
+    the log and the session record and never aborts a legitimate session whose
+    orders are persisted and whose NAV is marked (N7: loud and named, not fatal).
+    """
+    assert ctx.equity_ledger is not None
+    try:
+        _shadow_record(ctx, decision_bar, close)
+    except Exception as exc:  # noqa: BLE001 — telemetry, never a cycle precondition
+        logger.warning(
+            "LIVE MONITOR: SHADOW RECORD FAILED for %s (%s: %s) — no shadow row this session; the "
+            "tracking read will count it as unmatched (N7)",
+            decision_bar,
+            type(exc).__name__,
+            exc,
+        )
+    try:
+        read = paper_monitor_read(ctx.equity_ledger, shadow_ledger_path=ctx.shadow_ledger)
+    except Exception as exc:  # noqa: BLE001 — telemetry, never a cycle precondition
+        logger.warning(
+            "LIVE MONITOR FAILED for %s (%s: %s) — the cycle's orders and NAV mark stand; the monitor "
+            "read is unavailable this session (N7)",
+            decision_bar,
+            type(exc).__name__,
+            exc,
+        )
+        return {"verdict": "unavailable", "n": 0, "error": type(exc).__name__, "detail": str(exc)}
+    logger.info(
+        "monitor %s: verdict=%s n=%s mean=%s ci=[%s, %s] method=%s gaps=%s",
+        decision_bar,
+        read.get("verdict"),
+        read.get("n"),
+        read.get("mean"),
+        read.get("ci_lower"),
+        read.get("ci_upper"),
+        read.get("method"),
+        read.get("n_gaps"),
+    )
+    tracking = read.get("tracking")
+    if tracking is not None:
+        logger.info(
+            "tracking %s: verdict=%s n=%s mean_diff=%s ci=[%s, %s] corr=%s slope=%s transitions=%s unmatched=%s",
+            decision_bar,
+            tracking.get("verdict"),
+            tracking.get("n"),
+            tracking.get("mean_difference"),
+            tracking.get("ci_lower"),
+            tracking.get("ci_upper"),
+            None if tracking.get("correlation") is None else round(tracking["correlation"], 4),
+            None if tracking.get("slope") is None else round(tracking["slope"], 4),
+            tracking.get("n_transition"),
+            tracking.get("n_unmatched"),
+        )
+    return read
 
 
 def _halt_check(safety: SafetyConfig | None, equity: float, ctx: LiveLoopContext) -> str | None:

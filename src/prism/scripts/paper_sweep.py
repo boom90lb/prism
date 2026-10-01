@@ -16,13 +16,21 @@ fill populations segmentable for I-9 calibration
 Run once per session, after the open (the OPG auction must be terminal;
 ~09:35 ET is comfortable):
 
-    python -m prism.scripts.paper_sweep --run-dir runs/paper_loop_momentum
+    python -m prism.scripts.paper_sweep --submit --run-dir "$(cat runs/ACTIVE_RUN_DIR)"
 
 A rerun is idempotent (deterministic suffixed ids; the venue's duplicate-id
 rejection counts as submitted), and a sweep with nothing pending is a no-op.
 Like :mod:`prism.scripts.paper_loop`, this shell holds no logic worth
 testing; the sweep semantics live in ``prism.live.loop`` and are exercised
 offline (tests/test_live_loop.py).
+
+**The mode is an argument.** Since 2026-09-30 every invocation names its mode:
+``--submit`` trades, ``--no-submit`` rehearses, and neither exits 2 with a
+message saying so. A submitting sweep must also point at the run directory
+``runs/ACTIVE_RUN_DIR`` names (``prism.live.safety.require_active_run_dir``).
+Sweep orders take their ids from the persisted parent orders plus the suffix,
+so this entry point sets no id prefix of its own and serves parents recorded
+under the bare book prefix and under the run-scoped one alike.
 
 **Exercising the command without trading**: ``--no-submit`` reads the venue and
 computes the residuals exactly as a real sweep does, logs every order it would
@@ -46,7 +54,13 @@ from prism.live import AlpacaBroker, LiveLoopContext, StateStore, sweep_pending
 from prism.live.authorization import refuse_an_unbindable_record, resolve_endpoint
 from prism.live.lockfile import run_dir_lock
 from prism.live.no_submit import no_submit_session
-from prism.live.safety import require_established_run_dir, sample_run_dir_history
+from prism.live.safety import (
+    SUBMISSION_MODE_EXIT_CODE,
+    require_active_run_dir,
+    require_established_run_dir,
+    sample_run_dir_history,
+    submission_mode_refusal,
+)
 from prism.workspace import load_env
 
 logger = logging.getLogger(__name__)
@@ -76,21 +90,30 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "{run-dir}/KILL_SWITCH — the same file that halts the evening loop, so one "
         "touch stops every path to the venue. 'off' disables the rail.",
     )
-    parser.add_argument(
+    # The mode is named on every invocation (one required, checked in main; the
+    # two cannot be combined).
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
+        "--submit",
+        action="store_true",
+        help="Trade: re-submit the pending decision's unexecuted residuals as DAY market orders. "
+        "Requires an established --run-dir (or --allow-new-run-dir) that runs/ACTIVE_RUN_DIR names. "
+        "The scheduled wrapper passes this flag.",
+    )
+    mode.add_argument(
         "--no-submit",
         action="store_true",
-        help="Run the whole sweep — credentials, broker reads, residual computation — log every "
-        "order it WOULD submit, and submit nothing. The venue is read but never written, and the "
+        help="Rehearse: run the whole sweep — credentials, broker reads, residual computation — log "
+        "every order it WOULD submit, and submit nothing. The venue is read but never written, and the "
         "run directory's durable record is left untouched (writes go to a discarded scratch copy). "
         "Use this for any verification of the command.",
     )
     parser.add_argument(
         "--allow-new-run-dir",
         action="store_true",
-        help="Permit submitting from a --run-dir that carries no prior session (no state.json and "
-        "no equity.jsonl when the process started). An established run directory — every morning "
-        "invocation — needs nothing. Ignored under --no-submit, which submits nothing wherever it "
-        "points.",
+        help="With --submit only: permit submitting from a --run-dir that carries no prior session (no "
+        "state.json and no equity.jsonl when the process started). An established run directory — "
+        "every morning invocation — needs nothing. Refused with --no-submit.",
     )
     return parser.parse_args(argv)
 
@@ -98,6 +121,17 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     args = _parse_args(argv)
+    # Neither mode named: refuse before anything else is touched.
+    if not (args.submit or args.no_submit):
+        print(submission_mode_refusal("the paper sweep"), file=sys.stderr)
+        return SUBMISSION_MODE_EXIT_CODE
+    if args.allow_new_run_dir and args.no_submit:
+        print(
+            "--allow-new-run-dir permits trading from a directory with no prior session; it has no meaning "
+            "on a rehearsal and is refused with --no-submit.",
+            file=sys.stderr,
+        )
+        return SUBMISSION_MODE_EXIT_CODE
     # The provenance rail's evidence, sampled before the writer lock below
     # creates the directory it is asked about.
     run_dir_history = sample_run_dir_history(args.run_dir)
@@ -138,6 +172,8 @@ def main(argv: list[str] | None = None) -> int:
             require_established_run_dir(
                 run_dir_history, allow_new=args.allow_new_run_dir, entry_point="the paper sweep"
             )
+            # And it must be the directory runs/ACTIVE_RUN_DIR names.
+            require_active_run_dir(args.run_dir, entry_point="the paper sweep")
         ctx = LiveLoopContext(
             store=StateStore(work_dir / "state.json"),
             broker=broker,

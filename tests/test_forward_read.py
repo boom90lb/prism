@@ -232,6 +232,33 @@ def _context(verdict="inconclusive", clock=None):
     return fr.ReadContext(rf_annual=0.04, cash_yield=0.033, monitor_verdict=verdict, trial_sharpes=rows)
 
 
+def test_monitor_verdict_pins_its_method_and_records_the_reads_parameters(tmp_path, monkeypatch):
+    """The conjunct's statistic is named by MONITOR_METHOD, not left to paper_monitor_read's default, and
+    the packet carries what it was read with (live_monitor_design.md §4; N5)."""
+    import prism.live.monitor as monitor
+
+    seen = {}
+
+    def fake_read(path, **kw):
+        seen.update(path=path, **kw)
+        return {"n": 16, "verdict": "inconclusive", "method": kw["method"], "bound": 0.1, "hurdle": 0.0,
+                "alpha": 0.05, "n_gaps": 1, "mean": 0.0004, "ci_lower": -0.06, "ci_upper": 0.06,
+                "skipped_pairs": [{"prev_bar": "2026-08-14", "bar": "2026-09-25"}]}
+
+    monkeypatch.setattr(monitor, "paper_monitor_read", fake_read)
+    pointer = tmp_path / "ACTIVE_RUN_DIR"
+    pointer.write_text(str(tmp_path / "run") + "\n")
+    monkeypatch.setattr(fr, "LIVE_RUN_DIR_POINTER", pointer)
+    verdict, meta = fr.monitor_verdict()
+    assert verdict == "inconclusive"
+    assert seen["method"] == fr.MONITOR_METHOD == "empirical_bernstein"
+    assert seen["path"] == tmp_path / "run" / "equity.jsonl"
+    assert meta["run_dir"] == str(tmp_path / "run")
+    assert {"method", "bound", "hurdle", "alpha", "n_gaps", "n", "verdict"} <= set(meta)
+    assert meta["method"] == "empirical_bernstein" and meta["bound"] == 0.1 and meta["n_gaps"] == 1
+    assert "skipped_pairs" not in meta  # the packet records parameters and the verdict, not the pair list
+
+
 def test_forward_v1_interim_kills_on_the_paired_interval_only():
     clock = _fast(fr.CLOCKS["forward_v1"])
     read = fr.scheduled_reads(clock)[0]

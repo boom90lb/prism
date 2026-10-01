@@ -39,6 +39,17 @@ failure modes:
   operator say which: ``--no-submit`` to exercise the command without trading,
   ``--allow-new-run-dir`` to start a book here for real.
 
+* **The active-switch rail** (:func:`require_active_run_dir`, 2026-09-30)
+  answers "is this the run directory the account is meant to be trading?" The
+  provenance rail cannot: ten retired directories under ``runs/`` carry prior
+  sessions. The scheduled wrappers take their directory from
+  ``runs/ACTIVE_RUN_DIR``, so a submitting invocation must point where that
+  switch points, and there is no flag past it — a new book starts by pointing
+  the switch. The same module supplies the message an entry point prints when
+  it is given neither ``--submit`` nor ``--no-submit``
+  (:func:`submission_mode_refusal`): since 2026-09-30 the mode is an argument,
+  and a bare invocation that finds credentials no longer trades.
+
 The rails protect the *account*, not the strategy: they never liquidate, never
 re-decide, and never move a ratified statistic. Auto-liquidation is a policy
 decision that belongs to an owner, not a rail.
@@ -201,3 +212,91 @@ def require_established_run_dir(history: RunDirHistory, *, allow_new: bool, entr
         "venue and nothing has been sent. Re-run with --no-submit to exercise the whole command "
         "without trading, or with --allow-new-run-dir if a new book genuinely starts here."
     )
+
+
+# ------------------------------------------------------------- the active switch
+
+#: The one-line pointer the scheduled wrappers read to find the live run
+#: directory. It sits beside the run directories (``runs/ACTIVE_RUN_DIR``) and
+#: names one of them, relative to the repository root or absolutely.
+ACTIVE_RUN_DIR_FILENAME = "ACTIVE_RUN_DIR"
+
+#: Exit code of an entry point invoked with neither ``--submit`` nor
+#: ``--no-submit``. It is a usage error in the argparse sense, and the wrappers
+#: already treat any nonzero exit as a failed session.
+SUBMISSION_MODE_EXIT_CODE = 2
+
+
+def submission_mode_refusal(entry_point: str) -> str:
+    """The message an entry point prints when it is told neither to trade nor to rehearse.
+
+    Until 2026-09-30 these commands traded whenever credentials resolved and the
+    run directory carried a prior session; the rehearsal flag was the only thing
+    that stood between "parse the arguments" and "send orders". Making the
+    trading mode an explicit argument means a bare invocation can never trade,
+    and the scheduled wrappers say ``--submit`` where they mean it.
+    """
+    return (
+        f"{entry_point} trades the paper account when it is given credentials, so it no longer runs "
+        "without being told which mode it is in. Pass --submit to trade (the scheduled wrappers "
+        "ops/paper_loop_nightly.sh and ops/paper_sweep_morning.sh do), or --no-submit to rehearse: a "
+        "rehearsal runs the whole cycle against the real venue reads, logs every order it would have "
+        "sent, and sends none. Nothing has been read from the venue and nothing has been sent."
+    )
+
+
+def active_run_dir_pointer(run_dir: Path | str) -> Path:
+    """Where the switch for ``run_dir`` lives: ``<run_dir>/../ACTIVE_RUN_DIR``."""
+    return Path(run_dir).resolve().parent / ACTIVE_RUN_DIR_FILENAME
+
+
+def require_active_run_dir(run_dir: Path | str, *, entry_point: str) -> Path:
+    """Refuse to trade from a run directory the switch does not name.
+
+    The established-run-directory rail above asks whether *a* session has run
+    here before; it cannot ask whether this is *the* session the account is
+    meant to be trading, and ten retired directories under ``runs/`` would pass
+    it. The scheduled wrappers resolve their directory from ``runs/ACTIVE_RUN_DIR``,
+    so a hand-run or stale invocation pointed anywhere else is trading a book
+    the operator did not choose. This rail binds submission to the switch: the
+    pointer must exist beside the run directory and must resolve to it.
+
+    The pointer's content is a path relative to the parent of the directory
+    holding the pointer (the repository root, for ``runs/ACTIVE_RUN_DIR``), or an
+    absolute path. Both sides are resolved before comparison so a symlinked
+    checkout or a trailing slash cannot produce a false mismatch.
+
+    There is deliberately no escape hatch. Starting a new book is done by
+    pointing the switch at its directory first, which is the same act the
+    scheduler needs anyway. Returns the resolved run directory.
+    """
+    target = Path(run_dir).resolve()
+    pointer = active_run_dir_pointer(target)
+    how = (
+        f"Point the switch by writing the run directory's path, relative to {pointer.parent.parent} "
+        f"or absolute, as the single line of {pointer}."
+    )
+    if not pointer.is_file():
+        raise SafetyViolation(
+            f"{entry_point} refuses to submit from {target}: the active-run-directory switch {pointer} "
+            f"does not exist, so nothing names this directory as the live book. {how} Nothing has been read "
+            "from the venue and nothing has been sent."
+        )
+    content = pointer.read_text(encoding="utf-8").strip()
+    if not content:
+        raise SafetyViolation(
+            f"{entry_point} refuses to submit from {target}: the active-run-directory switch {pointer} is "
+            f"empty. {how} Nothing has been read from the venue and nothing has been sent."
+        )
+    named = Path(content)
+    if not named.is_absolute():
+        named = pointer.parent.parent / named
+    active = named.resolve()
+    if active != target:
+        raise SafetyViolation(
+            f"{entry_point} refuses to submit from {target}: the active-run-directory switch {pointer} names "
+            f"{content!r} (resolving to {active}), not this directory. Either run against the directory the "
+            f"switch names, or, to make this one the live book, {how[0].lower()}{how[1:]} Nothing has been "
+            "read from the venue and nothing has been sent."
+        )
+    return target

@@ -429,7 +429,12 @@ Do not start the window until all seven hold on a single session:
 
    and confirming the coverage block reports a nonzero count at that session's bar. As of today
    the loop persists nothing (part 1.3), so this needs either a store handed to the bar source or
-   a per-session panel snapshot written into the run directory.
+   a per-session panel snapshot written into the run directory. *Update 2026-09-30:* the
+   per-session panel log exists (`prism.live.panel_log`; `runs/<run>/panels/` holds a base
+   parquet plus one delta per session, `index.jsonl` indexes them, and each refresh row in
+   `targets.jsonl` cites its panel's `panel_sha256` and `panel_file`); what the parity gate still
+   needs is to read `panels/index.jsonl` as its coverage source and to open the recorded panel
+   when it models fills, instead of asking the bar source's store.
 
 If 1 through 6 hold but 7 does not, the window can still run as an operational soak. It just
 cannot close the parity gate, and it should be declared that way up front rather than discovered

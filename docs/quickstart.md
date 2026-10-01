@@ -60,26 +60,47 @@ after any edit.
 
 ## 5. One cycle by hand
 
-Run once after the market close (next-open auction orders must reach Alpaca
-before ~09:28 ET the next morning):
+Every invocation names its mode. `--no-submit` rehearses: it reads the venue,
+runs the whole cycle, logs every order it would have sent and sends none.
+`--submit` trades. Neither flag exits 2 and does nothing. Run against the
+directory `runs/ACTIVE_RUN_DIR` names; a submitting run is refused from any
+other directory, and from a bar that is still trading (run it after the close;
+the scheduled wrapper runs at 18:30 PT).
+
+Rehearse first, at any hour:
 
 ```sh
 uv run python -m prism.scripts.paper_loop \
     --book momentum \
     --universe-file data/universe/sp500_current.txt \
-    --run-dir runs/paper_loop_momentum
+    --run-dir "$(cat runs/ACTIVE_RUN_DIR)" \
+    --no-submit
+```
+
+A real session, once after the market close (next-open auction orders must
+reach Alpaca before ~09:28 ET the next morning):
+
+```sh
+uv run python -m prism.scripts.paper_loop \
+    --book momentum \
+    --universe-file data/universe/sp500_current.txt \
+    --run-dir "$(cat runs/ACTIVE_RUN_DIR)" \
+    --submit
 ```
 
 The first run fetches about three years of bars for ~500 names (minutes),
 scores, constructs the decile long/short book, and submits next-open orders.
 Re-running the same evening is safe: the loop persists its decision before
-submitting anything and a rerun resumes it — it never double-trades.
+submitting anything and a rerun resumes it — it never double-trades. A new
+book starts by writing its directory to `runs/ACTIVE_RUN_DIR` and passing
+`--allow-new-run-dir` with `--submit` on its first session only.
 
 Next morning after the open (~09:35 ET), sweep the orders the auction did
 not fill (the paper venue prints only ~20–25% of them):
 
 ```sh
-uv run python -m prism.scripts.paper_sweep --run-dir runs/paper_loop_momentum
+uv run python -m prism.scripts.paper_sweep --run-dir "$(cat runs/ACTIVE_RUN_DIR)" --no-submit   # rehearse
+uv run python -m prism.scripts.paper_sweep --run-dir "$(cat runs/ACTIVE_RUN_DIR)" --submit      # trade
 ```
 
 ## 6. Schedule it
@@ -93,7 +114,9 @@ ops/paper_sweep_morning.sh     # morning: the completion sweep, then the health 
 ```
 
 Both read `runs/ACTIVE_RUN_DIR` (one line, the live run directory relative to
-the repo) and `.env`. A holiday run no-ops on the stale-panel guard.
+the repo) and `.env`, and pass `--submit`. A missing or empty switch refuses
+the session (exit 4) rather than falling back to a retired directory. A holiday
+run holds the previous session's completed bar and resumes that decision.
 
 Each wrapper runs `prism-doctor` after its work and alerts if *either* goes
 nonzero — a marker at `{run-dir}/ALERT`, a loud log line, and a nonzero exit.

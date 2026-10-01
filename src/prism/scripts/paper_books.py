@@ -44,13 +44,17 @@ other book is unaffected by whether it is installed.
 
 from __future__ import annotations
 
+import datetime as dt
+import hashlib
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Sequence
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from prism.live.daily import DailyBookConfig
+from prism.io import sessions
+from prism.live.daily import EXCHANGE_TZ, DailyBookConfig
 from prism.live.safety import SafetyConfig
 from prism.residual.factors import ResidualStatArbConfig
 from prism.signal.base import Signal
@@ -116,6 +120,64 @@ class BookSpec:
             if params.decision_every is not None
             else self.default_decision_every
         )
+
+
+# ------------------------------------------------------------ client order ids
+
+#: Alpaca rejects a ``client_order_id`` longer than this (its documented limit).
+ALPACA_CLIENT_ORDER_ID_MAX_CHARS = 48
+
+#: Hex characters of the run directory digest carried in every client order id.
+#: Eight give 2^32 tags: no two run directories this program will ever create
+#: collide, and the id stays short enough for the bound above with room to spare.
+RUN_TAG_HEX_CHARS = 8
+
+#: The widest symbol the id length is guaranteed for (``GOOGL``, ``BRK.B``).
+#: The longest id is asserted against it, not against the names a universe
+#: happens to hold today.
+SYMBOL_CHARS_BOUND = 5
+
+
+def run_dir_tag(run_dir: Path | str) -> str:
+    """A short digest of the run directory's *name*, stable if the checkout moves.
+
+    The basename, not the resolved path: the same book must produce the same
+    ids after the repository is relocated or restored from backup, and two run
+    directories under one ``runs/`` differ by name alone.
+    """
+    name = Path(run_dir).name
+    if not name:
+        raise ValueError(f"run directory {str(run_dir)!r} has no basename to tag")
+    return hashlib.sha256(name.encode("utf-8")).hexdigest()[:RUN_TAG_HEX_CHARS]
+
+
+def longest_client_order_id(prefix: str, *, symbol_chars: int = SYMBOL_CHARS_BOUND, sweep_suffix: str = "S1") -> str:
+    """The longest id the scheme can produce under ``prefix``: a sweep child of a
+    full-date decision on the widest symbol (``{prefix}{YYYY-MM-DD}:{symbol}:{suffix}``)."""
+    return f"{prefix}0000-00-00:{'X' * symbol_chars}:{sweep_suffix}"
+
+
+def scoped_order_id_prefix(book_prefix: str, run_dir: Path | str) -> str:
+    """``{book_prefix}{tag}:`` — the client order id namespace for one book in one run directory.
+
+    Ids were ``{book}{decision_bar}:{symbol}`` until 2026-09-30, so the same
+    book decided from two run directories on the same bar produced the same ids,
+    and the venue's duplicate-id handling made the second invocation's orders
+    look already submitted. Scoping the prefix to the run directory makes an
+    accidental invocation from the wrong directory visibly its own order set
+    rather than a silent substitute. Orders already recorded under the bare
+    book prefix keep their ids; nothing downstream parses the prefix (the sweep
+    appends its suffix to the persisted parent id and the replay reader matches
+    children to parents by ``rpartition``), so both generations coexist.
+    """
+    prefix = f"{book_prefix}{run_dir_tag(run_dir)}:"
+    longest = longest_client_order_id(prefix)
+    if len(longest) > ALPACA_CLIENT_ORDER_ID_MAX_CHARS:
+        raise ValueError(
+            f"client order id prefix {prefix!r} would let an id reach {len(longest)} characters "
+            f"({longest!r}), over the venue's {ALPACA_CLIENT_ORDER_ID_MAX_CHARS}-character limit"
+        )
+    return prefix
 
 
 # --------------------------------------------------------------------- books
@@ -346,15 +408,56 @@ def resolve_cli_universe(
     raise SystemExit("provide --symbols or --universe-file")
 
 
-def default_panel_start(spec: BookSpec) -> str | None:
+#: Minutes after the close before a session's daily bar counts as published.
+#: Mirrors the default of ``prism.live.daily.require_published_panel``, so the
+#: bar the window is anchored to is the bar that rail accepts as complete.
+PANEL_PUBLICATION_DELAY_MINUTES = 30
+
+
+def last_published_session(now: dt.datetime | pd.Timestamp | None = None) -> dt.date:
+    """The most recent exchange session whose daily bar is published at ``now``.
+
+    Today, when today is a session and ``now`` is at least
+    ``PANEL_PUBLICATION_DELAY_MINUTES`` past its close; otherwise the last
+    session before today. ``now`` defaults to the current time in
+    ``EXCHANGE_TZ`` and must be timezone-aware when given: a naive clock has
+    no session.
+    """
+    zone = ZoneInfo(EXCHANGE_TZ)
+    if now is None:
+        now_ts = pd.Timestamp.now(tz=zone)
+    else:
+        now_ts = pd.Timestamp(now)
+        if now_ts.tzinfo is None:
+            raise ValueError("last_published_session: `now` must be timezone-aware; a naive clock has no session")
+        now_ts = now_ts.tz_convert(zone)
+    today = now_ts.date()
+    if sessions.is_session(today):
+        close_at = dt.datetime.combine(today, sessions.session_close(today), tzinfo=zone)
+        if now_ts >= pd.Timestamp(close_at) + pd.Timedelta(minutes=PANEL_PUBLICATION_DELAY_MINUTES):
+            return today
+    return sessions.previous_session(today)
+
+
+def default_panel_start(spec: BookSpec, now: dt.datetime | pd.Timestamp | None = None) -> str | None:
     """The spec's default panel start (None lets the loader/store decide).
 
     ~3y is ample for the 252-bar lookback (+ vol warmup for trend) and keeps
     the universe-scale batch fetch to a handful of pages.
+
+    The window is anchored to the last published session, not to the wall
+    clock, so every run that decides on the same bar requests the same bars.
+    The bar fetch has no end date, so the decision bar is the last published
+    session; a window anchored to the calendar day instead moved its start by
+    a day on every re-run after local midnight (a holiday Monday, a pre-open
+    catch-up, a resume after a crash), dropped the oldest bar whenever the
+    date three years back was a session, and so changed the recorded panel's
+    digest for a bar that was already decided. ``now`` is the clock, for tests.
     """
     if spec.panel_start_years is None:
         return None
-    return (pd.Timestamp.now() - pd.DateOffset(years=spec.panel_start_years)).strftime("%Y-%m-%d")
+    anchor = pd.Timestamp(last_published_session(now))
+    return (anchor - pd.DateOffset(years=spec.panel_start_years)).strftime("%Y-%m-%d")
 
 
 def valuation_masked_membership(

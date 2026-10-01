@@ -25,6 +25,14 @@ thing that ran:
   the cross-check that needs no table.
 * ``session-table`` — warns when that table ends within ninety days, because
   past its coverage end no session question can be answered at all.
+* ``panel-record`` — did the last completed session record the panel it
+  decided on (``prism.live.panel_log``)? A record that lags the equity ledger
+  means decisions nobody can re-derive.
+* ``shadow-record`` — did the last completed session write its shadow-return
+  row (``shadow.jsonl``, the decided book marked on the paper book's closes)?
+  The cycle shields that step from the trading path, so a shadow computation
+  that fails every session leaves only a log line; this row is where that
+  shows, and the tracking read the registration leans on is empty without it.
 * ``regime-clock`` — consecutive clean sessions on the handoff §8
   precondition-(b) clock (docs/regime_step.md §4).
 * ``nightly-log`` — the last wrapper verdict, and whether a *successful* one
@@ -34,6 +42,14 @@ thing that ran:
   RUN/SWEEP lines; an unstamped or foreign-path session FAILs. This is the
   "what runs is what was reviewed" invariant: the 2026-07-23 outage's alert
   layer was committed but a stale ~/bin copy kept executing, invisibly.
+* ``artifact-sync`` — did the off-box backup land? Read from the status file
+  ``ops/artifacts_sync.sh`` writes after every attempt. The predecessor script
+  logged PUSH-FAILED and exited 0 every night from 2026-09-25, so the last
+  off-box copy of the ledgers was 2026-08-14 and nothing reported it.
+* ``alert-transport`` — can any alert leave this machine? The marker, the log
+  line and the exit code are all on-box; without ``PRISM_ALERT_CMD`` or a
+  heartbeat URL a dead scheduler is reported to nobody (that was 2026-08-15 →
+  2026-09-25).
 * ``alpaca-account-book`` (network) — does the venue's book belong to this run
   directory? A run directory with no persisted book over a live account is the
   fatal condition that produced the outage.
@@ -51,12 +67,17 @@ bar source configured is a WARN, not a FAIL.
 
     python -m prism.scripts.doctor                       # offline preflight + health
     python -m prism.scripts.doctor --network             # + venue reconciliation
-    prism-doctor --run-dir runs/paper_loop_momentum      # installed entry point
+    prism-doctor --run-dir "$(cat runs/ACTIVE_RUN_DIR)"  # installed entry point
+
+Without ``--run-dir`` the run directory is the one ``runs/ACTIVE_RUN_DIR``
+names, relative to the current directory; a missing or empty switch is refused
+(exit 1) rather than checking a retired or current-directory book.
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import os
 import re
@@ -66,6 +87,12 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Mapping, Sequence
 
+# The switch file's name, by value: ``prism.live.safety.ACTIVE_RUN_DIR_FILENAME``.
+# Not imported, because any ``prism.live`` import runs that package's __init__,
+# which loads the venue adapter, and the offline paper-state assessment keeps
+# this module's import closure venue-free (tests/test_paper_state_assessment.py
+# asserts it). Every ``prism.live`` import in this module is therefore local.
+ACTIVE_RUN_DIR_FILENAME = "ACTIVE_RUN_DIR"
 from prism.scripts import announce_alias
 from prism.workspace import load_env, resolve_workspace
 
@@ -83,6 +110,19 @@ LEDGER_STALE_FAIL_WEEKDAYS = 4
 
 # handoff §8 precondition (b): >= 21 consecutive clean regime sessions.
 CLEAN_SESSIONS_REQUIRED = 21
+
+# A successful backup older than this many weekdays means at least one nightly
+# ran without one landing (the sync runs every nightly, after the doctor).
+SYNC_STALE_WARN_WEEKDAYS = 1
+
+# The live universe file is a snapshot of index membership; S&P changes land
+# several times a quarter, and the 2026-07-17 build traded 2026-09-25 holding
+# shorts in two names that had left the index (docs/operations.md).
+UNIVERSE_STALE_DAYS = 45
+
+# `# Current sp500 members as of 2026-09-25 with local price data …` — the
+# header prism-build-universe writes (prism.scripts.build_sp500_universe).
+_UNIVERSE_AS_OF = re.compile(r"\bas of (?P<date>\d{4}-\d{2}-\d{2})\b")
 
 # `2026-07-29T18:30:16-0700 EXIT 1` — the wrapper's verdict line (ops/).
 _LOG_VERDICT = re.compile(r"^(?P<ts>\S+)\s+(?P<verdict>EXIT|SKIP)\b\D*(?P<code>\d+)?")
@@ -226,7 +266,37 @@ def _read_universe(path: Path | None) -> list[str]:
     return load_universe_symbols(path, require_nonempty=False)
 
 
-def check_universe_file(path: Path | None) -> CheckResult:
+def universe_as_of(path: Path) -> date | None:
+    """The ``as of YYYY-MM-DD`` date in the file's comment header, or None.
+
+    Only the leading comment block is read: a symbol line never carries a date,
+    and a hand-written list has no header at all, which is legitimate and is
+    reported as "no as-of", not as stale.
+    """
+    for line in path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if not stripped.startswith("#"):
+            break
+        match = _UNIVERSE_AS_OF.search(stripped)
+        if match:
+            try:
+                return date.fromisoformat(match.group("date"))
+            except ValueError:
+                return None
+    return None
+
+
+def check_universe_file(path: Path | None, *, today: date | None = None) -> CheckResult:
+    """Existence, breadth and age of the universe file the loop will trade.
+
+    Age is read off the header's ``as of`` date. Membership drift is silent in
+    every other row: a stale file still parses, still has ~500 names, and still
+    trades — it traded shorts in two index leavers on 2026-09-25 — so the only
+    place the drift shows is the date the file itself claims.
+    """
+    today = today or date.today()
     if path is None:
         return _result(
             "universe-file", False, "no --universe-file given — pass the file the loop will trade", warn=True
@@ -236,15 +306,30 @@ def check_universe_file(path: Path | None) -> CheckResult:
     symbols = _read_universe(path)
     if not symbols:
         return _result("universe-file", False, f"{path} parses to zero symbols")
+    as_of = universe_as_of(path)
+    if as_of is None:
+        age_note, stale = ", no 'as of' date in the header", False
+    else:
+        age_days = (today - as_of).days
+        age_note, stale = f", as of {as_of.isoformat()} ({age_days} days ago)", age_days > UNIVERSE_STALE_DAYS
     if len(symbols) < MIN_MOMENTUM_UNIVERSE:
         return _result(
             "universe-file",
             False,
             f"{path}: {len(symbols)} symbols < {MIN_MOMENTUM_UNIVERSE} — a decile book "
-            "degenerates on a thin cross-section (fine for the ensemble cost instrument)",
+            f"degenerates on a thin cross-section (fine for the ensemble cost instrument){age_note}",
             warn=True,
         )
-    return _result("universe-file", True, f"{path}: {len(symbols)} symbols")
+    if stale:
+        return _result(
+            "universe-file",
+            False,
+            f"{path}: {len(symbols)} symbols{age_note} — older than {UNIVERSE_STALE_DAYS} days; index "
+            "membership has moved since this build, so the book may hold names that left the index. "
+            "Rebuild it (prism-build-universe)",
+            warn=True,
+        )
+    return _result("universe-file", True, f"{path}: {len(symbols)} symbols{age_note}")
 
 
 def check_data_dir(data_dir: Path) -> CheckResult:
@@ -522,6 +607,180 @@ def check_regime_clock(run_dir: Path, *, today: date | None = None) -> CheckResu
     return _result("regime-clock", False, detail, warn=True)
 
 
+def check_panel_record(run_dir: Path, *, today: date | None = None) -> CheckResult:
+    """Did the last completed session record the panel it decided on?
+
+    Since 2026-09-30 every cycle writes the bar panel it scored under
+    ``<run_dir>/panels/`` before deciding (``prism.live.panel_log``), so each
+    decision can be re-derived from its inputs. Nothing else checked that the
+    record kept up with the ledger. PASS when the newest index row is the equity
+    ledger's last decision bar; WARN when no panel has ever been recorded (the
+    log starts with the first session after the change) or when the panel is
+    *ahead* of the NAV mark (a cycle recorded its inputs and then did not
+    complete, which ``equity-ledger`` dates); FAIL when the record lags the
+    ledger, because a session then decided on bars nobody can see again.
+    """
+    from prism.io import sessions
+
+    today = today or date.today()
+    index_path = run_dir / "panels" / "index.jsonl"
+    ledger = run_dir / "equity.jsonl"
+    last_panel = _last_ledger_bar(index_path)
+    if last_panel is None:
+        return _result(
+            "panel-record",
+            False,
+            f"{index_path} absent or empty — no session has recorded its panel since 2026-09-30 "
+            "(prism.live.panel_log writes it before each decision)",
+            warn=True,
+        )
+    last_nav = _last_ledger_bar(ledger)
+    if last_nav is None:
+        return _result(
+            "panel-record",
+            False,
+            f"panel recorded for {last_panel} but {ledger} has no NAV rows — no cycle has completed",
+            warn=True,
+        )
+    if last_panel == last_nav:
+        return _result("panel-record", True, f"panel recorded for {last_panel}, the ledger's last session")
+    try:
+        panel_date, nav_date = date.fromisoformat(last_panel), date.fromisoformat(last_nav)
+    except ValueError as exc:
+        return _result("panel-record", False, f"{index_path} / {ledger}: unparseable decision bar ({exc})")
+    if panel_date > nav_date:
+        return _result(
+            "panel-record",
+            False,
+            f"panel recorded for {last_panel} but the last NAV mark is {last_nav} ({today.isoformat()} today): "
+            "that cycle recorded its inputs and did not complete; see equity-ledger and the nightly log",
+            warn=True,
+        )
+    try:
+        lag = sum(1 for d in sessions.sessions_between(panel_date, nav_date) if d > panel_date)
+        lag_text = f"{lag} session(s)"
+    except ValueError:
+        lag_text = "an uncountable interval (outside the session table)"
+    return _result(
+        "panel-record",
+        False,
+        f"panel record ends at {last_panel} but the ledger's last session is {last_nav}: the record lags by "
+        f"{lag_text}, so those decisions cannot be re-derived from their inputs (docs/live_monitor_design.md)",
+    )
+
+
+def check_shadow_record(run_dir: Path, *, today: date | None = None) -> CheckResult:
+    """Did the last completed session write its shadow-return row (``<run_dir>/shadow.jsonl``)?
+
+    The cycle records, after each NAV mark, the decided book's return on the
+    same closes as the paper book's (``prism.live.daily._shadow_record``), and
+    the tracking read of paper minus shadow is one conjunct of "the live
+    monitor is not in contradiction" (docs/live_monitor_design.md §4). That
+    step is shielded from the trading path on purpose, so a shadow computation
+    that fails every session leaves nothing but a log line while the tracking
+    read stays empty. This row makes that durable.
+
+    A row is owed for the ledger's last bar only when the cycle could have
+    written one: the previous ledger bar is the preceding exchange session (a
+    gap is not a day) and a refresh book in ``targets.jsonl`` predates that
+    bar. PASS when the newest shadow row is the ledger's last bar; WARN when
+    no row has ever been written or none was owed (with the reason); FAIL when
+    one was owed and is missing, counting the lag as ``panel-record`` does.
+    """
+    from prism.io import sessions
+    from prism.live.ledgers import read_rows
+
+    today = today or date.today()
+    shadow_path = run_dir / "shadow.jsonl"
+    ledger = run_dir / "equity.jsonl"
+    shadow_rows = read_rows(shadow_path)
+    last_shadow = _last_ledger_bar(shadow_path)
+    if last_shadow is None:
+        return _result(
+            "shadow-record",
+            False,
+            f"{shadow_path} absent or empty — no shadow row yet; the first can land only once a refresh "
+            "precedes the previous session (docs/live_monitor_design.md)",
+            warn=True,
+        )
+    nav_bars = sorted({str(row["decision_bar"]) for row in read_rows(ledger) if "decision_bar" in row})
+    if not nav_bars:
+        return _result(
+            "shadow-record",
+            False,
+            f"shadow row for {last_shadow} but {ledger} has no NAV rows — no cycle has completed",
+            warn=True,
+        )
+    last_nav = nav_bars[-1]
+    if last_shadow == last_nav:
+        newest = next(row for row in reversed(shadow_rows) if str(row.get("decision_bar")) == last_shadow)
+        try:
+            diff = float(newest["paper_return"]) - float(newest["shadow_return"])
+            diff_text = f"; paper minus shadow {diff:+.6f}"
+        except (KeyError, TypeError, ValueError):
+            diff_text = ""
+        return _result(
+            "shadow-record", True, f"shadow recorded for {last_shadow}, the ledger's last session{diff_text}"
+        )
+    try:
+        shadow_date, nav_date = date.fromisoformat(last_shadow[:10]), date.fromisoformat(last_nav[:10])
+    except ValueError as exc:
+        return _result("shadow-record", False, f"{shadow_path} / {ledger}: unparseable decision bar ({exc})")
+    if shadow_date > nav_date:
+        return _result(
+            "shadow-record",
+            False,
+            f"shadow row for {last_shadow} but the last NAV mark is {last_nav} ({today.isoformat()} today): the "
+            "shadow ledger is ahead of the equity ledger, which the cycle never writes in that order; see "
+            "equity-ledger and the nightly log",
+            warn=True,
+        )
+    # Was a row owed for the last bar? Mirror the cycle's own three preconditions.
+    if len(nav_bars) < 2:
+        return _result(
+            "shadow-record",
+            False,
+            f"shadow record ends at {last_shadow}; the ledger's last session {last_nav} has no earlier ledger "
+            "session to shadow from, so no row was owed",
+            warn=True,
+        )
+    prev_bar = nav_bars[-2]
+    try:
+        prev_date = date.fromisoformat(prev_bar[:10])
+        consecutive = sessions.is_session(prev_date) and sessions.next_session(prev_date) == nav_date
+    except ValueError as exc:
+        return _result("shadow-record", False, f"{ledger}: cannot date {prev_bar!r} ({exc})", warn=True)
+    if not consecutive:
+        return _result(
+            "shadow-record",
+            False,
+            f"shadow record ends at {last_shadow}; no row was owed for {last_nav} because the previous ledger "
+            f"bar {prev_bar} is not the preceding exchange session (a gap is not a day; see missed-sessions)",
+            warn=True,
+        )
+    refreshes = read_rows(run_dir / "targets.jsonl")
+    if not any(str(row.get("refresh_bar", "")) < prev_bar for row in refreshes if "refresh_bar" in row):
+        return _result(
+            "shadow-record",
+            False,
+            f"shadow record ends at {last_shadow}; no row was owed for {last_nav} because no refresh book in "
+            f"{run_dir / 'targets.jsonl'} predates {prev_bar}",
+            warn=True,
+        )
+    try:
+        lag = sum(1 for d in sessions.sessions_between(shadow_date, nav_date) if d > shadow_date)
+        lag_text = f"{lag} session(s)"
+    except ValueError:
+        lag_text = "an uncountable interval (outside the session table)"
+    return _result(
+        "shadow-record",
+        False,
+        f"shadow record ends at {last_shadow} but the ledger's last session is {last_nav}: the record lags by "
+        f"{lag_text} although a row was owed, so the shadow step failed and the tracking read is missing "
+        "those sessions; read LIVE MONITOR lines in the nightly log (docs/live_monitor_design.md)",
+    )
+
+
 def check_nightly_log(run_dir: Path, *, today: date | None = None) -> CheckResult:
     """The wrapper's last verdict — including a *stale success*.
 
@@ -654,6 +913,83 @@ def check_wrapper_provenance(run_dir: Path) -> CheckResult:
     if unverifiable and not oks:
         return _result("wrapper-provenance", False, "; ".join(unverifiable), warn=True)
     return _result("wrapper-provenance", True, "; ".join(oks))
+
+
+def check_artifact_sync(run_dir: Path, *, today: date | None = None) -> CheckResult:
+    """Did the last off-box backup land? Read from ``<run_dir>/sync_status.json``.
+
+    ``ops/artifacts_sync.sh`` writes that file after every attempt, success or
+    failure, with the stage it reached. The row exists because its predecessor
+    reported failure only by a log line and an exit code nobody read: from
+    2026-09-25 every push was refused by the remote's file-size limit, the
+    script exited 0 regardless, and the ledgers' last off-box copy stayed at
+    2026-08-14. A failed report FAILs; an absent one warns, because the file
+    only exists once the versioned script has run; a stale success warns,
+    because the sync runs every nightly and a day without a report is a day
+    the nightly did not get that far.
+    """
+    today = today or date.today()
+    status_path = run_dir / "sync_status.json"
+    if not status_path.exists():
+        return _result(
+            "artifact-sync",
+            False,
+            f"{status_path} absent — no backup has reported since this check was added "
+            "(ops/artifacts_sync.sh writes it; the nightly runs it after the doctor)",
+            warn=True,
+        )
+    try:
+        status = json.loads(status_path.read_text(encoding="utf-8"))
+        at = datetime.fromisoformat(str(status["at"]))
+        ok = bool(status["ok"])
+        stage = str(status.get("stage", "?"))
+        detail = str(status.get("detail", ""))
+        head = status.get("head")
+    except (ValueError, KeyError, TypeError) as exc:
+        return _result("artifact-sync", False, f"{status_path}: unreadable status ({exc})")
+    when = at.astimezone().date() if at.tzinfo else at.date()
+    age = weekdays_since(when, today)
+    stamp = f"{str(status['at'])} ({age} weekday(s) ago)"
+    if not ok:
+        return _result(
+            "artifact-sync",
+            False,
+            f"backup FAILED at stage {stage!r}, reported {stamp}: {detail} — the ledgers have no off-box "
+            "copy since the last successful push (docs/operations.md, 2026-09-30)",
+        )
+    if age > SYNC_STALE_WARN_WEEKDAYS:
+        return _result(
+            "artifact-sync",
+            False,
+            f"last successful backup {stamp}, head {head} — stale: the sync runs every nightly, so a "
+            "nightly since then did not reach it",
+            warn=True,
+        )
+    return _result("artifact-sync", True, f"backup at {head} reported {stamp}: {detail}")
+
+
+def check_alert_transport(env: Mapping[str, str]) -> CheckResult:
+    """Can any alert leave this machine? Presence only — values are never printed.
+
+    The three notifications ``ops/_alert.sh`` fires are all on-box: a marker
+    file, a log line, an exit code. Each needs someone to look. ``PRISM_ALERT_CMD``
+    is the push transport for the alerts the wrappers raise; the heartbeat URLs
+    are the dead-man's monitor that reports a scheduler which never fires at
+    all, which no in-session check can. With neither set, the 2026-08-15 →
+    2026-09-25 silence repeats on the next disabled task.
+    """
+    names = ("PRISM_ALERT_CMD", "PRISM_HEARTBEAT_URL", "PRISM_HEARTBEAT_URL_SWEEP")
+    present = [name for name in names if env.get(name)]
+    if not env.get("PRISM_ALERT_CMD") and not env.get("PRISM_HEARTBEAT_URL"):
+        return _result(
+            "alert-transport",
+            False,
+            "neither PRISM_ALERT_CMD nor PRISM_HEARTBEAT_URL is set — no alert can leave this machine; the "
+            "ALERT marker, the log line and the scheduler's exit code are all on-box. Set them in .env "
+            "(ops/alert_curl.sh, ops/_alert.sh; docs/operations.md, 2026-09-30)",
+            warn=True,
+        )
+    return _result("alert-transport", True, f"{', '.join(present)} set")
 
 
 def check_account_book(
@@ -846,8 +1182,9 @@ def run_checks(
     env = dict(os.environ) if env is None else env
     results = [check_python()]
     results.extend(check_env_credentials(env, mode=mode))
+    results.append(check_alert_transport(env))
     results.append(check_authorization(run_dir, mode=mode))
-    results.append(check_universe_file(universe_file))
+    results.append(check_universe_file(universe_file, today=today))
     results.append(check_data_dir(data_dir))
     results.append(check_loop_state(run_dir))
     results.append(check_kill_switch(run_dir))
@@ -860,6 +1197,9 @@ def run_checks(
     results.append(check_nightly_log(run_dir, today=today))
     results.append(check_wrapper_provenance(run_dir))
     results.append(check_regime_clock(run_dir, today=today))
+    results.append(check_panel_record(run_dir, today=today))
+    results.append(check_shadow_record(run_dir, today=today))
+    results.append(check_artifact_sync(run_dir, today=today))
     if network:
         results.extend(check_alpaca_account(universe_file, run_dir))
         results.append(check_twelvedata_quote(env.get("TWELVEDATA_API_KEY"), data_dir))
@@ -874,7 +1214,8 @@ def main(argv: list[str] | None = None) -> int:
         "--run-dir",
         type=Path,
         default=None,
-        help="Loop run directory; default honors runs/ACTIVE_RUN_DIR, else runs/paper_loop_momentum.",
+        help="Loop run directory. Default: the directory runs/ACTIVE_RUN_DIR names, relative to the current "
+        "directory; refused with exit 1 when the switch is missing or empty.",
     )
     parser.add_argument(
         "--universe-file",
@@ -908,10 +1249,21 @@ def main(argv: list[str] | None = None) -> int:
     # see what the loop will see.
     load_env()
 
+    # The same rule as the wrappers (ops/, 2026-09-30): a missing or empty switch
+    # is refused, never resolved to a retired book or to the current directory,
+    # because a green report about the wrong directory is worse than no report.
     run_dir = args.run_dir
     if run_dir is None:
-        active = Path("runs/ACTIVE_RUN_DIR")
-        run_dir = Path(active.read_text(encoding="utf-8").strip() if active.exists() else "runs/paper_loop_momentum")
+        active = Path("runs") / ACTIVE_RUN_DIR_FILENAME
+        content = active.read_text(encoding="utf-8").strip() if active.is_file() else ""
+        if not content:
+            print(
+                f"run-dir  refused: {active} is missing or empty, so nothing names the live book. "
+                "Pass --run-dir, or write the run directory's path (relative to the current directory "
+                "or absolute) as the file's single line (docs/operations.md, 2026-09-30)."
+            )
+            return 1
+        run_dir = Path(content)
 
     results = run_checks(
         run_dir=run_dir,

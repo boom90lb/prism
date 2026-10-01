@@ -24,6 +24,12 @@ from prism.live import (
     halt_reason,
     run_daily_cycle,
 )
+from prism.live.safety import (
+    SUBMISSION_MODE_EXIT_CODE,
+    active_run_dir_pointer,
+    require_active_run_dir,
+    submission_mode_refusal,
+)
 from tests.test_live_daily import ConstSignal, _panels
 from tests.test_live_loop import FakeBroker
 
@@ -163,3 +169,87 @@ def test_order_guard_violation_leaves_no_pending_state(ctx) -> None:
     assert ctx.broker.submit_calls == 0  # nothing reached the venue
     state = ctx.store.load()
     assert state is None or not state.pending_orders  # and nothing was persisted
+
+
+# ---------------------------------------------------------------------------
+# The active switch: submission is bound to the run directory runs/ACTIVE_RUN_DIR names
+# ---------------------------------------------------------------------------
+
+
+def _switch(root, content: str):
+    (root / "runs").mkdir(exist_ok=True)
+    pointer = root / "runs" / "ACTIVE_RUN_DIR"
+    pointer.write_text(content, encoding="utf-8")
+    return pointer
+
+
+def test_the_pointer_lives_beside_the_run_directory(tmp_path) -> None:
+    run_dir = tmp_path / "runs" / "book"
+    assert active_run_dir_pointer(run_dir) == (tmp_path / "runs" / "ACTIVE_RUN_DIR").resolve()
+    # Relative paths resolve against the working directory, like the wrappers' own.
+    assert active_run_dir_pointer("runs/book").name == "ACTIVE_RUN_DIR"
+
+
+def test_a_missing_switch_refuses_and_says_how_to_point_it(tmp_path) -> None:
+    run_dir = tmp_path / "runs" / "book"
+    run_dir.mkdir(parents=True)
+    with pytest.raises(SafetyViolation) as refusal:
+        require_active_run_dir(run_dir, entry_point="the paper loop")
+    message = str(refusal.value)
+    assert "does not exist" in message
+    assert str(run_dir.resolve()) in message and str((tmp_path / "runs" / "ACTIVE_RUN_DIR").resolve()) in message
+    assert "single line" in message
+
+
+def test_an_empty_switch_refuses(tmp_path) -> None:
+    run_dir = tmp_path / "runs" / "book"
+    run_dir.mkdir(parents=True)
+    _switch(tmp_path, "\n")
+    with pytest.raises(SafetyViolation, match="is empty"):
+        require_active_run_dir(run_dir, entry_point="the paper loop")
+
+
+def test_a_switch_naming_another_directory_refuses_naming_both(tmp_path) -> None:
+    run_dir = tmp_path / "runs" / "book"
+    run_dir.mkdir(parents=True)
+    _switch(tmp_path, "runs/other\n")
+    with pytest.raises(SafetyViolation, match="not this directory") as refusal:
+        require_active_run_dir(run_dir, entry_point="the paper sweep")
+    message = str(refusal.value)
+    assert "'runs/other'" in message and str((tmp_path / "runs" / "other").resolve()) in message
+    assert str(run_dir.resolve()) in message
+
+
+def test_relative_content_resolves_against_the_parent_of_the_runs_directory(tmp_path) -> None:
+    run_dir = tmp_path / "runs" / "book"
+    run_dir.mkdir(parents=True)
+    _switch(tmp_path, "runs/book\n")
+    assert require_active_run_dir(run_dir, entry_point="the paper loop") == run_dir.resolve()
+    # A trailing slash or a dotted segment in either path is not a mismatch.
+    _switch(tmp_path, "runs/./book/\n")
+    assert require_active_run_dir(tmp_path / "runs" / "book" / ".", entry_point="the paper loop") == run_dir.resolve()
+
+
+def test_absolute_content_is_taken_as_given(tmp_path) -> None:
+    run_dir = tmp_path / "runs" / "book"
+    run_dir.mkdir(parents=True)
+    _switch(tmp_path, str(run_dir.resolve()) + "\n")
+    assert require_active_run_dir(run_dir, entry_point="the paper loop") == run_dir.resolve()
+    _switch(tmp_path, str((tmp_path / "runs" / "other").resolve()))
+    with pytest.raises(SafetyViolation, match="not this directory"):
+        require_active_run_dir(run_dir, entry_point="the paper loop")
+
+
+def test_a_relative_run_dir_argument_is_resolved_against_the_working_directory(tmp_path, monkeypatch) -> None:
+    """The wrappers pass ``--run-dir runs/<name>`` from the repository root."""
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "runs" / "book").mkdir(parents=True)
+    _switch(tmp_path, "runs/book\n")
+    assert require_active_run_dir("runs/book", entry_point="the paper loop") == (tmp_path / "runs" / "book").resolve()
+
+
+def test_the_mode_refusal_names_both_flags_and_exits_2() -> None:
+    assert SUBMISSION_MODE_EXIT_CODE == 2
+    message = submission_mode_refusal("the paper loop")
+    assert message.startswith("the paper loop trades the paper account")
+    assert "--submit" in message and "--no-submit" in message and "sends none" in message

@@ -12,6 +12,7 @@ import json
 import logging
 from dataclasses import fields as dataclass_fields
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -29,7 +30,7 @@ from prism.live import (
     run_daily_cycle,
     targets_to_orders,
 )
-from prism.live.state import STATE_SCHEMA_VERSION
+from prism.live.state import STATE_SCHEMA_VERSION, LoopState
 from prism.signal.base import Signal
 from tests.test_live_loop import FakeBroker
 
@@ -615,6 +616,152 @@ def test_empty_provider_result_is_a_named_provider_failure(ctx) -> None:
     assert len(result.submitted_orders) == 2  # the cycle still decided
 
 
+# ---------------------------------------------------------------------------
+# The panel the cycle decides on is recorded and cited by the refresh row
+# ---------------------------------------------------------------------------
+
+
+def test_cycle_records_its_panel_and_the_targets_row_cites_it(tmp_path) -> None:
+    from prism.live.panel_log import read_index, reconstruct_panel
+
+    ctx = _full_ctx(tmp_path)
+    signal = ConstSignal({"AAA": 1.0, "BBB": -1.0})
+    close, vol = _panels(30)
+    result = run_daily_cycle(ctx, signal, close, vol, _CONFIG)
+    records = read_index(tmp_path)
+    assert len(records) == 1 and records[0].kind == "base"
+    # The result omits the wall-clock stamp so identical cycles compare equal.
+    assert result.panel == {k: v for k, v in records[0].to_row().items() if k != "recorded_at"}
+    row = json.loads((tmp_path / "targets.jsonl").read_text().splitlines()[0])
+    assert row["panel_sha256"] == records[0].sha256 and row["panel_file"] == records[0].file
+    assert set(row) >= {"refresh_bar", "decision_bar", "equity", "targets", "reference_prices"}
+    panel = reconstruct_panel(tmp_path, result.decision_bar)
+    pd.testing.assert_frame_equal(panel["close"], close, check_freq=False, check_names=False)
+    pd.testing.assert_frame_equal(panel["volume"], vol, check_freq=False, check_names=False)
+    # The next session is a delta against the first, and a same-bar rerun adds nothing.
+    close2, vol2 = _panels(31)
+    run_daily_cycle(ctx, signal, close2, vol2, _CONFIG)
+    run_daily_cycle(ctx, signal, close2, vol2, _CONFIG)
+    records = read_index(tmp_path)
+    assert [r.kind for r in records] == ["base", "delta"]
+    second = reconstruct_panel(tmp_path, records[1].decision_bar)["close"]
+    pd.testing.assert_frame_equal(second, close2, check_freq=False, check_names=False)
+
+
+def test_cycle_records_nothing_without_a_run_directory(ctx, tmp_path) -> None:
+    result = run_daily_cycle(ctx, ConstSignal({"AAA": 1.0, "BBB": -1.0}), *_panels(), _CONFIG)
+    assert result.panel is None
+    assert not (tmp_path / "panels").exists()
+
+
+def test_explicit_run_dir_wins_over_the_targets_ledger_location(ctx, tmp_path) -> None:
+    from prism.live.panel_log import read_index
+
+    ctx.targets_ledger = tmp_path / "ledgers" / "targets.jsonl"
+    elsewhere = tmp_path / "elsewhere"
+    result = run_daily_cycle(ctx, ConstSignal({"AAA": 1.0, "BBB": -1.0}), *_panels(), _CONFIG, run_dir=elsewhere)
+    assert result.panel is not None
+    assert len(read_index(elsewhere)) == 1
+    assert not (tmp_path / "ledgers" / "panels").exists()
+
+
+def test_a_same_bar_rerun_that_sees_different_bars_keeps_the_recorded_panel_and_resumes(tmp_path, caplog) -> None:
+    """The write-ahead step already ran for this bar, so a re-run resumes the persisted orders and decides
+    nothing from the panel it fetched now. The recorded panel stays the decision's provenance, the index gets
+    no second row for the bar, and the mismatch is logged at ERROR with both digests."""
+    from prism.live.panel_log import read_index
+
+    ctx = _full_ctx(tmp_path)
+    signal = ConstSignal({"AAA": 1.0, "BBB": -1.0})
+    close, vol = _panels(30)
+    first = run_daily_cycle(ctx, signal, close, vol, _CONFIG)
+    at_venue = ctx.broker.submitted_order_ids()
+    with caplog.at_level(logging.ERROR, logger="prism.live.daily"):
+        second = run_daily_cycle(ctx, signal, close * 1.01, vol, _CONFIG)  # same bar, different bars seen
+    records = read_index(tmp_path)
+    assert len(records) == 1
+    assert first.panel is not None and second.panel is not None
+    assert second.panel["sha256"] == first.panel["sha256"] == records[0].sha256
+    state = ctx.store.load()
+    assert state is not None and len(state.pending_orders) == 2  # the first decision stands untouched
+    assert ctx.broker.submitted_order_ids() == at_venue  # nothing new reached the venue
+    assert [o.client_order_id for o in second.submitted_orders] == [o.client_order_id for o in first.submitted_orders]
+    errors = [
+        r for r in caplog.records if r.levelno == logging.ERROR and "differs from the one recorded" in r.getMessage()
+    ]
+    assert len(errors) == 1 and records[0].sha256 in errors[0].getMessage()
+
+
+def test_a_pre_open_rerun_with_a_shifted_window_submits_the_persisted_decision(tmp_path, caplog) -> None:
+    """A nightly that died before its first submit is re-run next morning on a window one bar shorter (the
+    fetch window moved) and otherwise identical bars. The persisted decision is submitted in full and the index
+    keeps the panel it was decided on."""
+    from prism.live.panel_log import read_index
+
+    ctx = _full_ctx(tmp_path)
+    signal = ConstSignal({"AAA": 1.0, "BBB": -1.0})
+    close, vol = _panels(30)
+    ctx.broker.fail_after_n_submits = 0  # the venue is dark: the write-ahead persists, nothing is sent
+    with pytest.raises(ConnectionError):
+        run_daily_cycle(ctx, signal, close, vol, _CONFIG)
+    persisted = ctx.store.load()
+    assert persisted is not None and len(persisted.pending_orders) == 2
+    assert ctx.broker.submitted_order_ids() == set()
+    ctx.broker.fail_after_n_submits = None
+    with caplog.at_level(logging.ERROR, logger="prism.live.daily"):
+        result = run_daily_cycle(ctx, signal, close.iloc[1:], vol.iloc[1:], _CONFIG)
+    assert ctx.broker.submitted_order_ids() == {o.client_order_id for o in persisted.pending_orders}
+    assert {o.client_order_id for o in result.submitted_orders} == ctx.broker.submitted_order_ids()
+    records = read_index(tmp_path)
+    assert len(records) == 1 and records[0].n_bars == 30  # the recorded panel, not the 29-bar refetch
+    assert any("differs from the one recorded" in r.getMessage() for r in caplog.records)
+
+
+def test_a_rerun_of_a_hold_session_with_a_revised_panel_holds_again(tmp_path, caplog) -> None:
+    """Off the refresh cadence the cycle holds the filled book and the write-ahead step persists that (no
+    orders) for the bar. A re-run with a revised panel decides nothing new either, so it is tolerated too."""
+    from prism.live.panel_log import read_index
+
+    config = DailyBookConfig(position_size=0.1, min_order_notional=1.0, decision_every=5)
+    ctx = _full_ctx(tmp_path)
+    signal = ConstSignal({"AAA": 1.0, "BBB": -1.0})
+    run_daily_cycle(ctx, signal, *_panels(30), config)  # the refresh
+    close, vol = _panels(31)
+    run_daily_cycle(ctx, signal, close, vol, config)  # settles, then holds
+    state = ctx.store.load()
+    assert state is not None and state.pending_orders == []
+    assert state.pending_decision_bar == str(close.index[-1].date())
+    with caplog.at_level(logging.ERROR, logger="prism.live.daily"):
+        result = run_daily_cycle(ctx, signal, close * 1.01, vol, config)
+    assert result.submitted_orders == []
+    assert [r.kind for r in read_index(tmp_path)] == ["base", "delta"]
+    assert any("differs from the one recorded" in r.getMessage() for r in caplog.records)
+
+
+def test_a_conflicting_panel_with_no_pending_decision_still_refuses(tmp_path) -> None:
+    """Without a persisted decision for the bar a fresh decision would be made on the new content: the
+    conflict raises before any state moves, whether the store is empty or holds an earlier bar's decision."""
+    from prism.live.panel_log import PanelLogConflict, record_panel
+
+    signal = ConstSignal({"AAA": 1.0, "BBB": -1.0})
+    close, vol = _panels(30)
+    bar = str(close.index[-1].date())
+    ctx = _full_ctx(tmp_path)
+    record_panel(tmp_path, bar, {"close": close * 1.01, "volume": vol})
+    with pytest.raises(PanelLogConflict):
+        run_daily_cycle(ctx, signal, close, vol, _CONFIG)
+    assert ctx.store.load() is None and ctx.broker.submitted_order_ids() == set()
+
+    other = tmp_path / "other"
+    other.mkdir()
+    ctx = _full_ctx(other)
+    ctx.store.save(LoopState(pending_decision_bar=str(close.index[-2].date())))  # an earlier bar's hold
+    record_panel(other, bar, {"close": close * 1.01, "volume": vol})
+    with pytest.raises(PanelLogConflict):
+        run_daily_cycle(ctx, signal, close, vol, _CONFIG)
+    assert ctx.broker.submitted_order_ids() == set()
+
+
 def _full_ctx(root) -> LiveLoopContext:
     return LiveLoopContext(
         store=StateStore(root / "state.json"),
@@ -754,3 +901,243 @@ def test_regime_ledger_idempotent_within_a_bar(ctx, tmp_path) -> None:
     run_daily_cycle(ctx, signal, close, volume, _CONFIG, regime=RecordingRegime())
     run_daily_cycle(ctx, signal, close, volume, _CONFIG, regime=RecordingRegime())  # same-bar resume
     assert len(read_regime_ledger(ctx.regime_ledger)) == 1  # one session, one row on the clock
+
+
+# ---------------------------------------------------------------------------
+# The last bar must be a completed session bar (require_published_panel)
+# ---------------------------------------------------------------------------
+
+
+def _panel_ending(date: str, *, tz: str | None = None) -> pd.DataFrame:
+    from prism.live.daily import EXCHANGE_TZ
+
+    index = pd.DatetimeIndex(pd.bdate_range(end=date, periods=5))
+    if tz is not None:
+        index = index.tz_localize(EXCHANGE_TZ)  # the Alpaca source's midnight-ET contract
+    return pd.DataFrame({"AAA": 100.0, "BBB": 50.0}, index=index)
+
+
+def _et(when: str) -> pd.Timestamp:
+    return pd.Timestamp(when, tz="America/New_York")
+
+
+def test_the_nightly_hour_passes_on_the_day_it_decides() -> None:
+    """18:30 PT is 21:30 ET: the regular 16:00 close plus the 30-minute delay is long past."""
+    from prism.live.daily import PartialBarError, require_published_panel
+
+    report = require_published_panel(_panel_ending("2026-09-30"), now=_et("2026-09-30 21:30"))
+    assert report == {
+        "last_bar": "2026-09-30",
+        "published_at": "2026-09-30T16:30:00-04:00",
+        "now": "2026-09-30T21:30:00-04:00",
+        "partial": False,
+    }
+    # Exactly at publication counts as published; a minute before does not.
+    assert require_published_panel(_panel_ending("2026-09-30"), now=_et("2026-09-30 16:30"))["partial"] is False
+    with pytest.raises(PartialBarError, match="still in progress"):
+        require_published_panel(_panel_ending("2026-09-30"), now=_et("2026-09-30 16:29"))
+
+
+def test_a_market_hours_catch_up_is_refused_and_a_rehearsal_warns(caplog) -> None:
+    """The 2026-09-25 rehearsal's shape: a 10:00 ET run holding today's in-progress bar."""
+    from prism.live.daily import PartialBarError, require_published_panel
+    from prism.live.safety import SafetyViolation
+
+    with pytest.raises(PartialBarError, match="2026-09-30 is still in progress") as refusal:
+        require_published_panel(_panel_ending("2026-09-30"), now=_et("2026-09-30 10:00"))
+    assert isinstance(refusal.value, SafetyViolation) and "--no-submit" in str(refusal.value)
+    with caplog.at_level(logging.WARNING, logger="prism.live.daily"):
+        report = require_published_panel(_panel_ending("2026-09-30"), now=_et("2026-09-30 10:00"), allow_partial=True)
+    assert report["partial"] is True
+    assert any("PARTIAL BAR" in r.getMessage() and "rehearsal" in r.getMessage() for r in caplog.records)
+
+
+def test_an_early_close_publishes_at_13_30_et() -> None:
+    """The day after Thanksgiving closes at 13:00; the table knows, so the rail does."""
+    from prism.live.daily import PartialBarError, require_published_panel
+
+    with pytest.raises(PartialBarError, match="closes at 13:00 ET"):
+        require_published_panel(_panel_ending("2026-11-27"), now=_et("2026-11-27 13:15"))
+    report = require_published_panel(_panel_ending("2026-11-27"), now=_et("2026-11-27 13:45"))
+    assert report["partial"] is False and report["published_at"] == "2026-11-27T13:30:00-05:00"
+    # A regular day at the same hour is still in progress.
+    with pytest.raises(PartialBarError):
+        require_published_panel(_panel_ending("2026-11-30"), now=_et("2026-11-30 13:45"))
+
+
+def test_a_last_bar_from_a_previous_session_passes_at_any_hour() -> None:
+    """A holiday or pre-open run holds yesterday's completed bar; same-bar resume handles the rest."""
+    from prism.live.daily import require_published_panel
+
+    for when in ("2026-09-30 06:00", "2026-09-30 10:00", "2026-09-30 15:59", "2026-10-03 12:00"):
+        report = require_published_panel(_panel_ending("2026-09-29"), now=_et(when))
+        assert report["partial"] is False and report["last_bar"] == "2026-09-29"
+
+
+def test_a_non_session_last_bar_is_refused_even_on_a_rehearsal() -> None:
+    from prism.live.daily import PartialBarError, require_published_panel
+
+    saturday = pd.DataFrame({"AAA": 1.0}, index=pd.DatetimeIndex(["2026-09-25", "2026-09-26"]))
+    with pytest.raises(PartialBarError, match="not an exchange session"):
+        require_published_panel(saturday, now=_et("2026-09-30 21:30"), allow_partial=True)
+    holiday = pd.DataFrame({"AAA": 1.0}, index=pd.DatetimeIndex(["2026-11-25", "2026-11-26"]))
+    with pytest.raises(PartialBarError, match="holiday"):
+        require_published_panel(holiday, now=_et("2026-11-27 21:30"))
+
+
+def test_a_bar_dated_after_the_clock_is_refused_outright() -> None:
+    from prism.live.daily import PartialBarError, require_published_panel
+
+    with pytest.raises(PartialBarError, match="from the future"):
+        require_published_panel(_panel_ending("2026-10-01"), now=_et("2026-09-30 21:30"), allow_partial=True)
+
+
+def test_tz_aware_midnight_et_bars_and_other_clocks_are_read_in_exchange_time() -> None:
+    """The live bar source indexes at midnight ET; the clock may arrive in any zone."""
+    from prism.live.daily import require_published_panel
+
+    panel = _panel_ending("2026-09-30", tz="America/New_York")
+    assert panel.index.tz is not None
+    # 01:30 UTC on 10-01 is 21:30 ET on 09-30: published.
+    report = require_published_panel(panel, now=pd.Timestamp("2026-10-01 01:30", tz="UTC"))
+    assert report["partial"] is False and report["now"] == "2026-09-30T21:30:00-04:00"
+    with pytest.raises(ValueError, match="timezone-aware"):
+        require_published_panel(panel, now=pd.Timestamp("2026-09-30 21:30"))
+    # The default clock is the wall clock; a bar from 2020 is published on any sane clock.
+    assert require_published_panel(_panel_ending("2020-01-03", tz="America/New_York"))["partial"] is False
+
+
+# ---------------------------------------------------------------------------
+# The live monitor in the cycle: shadow rows, tracking, and containment
+# ---------------------------------------------------------------------------
+
+
+def _session_panels(n: int, moves: dict[str, float]):
+    """Flat-then-drifting close panel on consecutive exchange sessions (no holiday pairs),
+    so every adjacent cycle is a consecutive-session pair for the monitor."""
+    import datetime as dt
+
+    from prism.io import sessions
+
+    days = sessions.sessions_between(dt.date(2026, 7, 6), dt.date(2026, 12, 31))[:n]
+    idx = pd.DatetimeIndex([pd.Timestamp(d, tz="America/New_York") for d in days])
+    close = pd.DataFrame(
+        {s: [100.0 * (1.0 + m) ** k for k in range(n)] for s, m in moves.items()}, index=idx
+    )
+    vol = pd.DataFrame(1e6, index=idx, columns=close.columns)
+    return close, vol
+
+
+def _monitor_ctx(root) -> LiveLoopContext:
+    ctx = _full_ctx(root)
+    ctx.shadow_ledger = root / "shadow.jsonl"
+    return ctx
+
+
+def test_cycle_records_shadow_rows_and_attaches_the_tracking_read(tmp_path) -> None:
+    from prism.live.loop import read_shadow_ledger
+
+    ctx = _monitor_ctx(tmp_path)
+    ctx.broker._cash = 1_000_000.0  # whole-share rounding at 10k would distort the held weights
+    config = DailyBookConfig(position_size=0.1, min_order_notional=1.0, decision_every=21)
+    signal = ConstSignal({"AAA": 1.0, "BBB": -1.0})
+    moves = {"AAA": 0.001, "BBB": -0.0005}
+    results = [run_daily_cycle(ctx, signal, *_session_panels(n, moves), config) for n in range(30, 36)]
+    rows = read_shadow_ledger(ctx.shadow_ledger)
+    # Cycle 1 refreshes (no earlier session); cycle 2 is the transition after that refresh
+    # but no book predates its previous bar; cycles 3..6 shadow the cycle-1 book.
+    assert list(rows["decision_bar"]) == [r.decision_bar for r in results[2:]]
+    assert set(rows["refresh_bar"]) == {results[0].decision_bar}
+    assert not rows["transition"].any()
+    assert (rows["n_names_used"] == 2).all() and (rows["n_names_missing"] == 0).all()
+    # Fills were at reference on the held book, so paper reproduces the shadow to rounding.
+    assert np.allclose(rows["paper_return"], rows["shadow_return"], atol=2e-5)
+    expected = 0.1 * 0.001 - 0.1 * (-0.0005)
+    assert rows["shadow_return"].iloc[-1] == pytest.approx(expected, rel=1e-6)
+    last = results[-1].monitor_read
+    assert last is not None and last["method"] == "empirical_bernstein" and last["n_gaps"] == 0
+    assert last["n"] == 5 and last["tracking"]["n"] == 4 and last["tracking"]["verdict"] == "inconclusive"
+    # A same-bar rerun never duplicates a shadow row.
+    run_daily_cycle(ctx, signal, *_session_panels(35, moves), config)
+    assert len(read_shadow_ledger(ctx.shadow_ledger)) == 4
+
+
+def test_transition_session_is_flagged_and_set_aside(tmp_path) -> None:
+    from prism.live.loop import read_shadow_ledger
+
+    ctx = _monitor_ctx(tmp_path)
+    ctx.broker._cash = 1_000_000.0
+    config = DailyBookConfig(position_size=0.1, min_order_notional=1.0, decision_every=3)
+    signal = ConstSignal({"AAA": 1.0, "BBB": -1.0})
+    moves = {"AAA": 0.001, "BBB": -0.0005}
+    results = [run_daily_cycle(ctx, signal, *_session_panels(n, moves), config) for n in range(30, 38)]
+    refreshes = [r.decision_bar for r in results if r.submitted_orders or r is results[0]]
+    rows = read_shadow_ledger(ctx.shadow_ledger)
+    # Session after the second refresh (cycle 4 refreshes: bars 30, 33, 36) is a transition
+    # against the FIRST refresh's book, which is the book held through most of it.
+    assert results[3].decision_bar in refreshes
+    flagged = rows[rows["transition"]]
+    assert list(flagged["decision_bar"]) == [results[4].decision_bar, results[7].decision_bar]
+    assert flagged["refresh_bar"].iloc[0] == results[0].decision_bar
+    tracking = results[-1].monitor_read["tracking"]
+    assert tracking["n_transition"] == 2 and tracking["n"] == len(rows) - 2
+    # Keyed by the refresh whose next-open fills caused each transition (the transition's previous
+    # bar), not by the baseline the row records: results[4] follows results[3], results[7] results[6].
+    assert set(tracking["wedge_by_refresh"]) == {results[3].decision_bar, results[6].decision_bar}
+
+
+def test_gap_session_records_no_shadow_row(tmp_path, caplog) -> None:
+    from prism.live.loop import read_shadow_ledger
+
+    ctx = _monitor_ctx(tmp_path)
+    config = DailyBookConfig(position_size=0.1, min_order_notional=1.0, decision_every=21)
+    signal = ConstSignal({"AAA": 1.0, "BBB": -1.0})
+    moves = {"AAA": 0.001, "BBB": -0.0005}
+    run_daily_cycle(ctx, signal, *_session_panels(30, moves), config)
+    run_daily_cycle(ctx, signal, *_session_panels(31, moves), config)
+    close, vol = _session_panels(40, moves)  # skips eight sessions: the outage shape
+    with caplog.at_level(logging.INFO, logger="prism.live.daily"):
+        result = run_daily_cycle(ctx, signal, close, vol, config)
+    assert not ctx.shadow_ledger.exists() or len(read_shadow_ledger(ctx.shadow_ledger)) == 0
+    assert any("a gap is not a day" in r.getMessage() for r in caplog.records)
+    assert result.monitor_read["n_gaps"] == 1 and result.monitor_read["n"] == 1
+
+
+def test_monitor_failure_is_contained_and_loud(tmp_path, caplog, monkeypatch) -> None:
+    import prism.live.daily as daily_mod
+
+    def broken(*args, **kwargs):
+        raise RuntimeError("ledger unreadable")
+
+    monkeypatch.setattr(daily_mod, "paper_monitor_read", broken)
+    ctx = _monitor_ctx(tmp_path)
+    signal = ConstSignal({"AAA": 1.0, "BBB": -1.0})
+    with caplog.at_level(logging.WARNING, logger="prism.live.daily"):
+        result = run_daily_cycle(ctx, signal, *_panels(), _CONFIG)
+    assert len(result.submitted_orders) == 2  # the cycle decided and persisted as usual
+    assert result.monitor_read == {
+        "verdict": "unavailable",
+        "n": 0,
+        "error": "RuntimeError",
+        "detail": "ledger unreadable",
+    }
+    assert any("LIVE MONITOR FAILED" in r.getMessage() for r in caplog.records)
+    assert len(read_fills_ledger(ctx.fills_ledger)) == 0 and (tmp_path / "equity.jsonl").exists()
+
+
+def test_shadow_failure_is_contained_and_the_return_read_still_lands(tmp_path, caplog, monkeypatch) -> None:
+    import prism.live.daily as daily_mod
+
+    def broken(*args, **kwargs):
+        raise ValueError("unpriced names")
+
+    monkeypatch.setattr(daily_mod, "shadow_session_return", broken)
+    ctx = _monitor_ctx(tmp_path)
+    config = DailyBookConfig(position_size=0.1, min_order_notional=1.0, decision_every=21)
+    signal = ConstSignal({"AAA": 1.0, "BBB": -1.0})
+    moves = {"AAA": 0.001, "BBB": -0.0005}
+    with caplog.at_level(logging.WARNING, logger="prism.live.daily"):
+        results = [run_daily_cycle(ctx, signal, *_session_panels(n, moves), config) for n in range(30, 33)]
+    assert any("SHADOW RECORD FAILED" in r.getMessage() for r in caplog.records)
+    assert results[-1].monitor_read["verdict"] == "inconclusive" and results[-1].monitor_read["n"] == 2
+    assert results[-1].monitor_read["tracking"]["n"] == 0

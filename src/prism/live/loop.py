@@ -274,7 +274,11 @@ class LiveLoopContext:
     the per-cycle SPEC §7.5 regime telemetry read — the session record the
     handoff §8 precondition-(b) 21-session clock consults
     (docs/regime_step.md). ``order_id_prefix`` namespaces
-    client order ids per book/run-dir (``"mom:"`` for the momentum instrument):
+    client order ids per book and run directory: the live driver passes the
+    book prefix followed by a digest of the run directory's name, built by
+    ``paper_books.scoped_order_id_prefix`` (``"mom:faf4b45b:"`` for the momentum
+    book in ``runs/paper_loop_momentum2``; orders recorded before 2026-09-30
+    carry the bare ``"mom:"``):
     two books sharing one venue account with the bare ``{bar}:{symbol}`` scheme
     silently substitute each other's same-bar orders, because a venue duplicate
     id is treated as submission success.
@@ -312,6 +316,9 @@ class LiveLoopContext:
     unfilled_ledger: Path | None = None
     concordance_ledger: Path | None = None
     regime_ledger: Path | None = None
+    #: One row per session the daily cycle could shadow: the decided book's
+    #: return on the same closes beside the paper book's (docs/live_monitor_design.md).
+    shadow_ledger: Path | None = None
     order_id_prefix: str = ""
     authorization: AuthorizationGate | None = None
     execution_lock: ExecutionLockSpec | None = None
@@ -1049,6 +1056,7 @@ def decide_and_submit(
     action_context: ActionContext = ActionContext(),
     freshness: "FreshnessReport | None" = None,
     now: datetime | None = None,
+    panel: Mapping[str, Any] | None = None,
 ) -> list[Order]:
     """One decision step: reconcile → decide once → write ahead → submit.
 
@@ -1079,7 +1087,10 @@ def decide_and_submit(
     and ``action_context``, and its per-sid verdicts reach
     :meth:`~prism.live.authorization.AuthorizationGate.authorize_batch`, so a
     coverage shortfall blocks new exposure on the securities the feed missed and
-    leaves the rest of the batch to be judged on its own inputs.
+    leaves the rest of the batch to be judged on its own inputs. ``panel`` is
+    the provenance of the bar panel the decision was made on (the digest and
+    file name ``prism.live.panel_log`` recorded); its fields are added to the
+    refresh row of the targets ledger so the decision cites its inputs.
     """
     states, action_context, freshness_by_sid = apply_freshness(freshness, states, action_context)
     gate = authorize_session(ctx, intent, states=states, action_context=action_context, now=now)
@@ -1150,7 +1161,9 @@ def decide_and_submit(
                 # baseline (what the instrument SHOULD hold until the next refresh)
                 # and the audit record behind the completion sweep. Written inside
                 # the write-ahead step, idempotent per refresh bar.
-                append_targets_ledger(ctx.targets_ledger, refresh_bar, decision_bar, target_weights, prices, equity)
+                append_targets_ledger(
+                    ctx.targets_ledger, refresh_bar, decision_bar, target_weights, prices, equity, extra=panel
+                )
 
         # Orders whose fate has been settled — a cancellation recorded while
         # leaving S3 — are not re-offered; every order a v2 or v3 document
@@ -1689,6 +1702,15 @@ def read_concordance_ledger(path: Path) -> pd.DataFrame:
     return ledgers.read_frame(path)
 
 
+def read_shadow_ledger(path: Path) -> pd.DataFrame:
+    """The shadow-return ledger as a frame — one row per shadowed session
+    (``decision_bar``, ``prev_bar``, ``shadow_return``, ``paper_return``,
+    ``transition``, ``refresh_bar``, ``n_names_used``, ``n_names_missing``).
+    The tracking monitor (:func:`prism.live.monitor.shadow_tracking_read`)
+    joins it with the equity ledger by decision bar."""
+    return ledgers.read_frame(path)
+
+
 def read_regime_ledger(path: Path) -> pd.DataFrame:
     """The per-cycle regime telemetry ledger as a frame — one row per decision
     bar (``decision_bar``, ``clean``, ``gross_scale``, ``blocks``,
@@ -1731,33 +1753,45 @@ def append_targets_ledger(
     target_weights: pd.Series,
     prices: pd.Series,
     equity: float,
+    *,
+    extra: Mapping[str, Any] | None = None,
 ) -> None:
     """Persist the constructed refresh book (nonzero weights + their decision
     closes). Idempotent per ``refresh_bar`` so a same-bar restart never
-    duplicates the row; absent names read as an explicit 0.0 downstream."""
+    duplicates the row; absent names read as an explicit 0.0 downstream.
+    ``extra`` adds provenance fields (the panel digest and file) to the row;
+    it may not override the row's own fields."""
     book = {
         str(symbol): float(weight)
         for symbol, weight in target_weights.items()
         if isinstance(weight, (int, float)) and math.isfinite(float(weight)) and float(weight) != 0.0
     }
     reference_prices = {symbol: float(prices[symbol]) for symbol in book}
-    ledgers.append_monotone(
-        path,
-        "refresh_bar",
-        {
-            "refresh_bar": refresh_bar,
-            "decision_bar": decision_bar,
-            "equity": float(equity),
-            "targets": book,
-            "reference_prices": reference_prices,
-        },
-    )
+    row: dict[str, Any] = {
+        "refresh_bar": refresh_bar,
+        "decision_bar": decision_bar,
+        "equity": float(equity),
+        "targets": book,
+        "reference_prices": reference_prices,
+    }
+    if extra:
+        clash = sorted(set(extra) & set(row))
+        if clash:
+            raise ValueError(f"targets ledger extra fields may not override the row's own: {clash}")
+        row.update({str(key): value for key, value in extra.items()})
+    ledgers.append_monotone(path, "refresh_bar", row)
 
 
 def append_concordance_ledger(path: Path, decision_bar: str, row: dict) -> None:
     """Append one concordance read per decision bar (idempotent, monotone —
     the same discipline as the equity ledger)."""
     ledgers.append_monotone(path, "decision_bar", {"decision_bar": decision_bar, **row})
+
+
+def append_shadow_ledger(path: Path, decision_bar: str, row: dict) -> bool:
+    """Append one shadow read per decision bar (idempotent, monotone — the
+    concordance ledger's discipline). Returns ``True`` when written."""
+    return ledgers.append_monotone(path, "decision_bar", {"decision_bar": decision_bar, **row})
 
 
 def append_regime_ledger(path: Path, decision_bar: str, state: dict, gross_scale: float | None) -> None:

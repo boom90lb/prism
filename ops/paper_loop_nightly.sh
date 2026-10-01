@@ -34,9 +34,21 @@ set -u
 SELF="$(readlink -f "${BASH_SOURCE[0]}")"
 REPO="${PRISM_REPO:-$(cd "$(dirname "$SELF")/.." && pwd)}"
 # Single switch shared with the morning sweep: runs/ACTIVE_RUN_DIR names the
-# live run-dir (one line, relative to the repo).
-RUN_DIR="$(cat "$REPO/runs/ACTIVE_RUN_DIR" 2>/dev/null || echo runs/paper_loop_momentum)"
-LOG_DIR="$REPO/$RUN_DIR"
+# live run-dir (one line, relative to the repo or absolute — the same contract
+# as prism.live.safety.require_active_run_dir). Since 2026-09-30 a missing or
+# empty switch refuses the session (below, once the alert helpers are loaded)
+# instead of falling back to the retired runs/paper_loop_momentum: the Python
+# entry point refuses to submit from any directory the switch does not name, so
+# the fallback could only have produced a refused session pointed at a dead
+# book. The refusal is logged beside the switch's own location, since there is
+# no run directory to log into.
+ACTIVE_RUN_DIR_FILE="$REPO/runs/ACTIVE_RUN_DIR"
+RUN_DIR="$(cat "$ACTIVE_RUN_DIR_FILE" 2>/dev/null || true)"
+case "$RUN_DIR" in
+    '')  LOG_DIR="$REPO/runs" ;;
+    /*)  LOG_DIR="$RUN_DIR" ;;
+    *)   LOG_DIR="$REPO/$RUN_DIR" ;;
+esac
 LOG="$LOG_DIR/nightly.log"
 mkdir -p "$LOG_DIR"
 ts() { date "+%Y-%m-%dT%H:%M:%S%z"; }
@@ -51,8 +63,18 @@ set -a
 [ -f "$REPO/.env" ] && . "$REPO/.env"
 set +a
 
+if [ -z "$RUN_DIR" ]; then
+    echo "$(ts) FAIL: $ACTIVE_RUN_DIR_FILE is missing or empty; refusing to run rather than falling back to a retired run directory. Write the live run directory (e.g. runs/paper_loop_momentum2) as its single line." >>"$LOG"
+    alert "$LOG" "$LOG_DIR" \
+        "prism session refused (no active run directory)" \
+        "$ACTIVE_RUN_DIR_FILE is missing or empty, so nothing names the live book. Write the run directory's path, relative to $REPO or absolute, as the file's single line (docs/operations.md, 2026-09-30)."
+    heartbeat "$LOG" 4 "${PRISM_HEARTBEAT_URL:-}"
+    exit 4
+fi
+
 if [ -z "${APCA_API_KEY_ID:-}" ] || [ -z "${APCA_API_SECRET_KEY:-}" ]; then
     echo "$(ts) SKIP: APCA_API_KEY_ID/APCA_API_SECRET_KEY not present in $REPO/.env — paste the Alpaca paper keys there to arm the loop" >>"$LOG"
+    heartbeat "$LOG" 3 "${PRISM_HEARTBEAT_URL:-}"
     exit 3
 fi
 
@@ -107,6 +129,7 @@ if [ ! -x "$PY" ]; then
     alert "$LOG" "$LOG_DIR" \
         "prism session refused (release $PRISM_RELEASE unusable)" \
         "PRISM_RELEASE=$PRISM_RELEASE resolved to $PY under root $RELEASE_ROOT. Install the release there, or set PRISM_RELEASE=checkout to run the working tree."
+    heartbeat "$LOG" 4 "${PRISM_HEARTBEAT_URL:-}"
     exit 4
 fi
 # cd to $REPO for both paths: --run-dir and --universe-file are repo-relative,
@@ -125,6 +148,7 @@ echo "$(ts) RUN: book=momentum universe=$UNIVERSE regime=$REGIME_STATE wrapper=$
 # shellcheck disable=SC2086
 "$PY" -m prism.scripts.paper_loop \
     --book momentum \
+    --submit \
     --universe-file "$UNIVERSE" \
     --run-dir "$RUN_DIR" \
     --spinoff-mask \
@@ -155,13 +179,38 @@ fi
 
 # Off-box artifact sync runs unconditionally — a red loop is exactly when the
 # ledger copy matters most (docs/security.md par.3), and it carries the ALERT
-# marker off the box with the ledgers. Operator-specific, hence an override
-# rather than a path baked into a versioned file: PRISM_ARTIFACT_SYNC=/dev/null
-# (or any non-executable path) disables it.
-SYNC="${PRISM_ARTIFACT_SYNC:-$HOME/bin/prism_artifacts_sync.sh}"
-[ -x "$SYNC" ] && "$SYNC"
+# marker off the box with the ledgers. It used to be operator-specific
+# (~/bin/prism_artifacts_sync.sh), hence the override rather than a path baked
+# into a versioned file; since 2026-09-30 the default is the versioned
+# ops/artifacts_sync.sh, which exits nonzero on a failed push instead of
+# logging PUSH-FAILED and exiting 0 — the old script did that every night from
+# 2026-09-25, and this line ignored it, so the last off-box copy was 2026-08-14.
+# PRISM_ARTIFACT_SYNC=/dev/null (or any non-executable path) disables it.
+SYNC="${PRISM_ARTIFACT_SYNC:-$REPO/ops/artifacts_sync.sh}"
+sync_rc=0
+if [ -x "$SYNC" ]; then
+    echo "$(ts) SYNC:" >>"$LOG"
+    "$SYNC" >>"$LOG" 2>&1
+    sync_rc=$?
+    echo "$(ts) SYNC EXIT $sync_rc" >>"$LOG"
+    if [ "$sync_rc" -ne 0 ]; then
+        alert "$LOG" "$LOG_DIR" \
+            "prism artifact backup failed" \
+            "exit $sync_rc from $SYNC; the ledgers have no off-box copy since the last successful push. Read $LOG_DIR/sync_status.json and $LOG_DIR/sync.log (docs/operations.md, 2026-09-30)."
+    fi
+fi
 
-# Nonzero on either verdict: the scheduler's own last-result surface is the
-# third independent notification path (ops/_alert.sh).
-[ "$rc" -ne 0 ] && exit "$rc"
-exit "$doctor_rc"
+# Nonzero on any verdict — loop first, then doctor, then backup: the
+# scheduler's own last-result surface is the third independent notification
+# path (ops/_alert.sh). The heartbeat carries the same code to the dead-man's
+# monitor, and it is the last thing this wrapper does.
+final_rc=0
+if [ "$rc" -ne 0 ]; then
+    final_rc=$rc
+elif [ "$doctor_rc" -ne 0 ]; then
+    final_rc=$doctor_rc
+else
+    final_rc=$sync_rc
+fi
+heartbeat "$LOG" "$final_rc" "${PRISM_HEARTBEAT_URL:-}"
+exit "$final_rc"

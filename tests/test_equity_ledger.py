@@ -8,9 +8,12 @@ confidence sequence.
 
 from __future__ import annotations
 
+import datetime as dt
+
 import pandas as pd
 import pytest
 
+from prism.io import sessions
 from prism.live import (
     DailyBookConfig,
     LiveLoopContext,
@@ -121,10 +124,12 @@ def test_monitor_read_empty_and_singleton_are_inconclusive(tmp_path):
 
 def test_monitor_read_flat_equity_is_inconclusive(tmp_path):
     p = tmp_path / "equity.jsonl"
-    for bar in pd.date_range("2026-05-01", periods=40, freq="B"):
-        _append_equity_ledger(p, str(bar.date()), 100_000.0, 100_000.0)
+    # Exchange sessions, not business days: the monitor forms returns only over
+    # consecutive sessions, and a business-day range crosses Memorial Day and Juneteenth.
+    for bar in sessions.sessions_between(dt.date(2026, 5, 1), dt.date(2026, 7, 31))[:40]:
+        _append_equity_ledger(p, bar.isoformat(), 100_000.0, 100_000.0)
     r = paper_monitor_read(p, hurdle=0.0)
-    assert r["n"] == 39  # 40 NAV points -> 39 returns
+    assert r["n"] == 39  # 40 NAV points on consecutive sessions -> 39 returns
     assert r["verdict"] == "inconclusive"  # zero returns straddle the hurdle
     assert r["latest_equity"] == 100_000.0
 

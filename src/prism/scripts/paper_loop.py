@@ -24,8 +24,8 @@ Alpaca before ~09:28 ET the next morning):
         --run-dir runs/paper_loop --position-size 0.05
 
     # the ratified B1 momentum book (12-1 decile L/S, monthly) on a PIT universe
-    python -m prism.scripts.paper_loop --book momentum \\
-        --universe-file data/universe/sp500_current.txt --run-dir runs/paper_loop
+    python -m prism.scripts.paper_loop --book momentum --submit \\
+        --universe-file data/universe/sp500_current.txt --run-dir "$(cat runs/ACTIVE_RUN_DIR)"
 
     # trend sleeve (TSMOM ETF book, inverse-vol; uncounted paper instrument)
     python -m prism.scripts.paper_loop --book trend \\
@@ -34,6 +34,17 @@ Alpaca before ~09:28 ET the next morning):
 Credentials: ``APCA_API_KEY_ID`` / ``APCA_API_SECRET_KEY`` (paper endpoint
 by default; ``APCA_API_BASE_URL`` overrides). Bars come from Alpaca's own IEX
 feed by default (``--bar-source``); the Twelve Data spine stays a fallback.
+
+**The mode is an argument.** Since 2026-09-30 every invocation names its mode:
+``--submit`` trades the account, ``--no-submit`` rehearses, and neither exits 2
+with a message saying so (``prism.live.safety.submission_mode_refusal``). A
+submitting run must also point at the run directory ``runs/ACTIVE_RUN_DIR``
+names (``require_active_run_dir``; there is no flag past it, a new book starts by
+pointing the switch at it) and must decide on a completed session bar
+(``prism.live.daily.require_published_panel``; a catch-up run during market
+hours is refused, a rehearsal warns). Client order ids carry a digest of the run
+directory's name (``paper_books.scoped_order_id_prefix``), so two directories
+can never submit each other's ids.
 
 **Exercising the command without trading**: ``--no-submit`` runs the whole
 cycle — credentials, venue reads, mark, score, construct, order diff, safety
@@ -79,10 +90,16 @@ from prism.live import (
     spinoff_unrankable_provider,
 )
 from prism.live.authorization import refuse_an_unbindable_record, resolve_endpoint
-from prism.live.daily import warn_if_stale_panel
+from prism.live.daily import require_published_panel, warn_if_stale_panel
 from prism.live.lockfile import run_dir_lock
 from prism.live.no_submit import no_submit_session
-from prism.live.safety import require_established_run_dir, sample_run_dir_history
+from prism.live.safety import (
+    SUBMISSION_MODE_EXIT_CODE,
+    require_active_run_dir,
+    require_established_run_dir,
+    sample_run_dir_history,
+    submission_mode_refusal,
+)
 from prism.scripts import announce_alias
 from prism.scripts.paper_books import (
     BOOKS,
@@ -91,6 +108,7 @@ from prism.scripts.paper_books import (
     build_safety_config,
     default_panel_start,
     resolve_cli_universe,
+    scoped_order_id_prefix,
     valuation_masked_membership,
 )
 from prism.workspace import load_env, resolve_workspace
@@ -252,23 +270,34 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Per-decision order-count bound. Default 2x universe size + 10 (an order per "
         "name entering plus one per name exiting is the geometric ceiling). 0 disables.",
     )
-    parser.add_argument(
+    # The mode is named on every invocation. One of the two is required (checked
+    # in main, which exits 2 with a message rather than argparse's usage dump),
+    # and they cannot be combined.
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
+        "--submit",
+        action="store_true",
+        help="Trade: decide and send next-open orders to the paper account. Requires an established "
+        "--run-dir (or --allow-new-run-dir), one that runs/ACTIVE_RUN_DIR names, and a panel whose last "
+        "bar is a completed session bar. The scheduled wrapper passes this flag.",
+    )
+    mode.add_argument(
         "--no-submit",
         action="store_true",
-        help="Run the entire cycle — credentials, broker reads, mark, score, construct, order "
+        help="Rehearse: run the entire cycle — credentials, broker reads, mark, score, construct, order "
         "diff, safety rails — log every order it WOULD submit, and submit nothing. The venue is "
         "read but never written, and the run directory's durable record is left untouched (writes "
         "go to a discarded scratch copy, so a rehearsal cannot leave a decision armed for the next "
-        "real session). Use this for any verification of the command: without it, every invocation "
-        "that finds credentials trades.",
+        "real session). Use this for any verification of the command.",
     )
     parser.add_argument(
         "--allow-new-run-dir",
         action="store_true",
-        help="Permit submitting from a --run-dir that carries no prior session (no state.json and "
-        "no equity.jsonl when the process started). Required only for the deliberate first session "
-        "of a new book; an established run directory — every nightly invocation — needs nothing. "
-        "Ignored under --no-submit, which submits nothing wherever it points.",
+        help="With --submit only: permit submitting from a --run-dir that carries no prior session (no "
+        "state.json and no equity.jsonl when the process started). Required only for the deliberate "
+        "first session of a new book, which runs/ACTIVE_RUN_DIR must already name; an established run "
+        "directory — every nightly invocation — needs nothing. Refused with --no-submit, which submits "
+        "nothing wherever it points.",
     )
     parser.add_argument(
         "--workspace",
@@ -287,6 +316,19 @@ def main(argv: list[str] | None = None) -> int:
     )
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     args = _parse_args(argv)
+    # Neither mode named: refuse before anything else is touched. A bare
+    # invocation used to trade; now it cannot.
+    if not (args.submit or args.no_submit):
+        print(submission_mode_refusal("the paper loop"), file=sys.stderr)
+        return SUBMISSION_MODE_EXIT_CODE
+    if args.allow_new_run_dir and args.no_submit:
+        print(
+            "--allow-new-run-dir permits trading from a directory with no prior session; it has no meaning "
+            "on a rehearsal and is refused with --no-submit so a flag that arms trading is never carried "
+            "on a command meant not to trade.",
+            file=sys.stderr,
+        )
+        return SUBMISSION_MODE_EXIT_CODE
     # The provenance rail's evidence, sampled HERE and nowhere later: the writer
     # lock below creates the run directory, so after that point a directory this
     # process conjured is indistinguishable from one a month of sessions built.
@@ -403,6 +445,9 @@ def main(argv: list[str] | None = None) -> int:
             require_established_run_dir(
                 run_dir_history, allow_new=args.allow_new_run_dir, entry_point="the paper loop"
             )
+            # And the directory must be the one the scheduled wrappers' switch
+            # names: an established directory is not necessarily the live book.
+            require_active_run_dir(args.run_dir, entry_point="the paper loop")
         universe = resolve_fetch_universe(symbols, broker, state=store.load())
         score_universe = list(universe.score)
         symbols = list(universe.fetch)
@@ -437,6 +482,17 @@ def main(argv: list[str] | None = None) -> int:
             args.bar_source,
         )
         warn_if_stale_panel(close)
+        # The last bar must be a completed session bar: a catch-up run during
+        # market hours would decide on an intraday price. A rehearsal is allowed
+        # through with a warning; a submitting run is refused.
+        publication = require_published_panel(close, allow_partial=args.no_submit)
+        logger.info(
+            "panel publication: last_bar=%s published_at=%s now=%s partial=%s",
+            publication["last_bar"],
+            publication["published_at"],
+            publication["now"],
+            publication["partial"],
+        )
 
         decision_every = spec.decision_every(params)
         # Valuation-only extras are masked ineligible (momentum only): NaN-scored
@@ -503,11 +559,16 @@ def main(argv: list[str] | None = None) -> int:
             unfilled_ledger=work_dir / "unfilled.jsonl",
             concordance_ledger=work_dir / "concordance.jsonl",
             regime_ledger=work_dir / "regime.jsonl",
+            shadow_ledger=work_dir / "shadow.jsonl",
             # Namespaced client ids: two books sharing one venue account with the
             # bare {bar}:{symbol} scheme silently substitute each other's same-bar
-            # orders (duplicate-id == success). Persisted pending orders keep the
-            # ids they were decided with, so flipping the prefix is resume-safe.
-            order_id_prefix=spec.order_id_prefix,
+            # orders (duplicate-id == success), and two run directories trading
+            # one book did the same under the bare book prefix, so the prefix
+            # also carries a digest of the run directory's name (the REAL one,
+            # not the rehearsal's scratch mirror, so a rehearsal logs the ids a
+            # real run would send). Persisted pending orders keep the ids they
+            # were decided with, so flipping the prefix is resume-safe.
+            order_id_prefix=scoped_order_id_prefix(spec.order_id_prefix, args.run_dir),
         )
         result = run_daily_cycle(
             ctx, signal, close, volume, config, safety=safety, unrankable=unrankable, regime=regime_provider

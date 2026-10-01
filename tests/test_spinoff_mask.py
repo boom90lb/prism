@@ -450,5 +450,7 @@ def test_cli_flag_default_off() -> None:
 
 
 def test_cli_flag_requires_momentum_book() -> None:
+    # The mode flag comes first since 2026-09-30 (a bare invocation exits 2
+    # before any other check); the book check is what this test is about.
     with pytest.raises(SystemExit, match="momentum"):
-        main(["--symbols", "AAA", "--spinoff-mask"])  # ensemble book: refused pre-network
+        main(["--symbols", "AAA", "--spinoff-mask", "--no-submit"])  # ensemble book: refused pre-network

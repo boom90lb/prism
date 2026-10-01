@@ -73,8 +73,38 @@ def repo(tmp_path: Path) -> Path:
     return root
 
 
+# Variables the wrappers read from the shell. Scrubbed so an operator's exported
+# heartbeat URL or pinned release cannot reach a real monitor or select a
+# foreign interpreter from a test run (the same list test_artifacts_sync uses).
+_WRAPPER_ENV = (
+    "PRISM_REPO",
+    "PRISM_ARTIFACT_SYNC",
+    "PRISM_RELEASE",
+    "PRISM_RELEASE_ROOT",
+    "PRISM_HEARTBEAT_URL",
+    "PRISM_HEARTBEAT_URL_SWEEP",
+    "PRISM_ALERT_CMD",
+    "PRISM_ALERT_URL",
+    "FRED_API_KEY",
+)
+
+
+def _stub_curl(root: Path) -> Path:
+    """A ``curl`` ahead of the real one on PATH: the wrappers end with a heartbeat ping, and no test
+    here may reach a monitor even if a URL leaks into the environment."""
+    bin_dir = root / "stubbin"
+    bin_dir.mkdir(exist_ok=True)
+    stub = bin_dir / "curl"
+    if not stub.exists():
+        stub.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+        stub.chmod(0o755)
+    return bin_dir
+
+
 def _run(repo: Path, which: str, **env: str) -> subprocess.CompletedProcess:
     environment = dict(os.environ)
+    for name in _WRAPPER_ENV:
+        environment.pop(name, None)
     environment.update(
         {
             # The arming gate only asks whether the variables are present.
@@ -82,10 +112,9 @@ def _run(repo: Path, which: str, **env: str) -> subprocess.CompletedProcess:
             "APCA_API_SECRET_KEY": "placeholder-not-a-key",
             "PRISM_ARTIFACT_SYNC": "/dev/null",  # not executable: the sync is skipped
             "PRISM_REPO": str(repo),
+            "PATH": f"{_stub_curl(repo.parent)}:{environment.get('PATH', '')}",
         }
     )
-    environment.pop("FRED_API_KEY", None)
-    environment.pop("PRISM_ALERT_CMD", None)
     environment.update(env)
     return subprocess.run(
         ["bash", str(repo / "ops" / WRAPPERS[which])],
@@ -134,6 +163,7 @@ def test_the_nightly_passes_the_same_command_line_it_passes_today(repo) -> None:
     loop, doctor = _calls(repo)
     assert "-m prism.scripts.paper_loop" in loop
     assert "--book momentum" in loop
+    assert "--submit" in loop and "--no-submit" not in loop  # the wrapper is the one caller that trades
     assert "--universe-file data/universe/sp500_current.txt" in loop
     assert f"--run-dir {RUN_DIR}" in loop
     assert "--spinoff-mask" in loop
@@ -145,6 +175,7 @@ def test_the_sweep_passes_the_same_command_line_it_passes_today(repo) -> None:
     assert _run(repo, "sweep").returncode == 0
     sweep, doctor = _calls(repo)
     assert "-m prism.scripts.paper_sweep" in sweep and f"--run-dir {RUN_DIR}" in sweep
+    assert "--submit" in sweep and "--no-submit" not in sweep
     assert "-m prism.scripts.doctor" in doctor and "--network" not in doctor
 
 
@@ -175,6 +206,39 @@ def test_a_release_that_does_not_resolve_refuses_the_session_rather_than_falling
     assert "refusing to run rather than falling back to the checkout" in log
     alert = (repo / RUN_DIR / "ALERT").read_text(encoding="utf-8")
     assert "never-installed" in alert
+
+
+@pytest.mark.parametrize("which", sorted(WRAPPERS))
+@pytest.mark.parametrize("state", ["missing", "empty"])
+def test_a_missing_active_run_dir_refuses_the_session_rather_than_falling_back(repo, which, state) -> None:
+    """Until 2026-09-30 a missing switch fell back to the retired runs/paper_loop_momentum."""
+    pointer = repo / "runs" / "ACTIVE_RUN_DIR"
+    if state == "missing":
+        pointer.unlink()
+    else:
+        pointer.write_text("\n", encoding="utf-8")
+    result = _run(repo, which)
+    assert result.returncode == 4
+    assert _calls(repo) == [], "no interpreter ran: the refusal happens before the session"
+    assert not (repo / "runs" / "paper_loop_momentum").exists(), "nothing fell back to the retired directory"
+    # With no run directory to log into, the refusal is recorded beside the switch.
+    log = (repo / "runs" / ("nightly.log" if which == "nightly" else "sweep.log")).read_text(encoding="utf-8")
+    assert "FAIL:" in log and "ACTIVE_RUN_DIR is missing or empty" in log
+    alert = (repo / "runs" / "ALERT").read_text(encoding="utf-8")
+    assert "no active run directory" in alert
+
+
+@pytest.mark.parametrize("which", sorted(WRAPPERS))
+def test_an_absolute_active_run_dir_pointer_logs_into_that_directory(repo, which) -> None:
+    """The pointer may be repo-relative or absolute (prism.live.safety.require_active_run_dir); the shell
+    must not compose $REPO/<absolute path> and log into a tree inside the checkout."""
+    run_dir = repo / RUN_DIR
+    (repo / "runs" / "ACTIVE_RUN_DIR").write_text(str(run_dir) + "\n", encoding="utf-8")
+    result = _run(repo, which)
+    assert result.returncode == 0, result.stderr
+    assert (run_dir / ("nightly.log" if which == "nightly" else "sweep.log")).exists()
+    assert not (repo / str(repo).lstrip("/")).exists(), "no $REPO//abs/path tree may be created"
+    assert any(f"--run-dir {run_dir}" in call for call in _calls(repo))
 
 
 # ---------------------------------------------------------------------------

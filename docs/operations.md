@@ -41,7 +41,7 @@ The two scheduled entry points are versioned in-tree under `ops/`:
 | `ops/paper_sweep_morning.sh` | weekdays 06:50 PT | one `prism.scripts.paper_sweep`, then offline `prism-doctor`; alerts if either goes nonzero |
 
 Both resolve the live run directory from `runs/ACTIVE_RUN_DIR` (one line,
-relative to the repo) and read `$REPO/.env`. Point the scheduler at these,
+relative to the repo or absolute) and read `$REPO/.env`. Point the scheduler at these,
 not at private copies — the July 2026 outage below was invisible to review
 precisely because the wrappers lived only at `~/bin/`.
 
@@ -180,7 +180,8 @@ The two honest options:
   price of a discontinuous stream.
 
 Either way, failed sessions cannot be backfilled as live evidence. `rsync
---delete` in `prism_artifacts_sync.sh` means the off-box copy tracks local
+--delete` in `ops/artifacts_sync.sh` (the versioned successor to
+`~/bin/prism_artifacts_sync.sh`) means the off-box copy tracks local
 deletions: a retired run directory is recoverable only from the backup repo's
 *history*, not its worktree.
 
@@ -316,3 +317,240 @@ shorts exiting as out-of-universe names; it ran during market hours, so its
 decision bar was a partial one. The regime clock now restarts on unrecorded
 sessions (docs/regime_step.md §4, `prism.scripts.doctor.regime_streak`), so it
 reads 0/21 before this session and 1/21 after a clean one.
+
+## 2026-09-30: the backup was failing silently; off-box alerting
+
+**What was found.** The off-box backup of `runs/`, `logs/` and `results/`
+(`~/bin/prism_artifacts_sync.sh`, an operator-local script wired into the
+nightly) had not landed a push since 2026-08-14. From the night the loop
+restarted, 2026-09-25, every push was refused by GitHub's pre-receive hook:
+`results/run-a195851811a34615/record.json` is 128 MB, over the 100 MB blob
+limit (GH001), and three more `record.json` files sit at 85–96 MB. The script
+logged `PUSH-FAILED (kept local commit)` and exited 0; the nightly wrapper ran
+it as `[ -x "$SYNC" ] && "$SYNC"` and discarded even that. So the ledgers had no
+off-box copy for six weeks, the health check had no row that could say so, and
+the wrapper's exit code was green throughout. Separately, `PRISM_ALERT_CMD` was
+never set, so none of the three on-box notifications (marker file, log line,
+exit code) could reach anyone, and nothing at all could report a scheduler that
+does not fire, which is what happened between 2026-08-15 and 2026-09-25.
+
+**The versioned sync.** `ops/artifacts_sync.sh` replaces the `~/bin` script and
+is the nightly's default (`PRISM_ARTIFACT_SYNC` still overrides; a
+non-executable path still disables). It mirrors `runs/` and `logs/` exactly
+(`rsync --delete`, as before), mirrors `results/` additively up to
+`PRISM_SYNC_MAX_MB` per file (default 45 MB), and ships every larger results
+file as a gzip copy at the same path plus `.gz` (a 134 MB `record.json`
+compresses to a few MB). Raw oversize copies the old script left in the backup
+worktree are removed; each is derivable from the source. It commits only when
+the tree changed, pushes every run (so commits left behind by an earlier refused
+push land on the next quiet night), and exits nonzero on any failure. After
+every attempt it writes `{run-dir}/sync_status.json` in this checkout, one JSON
+object: `at`, `ok`, `stage` (`repo`, `rsync`, `commit`, `push`, `done`), a
+one-line `detail`, `head`, `pushed`, `compressed`. Its log is
+`{run-dir}/sync.log`. Neither file is mirrored, so the backup's content is a
+function of the source and "no change" means no change. A `results/`-stage
+error (an unreadable file, a failed gzip) is reported only after `runs/` and
+`logs/` have been committed and pushed, so `ok: false, stage: "rsync"` with
+`pushed: true` means the ledgers landed and only the `results/` copy is
+incomplete. When a results file grows past the cap after being mirrored raw,
+the raw copy is removed from the backup (logged `DROPPED stale raw copy`) and
+the `.gz` is the current one.
+
+The wrapper now logs `SYNC EXIT <rc>`, alerts on a nonzero sync (`prism
+artifact backup failed`, pointing at the status file and the log), and folds the
+code into its exit: loop result first, then doctor, then sync. The health check
+gained three rows: `artifact-sync` (FAIL when the last report says `ok: false`,
+WARN when none exists yet or the last success is more than one weekday old),
+`alert-transport` (WARN when neither `PRISM_ALERT_CMD` nor `PRISM_HEARTBEAT_URL`
+is set; names only, never values), and `universe-file` now reads the `as of`
+date in the file's header and WARNs past 45 days, since the 2026-07-17 build
+traded on 2026-09-25 holding shorts in two names that had left the index.
+
+**Off-box alerting.** Two independent paths, both operator-configured in `.env`:
+
+- *Heartbeat (dead-man's monitor).* Each wrapper ends by pinging
+  `<url>/<final exit code>` (`curl -fsS -m 10 --retry 2`): `/0` is success,
+  `/<nonzero>` reports a failure at once rather than after the grace period
+  (the healthchecks.io convention). `PRISM_HEARTBEAT_URL` is the nightly's
+  monitor, `PRISM_HEARTBEAT_URL_SWEEP` the morning sweep's. The monitor expects
+  a ping on each weekday schedule and alarms when none arrives, which is the
+  only mechanism here that can report a scheduler that never ran. A failed ping
+  is logged as `HEARTBEAT-FAILED` and never changes the session's exit code.
+- *Alert transport.* `ops/alert_curl.sh` is a minimal transport for the
+  `PRISM_ALERT_CMD` seam: it POSTs the alert body to `PRISM_ALERT_URL` with the
+  subject as the `Title` header (ntfy-compatible), exiting nonzero if the URL is
+  unset or the request fails, which the wrappers log as
+  `ALERT-TRANSPORT-FAILED` and otherwise ignore.
+
+Creating the two monitors and the notification topic, and setting
+`PRISM_HEARTBEAT_URL`, `PRISM_HEARTBEAT_URL_SWEEP`, `PRISM_ALERT_CMD`
+(`/home/b90/prism/ops/alert_curl.sh`) and `PRISM_ALERT_URL` in `.env`, are the
+operator's acts; until then the `alert-transport` row warns on every health
+read. The ping URLs and the topic are secrets in the same sense the API keys
+are: whoever holds them can keep the monitor green or post to the topic. They
+are never written to a log.
+
+**One-time repair of the backup repository (operator's act).** The backup
+clone at `~/prism-artifacts` holds unpushed local commits whose trees contain
+the oversize blobs, so the remote will keep refusing until they are gone. The
+new script does not rewrite history. As of this writing `git log
+origin/main..HEAD --format=%s` there lists exactly four commits, all the old
+script's own nightly backups (2026-09-26, -29, -30 and 10-01 UTC), each
+re-derivable from the source tree; nothing else was committed locally. The
+repair is to drop those commits while keeping the worktree, then let the new
+script make one clean commit:
+
+```bash
+cd ~/prism-artifacts && git log origin/main..HEAD --format=%s   # confirm: only "backup: … nightly sync" rows
+git -C ~/prism-artifacts reset --soft origin/main
+/home/b90/prism/ops/artifacts_sync.sh && cat /home/b90/prism/runs/paper_loop_momentum2/sync_status.json
+```
+
+This `reset --soft` repair applies only when the status `detail` says the
+oversize blob is in unpushed history. When it instead names a file in the
+current tree (`runs/` and `logs/` are mirrored without a size cap), that file
+must be removed or capped at the source first; rewriting history would not
+clear it.
+
+The old script's tracked `sync.log` at the backup repo's root is no longer
+written; `git -C ~/prism-artifacts rm -q sync.log` retires it (its content
+stays in history) and the next sync commits the removal. Then repoint nothing:
+the nightly already calls `ops/artifacts_sync.sh`. Retire
+`~/bin/prism_artifacts_sync.sh` once the first `SYNCED` line appears in
+`{run-dir}/sync.log`.
+
+## 2026-09-30: trading is opt-in and bound to the active run directory
+
+Three new refusals sit in front of every order, each one a condition that an
+earlier session actually violated. None of them can fire on the scheduled
+sessions: the wrappers pass the flag, point at the directory the switch names,
+and run after the close.
+
+**No mode flag.** `prism.scripts.paper_loop` and `prism.scripts.paper_sweep`
+now require either `--submit` or `--no-submit` and exit 2 with a one-paragraph
+message when given neither. Until today a bare invocation that found
+credentials in `.env` traded (the 2026-09-09 incident was exactly that), and
+`--no-submit` was the only thing standing between parsing the arguments and
+sending orders. `--allow-new-run-dir` is accepted with `--submit` only; on a
+rehearsal it is refused. Both wrappers pass `--submit`.
+
+**Inactive run directory.** A submitting run must point at the directory
+`runs/ACTIVE_RUN_DIR` names (`prism.live.safety.require_active_run_dir`,
+checked right after the established-run-directory rail and before the first
+venue read). The pointer's content is a path relative to the repository root or
+absolute; both sides are resolved before comparison. A missing pointer or a
+mismatch refuses, naming both paths and how to point the switch. There is no
+flag past it: a new book starts by writing its directory to
+`runs/ACTIVE_RUN_DIR` first, which the scheduler needs anyway. The old rail
+asked whether *a* session had run in the directory; ten retired directories
+under `runs/` pass that question. The wrappers themselves no longer fall back
+to the retired `runs/paper_loop_momentum` when the pointer is missing or empty:
+they log `FAIL`, raise the alert at `runs/ALERT` (there is no run directory to
+put it in), send the heartbeat with code 4, and exit 4. The shell accepts the
+same two forms of pointer the Python rail does, repo-relative or absolute, and
+puts its log, status and `ALERT` files in the directory it names. `prism-doctor`
+run by hand without `--run-dir` follows the same rule: it refuses when the
+switch is missing or empty instead of checking a retired or current-directory
+book.
+
+**Partial bar.** `prism.live.daily.require_published_panel` runs after the
+stale-panel warning. The panel's last bar must be dated on an exchange session,
+and when the clock is on that date it must be at least 30 minutes past that
+session's close (`prism.io.sessions.session_close`, which knows the 13:00 early
+closes). A bar dated after the clock is refused as a feed or clock defect. The
+bar fetch asks for no end date, so a catch-up run during market hours receives
+today's row at its last print; the 2026-09-25 rehearsal decided on one and the
+stale-panel guard could not see it, because a bar from this morning is zero
+days old. A submitting run is refused (`PartialBarError`, a `SafetyViolation`);
+a rehearsal is allowed through with a `PARTIAL BAR` warning so a daytime
+`--no-submit` still exercises the command. The 18:30 PT nightly is 21:30 ET,
+five hours past the latest possible publication, and a holiday or pre-open run
+holds the previous session's completed bar, which passes at any hour.
+
+**Run-scoped client order ids.** New decisions carry
+`{book}{tag}:{decision_bar}:{symbol}` where `tag` is the first eight hex
+characters of the SHA-256 of the run directory's basename
+(`prism.scripts.paper_books.scoped_order_id_prefix`; the live book's prefix is
+`mom:faf4b45b:`). The basename rather than the path, so a relocated or restored
+checkout keeps producing the same ids; distinct per run directory, so two
+directories trading one book can no longer submit ids the venue treats as each
+other's duplicates. The longest id the scheme can produce (a `:S1` sweep child
+of a five-character symbol) is 32 characters against the venue's limit of 48.
+Nothing parses the prefix: the sweep appends its suffix to the persisted parent
+id, the replay reader matches children to parents by `rpartition`, and the
+parity gate compares orders by symbol. Orders recorded under the bare `mom:`
+prefix on 2026-09-25 keep their ids and are swept and settled as before; the
+sweep sets no prefix of its own. The live book holds no pending orders and its
+next refresh is on or about 2026-10-26, so no order carries the new scheme
+before then, and the two generations never meet in one pending set.
+
+**The per-session panel record.** Since 2026-09-30 every cycle writes
+the panel it scored to `runs/<run>/panels/`: a base parquet on the first
+session, one delta parquet per session after it, and `index.jsonl` with one row
+per record (decision bar, kind, file, SHA-256, chain position). Each refresh row
+in `targets.jsonl` carries `panel_sha256` and `panel_file`. A rerun on a bar
+that already has a record never makes a new decision (the write-ahead protocol
+resumes or holds), so when its panel differs from the recorded one the cycle
+keeps the recorded panel, logs both digests at ERROR, and proceeds; the fetch
+window is anchored to the last published session rather than the wall clock
+(`paper_books.default_panel_start`), so such a mismatch means the vendor
+revised history, not that the window slid overnight. A conflicting panel for a
+bar with no persisted decision still refuses (`PanelLogConflict`). To verify a
+session's record without touching the run directory, open a Python shell from
+the repository root:
+
+```python
+from prism.live.panel_log import latest_record, reconstruct_panel
+record = latest_record("runs/paper_loop_momentum2")          # the newest index row, or None
+panel = reconstruct_panel("runs/paper_loop_momentum2", record.decision_bar)
+panel["close"].tail()                                        # exactly the frame the cycle scored
+```
+
+`reconstruct_panel` replays the chain from the base through every delta, checks
+each file's digest against the index on the way, and raises on any mismatch.
+Both functions only read.
+
+## 2026-09-30: the live monitor reads two statistics; the panel record has a health row
+
+**What the nightly logs.** After the NAV mark, `monitor <bar>: verdict=… n=…
+mean=… ci=[…] method=empirical_bernstein gaps=…` is the return monitor over
+consecutive-session NAV returns (a gap between ledger rows is counted, never
+averaged in as one day). Read off the ledger on 2026-09-30, after that evening's
+session (the last to run the previous all-pairs monitor): 20 NAV rows, 19 adjacent pairs, 3 gaps (a missed 2026-07-15, the
+2026-07-17 → 07-30 break, the 2026-08-14 → 09-25 outage), n = 16, interval
+±0.062 a day against the old method's ±0.25 on the same rows. `tracking <bar>: verdict=… n=… mean_diff=…
+ci=[…] corr=… slope=… transitions=… unmatched=…` is the paper-minus-shadow read.
+Both are registered in `docs/live_monitor_design.md`; neither gates an order,
+and a failure in either is logged as `LIVE MONITOR FAILED` or `LIVE MONITOR:
+SHADOW RECORD FAILED` with the verdict `unavailable`, never raised into the
+cycle. `python -m prism.scripts.paper_monitor` prints the return read;
+`--method normal_mixture` is not wired there yet (call
+`prism.live.monitor.paper_monitor_read(..., method="normal_mixture")` from a
+shell for the comparison).
+
+**The shadow ledger.** `{run-dir}/shadow.jsonl` gains one row per session the
+cycle can shadow: the previous session must be in the ledger and be the
+preceding exchange session, and a refresh book must predate it. The row carries
+the decided book's close-to-close return on the panel the cycle scored, the
+paper return over the same pair, whether the session is a transition (the one
+after a refresh bar), and how many baseline names were priced. The first row can
+land on 2026-10-01 (previous session 2026-09-30 in the ledger and the preceding
+exchange session; baseline the 2026-09-25 refresh, which predates it), provided
+the fetched panel prices at least 90% of that book's gross on both bars. Each row
+is recomputable from that session's `panels/` record and `targets.jsonl`.
+
+**The `panel-record` health row.** PASS when `panels/index.jsonl`'s newest
+decision bar is the equity ledger's last; WARN while no panel has been recorded
+(the log starts with the first session after this change) or when a panel is
+ahead of the ledger (a cycle recorded its inputs and did not complete); FAIL
+when the record lags the ledger by a session or more, because those decisions
+cannot be re-derived from their inputs.
+
+**The `shadow-record` health row.** PASS when `shadow.jsonl`'s newest decision
+bar is the equity ledger's last (the detail carries that session's paper minus
+shadow return); WARN while no row has been written, or when none was owed for
+the last session because the previous ledger bar is not the preceding exchange
+session or no refresh book predates it; FAIL when a row was owed and is missing,
+since the shadow step is shielded from the trading cycle and would otherwise
+fail every session with nothing but a log line to show for it, leaving the
+tracking read empty.

@@ -22,6 +22,8 @@ from prism.scripts.paper_books import (
     BookParams,
     apply_certified_paper_pin,
     build_safety_config,
+    default_panel_start,
+    last_published_session,
     resolve_cli_universe,
     valuation_masked_membership,
 )
@@ -180,3 +182,41 @@ def test_safety_explicit_off_switches(tmp_path) -> None:
     assert safety.max_drawdown is None
     assert safety.max_order_fraction is None
     assert safety.max_orders is None
+
+
+# ---------------------------------------------------------------------------
+# The default fetch window is anchored to the decision bar, not the wall clock
+# ---------------------------------------------------------------------------
+
+
+def _et(when: str) -> pd.Timestamp:
+    return pd.Timestamp(when, tz="America/New_York")
+
+
+def test_default_panel_start_is_the_same_for_every_run_that_decides_on_one_bar() -> None:
+    """Friday's nightly, Saturday, the holiday Monday's nightly and Tuesday's pre-open sweep all decide on the
+    Friday bar (2027-01-18 is Martin Luther King Day), so they must request the same window. A start that moved
+    with the calendar day dropped the oldest bar on most re-runs and changed the digest of a panel already
+    recorded for that decision, which the panel log reports as a conflict."""
+    spec = BOOKS["momentum"]
+    assert spec.panel_start_years == 3
+    clocks = ("2027-01-15 18:30", "2027-01-16 12:00", "2027-01-18 18:30", "2027-01-19 06:50")
+    assert {default_panel_start(spec, _et(when)) for when in clocks} == {"2024-01-15"}
+    # Once Tuesday's bar is published the anchor moves with it.
+    assert default_panel_start(spec, _et("2027-01-19 16:35")) == "2024-01-19"
+    # Before the bar counts as published (close plus 30 minutes) the anchor is still the previous session.
+    assert default_panel_start(spec, _et("2027-01-15 16:15")) == "2024-01-14"
+    assert default_panel_start(spec, _et("2027-01-15 16:30")) == "2024-01-15"
+    # A book with no default window still has none.
+    assert default_panel_start(BOOKS["ensemble"], _et("2027-01-15 18:30")) is None
+
+
+def test_last_published_session_reads_any_clock_in_exchange_time() -> None:
+    import datetime as dt
+
+    assert last_published_session(pd.Timestamp("2027-01-19 03:00", tz="UTC")) == dt.date(2027, 1, 15)
+    # The day after Thanksgiving closes at 13:00, so its bar is published from 13:30.
+    assert last_published_session(_et("2026-11-27 13:35")) == dt.date(2026, 11, 27)
+    assert last_published_session(_et("2026-11-27 13:25")) == dt.date(2026, 11, 25)
+    with pytest.raises(ValueError, match="timezone-aware"):
+        last_published_session(pd.Timestamp("2027-01-15 18:30"))

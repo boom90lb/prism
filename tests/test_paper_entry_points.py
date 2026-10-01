@@ -44,9 +44,25 @@ def offline(tmp_path: Path, monkeypatch) -> Path:
 
 
 def _argv(which: str, run_dir: Path) -> list[str]:
+    # ``--submit`` because that is the mode whose refusals matter: since
+    # 2026-09-30 neither flag exits 2 before any of the checks below run.
     if which == "loop":
-        return ["--run-dir", str(run_dir), "--symbols", "AAA,BBB"]
-    return ["--run-dir", str(run_dir)]
+        return ["--run-dir", str(run_dir), "--symbols", "AAA,BBB", "--submit"]
+    return ["--run-dir", str(run_dir), "--submit"]
+
+
+@pytest.mark.parametrize("which", sorted(ENTRY_POINTS))
+def test_neither_mode_flag_exits_2_before_anything_is_resolved(which: str, offline: Path, monkeypatch, capsys) -> None:
+    """The mode is an argument: a bare invocation stops before the endpoint, the record or a credential.
+
+    The live endpoint is exported here on purpose: the §3.10 refusal would fire
+    if the entry point got that far, and the return of 2 proves it did not.
+    """
+    monkeypatch.setenv("APCA_API_BASE_URL", LIVE_BASE_URL)
+    argv = [arg for arg in _argv(which, offline) if arg != "--submit"]
+    assert ENTRY_POINTS[which].main(argv) == 2
+    err = capsys.readouterr().err
+    assert "--submit" in err and "--no-submit" in err
 
 
 @pytest.mark.parametrize("which", sorted(ENTRY_POINTS))
