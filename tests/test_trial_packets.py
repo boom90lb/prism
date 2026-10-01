@@ -232,3 +232,72 @@ def test_validate_rejects_non_finite_json(tmp_path) -> None:
     path.write_text(json.dumps(obj))
     with pytest.raises(ValueError):
         validate_claim_packet_dir(tmp_path)
+
+
+# --------------------------------------------------------------------- optional hurdle block (2026-09-30)
+
+
+def test_packet_without_hurdle_block_still_builds_validates_and_loads(tmp_path) -> None:
+    # Every packet written before the block existed has no "hurdle" key at all; a
+    # validator that demanded one would refuse the cited records under results/.
+    (tmp_path / "returns.csv").write_text("idx,r\n0,0.0\n")
+    packet = emit_research_claim_packet(
+        tmp_path,
+        strategy="unit", config={"a": 1}, data={},
+        returns=[0.0] * 30,
+        artifacts={"returns": "returns.csv", "claim_packet": "claim_packet.json"},
+    )
+    assert packet.hurdle is None
+    written = json.loads((tmp_path / "claim_packet.json").read_text())
+    assert written["hurdle"] is None
+    del written["hurdle"]  # the pre-2026-09-30 shape
+    (tmp_path / "claim_packet.json").write_text(json.dumps(written, indent=2, sort_keys=True))
+    loaded = validate_claim_packet_dir(tmp_path)
+    assert "hurdle" not in loaded
+    assert set(REQUIRED_PACKET_KEYS).issubset(loaded)
+
+
+def test_packet_records_the_hurdle_block_from_a_result(tmp_path) -> None:
+    from prism.validation.hurdle import PACKET_BLOCK_KEYS, tbill_hurdle
+
+    found = tbill_hurdle(0.0421, 0.033, 0.54, 0.12, rf_source="French RF 202607",
+                         cash_yield_source="retail_v2.toml", vol_basis="target")
+    packet = emit_research_claim_packet(
+        tmp_path,
+        strategy="unit", config={}, data={}, returns=[0.0] * 30,
+        artifacts={"claim_packet": "claim_packet.json"},
+        hurdle=found,
+    )
+    assert packet.hurdle is not None
+    assert tuple(sorted(packet.hurdle)) == tuple(sorted(PACKET_BLOCK_KEYS))
+    loaded = validate_claim_packet_dir(tmp_path)
+    assert loaded["hurdle"]["hurdle_sharpe_annual"] == pytest.approx(found.sharpe_annual)
+    assert loaded["hurdle"]["vol_basis"] == "target"
+    assert loaded["hurdle"]["cash_yield_source"] == "retail_v2.toml"
+
+
+def test_packet_accepts_a_complete_mapping_and_refuses_a_short_one() -> None:
+    from prism.validation.hurdle import tbill_hurdle
+
+    block = tbill_hurdle(0.04, 0.0, 1.0, 0.1).packet_block()
+    packet = build_research_claim_packet(strategy="unit", config={}, data={}, returns=[0.0] * 30, hurdle=block)
+    assert packet.hurdle == block
+    short = {k: v for k, v in block.items() if k != "vol_basis"}
+    with pytest.raises(ValueError, match="vol_basis"):
+        build_research_claim_packet(strategy="unit", config={}, data={}, returns=[0.0] * 30, hurdle=short)
+
+
+def test_validate_rejects_incomplete_hurdle_block(tmp_path) -> None:
+    emit_research_claim_packet(
+        tmp_path, strategy="unit", config={}, data={}, returns=[0.0] * 30,
+        artifacts={"claim_packet": "claim_packet.json"},
+    )
+    written = json.loads((tmp_path / "claim_packet.json").read_text())
+    written["hurdle"] = {"rf_annual": 0.04}
+    (tmp_path / "claim_packet.json").write_text(json.dumps(written, indent=2, sort_keys=True))
+    with pytest.raises(ValueError, match="hurdle block missing keys"):
+        validate_claim_packet_dir(tmp_path)
+    written["hurdle"] = "0.35"
+    (tmp_path / "claim_packet.json").write_text(json.dumps(written, indent=2, sort_keys=True))
+    with pytest.raises(ValueError, match="hurdle is not an object"):
+        validate_claim_packet_dir(tmp_path)

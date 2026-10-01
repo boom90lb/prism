@@ -13,6 +13,11 @@ from prism.validation.compare import (
     excess_sharpe_interval,
     sharpe_difference_interval,
 )
+from prism.validation.hurdle import (
+    HurdleInputs,
+    HurdleResult,
+    tbill_hurdle,
+)
 from prism.validation.metrics import (
     breadth_diagnostic,
     calmar_ratio,
@@ -82,6 +87,8 @@ __all__ = [
     "FoldBoundary",
     "FoldGeometryError",
     "FoldTable",
+    "HurdleInputs",
+    "HurdleResult",
     "INCLUSIVE_SESSION_DATES",
     "PurgedWalkForward",
     "RollingFold",
@@ -129,6 +136,7 @@ __all__ = [
     "sharpe_difference_interval",
     "stable_config_hash",
     "summary_claim_fields",
+    "tbill_hurdle",
     "validate_claim_packet_dir",
     "validate_result_record",
     "write_research_claim_packet",

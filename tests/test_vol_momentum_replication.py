@@ -70,12 +70,18 @@ def test_economics_arithmetic_and_hurdle():
     index = pd.bdate_range("2023-01-02", periods=500)
     rng = np.random.default_rng(6)
     frame = pd.DataFrame({"net": rng.normal(0.0004, 0.0075, size=500), "charged_cost": 0.0001}, index=index)
-    econ = vm.economics(0.9, 0.5, frame, rf_annual=0.04, target_vol=0.12)
+    econ = vm.economics(0.9, 0.5, frame, rf_annual=0.04, target_vol=0.12, long_over_equity=0.5)
     vol = frame["net"].std(ddof=1) * np.sqrt(252)
     assert econ["cost_drag_sharpe"] == pytest.approx(0.0001 * 252 / vol)
     assert econ["figure_f3"] == pytest.approx(0.45 - econ["cost_drag_sharpe"])
     assert econ["hurdle_sharpe"] == pytest.approx(0.04 / 0.12)
     assert econ["pass"] == (econ["figure_f3"] > econ["hurdle_sharpe"])
+    # The measured L/E travels with the hurdle even though, at zero cash yield, it does not move the number.
+    assert econ["hurdle_inputs"]["long_over_equity"] == 0.5
+    assert econ["hurdle_inputs"]["idle_fraction"] == 0.5
+    assert econ["hurdle_inputs"]["cash_yield"] == 0.0 and econ["hurdle_inputs"]["vol_basis"] == "target"
+    with pytest.raises(TypeError):
+        vm.economics(0.9, 0.5, frame, rf_annual=0.04, target_vol=0.12)  # L/E has no default (fail loud)
 
 
 def test_fidelity_floor():

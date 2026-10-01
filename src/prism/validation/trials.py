@@ -29,6 +29,8 @@ try:  # pragma: no cover - the branch taken depends on the platform, not the tes
 except ImportError:  # pragma: no cover - non-POSIX platform
     fcntl = None  # type: ignore[assignment]
 
+from prism.validation.hurdle import PACKET_BLOCK_KEYS as HURDLE_PACKET_KEYS
+from prism.validation.hurdle import HurdleResult
 from prism.validation.metrics import periodic_sharpe
 
 CLAIM_NO_CLAIM = "no_claim"
@@ -79,6 +81,13 @@ class ResearchClaimPacket:
     metrics: dict[str, Any]
     artifacts: dict[str, str]
     claim_rules: dict[str, Any]
+    #: Optional since 2026-09-30: the after-cost hurdle the packet's net claim
+    #: was read against, with its rate sources and the volatility basis it was
+    #: stated at (:mod:`prism.validation.hurdle`). ``None`` in every packet
+    #: written before the block existed, and in any packet whose surface
+    #: states no hurdle; the schema version stays at 2 because readers of the
+    #: old shape lose nothing.
+    hurdle: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-compatible packet dict."""
@@ -338,10 +347,18 @@ def build_research_claim_packet(
     created_at: datetime | None = None,
     robust_dsr_threshold: float = DEFAULT_ROBUST_DSR_THRESHOLD,
     min_obs: int = DEFAULT_MIN_OBS,
+    hurdle: HurdleResult | Mapping[str, Any] | None = None,
 ) -> ResearchClaimPacket:
-    """Build one canonical packet for a strategy trial."""
+    """Build one canonical packet for a strategy trial.
+
+    ``hurdle`` is optional: a :class:`~prism.validation.hurdle.HurdleResult`
+    or a mapping with every key of ``HURDLE_PACKET_KEYS``. A surface that read
+    its net claim against a stated hurdle records it here; one that did not
+    leaves it ``None``.
+    """
     if not strategy:
         raise ValueError("strategy must be non-empty")
+    hurdle_block = _coerce_hurdle_block(hurdle)
     metrics = compute_trial_metrics(
         returns=returns,
         costs=costs,
@@ -382,7 +399,28 @@ def build_research_claim_packet(
             "net_edge": "total_return > 0 and periodic_sharpe > 0",
             "robust_edge": "net_edge and dsr >= robust_dsr_threshold",
         },
+        hurdle=hurdle_block,
     )
+
+
+def _coerce_hurdle_block(value: HurdleResult | Mapping[str, Any] | None) -> dict[str, Any] | None:
+    """The packet's ``hurdle`` block from a result or a mapping, or None when absent.
+
+    A mapping must carry every key of ``HURDLE_PACKET_KEYS``; a block with a
+    key missing is refused rather than written short, because a hurdle whose
+    volatility basis or rate source is unrecorded is the ambiguity the block
+    exists to remove.
+    """
+    if value is None:
+        return None
+    if isinstance(value, HurdleResult):
+        return value.packet_block()
+    if not isinstance(value, Mapping):
+        raise ValueError(f"hurdle must be a HurdleResult or a mapping, got {type(value).__name__}")
+    missing = [key for key in HURDLE_PACKET_KEYS if key not in value]
+    if missing:
+        raise ValueError(f"hurdle block missing keys {missing}; required keys are {list(HURDLE_PACKET_KEYS)}")
+    return {str(k): v for k, v in value.items()}
 
 
 def write_research_claim_packet(packet: ResearchClaimPacket, path: Path | str) -> None:
@@ -453,9 +491,11 @@ def validate_claim_packet_dir(
     """Validate a strategy output dir against the research-claim contract.
 
     Asserts the dir holds a strict-JSON packet (no NaN/Inf), with every required
-    key, a known ``claim_tier``, the current schema version, and — when
-    ``require_artifacts`` — that every file named in the packet's ``artifacts``
-    manifest actually exists in ``out_dir``. Returns the parsed packet dict.
+    key, a known ``claim_tier``, the current schema version, a complete
+    ``hurdle`` block when one is present (the block is optional; packets
+    written before it existed carry none), and — when ``require_artifacts`` —
+    that every file named in the packet's ``artifacts`` manifest actually
+    exists in ``out_dir``. Returns the parsed packet dict.
     Raises ``FileNotFoundError``/``ValueError`` on the first violation.
     """
     out = Path(out_dir)
@@ -485,6 +525,14 @@ def validate_claim_packet_dir(
     missing_code_state = [key for key in GitCodeState.__dataclass_fields__ if key not in code_state]
     if missing_code_state:
         raise ValueError(f"claim packet code_state missing keys {missing_code_state}: {packet_path}")
+
+    hurdle = packet.get("hurdle")
+    if hurdle is not None:
+        if not isinstance(hurdle, Mapping):
+            raise ValueError(f"claim packet hurdle is not an object: {packet_path}")
+        missing_hurdle = [key for key in HURDLE_PACKET_KEYS if key not in hurdle]
+        if missing_hurdle:
+            raise ValueError(f"claim packet hurdle block missing keys {missing_hurdle}: {packet_path}")
 
     artifacts = packet["artifacts"]
     if not isinstance(artifacts, Mapping):

@@ -25,6 +25,7 @@ import numpy as np
 import pandas as pd
 
 from prism.validation.compare import SharpeBootstrapSpec, sharpe_interval
+from prism.validation.hurdle import tbill_hurdle
 from prism.validation.trials import RunRecorder, TrialLog, stable_json_dumps
 from research.scripts.factor_lab import (
     CACHE_DIR,
@@ -143,12 +144,32 @@ def fidelity(in_house: pd.Series, reference: pd.Series, floor: float) -> dict[st
 
 
 def economics(rho: float, prior: float, frame: pd.DataFrame, rf_annual: float, target_vol: float,
-              per_year: int = 252) -> dict[str, Any]:
+              per_year: int = 252, *, long_over_equity: float) -> dict[str, Any]:
+    """Criterion 3 of the registration: ``rho * prior - cost drag`` against ``rf / target_vol``.
+
+    The hurdle is the registered one: the book earns nothing on idle cash
+    (``cash_yield=0``), so the idle fraction does not change the number and the
+    shared :func:`prism.validation.hurdle.tbill_hurdle` returns
+    ``rf_annual / target_vol`` exactly, reproducing the recorded 0.351 at rf
+    4.21% and a 12% target. The book's measured long side over equity is still
+    passed and recorded with it (``hurdle_inputs``), so the inputs travel with
+    the hurdle rather than a placeholder; it has no default because a caller
+    that does not know it should not be computing the hurdle. The volatility
+    basis is the scaling rule's target, not the book's realized volatility; the
+    two differed (12.0% vs 12.7%) in the recorded run.
+    """
     vol = float(frame["net"].std(ddof=1) * math.sqrt(per_year))
     drag = float(frame["charged_cost"].mean() * per_year / vol)
     figure = rho * prior - drag
-    hurdle = rf_annual / target_vol
+    result = tbill_hurdle(
+        rf_annual, 0.0, long_over_equity, target_vol, periods_per_year=per_year,
+        rf_source="French RF, mean of the last hurdle_window_sessions of the pinned 202607 file, annualized",
+        cash_yield_source="registered convention: idle cash earns nothing (retail_v1 cash_income_bps_annual = 0)",
+        vol_basis="target",
+    )
+    hurdle = result.sharpe_annual
     return {
+        "hurdle_inputs": result.to_dict(),
         "rho_times_prior": rho * prior,
         "cost_drag_sharpe": drag,
         "charged_cost_annual": float(frame["charged_cost"].mean() * per_year),
@@ -241,8 +262,10 @@ def evaluate(reg: Mapping[str, Any], fetched: Mapping[str, Mapping[str, Any]]) -
     fid = fidelity(in_house["net"], reference["gross"], float(criteria["fidelity_floor"]))
     rf_annual = float(cash_table[ref_cfg["cash_column"]].dropna().iloc[-int(criteria["hurdle_window_sessions"]):]
                       .mean() * per_year)
+    # L/E of the scaled book: the unscaled book's long side is half its ~1.0x recorded gross (costs.csv gross
+    # mean 1.0016), times the mean scale; the convention of docs/hurdle_restatement_2026-09-30.md.
     econ = economics(fid["daily_corr"], bar["prior_sharpe"], in_house, rf_annual, float(source["target_vol"]),
-                     per_year)
+                     per_year, long_over_equity=0.5 * float(in_house["scale"].mean()))
     contra = no_contradiction(in_house, econ["figure_f3"], reg["bootstrap"], per_year)
     promoted = all(part["pass"] for part in (bar, fid, econ, contra))
 

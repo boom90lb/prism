@@ -488,6 +488,18 @@ def after_cost_hurdle_periodic(
     (0.053 for a 5.3% bill yield — nominal or real per the recorded basis);
     ``periodic_vol`` is the strategy's realized periodic return std. Returns NaN
     for non-finite inputs or a non-positive vol.
+
+    This is the zero-cash-yield, fully-invested special case of
+    :func:`prism.validation.hurdle.tbill_hurdle` stated at the realized periodic
+    volatility (``vol_basis="periodic_realized"``): ``tbill_hurdle(h, 0.0, 1.0,
+    periodic_vol * sqrt(P)).sharpe_periodic`` is the same quantity. The arithmetic
+    here stays literal (``h / P / vol``) rather than delegating, because the
+    annualize-then-de-annualize form differs in the last bit on seven of the
+    eleven recorded ``after_cost_hurdle.periodic_sharpe_hurdle`` values under
+    ``results/`` (checked 2026-09-30), and those records are immutable. New code
+    states a hurdle through ``tbill_hurdle`` and records which volatility it used;
+    the 2026-09-25 cash convention (idle own cash earning the account yield) is
+    expressed only there.
     """
     if periods_per_year < 1:
         raise ValueError(f"periods_per_year must be >= 1, got {periods_per_year}")
