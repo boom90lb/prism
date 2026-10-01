@@ -73,7 +73,10 @@ from prism.live.state import StateStore
 
 UTC = dt.timezone.utc
 
-#: The live paper book's last completed session (``runs/paper_loop_momentum2``).
+#: A frozen historical scenario, not live state: the paper book's last completed
+#: session before the 2026-08-15 .. 2026-09-25 scheduler outage. The synthetic
+#: tests below replay that outage; nothing here may be read from the live run
+#: directory, which moves every session.
 LAST_COMPLETED = "2026-08-14"
 
 #: The fifteen sessions the exchange held and the loop did not decide, written
@@ -729,20 +732,29 @@ LIVE_RUN_DIR = Path("/home/b90/prism/runs/paper_loop_momentum2")
 
 
 @pytest.mark.skipif(not LIVE_RUN_DIR.is_dir(), reason="the live paper run directory is not on this machine")
-def test_the_live_run_directorys_last_session_is_the_one_the_check_expects() -> None:
-    """Read-only, two lines: the fixture dates above are the real book's dates.
+def test_the_live_run_directorys_ledger_agrees_with_the_session_table() -> None:
+    """Read-only, and independent of which session the live book last completed.
 
-    Nothing here writes, and the file's mtimes are asserted unchanged so a
-    future edit cannot quietly make this test a writer.
+    An earlier version pinned the ledger's last decision bar to a date, so the
+    test went red the first night the loop ran again (2026-09-25). What can be
+    asserted about live state without freezing it: the last decision bar is an
+    exchange session no later than today, and as of the session after it the
+    scheduler check reports nothing missed. The file mtimes are asserted
+    unchanged so a future edit cannot quietly make this test a writer.
     """
+    from prism.io import sessions as session_table
+
     ledger = LIVE_RUN_DIR / "equity.jsonl"
     before = {path.name: path.stat().st_mtime_ns for path in sorted(LIVE_RUN_DIR.iterdir())}
     rows = [json.loads(line) for line in ledger.read_text(encoding="utf-8").splitlines() if line.strip()]
-    assert str(rows[-1]["decision_bar"]) == LAST_COMPLETED
+    last = dt.date.fromisoformat(str(rows[-1]["decision_bar"]))
+    assert session_table.is_session(last), f"{last} is not an exchange session"
+    assert last <= dt.date.today(), f"the live ledger's last decision bar {last} is in the future"
 
-    verdict = check_scheduler(last_decision_bar=rows[-1]["decision_bar"], as_of="2026-09-08", source=str(ledger))
-    assert tuple(day.isoformat() for day in verdict.missed) == MISSED
-    assert (LABOR_DAY, "Labor Day") in verdict.closures
+    verdict = check_scheduler(
+        last_decision_bar=last, as_of=session_table.next_session(last), source=str(ledger)
+    )
+    assert tuple(verdict.missed) == (), f"sessions missed between {last} and its successor: {verdict.missed}"
 
     after = {path.name: path.stat().st_mtime_ns for path in sorted(LIVE_RUN_DIR.iterdir())}
     assert before == after, "the live run directory must never be written by a test"
