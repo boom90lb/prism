@@ -189,6 +189,19 @@ instead is order-sizing and extraction parity on those sessions. The distinction
 close it, is `docs/engine_overhaul_operating_changes.md` section 1.3; the user-facing consequence
 is `docs/versioning.md` section 3.
 
+**The published-factor evaluations, byte for byte.** The volatility-scaled momentum approval and
+the public factor lab read Kenneth French's daily files of the 202607 vintage. French rewrites
+those files in place at fixed URLs, the 202607 bytes are no longer served, and the Internet
+Archive holds no copy of them (capture index checked 2026-10-14). The registered drivers refuse
+any other file hash, so neither evaluation can be rerun from a clone. What a clone can check is
+`python -m research.scripts.reproduce_public` (`docs/public_reproduction_design.md`). Offline, it
+recomputes the four recorded criteria from the tracked series, rebuilds the in-house side from
+its tracked inputs, and checks that the recorded reference follows the registered rule. With
+network access, it downloads the current files into a directory of the caller's choosing and
+measures how far they differ from the record. Its output is a reproduction, not a new evaluation:
+it adds no ledger row and changes no verdict, and a number computed on a later vintage describes
+that vintage only.
+
 **The minimum supported live account size.** Undetermined. The launch brief refuses to encode a
 figure from one synthetic rounding exercise, and the capital scenarios recorded in the stage 4
 comparison are scenarios, not a supported range.
