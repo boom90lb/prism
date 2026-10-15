@@ -11,10 +11,12 @@ pinned here without a venue.
 
 from __future__ import annotations
 
+import functools
 import json
 from datetime import date
 
 from prism.live.state import LoopState, StateStore
+from prism.scripts import doctor
 from prism.scripts.doctor import (
     CLEAN_SESSIONS_REQUIRED,
     UNIVERSE_STALE_DAYS,
@@ -684,7 +686,19 @@ def test_run_checks_offline_fails_on_a_dark_loop(tmp_path):
     assert results["nightly-log"].status == "FAIL"
 
 
+def _pin_main_clock(monkeypatch) -> None:
+    """Give ``main``'s checks a fixed date.
+
+    ``main`` takes no date and calls ``run_checks`` without one, so every
+    dated check reads ``date.today()``. The session-table row in particular
+    FAILs once that is past the table's end, which would turn these exit-code
+    tests red on that day with no change to the code.
+    """
+    monkeypatch.setattr(doctor, "run_checks", functools.partial(run_checks, today=date(2026, 7, 29)))
+
+
 def test_main_exits_1_on_fail_and_0_on_pass(tmp_path, monkeypatch, capsys):
+    _pin_main_clock(monkeypatch)
     monkeypatch.chdir(tmp_path)
     (tmp_path / "runs").mkdir()
     (tmp_path / "runs" / "ACTIVE_RUN_DIR").write_text("runs/book\n", encoding="utf-8")
@@ -704,6 +718,7 @@ def test_main_exits_1_on_fail_and_0_on_pass(tmp_path, monkeypatch, capsys):
 def test_main_refuses_a_missing_or_empty_active_run_dir_instead_of_falling_back(tmp_path, monkeypatch, capsys):
     """Until 2026-09-30 a missing switch fell back to the retired runs/paper_loop_momentum and an empty one
     checked the current directory; the wrappers refuse both, and so does a hand-run doctor."""
+    _pin_main_clock(monkeypatch)
     monkeypatch.chdir(tmp_path)
     universe = tmp_path / "u.txt"
     universe.write_text("\n".join(f"SYM{i}" for i in range(150)), encoding="utf-8")
