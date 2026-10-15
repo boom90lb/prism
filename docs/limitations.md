@@ -1,6 +1,6 @@
 # Public limitations of every result this project has published
 
-Updated: 2026-09-15. This is the statement the engine's stage 6 exit requires: what the published
+Updated: 2026-10-14. This is the statement the engine's stage 6 exit requires: what the published
 reference results do and do not establish, drawn only from evidence recorded in this repository.
 It is written to be read before the numbers, not after. Corrections to how recorded results are
 described are in [`erratum_2026-10-14.md`](erratum_2026-10-14.md).
@@ -195,7 +195,45 @@ comparison are scenarios, not a supported range.
 
 ---
 
-## 8. Standing conditions on any published number
+## 8. The paper-trading record does not execute or accrue like the backtests (erratum E11)
+
+The live paper account is the only forward record. It differs from the simulated books in how
+orders fill and in which cash flows it books.
+
+**Most paper fills are not opening-auction fills.** The backtests fill every order at the next
+session's open. The tracked capture of the paper run (`tests/fixtures/paper_replay/fills.jsonl`,
+the rebalances decided 2026-07-13 and 2026-08-11) has 249 fills. Of these, 185 (74%) are market
+orders sent at 09:50 ET by the morning completion sweep, identified by client order ids ending in
+`:S1` (`src/prism/scripts/paper_sweep.py`, `ops/paper_sweep_morning.sh`): 91 of 119 in July and
+94 of 130 in August. The sweep exists because the paper venue fills only part of the
+market-on-open orders. Paper fills therefore price most of each rebalance about twenty minutes
+after the open, and the gap between paper and simulated fills mostly measures that delay, not
+auction cost. Alpaca's documentation also lists "Market impact of your orders" among the things
+paper trading "does not account for", so paper fills cannot measure impact at all. How
+real-money market-on-open orders would fill is not known.
+
+**Paper accounts book no dividends and no borrow fees.** Alpaca's paper-trading page
+(docs.alpaca.markets/docs/paper-trading, read 2026-10-14, last modified 2026-07-07) states that
+the paper account "does NOT simulate dividends", and its paper-versus-live table marks borrow fees
+as not available on paper ("Coming Soon!"). Two consequences:
+
+- Paper equity omits dividends received on long positions and dividends owed on short ones. For
+  the momentum reference book that net flow was measured at −36.1 bp a year
+  (`docs/program_review_2026-07.md`; erratum E3), so paper equity overstates a real account's
+  return by about that much. A T-bill ETF held on paper would show its price falling at each
+  distribution and no income.
+- Paper equity omits stock-loan fees on the short side, which the backtests charge (50 bp a year
+  in `examples/reference/costs/retail_v2.toml`). Paper therefore looks cheaper than both the
+  backtest and a real account.
+
+Anything that reads paper equity as the broker reports it, such as the live monitor
+(`prism.live.monitor.paper_monitor_read`), sees these uncorrected figures. A forward read of the
+paper stream has to add the dividend flows and charge modelled borrow before it compares the
+stream with a backtest or with a T-bill hurdle.
+
+---
+
+## 9. Standing conditions on any published number
 
 - Compare returns with returns. The Sharpe figures here are on the excess-return conventions each
   record declares; a Sharpe is not comparable with a Treasury yield.
