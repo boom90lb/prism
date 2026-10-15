@@ -299,6 +299,7 @@ def test_doctor_data_dir_defaults_to_the_workspace(tmp_path, monkeypatch):
 
 def test_load_env_reads_the_project_dotenv(tmp_path, monkeypatch, restored_environ):
     """Discovery starts at the current directory, and only a command calls it."""
+    monkeypatch.delenv("PRISM_DISABLE_DOTENV", raising=False)
     monkeypatch.chdir(tmp_path)
     os.environ.pop(_SENTINEL_VAR, None)
     assert load_env() is None
@@ -320,6 +321,7 @@ def test_load_env_never_crosses_a_checkout_boundary(tmp_path, monkeypatch, resto
     ``.git`` is a file. From inside the worktree discovery returns nothing;
     from a plain subdirectory of the repo it still finds the repo's file.
     """
+    monkeypatch.delenv("PRISM_DISABLE_DOTENV", raising=False)
     repo = tmp_path / "repo"
     (repo / ".git").mkdir(parents=True)
     _plant_env(repo)

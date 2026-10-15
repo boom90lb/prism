@@ -147,6 +147,12 @@ def resolve_workspace(cli_value: str | None = None) -> Workspace:
     return Workspace(cwd)
 
 
+#: Set to ``1`` to switch ``.env`` discovery off. ``tests/conftest.py`` sets it so
+#: no test process reads a deployment checkout's credentials; an explicit
+#: ``path`` still loads.
+DOTENV_DISABLE_ENV = "PRISM_DISABLE_DOTENV"
+
+
 def load_env(path: Path | str | None = None) -> Path | None:
     """Load the project's ``.env`` into the process environment.
 
@@ -163,8 +169,12 @@ def load_env(path: Path | str | None = None) -> Path | None:
     otherwise inherits ``<repo>/.env`` — the live account's credentials — which
     is how 116 unauthorized paper orders were submitted on 2026-09-09
     (``docs/incident_2026-09-09_unauthorized_paper_orders.md``, root cause 2).
-    Returns the file loaded, or None when there is none.
+    Discovery is skipped when ``PRISM_DISABLE_DOTENV=1`` (test suites, CI, and
+    operators who export credentials themselves); an explicit ``path`` still
+    loads. Returns the file loaded, or None when there is none.
     """
+    if path is None and os.environ.get(DOTENV_DISABLE_ENV) == "1":
+        return None
     if path is not None:
         found = Path(path)
         if not found.is_file():
