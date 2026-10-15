@@ -14,11 +14,6 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 import pandas as pd
 from scipy.optimize import minimize  # type: ignore
-from sklearn.metrics import (  # type: ignore
-    mean_absolute_error,
-    mean_squared_error,
-    r2_score,
-)
 
 from prism.conformal import ACIState, EnbPICalibrator
 from prism.validation.walk_forward import PurgedWalkForward
@@ -673,6 +668,15 @@ class EnsembleModel(BaseModel):
         members are scored on return error too (the quantity they regress
         against); policy members are scored only in position space.
         """
+        # scikit-learn is a [research] extra; import it here, outside the
+        # try below, so the module (and research.trading) imports on a core
+        # install and a missing extra raises instead of returning {}.
+        from sklearn.metrics import (  # type: ignore
+            mean_absolute_error,
+            mean_squared_error,
+            r2_score,
+        )
+
         if not self.is_fitted:
             logger.warning("Ensemble model not fitted yet")
             return {}

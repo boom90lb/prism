@@ -153,8 +153,13 @@ def test_a_deferred_command_names_its_stage(argv: list[str], stage: int, capsys)
 
 
 @pytest.mark.parametrize("argv", DELIVERED_DATA_COMMANDS, ids=lambda v: " ".join(v))
-def test_a_delivered_data_command_refuses_for_its_own_reason_not_for_its_stage(argv: list[str], capsys) -> None:
+def test_a_delivered_data_command_refuses_for_its_own_reason_not_for_its_stage(
+    argv: list[str], capsys, tmp_path, monkeypatch
+) -> None:
     """``data ingest`` and ``data import-legacy`` land at stage 3a (§3.2)."""
+    # Resolve the workspace (logs/, .env) to a scratch directory, never the checkout.
+    monkeypatch.delenv("PRISM_WORKSPACE", raising=False)
+    monkeypatch.chdir(tmp_path)
     assert main(argv) == EXIT_REFUSED
     message = capsys.readouterr().err
     assert "is not delivered until stage" not in message, message

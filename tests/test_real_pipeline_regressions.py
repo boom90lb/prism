@@ -211,7 +211,9 @@ def test_predict_with_label_columns_present_still_works():
 # whole fold's metrics were dropped. The finite-mask guard scores the finite
 # rows instead.
 # --------------------------------------------------------------------------
+@pytest.mark.research
 def test_evaluate_tolerates_some_nan_predictions(monkeypatch):
+    pytest.importorskip("sklearn", reason="needs the [research] extra")
     horizon = 5
     usable, target_col, fe = _build_enhanced(n=320, horizon=horizon)
     split = 240

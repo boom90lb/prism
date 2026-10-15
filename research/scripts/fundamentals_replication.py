@@ -110,7 +110,10 @@ def arm_criteria(arm: str, frame: pd.DataFrame, public: pd.Series, publication: 
     fid["direction_mismatch"] = bool(fid["daily_corr"] < 0)
     own_vol = float(frame["net"].std(ddof=1) * math.sqrt(per_year))
     runnable_vol = min(float(criteria["target_vol"]), float(criteria["max_scale"]) * own_vol)
-    econ = economics(fid["daily_corr"], bar["prior_sharpe"], frame, rf_annual, runnable_vol, per_year)
+    # L/E = scale / 2 for a 1x-gross equal long/short arm run at runnable / own volatility
+    # (docs/hurdle_restatement_2026-09-30.md, replication-route records).
+    econ = economics(fid["daily_corr"], bar["prior_sharpe"], frame, rf_annual, runnable_vol, per_year,
+                     long_over_equity=0.5 * runnable_vol / own_vol)
     econ["own_vol_annual"] = own_vol
     econ["runnable_vol"] = runnable_vol
     contra = no_contradiction(frame, econ["figure_f3"], boot, per_year)
@@ -198,7 +201,9 @@ def combination_criteria(parts_in: Mapping[str, pd.DataFrame], parts_public: Map
         prior = float(criteria["pre_publication_haircut"]) * annualized_stats(public["net"], per_year)["sharpe"]
         basis = "haircut_full_window"
     fid = fidelity(inhouse["net"], public["net"], float(criteria["fidelity_floor"]))
-    econ = economics(fid["daily_corr"], prior, inhouse, rf_annual, float(cfg["target_vol"]), per_year)
+    # L/E = half the combined book's mean gross (equal long/short legs).
+    econ = economics(fid["daily_corr"], prior, inhouse, rf_annual, float(cfg["target_vol"]), per_year,
+                     long_over_equity=0.5 * float(inhouse["gross"].mean()))
     contra = no_contradiction(inhouse, econ["figure_f3"], boot, per_year)
     passes = {"prior_positive": bool(prior > 0), "economics": econ["pass"], "no_contradiction": contra["pass"]}
     return {

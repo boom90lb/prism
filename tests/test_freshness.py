@@ -350,6 +350,7 @@ def test_the_batch_refusal_names_the_uncovered_security() -> None:
         states=report.states,
         context=report.action_context(ActionContext(reduction_to_flat=False)),
         freshness_by_sid=report.freshness_by_sid(),
+        now=NOW,
     )
     with pytest.raises(AuthorizationRefused) as refused:
         gate.authorize_batch(
@@ -357,6 +358,7 @@ def test_the_batch_refusal_names_the_uncovered_security() -> None:
             states=report.states,
             context=report.action_context(),
             freshness_by_sid=report.freshness_by_sid(),
+            now=NOW,
         )
     assert "NVDA" in str(refused.value)
     assert "AAPL" not in str(refused.value), "the covered name is not what refused the batch"
