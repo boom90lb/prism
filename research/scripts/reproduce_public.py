@@ -195,15 +195,16 @@ def drift(recorded: pd.Series, current: pd.Series, tol: float = TOLERANCE) -> di
     common = recorded.index.intersection(current.index)
     difference = (current.loc[common] - recorded.loc[common]).abs()
     changed = difference[difference > tol]
-    only_recorded = recorded.index.difference(current.index)
-    only_current = current.index.difference(recorded.index)
+    removed = recorded.index.difference(current.index)
+    added = current.index.difference(recorded.index)
+    first, last = recorded.index[0], recorded.index[-1]
 
     def dates(index: pd.Index) -> list[str]:
         return [str(day.date()) for day in index[:5]]
 
     return {
-        "recorded_first": str(recorded.index[0].date()),
-        "recorded_last": str(recorded.index[-1].date()),
+        "recorded_first": str(first.date()),
+        "recorded_last": str(last.date()),
         "current_first": str(current.index[0].date()),
         "current_last": str(current.index[-1].date()),
         "common_sessions": int(len(common)),
@@ -215,10 +216,12 @@ def drift(recorded: pd.Series, current: pd.Series, tol: float = TOLERANCE) -> di
         "last_changed": str(changed.index[-1].date()) if len(changed) else None,
         "correlation": float(np.corrcoef(recorded.loc[common], current.loc[common])[0, 1]) if len(common) > 2
         else None,
-        "only_in_recorded": int(len(only_recorded)),
-        "only_in_recorded_first_dates": dates(only_recorded),
-        "only_in_current": int(len(only_current)),
-        "only_in_current_first_dates": dates(only_current),
+        "removed_sessions": int(len(removed)),
+        "removed_first_dates": dates(removed),
+        "added_before_recorded_first": int((added < first).sum()),
+        "added_inside_recorded_window": int(((added >= first) & (added <= last)).sum()),
+        "added_inside_first_dates": dates(added[(added >= first) & (added <= last)]),
+        "added_after_recorded_last": int((added > last).sum()),
     }
 
 
@@ -435,6 +438,16 @@ def cut_to_recorded(data: fl.PublicData, recorded_priors: Mapping[str, Any]) -> 
                          vintages=data.vintages)
 
 
+def series_summary(record: Mapping[str, Any]) -> dict[str, Any]:
+    return plain({"full_sharpe": record["full"]["sharpe"], "full_last": record["full"]["last"],
+                  "prior_sharpe": record.get("prior_sharpe"), "prior_pass": record.get("prior_pass")})
+
+
+def fidelity_summary(record: Mapping[str, Any]) -> dict[str, Any]:
+    stats = record.get("daily") or record.get("monthly") or {}
+    return plain({"corr": stats.get("corr"), "n": stats.get("n"), "meets_floor": record.get("meets_floor")})
+
+
 def fidelity_key(record: Mapping[str, Any]) -> str:
     return f"{record['book']}|{record['reference']}|{record['frequency']}"
 
@@ -477,12 +490,11 @@ def factor_lab_layer(reg: Mapping[str, Any], vm_reg: Mapping[str, Any], fetched:
             "fidelity": {key: comparison_block(record, reproduced_by_key.get(key))
                          for key, record in recorded_by_key.items()},
             "correlations": correlation_differences(repo / FL_RECORD / "correlations", target / "correlations"),
-            "prior_sharpe": {sid: {"recorded": recorded_priors[sid].get("prior_sharpe"),
-                                   "reproduced": plain(priors["priors"][sid].get("prior_sharpe")),
-                                   "prior_pass_recorded": recorded_priors[sid].get("prior_pass"),
-                                   "prior_pass_reproduced": priors["priors"][sid].get("prior_pass")}
-                             for sid in recorded_priors},
+            "series_summary": {sid: series_summary(priors["priors"][sid]) for sid in recorded_priors},
+            "fidelity_summary": {key: fidelity_summary(record) for key, record in reproduced_by_key.items()},
         }
+    result["recorded_series_summary"] = {sid: series_summary(record) for sid, record in recorded_priors.items()}
+    result["recorded_fidelity_summary"] = {key: fidelity_summary(record) for key, record in recorded_by_key.items()}
     return result, hashes
 
 
@@ -527,6 +539,10 @@ def annotate_downloads(fetched: Mapping[str, Mapping[str, Any]], vm_reg: Mapping
 
 
 # --------------------------------------------------------------------- report
+
+
+def _num(value: float | None, spec: str) -> str:
+    return "None" if value is None else format(value, spec)
 
 
 def _fmt(value: Any) -> str:
@@ -576,7 +592,7 @@ def report(manifest: Mapping[str, Any], vol: Mapping[str, Any], lab: Mapping[str
              f"largest difference {max(a['a2_in_house_rebuild']['max_abs_difference'].values(), default=None)}.",
              f"- A3, recorded reference against the registered rule: match {a['a3_reference_rule']['match']} over "
              f"{a['a3_reference_rule']['checked_sessions']} sessions from {a['a3_reference_rule']['checked_from']}, "
-             f"largest scale difference {a['a3_reference_rule']['max_abs_scale_difference']:.3g}.", ""]
+             f"largest scale difference {_num(a['a3_reference_rule']['max_abs_scale_difference'], '.3g')}.", ""]
     for row in a["a1_criteria"]["comparison"]["differing"][:20]:
         lines.append(f"  - differs: `{row['path']}` recorded {row['recorded']!r}, reproduced {row['reproduced']!r}")
     downloads = manifest.get("downloads") or {}
@@ -593,14 +609,22 @@ def report(manifest: Mapping[str, Any], vol: Mapping[str, Any], lab: Mapping[str
         raw, scaled = b["raw_momentum_drift"], b["scaled_reference_drift"]
         lines += ["## Layer B (current French vintage)", "",
                   f"Recorded vintage: {b['recorded_vintage']!r}. Downloaded: {b['momentum_vintage']!r}.", "",
-                  f"- Unscaled momentum: {raw['changed_sessions']} of {raw['common_sessions']} common sessions "
-                  f"differ beyond {TOLERANCE:g} (largest {_fmt(raw['max_abs_difference'])}, first "
-                  f"{raw['first_changed']}, last {raw['last_changed']}); {raw['only_in_current']} sessions added, "
-                  f"{raw['only_in_recorded']} removed.",
-                  f"- Scaled reference: {scaled['changed_sessions']} of {scaled['common_sessions']} sessions differ "
-                  f"(largest {_fmt(scaled['max_abs_difference'])}, correlation {_fmt(scaled['correlation'])}).", "",
-                  "Numbers on the downloaded vintage describe that vintage. They are not registered results and do "
-                  "not replace the recorded ones.", "",
+                  f"- Unscaled momentum, {raw['recorded_first']} to {raw['recorded_last']}: "
+                  f"{raw['changed_sessions']} of {raw['common_sessions']} common sessions differ beyond "
+                  f"{TOLERANCE:g} (largest {_num(raw['max_abs_difference'], '.2g')}, first {raw['first_changed']}, "
+                  f"last {raw['last_changed']}); {raw['added_inside_recorded_window']} sessions added and "
+                  f"{raw['removed_sessions']} removed inside that window, {raw['added_after_recorded_last']} added "
+                  f"after it. The record keeps the reference only from the end of the warm-up, so the downloaded "
+                  f"file's first {raw['added_before_recorded_first']} sessions have no recorded counterpart.",
+                  f"- Scaled reference: {scaled['changed_sessions']} of {scaled['common_sessions']} common sessions "
+                  f"differ (largest {_num(scaled['max_abs_difference'], '.2g')}, correlation "
+                  f"{_num(scaled['correlation'], '.9f')}).",
+                  "",
+                  "B1 is the downloaded file cut at the recorded last date, so it differs from the record only by "
+                  "history revisions. B2 runs through the downloaded file's last date, adding the extension. Numbers "
+                  "and pass flags on the downloaded vintage describe what the registered tests show on that input. "
+                  "They are not registered results, do not replace the recorded ones, and change no verdict: "
+                  "`vol_momentum_v1` stands as recorded and its forward stop rule governs it.", "",
                   "| quantity | recorded | A1 | B1 rf record | B1 rf recomputed | B2 rf record | B2 rf recomputed |",
                   "|---|---|---|---|---|---|---|"]
         w = b["windows"]
@@ -613,14 +637,43 @@ def report(manifest: Mapping[str, Any], vol: Mapping[str, Any], lab: Mapping[str
                      _get(w["b2_latest"]["rf_recomputed"]["values"], keys)]
             lines.append(f"| {label} | " + " | ".join(_fmt(cell) for cell in cells) + " |")
         lines.append("")
+        flips = [(window, rf, flag) for window in ("b1_recorded_window", "b2_latest")
+                 for rf in ("rf_from_record", "rf_recomputed")
+                 for flag, keys in (("economics pass", ("economics", "pass")), ("all four pass", ("promoted",)))
+                 if _get(w[window][rf]["values"], keys) != _get(recorded_summary, keys)]
+        for window, rf, flag in flips:
+            lines.append(f"- On the downloaded vintage, `{flag}` differs from the record in {window} with "
+                         f"{rf.replace('_', ' ')}.")
+        if flips:
+            lines.append("")
     if lab:
-        lines += ["## Factor lab priors (uncounted measurements)", "",
-                  "| series | recorded prior | recorded window | current |", "|---|---|---|---|"]
         recorded_window, current = lab["windows"]["recorded_window"], lab["windows"]["current"]
-        for sid, entry in recorded_window["prior_sharpe"].items():
-            lines.append(f"| {sid} | {_fmt(entry['recorded'])} | {_fmt(entry['reproduced'])} | "
-                         f"{_fmt(current['prior_sharpe'][sid]['reproduced'])} |")
+        recorded_series_summary = lab["recorded_series_summary"]
+        lines += ["## Factor lab (uncounted measurements)", "",
+                  "Full-sample Sharpe and prior Sharpe: recorded, recomputed on the downloaded files cut at each "
+                  "series' recorded last date, and recomputed through the downloaded files' last date. Series "
+                  "without a publication date have no prior (descriptive only).", "",
+                  "| series | full Sharpe recorded | cut | current | prior recorded | cut | current |",
+                  "|---|---|---|---|---|---|---|"]
+        for sid, entry in recorded_series_summary.items():
+            cut, now = recorded_window["series_summary"][sid], current["series_summary"][sid]
+            lines.append(f"| {sid} | {_fmt(entry['full_sharpe'])} | {_fmt(cut['full_sharpe'])} | "
+                         f"{_fmt(now['full_sharpe'])} | {_fmt(entry['prior_sharpe'])} | {_fmt(cut['prior_sharpe'])} | "
+                         f"{_fmt(now['prior_sharpe'])} |")
+        lines += ["", "| tracking pair | correlation recorded | cut | current |", "|---|---|---|---|"]
+        for key, entry in lab["recorded_fidelity_summary"].items():
+            lines.append(f"| {key} | {_fmt(entry['corr'])} | "
+                         f"{_fmt(_get(recorded_window['fidelity_summary'], (key, 'corr')))} | "
+                         f"{_fmt(_get(current['fidelity_summary'], (key, 'corr')))} |")
         lines.append("")
+        for label in ("recorded_window", "current"):
+            entries = lab["windows"][label]["correlations"]
+            unmatched = sorted(name for name, entry in entries.items() if entry.get("max_abs_difference") is None)
+            largest = max((entry["max_abs_difference"] for name, entry in entries.items() if name not in unmatched),
+                          default=float("nan"))
+            lines.append(f"- {label}: largest difference across {len(entries) - len(unmatched)} correlation "
+                         f"matrices {largest:.2g}" + (f"; not comparable (labels differ or file missing): "
+                                                      f"{', '.join(unmatched)}." if unmatched else "."))
         for label in ("recorded_window", "current"):
             window = lab["windows"][label]
             differing_priors = sum(1 for block in window["priors"].values() if not block["match"])

@@ -143,7 +143,8 @@ def test_drift_counts_changed_added_and_removed_sessions():
     result = rp.drift(recorded, current)
     assert result["common_sessions"] == 9 and result["changed_sessions"] == 1
     assert result["max_abs_difference"] == pytest.approx(0.5)
-    assert result["only_in_recorded"] == 1 and result["only_in_current"] == 2
+    assert result["removed_sessions"] == 1 and result["added_after_recorded_last"] == 2
+    assert result["added_before_recorded_first"] == 0 and result["added_inside_recorded_window"] == 0
     assert result["first_changed"] == str(index[4].date())
 
 
