@@ -2,7 +2,8 @@
 
 Updated: 2026-09-15. This is the statement the engine's stage 6 exit requires: what the published
 reference results do and do not establish, drawn only from evidence recorded in this repository.
-It is written to be read before the numbers, not after.
+It is written to be read before the numbers, not after. Corrections to how recorded results are
+described are in [`erratum_2026-10-14.md`](erratum_2026-10-14.md).
 
 **The short version.** No configuration in this repository has cleared the project's own evidence
 bar. Every published number comes from a simulation with modeled fills, not from realized

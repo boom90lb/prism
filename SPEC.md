@@ -20,10 +20,9 @@ the certification under `docs/` remain as the research record.
   `ops/paper_loop_nightly.sh` (decide at close, next-open orders), 06:50
   `ops/paper_sweep_morning.sh` (complete unfilled auction residuals). Both end
   with `prism-doctor`; a nonzero exit raises `{run-dir}/ALERT`.
-- **Last completed session 2026-08-14** (EXIT 0; doctor 15 pass / 1 warn;
-  equity 944,445; 99 positions; regime clock 12/21 clean sessions). No session
-  has run since — the scheduler stopped firing, the code did not fail.
-  Restarting the scheduler is the first operational task.
+- **Schedule.** The loop was dark from 2026-08-14 (both scheduled tasks had
+  been disabled; the code did not fail) until 2026-09-25, when the tasks were
+  re-enabled (`docs/operations.md`, `docs/erratum_2026-10-14.md` E5).
 - **Evidence for the live book** (`results/demotion_b1/`, price-return
   convention, 2021-03 → 2026-06 out-of-sample, 21 purged folds): gross total
   return 32.4 %, total cost 3.7 %, net 27.6 %; net annualized Sharpe 0.465;
@@ -109,7 +108,8 @@ the certification under `docs/` remain as the research record.
   but fails economics (F3 0.117 vs 0.442). Its combination with vol-scaled
   momentum clears the hurdle before costs (0.365 vs 0.351) and misses after
   them (F3 0.275); in-house it ran at net Sharpe 0.82 against momentum's
-  0.66, on the same sample. `earnings_daily_v1` (discovery): the daily
+  0.66; both are in-sample, over different windows (802 and 929 sessions),
+  and neither is a forecast (`docs/erratum_2026-10-14.md` E1). `earnings_daily_v1` (discovery): the daily
   announcement return (net 0.28) and the announcement premium (gross 0.75,
   net 0.27 at 57× turnover a year, −0.10 correlation with momentum) survive
   the in-house kill. At their declared horizons both fail N6's viability

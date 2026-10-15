@@ -23,7 +23,9 @@ is wrong by construction.
 
 1. **Env-only.** Credentials enter through the process environment or a
    gitignored `.env` (loaded by `prism.workspace.load_env`, called from each
-   command's `main` -- never at import). Never CLI arguments
+   command's `main` -- never at import). `PRISM_DISABLE_DOTENV=1` switches
+   discovery off (the test suite sets it in `tests/conftest.py`; operators who
+   export credentials themselves can too); an explicit path still loads. Never CLI arguments
    (shell history, `ps`), never tracked files, never code literals.
 2. **Fail-loud on absence (N7).** Every `from_env` constructor raises when a
    required credential is missing (`alpaca.py`, `alpaca_data.py`,
@@ -71,6 +73,6 @@ is wrong by construction.
   (`ops/artifacts_sync.sh` since 2026-09-30, replacing the operator-local
   `~/bin/prism_artifacts_sync.sh`; wired into the nightly runner and
   unconditional on loop exit status — a red loop is exactly when the ledger
-  copy matters most); ratification commits carry never-retargeted
-  `ratify/*` tags on origin with OpenTimestamps proofs in-tree
-  (`docs/anchors/`). Closed 2026-07-19: first off-box push verified.
+  copy matters most); the `ratify/*` tags and in-tree timestamp
+  proofs this sentence once described were retired in the 2026-09-02
+  consolidation and no longer exist (`docs/erratum_2026-10-14.md` E7). Closed 2026-07-19: first off-box push verified.
