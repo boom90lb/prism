@@ -3,7 +3,6 @@
 import pandas as pd
 import pytest
 
-pytestmark = pytest.mark.research
 
 from prism.residual.factors import (  # noqa: E402
     ResidualStatArbConfig,

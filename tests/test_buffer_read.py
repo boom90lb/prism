@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-pytestmark = pytest.mark.research
 
 from research.scripts import buffer_read as br  # noqa: E402
 

@@ -15,7 +15,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-pytestmark = pytest.mark.research
 
 from research.scripts import earnings_replication as er  # noqa: E402
 from research.scripts.factor_lab import LabError  # noqa: E402

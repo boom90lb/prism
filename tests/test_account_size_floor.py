@@ -5,7 +5,6 @@ import json
 import pandas as pd
 import pytest
 
-pytestmark = pytest.mark.research
 
 from research.scripts.account_size_floor import (  # noqa: E402
     achieved_positions_by_refresh,

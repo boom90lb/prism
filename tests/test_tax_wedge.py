@@ -6,7 +6,6 @@ asymmetry is exercised deterministically against hand-computed values.
 
 import pytest
 
-pytestmark = pytest.mark.research
 
 from research.scripts.tax_wedge import (  # noqa: E402
     capital_engine,

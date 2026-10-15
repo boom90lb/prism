@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-pytestmark = pytest.mark.research
 
 from research.scripts.cost_frontier import (  # noqa: E402
     aggregate_frontier,

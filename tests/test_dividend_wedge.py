@@ -3,7 +3,6 @@
 import pandas as pd
 import pytest
 
-pytestmark = pytest.mark.research
 
 from research.scripts.dividend_wedge import dividend_panel, wedge_report  # noqa: E402
 

@@ -14,7 +14,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-pytestmark = pytest.mark.research
 
 from research.scripts import factor_lab as fl  # noqa: E402
 

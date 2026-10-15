@@ -3,7 +3,6 @@
 import pandas as pd
 import pytest
 
-pytestmark = pytest.mark.research
 
 from research.scripts.data_integrity_sweep import (  # noqa: E402
     NYSE_FULL_CLOSURES,

@@ -15,7 +15,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-pytestmark = pytest.mark.research
 
 from research.scripts import fundamentals_replication as fr  # noqa: E402
 

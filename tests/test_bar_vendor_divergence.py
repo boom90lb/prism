@@ -13,7 +13,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-pytestmark = pytest.mark.research
 
 from prism.live.alpaca_data import DATA_BASE_URL, AlpacaBarSource  # noqa: E402
 from research.scripts.bar_vendor_divergence import (  # noqa: E402

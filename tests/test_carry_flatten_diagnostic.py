@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-pytestmark = pytest.mark.research
 
 from research.scripts.carry_flatten_diagnostic import (  # noqa: E402
     assert_fold_flattened,

@@ -43,6 +43,8 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 FORBIDDEN_ROOTS = {
+    "sklearn",
+    "tqdm",
     "cvxpy",
     "clarabel",
     "xgboost",

@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-pytestmark = pytest.mark.research
 
 from research.scripts.beta_telemetry import (  # noqa: E402
     beta_cell,

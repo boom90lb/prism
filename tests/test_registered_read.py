@@ -2,11 +2,7 @@
 
 from pathlib import Path
 
-import pytest
-
-pytestmark = pytest.mark.research
-
-from research.scripts import registered_read as rr  # noqa: E402
+from research.scripts import registered_read as rr
 
 
 def test_a_single_arm_registration_records_a_skipped_comparison():
