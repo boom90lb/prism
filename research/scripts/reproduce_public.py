@@ -662,7 +662,7 @@ def report(manifest: Mapping[str, Any], vol: Mapping[str, Any], lab: Mapping[str
                          f"{_fmt(now['prior_sharpe'])} |")
         lines += ["", "| tracking pair | correlation recorded | cut | current |", "|---|---|---|---|"]
         for key, entry in lab["recorded_fidelity_summary"].items():
-            lines.append(f"| {key} | {_fmt(entry['corr'])} | "
+            lines.append(f"| {key.replace('|', ' / ')} | {_fmt(entry['corr'])} | "
                          f"{_fmt(_get(recorded_window['fidelity_summary'], (key, 'corr')))} | "
                          f"{_fmt(_get(current['fidelity_summary'], (key, 'corr')))} |")
         lines.append("")
