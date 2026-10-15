@@ -206,3 +206,20 @@ formal/.lake/
 
 # Trial-log append locks are process state, never evidence.
 trials/*.lock
+
+# Workspace state (fitted artifacts, host id): never evidence
+state/
+# Credentials and local environment variants
+.env.*
+!.env.example
+.envrc
+*.pem
+*.key
+credentials*.json
+# Editors and local tooling
+.idea/
+.vscode/
+nohup.out
+# Agent tooling and local worktrees (each user's own)
+.claude/
+.worktrees/
