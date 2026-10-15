@@ -30,6 +30,7 @@ except ImportError:  # pragma: no cover - non-POSIX platform
     fcntl = None  # type: ignore[assignment]
 
 from prism.validation.hurdle import PACKET_BLOCK_KEYS as HURDLE_PACKET_KEYS
+from prism.validation.hurdle import SLEEVE_BLOCK_KEYS as HURDLE_SLEEVE_KEYS
 from prism.validation.hurdle import HurdleResult
 from prism.validation.metrics import periodic_sharpe
 
@@ -406,10 +407,11 @@ def build_research_claim_packet(
 def _coerce_hurdle_block(value: HurdleResult | Mapping[str, Any] | None) -> dict[str, Any] | None:
     """The packet's ``hurdle`` block from a result or a mapping, or None when absent.
 
-    A mapping must carry every key of ``HURDLE_PACKET_KEYS``; a block with a
-    key missing is refused rather than written short, because a hurdle whose
-    volatility basis or rate source is unrecorded is the ambiguity the block
-    exists to remove.
+    A mapping must carry every key of ``HURDLE_PACKET_KEYS``, and every key of
+    ``HURDLE_SLEEVE_KEYS`` in its optional ``sleeve`` sub-block when it has
+    one; a block with a key missing is refused rather than written short,
+    because a hurdle whose volatility basis or rate source is unrecorded is the
+    ambiguity the block exists to remove.
     """
     if value is None:
         return None
@@ -417,10 +419,27 @@ def _coerce_hurdle_block(value: HurdleResult | Mapping[str, Any] | None) -> dict
         return value.packet_block()
     if not isinstance(value, Mapping):
         raise ValueError(f"hurdle must be a HurdleResult or a mapping, got {type(value).__name__}")
-    missing = [key for key in HURDLE_PACKET_KEYS if key not in value]
+    missing = _missing_hurdle_keys(value)
     if missing:
         raise ValueError(f"hurdle block missing keys {missing}; required keys are {list(HURDLE_PACKET_KEYS)}")
     return {str(k): v for k, v in value.items()}
+
+
+def _missing_hurdle_keys(block: Mapping[str, Any]) -> list[str]:
+    """Required keys absent from a hurdle block, ``sleeve.<key>`` for its optional ETF sub-block.
+
+    The ``sleeve`` sub-block is present only for a hurdle stated with idle
+    equity held in a T-bill ETF (:data:`prism.validation.hurdle.SLEEVE_BLOCK_KEYS`);
+    a block without it is complete, so every packet written before it existed
+    still validates.
+    """
+    missing = [key for key in HURDLE_PACKET_KEYS if key not in block]
+    if "sleeve" in block:
+        sleeve = block["sleeve"]
+        if not isinstance(sleeve, Mapping):
+            raise ValueError(f"hurdle block sleeve is not an object, got {type(sleeve).__name__}")
+        missing.extend(f"sleeve.{key}" for key in HURDLE_SLEEVE_KEYS if key not in sleeve)
+    return missing
 
 
 def write_research_claim_packet(packet: ResearchClaimPacket, path: Path | str) -> None:
@@ -530,7 +549,7 @@ def validate_claim_packet_dir(
     if hurdle is not None:
         if not isinstance(hurdle, Mapping):
             raise ValueError(f"claim packet hurdle is not an object: {packet_path}")
-        missing_hurdle = [key for key in HURDLE_PACKET_KEYS if key not in hurdle]
+        missing_hurdle = _missing_hurdle_keys(hurdle)
         if missing_hurdle:
             raise ValueError(f"claim packet hurdle block missing keys {missing_hurdle}: {packet_path}")
 
