@@ -1018,7 +1018,7 @@ def import_legacy(
 
     *A row the session table cannot date is not written.* Availability is the
     session close of a row's time of record plus the source's lag, and
-    :mod:`prism.io.sessions` covers 2006-2027 only. Bars outside it are dropped
+    :mod:`prism.io.sessions` covers 2006-2028 only. Bars outside it are dropped
     with the series truncated and counted; a series wholly outside is skipped
     and named; an event outside it is not written and is counted. Decision D12
     widened the table from 2020 to 2006 for exactly this reason: the trend

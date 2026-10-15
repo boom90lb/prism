@@ -26,7 +26,7 @@ different answers and four different operating consequences:
 
 **A holiday is not a missed run.** This is the case the check exists to get
 right and the case weekday arithmetic gets wrong. The engine carries
-``prism.io.sessions`` — a rule-derived exchange calendar covering 2006-2027 —
+``prism.io.sessions`` — a rule-derived exchange calendar covering 2006-2028 —
 precisely so that "the job did not fire" and "the market was shut" are
 different answers. Scheduler liveness counts *sessions* between the last
 recorded decision bar and the last expected session, and a date the table

@@ -650,8 +650,9 @@ def test_a_run_directory_that_has_decided_nothing_is_not_ok() -> None:
 
 
 def test_a_date_the_table_cannot_cover_raises_rather_than_counting_weekdays() -> None:
+    beyond = sessions.coverage_end() + dt.timedelta(days=3)
     with pytest.raises(sessions.SessionTableRangeError):
-        check_scheduler(last_decision_bar="2028-01-03", as_of="2028-01-10")
+        check_scheduler(last_decision_bar=beyond.isoformat(), as_of=(beyond + dt.timedelta(days=7)).isoformat())
 
 
 def test_the_verdict_is_the_same_whenever_it_is_evaluated() -> None:
@@ -797,9 +798,10 @@ def test_the_doctor_warns_rather_than_failing_on_a_run_directory_that_never_ran(
 def test_the_doctor_fails_loud_outside_the_session_table(tmp_path: Path) -> None:
     from prism.scripts.doctor import check_missed_sessions
 
+    beyond = sessions.coverage_end() + dt.timedelta(days=3)
     run_dir = tmp_path / "run"
-    write_equity(run_dir, ["2028-01-03"])
-    result = check_missed_sessions(run_dir, today=dt.date(2028, 1, 10))
+    write_equity(run_dir, [beyond.isoformat()])
+    result = check_missed_sessions(run_dir, today=beyond + dt.timedelta(days=7))
     assert result.status == "FAIL" and "bundled session table" in result.detail
 
 
