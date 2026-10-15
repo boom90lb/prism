@@ -8,6 +8,7 @@ version = "0.4.0"
 description = "Prism — a cross-sectional systematic trading engine (score → residualize → construct → execute), evaluated under a purged-WFO, cost-realistic, deflation-adjusted honesty harness"
 readme = "README.md"
 license = "MIT"
+license-files = ["LICENSE", "NOTICE"]
 requires-python = ">=3.12"
 authors = [
     { name = "Brendon Reperttang", email = "boom90lb@alum.mit.edu" },

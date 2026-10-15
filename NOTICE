@@ -1,0 +1,299 @@
+Prism (distribution name prism-trading)
+Copyright (c) 2025 Brendon Reperttang
+
+WHAT THE MIT LICENSE COVERS
+
+The MIT License in LICENSE covers this project's source code and its own
+documentation. It does not cover third-party data, or tables and series derived
+from third-party data, that this repository contains. Those remain under their
+providers' terms, listed below. Records the project computed itself (backtest
+returns, statistics, trial ledgers) are offered under the MIT License only to
+the extent the project holds rights in them; where a record reproduces or is
+derived from a series listed below, that part stays under the provider's terms.
+
+Data that the code downloads at run time (price bars, SEC filings, factor
+files, FRED series and similar) is not part of this repository. Whoever runs
+the download is bound by the provider's terms.
+
+Each entry gives the tracked paths it covers (git pathspec globs, relative to
+the repository root), the provider's terms as read at the source on 2026-10-14
+with the URL and a quoted sentence, and the attribution the provider asks for.
+"Not confirmed" means the terms could not be read at the source, or no licence
+was found there. Whether each listed file may stay in a public repository is an
+open question for the project owner; nothing has been removed. This notice
+describes the current tree only; older commits in the public history may hold
+material not listed here. Nothing in this notice is legal advice.
+
+
+1. WIKIPEDIA (index membership tables)
+
+Paths:
+  data/universe/sp500_pit_*.txt
+  data/universe/sp400_pit_resolved_*.txt
+  data/universe/sp*_membership_*.parquet
+  data/universe/sp500_current.txt
+  data/universe/archive/sp500_current_*.txt
+  data/universe/sp500_sources_*.json
+  data/universe/sp*_coverage_*.json
+  data/universe/sp400_exits_*.json
+  tests/fixtures/paper_replay/universe.txt
+Ticker lists embedded in records under results/ are copied from these files.
+
+Source: the English Wikipedia articles "List of S&P 500 companies",
+"Historical components of the S&P 500", "List of S&P 400 companies" and
+"List of S&P 600 companies". The revisions used for the 2026-09-25 build are
+pinned by oldid and SHA-256 in data/universe/sp500_sources_2026-09-25.json.
+
+Terms: CC BY-SA 4.0, https://creativecommons.org/licenses/by-sa/4.0/
+  https://en.wikipedia.org/wiki/Wikipedia:Copyrights: "Permission is granted
+  to copy, distribute and/or modify Wikipedia's text under the terms of the
+  Creative Commons Attribution-ShareAlike 4.0 International License and,
+  unless otherwise noted, the GNU Free Documentation License, unversioned,
+  with no invariant sections, front-cover texts, or back-cover texts."
+  https://foundation.wikimedia.org/wiki/Policy:Terms_of_Use: "When modifying
+  or making additions to text that you have obtained from a Project Website,
+  you agree to license the modified or added content under CC BY-SA 4.0 or
+  later".
+
+Attribution: derived from the Wikipedia articles named above, by their
+contributors (see each article's page history), licensed CC BY-SA 4.0.
+Changes: the tables were parsed into ticker, start and end intervals, and
+tickers were reconciled with the reviewed rename, quarantine and patch tables
+in src/prism/io/universe_sp500.py. These files remain under CC BY-SA 4.0,
+not the MIT License.
+
+
+2. DATASETS/S-AND-P-500-COMPANIES (current constituents list)
+
+Paths:
+  data/universe/sp500-2026-06-11.txt
+
+Source: https://github.com/datasets/s-and-p-500-companies (constituents.csv,
+fetched 2026-06-11).
+
+Terms: ODC-PDDL-1.0. README: "All data is licensed under the Open Data
+Commons Public Domain Dedication and License. All code is licensed under the
+MIT/BSD license." Its datapackage.json names its source as Wikipedia's
+"List of S&P 500 companies", so this file is also treated as derived from
+Wikipedia (entry 1).
+
+Attribution: none required; the README asks for "a link back or credit to
+Rufus Pollock and the Open Knowledge Foundation".
+
+
+3. JENSEN, KELLY AND PEDERSEN (JKP) GLOBAL FACTOR DATA
+
+Paths (series or statistics computed from JKP files):
+  results/2026-09-factor-lab/sizing/returns.parquet  (columns RESMOM:*)
+  results/2026-09-factor-lab/correlations/corr_*.csv (RESMOM and jkp:*)
+  results/2026-09-factor-lab/*.json
+  results/2026-09-factor-lab/sizing/summary.json
+  results/2026-09-fundamentals/replication/*        (public|* columns)
+
+Source: https://jkpfactors.com/ (factor files fetched from its download
+links; URLs and hashes in results/2026-09-factor-lab/sources.json and the
+registrations under registrations/).
+
+Terms: CC BY-NC 4.0, https://creativecommons.org/licenses/by-nc/4.0/
+  https://jkpfactors.com/ and https://jkpfactors.com/data, page footer:
+  "Data is licensed under CC BY-NC 4.0." and "Analysis code is available
+  under the MIT License."
+The licence does not permit commercial use, and the MIT grant does not extend
+to these series. Whether trading real money with a configuration evaluated
+against them counts as commercial use is not decided here.
+
+Attribution: the site asks, "Please cite our paper if you are using this
+data": Jensen, T. I., B. Kelly and L. H. Pedersen (2023), "Is There a
+Replication Crisis in Finance?", The Journal of Finance 78(5), 2465-2518.
+
+
+4. KENNETH R. FRENCH DATA LIBRARY
+
+Paths (series or statistics computed from French files):
+  results/2026-09-factor-lab/sizing/returns.parquet  (columns UMD:*)
+  results/2026-09-factor-lab/correlations/corr_*.csv (MKT_RF, SMB, HML, RMW,
+                                                      CMA, UMD, STREV)
+  results/2026-09-factor-lab/*.json
+  results/2026-09-factor-lab/sizing/summary.json
+  results/2026-09-vol-momentum/*                     (reference|* columns)
+  results/2026-09-fundamentals/replication/*         (public|* columns)
+  results/2026-09-earnings/replication/*             (public|* columns)
+The risk-free rate in the replication records (results/2026-09-*) is the
+French RF series.
+
+Source: https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html
+
+Terms: not confirmed. No licence or permission to redistribute was found on
+the library page or in the files. The page footer and each file carry a
+copyright notice; the daily three-factor file read on 2026-10-14 ends:
+"Copyright 2026 Eugene F. Fama and Kenneth R. French". The files state that
+they are built from the CRSP database. The repository does not store the
+French files: the code fetches them at run time and records their hashes.
+
+Attribution: Kenneth R. French Data Library, at the URL above.
+
+
+5. CHEN AND ZIMMERMANN, OPEN SOURCE ASSET PRICING
+
+Paths:
+  results/2026-09-earnings/replication/*  (public|* columns, statistics)
+
+Source: https://www.openassetpricing.com/ (daily value-weighted predictor
+portfolios; URL and hash in registrations/2026-09-earnings-replication.toml).
+
+Terms: not confirmed. No data licence was found:
+https://www.openassetpricing.com/license/ returned HTTP 404 on 2026-10-14.
+The code repository, https://github.com/OpenSourceAP/CrossSection, is
+GPL-2.0.
+
+Attribution: the site asks, "If you use the data, please cite our paper":
+Chen, A. Y. and T. Zimmermann (2022), "Open Source Cross-Sectional Asset
+Pricing", Critical Finance Review, 207-264.
+
+
+6. ALPACA (corporate actions, market data and paper-account records)
+
+Paths:
+  data/frozen/fundamentals_v1/splits.parquet   (split events)
+  results/spin_adjustment_sweep_*.json         (corporate-action records)
+  results/dividend_wedge_*.json                (dividend records, summarized)
+  results/iex_eligibility_*.json               (volume statistics, IEX bars)
+  data/distributions/verification_*.json       (dividend cross-check)
+  tests/fixtures/paper_replay/*.jsonl          (a capture of this project's
+  tests/fixtures/paper_replay/state_final.json  paper-account run: its fills,
+  tests/fixtures/paper_replay/spinoff_mask_*.json  orders and equity)
+
+Source: Alpaca Securities LLC and AlpacaDB, Inc. APIs.
+
+Terms: not confirmed. No written consent from Alpaca is recorded in this
+repository.
+  Alpaca Customer Agreement, version V26.2026.07, section 30,
+  https://files.alpaca.markets/disclosures/library/AcctAppMarginAndCustAgmt.pdf:
+  "I agree not to reproduce, distribute, sell or commercially exploit the
+  market data in any manner without written consent from Alpaca."
+  Alpaca Terms & Conditions,
+  https://files.alpaca.markets/disclosures/library/TermsAndConditions.pdf,
+  which defines Content to include "account positions, balances,
+  transactions, confirmations, and order history": "No part of the Service or
+  Content may be copied, reproduced, republished, uploaded, posted, publicly
+  displayed, encoded, translated, transmitted or distributed in any way
+  (including "mirroring") to any other computer, server, web site or other
+  medium for publication or distribution or for any commercial enterprise,
+  without Alpaca's express prior written consent."
+
+Attribution: none specified.
+
+
+7. CUSIP IDENTIFIERS
+
+Paths:
+  results/spin_adjustment_sweep_2026-07-19.json
+  tests/fixtures/paper_replay/spinoff_mask_2026-08-11.json
+  data/distributions/SPY.provenance.json   (the fund's own CUSIP, as
+  data/distributions/PDBC.provenance.json   published by its issuer)
+  data/distributions/UUP.provenance.json
+
+The first two files carry CUSIPs from Alpaca's corporate-action records (118
+distinct identifiers between them).
+
+Terms: not confirmed. The project holds no CUSIP Global Services licence.
+  https://www.cusip.com/services/license-fees.html: "The use of CGS Data,
+  including storage in databases and distribution to third parties, may
+  require such user to first enter into a license agreement directly with
+  CGS".
+
+Attribution: "CUSIP is a registered trademark of the American Bankers
+Association." (same page).
+
+
+8. SEC EDGAR
+
+Paths:
+  data/universe/cik_*
+  data/universe/edgar_coverage_*.json
+In-house return series computed from EDGAR filings and price bars:
+  results/2026-09-fundamentals/returns/*.csv
+  results/2026-09-earnings/returns/*.csv
+
+Source: U.S. Securities and Exchange Commission, EDGAR (data.sec.gov and
+www.sec.gov).
+
+Terms: https://www.sec.gov/privacy, "Website Dissemination": "Information
+presented on sec.gov is considered public information and may be copied or
+further distributed by users of the web site without the SEC's permission."
+(Read through a fetch tool: sec.gov refuses automated requests whose
+User-Agent does not name a contact e-mail address, the same rule
+src/prism/io/edgar.py enforces through PRISM_SEC_USER_AGENT.)
+
+Attribution: the same paragraph asks, "Please consider appropriate citation
+to the SEC as the source."
+
+
+9. FRED, FEDERAL RESERVE BANK OF ST. LOUIS
+
+Paths: none. No FRED series is stored in this repository. The code fetches
+FRED series at run time (src/prism/regime/sources.py, src/prism/regime/fetch.py,
+research/scripts/forward_read.py).
+
+Terms: https://fred.stlouisfed.org/legal/ sorts series into copyright
+categories, shown on each series' page. For "Public Domain: Citation
+requested": "These series may be under copyright or in the public domain and
+may be used without permission, provided you do not engage in any prohibited
+use. When using, please cite the data source and acknowledge that you
+obtained the data from FRED". The DTB3 page links its licence to that
+category; its source is the Board of Governors of the Federal Reserve System
+(H.15). The other series the regime layer fetches were not checked.
+
+Attribution (DTB3, as suggested on its page): Board of Governors of the
+Federal Reserve System (US), 3-Month Treasury Bill Secondary Market Rate,
+Discount Basis [DTB3], retrieved from FRED, Federal Reserve Bank of
+St. Louis; https://fred.stlouisfed.org/series/DTB3.
+
+
+10. TWELVE DATA (daily price bars behind the in-house records)
+
+Paths: no raw bars are stored. Records and return series computed from them:
+  results/*/claim_packet.json   (each names Twelve Data as its bar source)
+  results/2026-09-characteristics/returns/*.csv
+  results/2026-09-fundamentals/returns/*.csv
+  results/2026-09-earnings/returns/*.csv
+  results/2026-09-vol-momentum/*  (in_house|* columns)
+  data/universe/sp*_pit_resolved_*.txt  (tickers resolved against Twelve Data)
+
+Terms: https://twelvedata.com/terms (last updated January 1, 2026), section
+2.2 grants a licence to "(c) Create Derived Data that cannot be
+reverse-engineered to recreate the original Data" and to "(e) Redistribute or
+provide external display of Data only if and as expressly authorized by a
+Redistribution Rights Add-On or separate written agreement with Twelve Data";
+section 2.3 bars customers from "(l) Use Free Tier data for commercial
+purposes". Whether the portfolio-level returns stored here count as derived
+data in that sense is not confirmed.
+
+
+11. ETF ISSUERS (distribution histories)
+
+Paths:
+  data/distributions/*.csv
+  data/distributions/*.provenance.json
+
+Source: issuer websites of iShares (BlackRock), SPDR (State Street Global
+Advisors) and Invesco. Each file's source URL and capture time are in its
+provenance file.
+
+Terms: not confirmed; the issuers' terms were not checked.
+
+
+TRADEMARKS
+
+"S&P", "S&P 500" and "S&P MidCap 400" are trademarks of Standard & Poor's
+Financial Services LLC, licensed to S&P Dow Jones Indices LLC. The index
+names appear here only to identify the indices whose membership the files
+approximate. This project is not affiliated with, sponsored or endorsed by
+S&P Dow Jones Indices LLC or its affiliates, and its membership files are not
+index data from S&P Dow Jones Indices. (Ownership wording follows index
+licensees' published disclaimers; spglobal.com refused automated requests on
+2026-10-14, so it is not confirmed at the source.)
+
+CUSIP is a registered trademark of the American Bankers Association.
+Alpaca, Twelve Data, FRED, EDGAR, iShares, SPDR and Invesco are names or
+trademarks of their respective owners.
