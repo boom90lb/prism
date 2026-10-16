@@ -256,6 +256,138 @@ def refuse_tranche_state_under_single_book(state: LoopState | None) -> None:
         )
 
 
+@dataclass(frozen=True)
+class TrancheStateReport:
+    """What a run directory's persisted tranche states say, and what is wrong with them.
+
+    ``cycle`` is the cadence the offsets imply (``spacing * count``), ``built``
+    the tranches that have produced an output, ``gross`` the account gross of
+    the summed sub-targets at weight ``1/count``. ``problems`` is empty for a
+    state the tranched cycle could have written.
+    """
+
+    count: int
+    book: str | None
+    base_offset: int | None
+    cycle: int | None
+    built: int
+    gross: float | None
+    problems: tuple[str, ...]
+
+
+def inspect_tranche_state(state: LoopState | None) -> TrancheStateReport | None:
+    """Check the tranche states of ``state`` against what the tranched cycle writes; None when it holds none.
+
+    Read-only, for ``prism-doctor``; the cycle never calls it. The checks are
+    the invariants the cycle relies on or establishes: ids ``<book>/tNN`` for
+    one book with indices ``0..K-1``; grid offsets ``(base + j * s) % (s * K)``
+    (:func:`prism.composition.tranche_plans`, where ``s`` is the spacing and
+    ``s * K`` the cadence, inferred from the offsets because the cadence is not
+    persisted); finite sub-targets; a scale record whose last good scale is
+    finite and positive (the cycle refuses otherwise); output bars no later
+    than the state's last refresh; expiry bars no earlier than the output; and
+    no other component kind in the same state.
+    """
+    if state is None:
+        return None
+    tranched = [c for c in state.components if TRANCHE_ID.match(c.component_id)]
+    if not tranched:
+        return None
+    problems: list[str] = []
+    others = sorted(c.component_id for c in state.components if not TRANCHE_ID.match(c.component_id))
+    if others:
+        problems.append(f"the state mixes tranche states with other components {others[:3]}")
+
+    parsed = [(TRANCHE_ID.match(c.component_id), c) for c in tranched]
+    books = sorted({match.group("book") for match, _ in parsed if match is not None})
+    book = books[0] if len(books) == 1 else None
+    if len(books) != 1:
+        problems.append(f"tranche ids name {len(books)} books {books}; one book is tranched at a time")
+    elif book != TRANCHED_BOOK:
+        problems.append(f"tranches of book {book!r}; the tranched cycle is implemented for {TRANCHED_BOOK!r}")
+    by_index: dict[int, ComponentState] = {}
+    for match, component in parsed:
+        assert match is not None
+        index = int(match.group("index"))
+        if index in by_index:
+            problems.append(f"tranche index {index:02d} appears more than once")
+        by_index[index] = component
+    count = len(tranched)
+    if sorted(by_index) != list(range(count)):
+        problems.append(f"tranche indices {sorted(by_index)} are not 00..{count - 1:02d}")
+    if count < 2:
+        problems.append("a single tranche state; tranche_plans gives one tranche the book's own id")
+
+    base_offset: int | None = None
+    cycle: int | None = None
+    offsets = {index: component.phase_offset_bars for index, component in by_index.items()}
+    unplaced = sorted(index for index, offset in offsets.items() if offset is None)
+    if unplaced:
+        problems.append(f"tranche(s) {[f't{i:02d}' for i in unplaced]} persist no grid offset")
+    elif count >= 2 and sorted(by_index) == list(range(count)):
+        base_offset = int(offsets[0])  # type: ignore[arg-type]
+        ordered = sorted(int(offset) for offset in offsets.values())  # type: ignore[arg-type]
+        gaps = {b - a for a, b in zip(ordered, ordered[1:])}
+        spacing = gaps.pop() if len(gaps) == 1 else None
+        if spacing is None or spacing < 1 or ordered[0] >= spacing:
+            problems.append(f"grid offsets {ordered} are not evenly spaced on one cycle")
+        else:
+            cycle = spacing * count
+            wrong = [
+                f"t{j:02d}={offsets[j]} (expected {(base_offset + j * spacing) % cycle})"
+                for j in range(count)
+                if offsets[j] != (base_offset + j * spacing) % cycle
+            ]
+            if wrong:
+                problems.append(
+                    f"grid offsets do not follow base {base_offset} + j*{spacing} mod {cycle}: {wrong[:3]}"
+                )
+
+    built = 0
+    gross = 0.0
+    finite_gross = True
+    for index in sorted(by_index):
+        component = by_index[index]
+        tid = component.component_id
+        if component.last_output_bar is not None:
+            built += 1
+        bad = sorted(
+            str(sid)
+            for sid, value in component.sub_targets.items()
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(float(value))
+        )
+        if bad:
+            problems.append(f"{tid} carries non-finite sub-targets for {bad[:3]}")
+            finite_gross = False
+        else:
+            gross += sum(abs(float(value)) for value in component.sub_targets.values()) / count
+        if component.sizing is not None:
+            try:
+                _last_good(component)
+            except TrancheError as exc:
+                problems.append(str(exc))
+        last_refresh = state.last_refresh_bar
+        if component.last_output_bar is not None and last_refresh is not None:
+            if str(component.last_output_bar) > str(last_refresh):
+                problems.append(
+                    f"{tid} last output {component.last_output_bar} is after the state's last refresh {last_refresh}"
+                )
+        if component.last_output_bar is not None and component.expires_bar is not None:
+            if str(component.expires_bar) < str(component.last_output_bar):
+                problems.append(
+                    f"{tid} expires {component.expires_bar}, before its output {component.last_output_bar}"
+                )
+    return TrancheStateReport(
+        count=count,
+        book=book,
+        base_offset=base_offset,
+        cycle=cycle,
+        built=built,
+        gross=gross if finite_gross else None,
+        problems=tuple(problems),
+    )
+
+
 def open_tranche_session(
     signal: "Signal",
     config: "DailyBookConfig",

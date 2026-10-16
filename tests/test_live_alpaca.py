@@ -615,6 +615,144 @@ def test_the_adapter_reads_no_deprecated_venue_field() -> None:
         assert not [line for line in mentions if "payload" in line], field
 
 
+#: A ``GET /v2/account`` body in Alpaca's encoding (numbers as strings), for a
+#: long/short book at gross about 1. Shaped on the documented account fields;
+#: not a capture from a real account. Equity = cash + long + short, so the short
+#: side is negative; ``portfolio_value`` is deliberately different from equity.
+MARGIN_ACCOUNT = {
+    "account_number": "PA0TEST",
+    "status": "ACTIVE",
+    "cash": "950000.00",
+    "equity": "944445.12",
+    "portfolio_value": "1.00",
+    "long_market_value": "472000.00",
+    "short_market_value": "-477554.88",
+    "initial_margin": "474777.44",
+    "maintenance_margin": "261266.46",
+    "last_maintenance_margin": "259000.00",
+    "last_equity": "940000.00",
+    "regt_buying_power": "939335.36",
+    "buying_power": "939335.36",
+    "non_marginable_buying_power": "469667.68",
+    "multiplier": "2",
+    "sma": "0",
+    "shorting_enabled": True,
+    "balance_asof": "2026-10-15",
+}
+
+
+def test_account_margin_maps_the_account_payload(broker, session) -> None:
+    session.route("GET", "/v2/account", FakeResponse(payload=MARGIN_ACCOUNT))
+    margin = broker.account_margin()
+    assert [(call["method"], call["path"]) for call in session.calls] == [("GET", "/v2/account")]
+    assert margin.equity == pytest.approx(944_445.12)  # equity, never the deprecated portfolio_value
+    assert margin.cash == pytest.approx(950_000.0)
+    assert margin.long_market_value == pytest.approx(472_000.0)
+    assert margin.short_market_value == pytest.approx(477_554.88)  # the magnitude of the negative short side
+    assert margin.initial_margin == pytest.approx(474_777.44)
+    assert margin.maintenance_margin == pytest.approx(261_266.46)
+    assert margin.regt_buying_power == pytest.approx(939_335.36) and margin.multiplier == 2.0
+    assert margin.last_maintenance_margin == pytest.approx(259_000.0) and margin.sma == 0.0
+    assert margin.shorting_enabled is True and margin.status == "ACTIVE" and margin.balance_asof == "2026-10-15"
+    assert margin.cushion == pytest.approx((944_445.12 - 261_266.46) / 944_445.12)
+    assert margin.gross_over_equity == pytest.approx((472_000.0 + 477_554.88) / 944_445.12)
+
+
+def test_account_margin_leaves_optional_fields_none_when_the_venue_omits_them(broker, session) -> None:
+    required = {
+        key: MARGIN_ACCOUNT[key]
+        for key in (
+            "equity",
+            "cash",
+            "long_market_value",
+            "short_market_value",
+            "initial_margin",
+            "maintenance_margin",
+            "regt_buying_power",
+            "buying_power",
+            "multiplier",
+        )
+    }
+    session.route("GET", "/v2/account", FakeResponse(payload=required))
+    margin = broker.account_margin()
+    assert margin.last_equity is None and margin.sma is None and margin.shorting_enabled is None
+    assert margin.status is None and margin.balance_asof is None
+
+
+@pytest.mark.parametrize("field", ["maintenance_margin", "regt_buying_power", "short_market_value", "equity"])
+def test_account_margin_refuses_a_payload_without_a_required_field(broker, session, field) -> None:
+    payload = {key: value for key, value in MARGIN_ACCOUNT.items() if key != field}
+    session.route("GET", "/v2/account", FakeResponse(payload=payload))
+    with pytest.raises(AlpacaAPIError, match=field):
+        broker.account_margin()
+
+
+def test_account_margin_refuses_a_field_that_is_not_a_number(broker, session) -> None:
+    session.route("GET", "/v2/account", FakeResponse(payload={**MARGIN_ACCOUNT, "maintenance_margin": "n/a"}))
+    with pytest.raises(AlpacaAPIError, match="maintenance_margin"):
+        broker.account_margin()
+
+
+def test_the_adapter_reads_no_deprecated_account_field() -> None:
+    from pathlib import Path
+
+    import prism.live.alpaca as module
+
+    lines = Path(module.__file__).read_text(encoding="utf-8").splitlines()
+    for field in module.DEPRECATED_ACCOUNT_FIELDS:
+        mentions = [line for line in lines if field in line]
+        assert mentions, field
+        assert not [line for line in mentions if "payload" in line], field
+
+
+def test_only_the_margin_report_and_the_doctor_call_the_margin_read() -> None:
+    # The margin read is telemetry. A call to it from any other module of the
+    # shipped package is a decision path reading margin.
+    import re
+    from pathlib import Path
+
+    import prism
+
+    root = Path(prism.__file__).resolve().parent
+    call = re.compile(r"\.account_margin\(")
+    calling = sorted(
+        str(path.relative_to(root)) for path in root.rglob("*.py") if call.search(path.read_text(encoding="utf-8"))
+    )
+    assert calling == ["scripts/doctor.py", "scripts/margin_report.py"]
+
+
+class _MarginRefusingVenue(FakeAlpacaVenue):
+    """The mini-venue with buying power reported, under an adapter whose margin read must never run."""
+
+    def request(self, method, url, headers=None, timeout=None, json=None, params=None):
+        if (method, url[len(PAPER_BASE_URL) :]) == ("GET", "/v2/account"):
+            self.calls.append({"method": method, "path": "/v2/account", "json": json, "params": params})
+            return FakeResponse(payload={"cash": str(self._cash), "buying_power": str(2 * self._cash)})
+        return super().request(method, url, headers=headers, timeout=timeout, json=json, params=params)
+
+
+def test_a_decision_settlement_and_buying_power_check_never_read_the_margin(tmp_path, monkeypatch) -> None:
+    import pandas as pd
+
+    def refuse(self):
+        raise AssertionError("the order path read the account margin")
+
+    monkeypatch.setattr(AlpacaBroker, "account_margin", refuse)
+    venue = _MarginRefusingVenue(cash=10_000.0)
+    ctx = LiveLoopContext(
+        store=StateStore(tmp_path / "state.json"),
+        broker=AlpacaBroker(KEY, SECRET, session=venue),
+        fills_ledger=tmp_path / "fills.jsonl",
+    )
+    prices = pd.Series({"AAA": 100.0})
+    orders = decide_and_submit(
+        ctx, "2026-07-06", pd.Series({"AAA": 0.5}), prices, whole_shares=True, buying_power_check=True
+    )
+    assert [o.qty for o in orders] == [50.0]
+    venue.fill_all({"AAA": 101.0}, filled_at="2026-07-07T13:31:00Z")
+    assert len(settle(ctx, "2026-07-06")) == 1
+
+
 def test_server_time_is_the_venue_clock(broker, session) -> None:
     session.route("GET", "/v2/clock", FakeResponse(payload={"timestamp": "2026-09-08T18:30:00-04:00"}))
     assert broker.server_time() == "2026-09-08T18:30:00-04:00"
@@ -713,7 +851,10 @@ def test_an_unknown_venue_attribute_restricts_by_name(broker, session) -> None:
     # The fail-safe direction: an attribute this engine has never seen becomes a
     # restriction recorded by name, which portfolio/limits.py reads as blocking new
     # exposure. An informational attribute (options) does not.
-    from prism.portfolio.limits import restriction_blocks_new_exposure, unknown_restrictions
+    from prism.portfolio.limits import (
+        restriction_blocks_new_exposure,
+        unknown_restrictions,
+    )
 
     (row,) = _capabilities(
         broker, session, "WEIRD", _asset("WEIRD", attributes=["has_options", "some_new_venue_flag"])

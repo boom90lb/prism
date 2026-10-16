@@ -716,8 +716,8 @@ uses.
   Refused with `--profile research_paper`, with a book other than momentum, and
   with a cadence the count does not divide. Arming it, and changing the live
   book, are owner acts (SPEC §6). The replay harness takes `tranches` on the
-  epoch grid (base 0); it takes no seeded phase. `prism-doctor` has no tranche
-  check yet.
+  epoch grid (base 0); it takes no seeded phase. `prism-doctor` checks the
+  tranche states (`tranche-state`, below).
 
 ## 2026-10-16: a T-bill ETF holding for idle equity and a buying-power check (off by default)
 
@@ -778,5 +778,79 @@ Neither is armed. `ops/paper_loop_nightly.sh` passes neither flag, and with both
 off the cycle decides exactly as before (tests compare every result field and
 ledger byte). The holding is refused under any `--profile` and with a book
 other than momentum. Holding the ETF changes the live book and is an owner act
-(SPEC §6). The replay harness takes neither, and `prism-doctor` has no holding
-check yet.
+(SPEC §6). The replay harness takes neither. `prism-doctor` checks the
+holding's drift (`cash-holding-drift`, below).
+
+## 2026-10-16: an account margin report and doctor warnings for the opt-in features
+
+Read-only telemetry; nothing on the order path reads it, and nothing acts on
+it.
+
+- **The margin read.** `AlpacaBroker.account_margin()` reads `GET /v2/account`
+  once and returns equity, cash, the long and short market values (the short
+  side as a magnitude: Alpaca defines equity as cash + long + short, so it
+  reports the short side negative), the Reg T initial and the maintenance
+  requirement as the venue computes them, Reg T buying power, buying power and
+  the multiplier, plus the previous-session snapshot fields when present. A
+  missing or non-numeric required field raises. The deprecated
+  `portfolio_value` is not read. Code: `prism.live.margin`, `prism.live.alpaca`.
+  The field list follows Alpaca's documented account object (checked
+  2026-10-16); whether a paper account fills every field has not been checked
+  against a live response.
+- **The report.** `python -m prism.scripts.margin_report` prints the read:
+  both sides over equity, gross over equity, the excess over each requirement,
+  and the cushion `(equity − maintenance margin) / equity`. `--json` prints the
+  row. `--run-dir DIR --record` appends the row to `DIR/margin.jsonl` under the
+  run directory's writer lock (so never during a loop session; a held lock
+  refuses the record with exit 1), keyed by the read's UTC timestamp, with the
+  New York date beside it; a directory that does not exist is refused before
+  any read. It sends no order and calls no other endpoint. It is the place to
+  check the broker facts the cash-holding estimates rest on: the requirement
+  with shorts and the ETF held, the cushion at the gross the book actually
+  runs, and, read beside the account statement, whether short proceeds offset
+  a margin debit (`cash` includes the proceeds; the interest charged is only on
+  the statement).
+- **Not scheduled.** The nightly wrapper does not run the report, so
+  `margin.jsonl` is written only when someone runs it. A daily record needs a
+  line such as `"$PY" -m prism.scripts.margin_report --run-dir "$RUN_DIR"
+  --record` after the loop in a wrapper variant; adding it to
+  `ops/paper_loop_nightly.sh` is an owner act, with the other arming flags.
+  The nightly's `prism-doctor --network` reads the cushion live every session
+  regardless (`alpaca-margin-cushion`, one more free account read).
+- **Doctor warnings.** Five offline checks, each a PASS when its feature has
+  left no record in the run directory, and otherwise a WARN, never a FAIL.
+  Promoting any of them to a failure is the owner's decision.
+  - `margin-cushion`: the newest `margin.jsonl` row's cushion below 25%, or a
+    read two or more weekdays old. With no record it passes, unless
+    `sizing.jsonl` or a `cash_holding` record in `targets.jsonl` shows a
+    scaled book or a T-bill holding, which draw on margin. The 25% line is a
+    monitoring choice: an unscaled long/short book at FINRA's minimums (25% of
+    the long side, 30% of the short) sits near 72%, the same book at gross 2
+    near 45%.
+  - `vol-scale-fallback`: two or more consecutive `sizing.jsonl` rows whose
+    scale fell back to `min(1, last good scale)`; a tranched row counts when any
+    due tranche fell back, and a warm-up is not a fallback.
+  - `cash-holding-drift`: after the newest recorded decision the holding is
+    more than its band from target (it is being built or sold within the
+    per-order bound, expected for a few sessions after a start or a large change
+    in the long side), or, when the previous record is from the previous
+    session, the holding marked now is more than the band away from what that
+    session decided (an order that did not fill). The record is written on
+    refresh sessions only, so for a monthly single book it is a monthly read.
+  - `tranche-state`: tranche states the cycle could not have written: ids
+    other than `decile_neutral/t00..tK-1`, grid offsets that are not
+    `(base + j·s) mod (s·K)`, non-finite sub-targets, an invalid last good
+    scale, output bars after the last refresh, expiry before output, other
+    components mixed in, or a count or base offset that disagrees with the
+    newest tranche record in `targets.jsonl`. The cadence is inferred from the
+    offsets, since it is not persisted.
+  - `deployment-profile`: `deployment.json` unreadable or readable by group or
+    others; or absent while the state holds tranches or `sizing.jsonl` shows
+    refreshes on the seeded grid. A nonzero tranche base offset or a seeded
+    grid means the next session with the same flags will be refused; a base of
+    0 can be an unseeded book on the epoch grid every unseeded deployment
+    shares. A seeded single book without the volatility scale leaves no other
+    record of its mode, so its missing profile is not seen here; the loop
+    refuses that run before any venue read. The seed is never printed.
+- **Acting on the cushion** (selling the T-bill holding first when the cushion
+  is thin) is not implemented; the doctor says so in its warning.

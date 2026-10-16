@@ -508,6 +508,23 @@ def read_sizing_ledger(path: Path) -> pd.DataFrame:
     return ledgers.read_frame(Path(path))
 
 
+def row_decisions(row: Mapping[str, Any]) -> list[tuple[str, str | None]]:
+    """The ``(status, reason)`` of every scale decision a sizing row records.
+
+    A single-book row records one decision at its top level; a tranched row
+    (``schedule = "tranches"``) records one per due tranche under ``tranches``.
+    Read-only, for ``prism-doctor``'s fallback-streak check.
+    """
+    tranches = row.get("tranches")
+    if isinstance(tranches, Mapping):
+        return [
+            (str(entry.get("status")), None if entry.get("reason") is None else str(entry.get("reason")))
+            for entry in tranches.values()
+            if isinstance(entry, Mapping)
+        ]
+    return [(str(row.get("status")), None if row.get("reason") is None else str(row.get("reason")))]
+
+
 def _book_at(
     signal: "Signal",
     close: pd.DataFrame,

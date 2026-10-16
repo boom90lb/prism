@@ -50,6 +50,17 @@ thing that ran:
   line and the exit code are all on-box; without ``PRISM_ALERT_CMD`` or a
   heartbeat URL a dead scheduler is reported to nobody (that was 2026-08-15 →
   2026-09-25).
+* ``margin-cushion``, ``vol-scale-fallback``, ``cash-holding-drift``,
+  ``tranche-state``, ``deployment-profile`` — the opt-in book features (a
+  recorded margin read, the volatility scale, the T-bill holding, the tranched
+  book and the deployment seed). Each PASSes when its feature has left no
+  record in the run directory and otherwise only ever WARNs: the cushion below
+  25% or a stale read, two or more consecutive scale fallbacks, the holding
+  more than its band from target, tranche states the cycle could not have
+  written, a seed that is missing, unreadable or readable by others. Promoting
+  any of them to a failure is the owner's decision.
+* ``alpaca-margin-cushion`` (network) — the account's cushion now, from one
+  read-only margin read; a WARN below 25% or when the read fails.
 * ``alpaca-account-book`` (network) — does the venue's book belong to this run
   directory? A run directory with no persisted book over a live account is the
   fatal condition that produced the outage.
@@ -781,6 +792,373 @@ def check_shadow_record(run_dir: Path, *, today: date | None = None) -> CheckRes
     )
 
 
+# ---------------------------------------------------------------------------
+# Opt-in book features: margin, volatility scale, T-bill holding, tranches,
+# deployment seed. Each PASSes with "not in use" when its feature has left no
+# record, and none of them FAILs: they warn first, and promoting any of them to
+# a failure is the owner's decision (docs/operations.md, 2026-10-16).
+# ---------------------------------------------------------------------------
+
+
+def _cushion_result(name: str, *, cushion: float | None, equity: float, maintenance: float, where: str) -> CheckResult:
+    """The cushion verdict shared by the recorded and the live margin checks."""
+    from prism.live.margin import CUSHION_WARN_FLOOR
+
+    if cushion is None:
+        return _result(
+            name,
+            False,
+            f"equity {equity:,.2f} is not positive ({where}): the account is in deficit and has no cushion",
+            warn=True,
+        )
+    detail = (
+        f"cushion {cushion:.1%} = (equity {equity:,.2f} - maintenance margin {maintenance:,.2f}) / equity ({where})"
+    )
+    if cushion < CUSHION_WARN_FLOOR:
+        return _result(
+            name,
+            False,
+            detail + f" — below the {CUSHION_WARN_FLOOR:.0%} warning floor. Nothing acts on it: selling the T-bill "
+            "holding first is not implemented, so lowering gross is a manual decision",
+            warn=True,
+        )
+    return _result(name, True, detail)
+
+
+def _levered_book_evidence(run_dir: Path) -> list[str]:
+    """What in the run directory says the book uses margin beyond an unscaled long/short book."""
+    from prism.live.ledgers import read_rows
+
+    evidence = []
+    sizing = read_rows(run_dir / "sizing.jsonl")
+    if sizing:
+        evidence.append(f"the book is volatility-scaled up to 2x gross ({len(sizing)} sizing.jsonl row(s))")
+    if any(isinstance(row.get("cash_holding"), dict) for row in read_rows(run_dir / "targets.jsonl")):
+        evidence.append("the book holds a T-bill ETF beside its shorts (targets.jsonl records cash_holding)")
+    return evidence
+
+
+def check_margin_cushion(run_dir: Path, *, today: date | None = None) -> CheckResult:
+    """The newest recorded margin read (``margin.jsonl``): cushion and age.
+
+    ``python -m prism.scripts.margin_report --run-dir … --record`` writes the
+    record; nothing schedules it. Absent, the check passes while the book is an
+    unscaled long/short book without a T-bill holding, whose cushion stays near
+    70% at the regulatory minimums, and warns when the run directory shows a
+    volatility-scaled book or a T-bill holding. Present, it warns when the
+    cushion is below 25% or the read is two or more weekdays old.
+    """
+    from prism.live.margin import (
+        MARGIN_LEDGER_FILENAME,
+        MarginError,
+        read_margin_rows,
+        row_cushion,
+    )
+
+    today = today or date.today()
+    path = run_dir / MARGIN_LEDGER_FILENAME
+    rows = read_margin_rows(path)
+    if not rows:
+        evidence = _levered_book_evidence(run_dir)
+        if evidence:
+            return _result(
+                "margin-cushion",
+                False,
+                f"{path} absent or empty, but {'; '.join(evidence)}: no margin read is recorded for a book that "
+                f"draws on margin. Record one (python -m prism.scripts.margin_report --run-dir {run_dir} --record)",
+                warn=True,
+            )
+        return _result(
+            "margin-cushion",
+            True,
+            f"{path} absent — no margin read recorded here; not needed while the book is unscaled and holds no "
+            "T-bill ETF (prism.scripts.margin_report --record writes one)",
+        )
+    row = rows[-1]
+    try:
+        cushion = row_cushion(row)
+        as_of = date.fromisoformat(str(row["as_of"]))
+        equity, maintenance = float(row["equity"]), float(row["maintenance_margin"])
+    except (KeyError, TypeError, ValueError, MarginError) as exc:
+        return _result("margin-cushion", False, f"{path}: newest row unreadable ({exc})", warn=True)
+    age = weekdays_since(as_of, today)
+    gross = row.get("gross_over_equity")
+    where = f"read {as_of.isoformat()}, {age} weekday(s) ago" + (
+        f", gross {float(gross):.2f}x equity" if isinstance(gross, (int, float)) else ""
+    )
+    result = _cushion_result("margin-cushion", cushion=cushion, equity=equity, maintenance=maintenance, where=where)
+    if result.status == "PASS" and age >= LEDGER_STALE_WARN_WEEKDAYS:
+        return _result(
+            "margin-cushion",
+            False,
+            result.detail + " — stale: the margin can have moved since; record a new read",
+            warn=True,
+        )
+    return result
+
+
+def check_live_margin(broker: object) -> CheckResult:
+    """The account's cushion now, from one read-only ``account_margin()`` (network). Warns, never fails."""
+    try:
+        margin = broker.account_margin()  # type: ignore[attr-defined]
+    except Exception as exc:  # noqa: BLE001 — a probe failure is a WARN, not a book failure
+        return _result("alpaca-margin-cushion", False, f"account margin read failed: {exc}", warn=True)
+    gross = margin.gross_over_equity
+    where = "venue, now" + ("" if gross is None else f", gross {gross:.2f}x equity")
+    return _cushion_result(
+        "alpaca-margin-cushion",
+        cushion=margin.cushion,
+        equity=margin.equity,
+        maintenance=margin.maintenance_margin,
+        where=where,
+    )
+
+
+#: Consecutive volatility-scale fallbacks at which the doctor warns.
+VOL_SCALE_FALLBACK_STREAK_WARN = 2
+
+
+def check_vol_scale_fallback(run_dir: Path) -> CheckResult:
+    """Consecutive refresh rows of ``sizing.jsonl`` whose scale decision fell back.
+
+    A fallback sizes the book at ``min(1, last good scale)`` because the
+    volatility window could not be trusted (``prism.portfolio.vol_scale``). One
+    is a stale bar or a short window; two in a row means the book is being held
+    below its rule by a data problem. A tranched row counts when any of its due
+    tranches fell back. A ``warmup`` decision (no good scale yet) is not a
+    fallback.
+    """
+    from prism.live.ledgers import read_rows
+    from prism.live.vol_sizing import SIZING_LEDGER_FILENAME, row_decisions
+
+    path = run_dir / SIZING_LEDGER_FILENAME
+    rows = read_rows(path)
+    if not rows:
+        return _result("vol-scale-fallback", True, f"{path} absent — the volatility scale is not in use")
+    streak: list[str] = []
+    reasons: list[str] = []
+    for row in reversed(rows):
+        fallbacks = [reason for status, reason in row_decisions(row) if status == "fallback"]
+        if not fallbacks:
+            break
+        streak.append(str(row.get("decision_bar")))
+        reasons.extend(str(reason) for reason in fallbacks)
+    last = rows[-1]
+    scale = last.get("account_scale", last.get("scale"))
+    scale_text = f", scale {float(scale):.3f}" if isinstance(scale, (int, float)) else ""
+    if len(streak) >= VOL_SCALE_FALLBACK_STREAK_WARN:
+        return _result(
+            "vol-scale-fallback",
+            False,
+            f"{len(streak)} consecutive refresh row(s) fell back, {streak[-1]} through {streak[0]} (reasons "
+            f"{sorted(set(reasons))}){scale_text}: the book is held at min(1, last good scale), below its rule. "
+            "Check the bar panel for stale or flat bars and the window length (prism.live.vol_sizing)",
+            warn=True,
+        )
+    statuses = sorted({status for status, _ in row_decisions(last)})
+    note = f"; the last refresh fell back ({sorted(set(reasons))}), which is not yet a streak" if streak else ""
+    return _result(
+        "vol-scale-fallback",
+        True,
+        f"{len(rows)} refresh row(s); last {last.get('decision_bar')} status {statuses}{scale_text}{note}",
+    )
+
+
+def check_cash_holding_drift(run_dir: Path) -> CheckResult:
+    """The T-bill holding against its target, from the newest ``cash_holding`` record in ``targets.jsonl``.
+
+    The cycle moves the holding to its target when it drifts more than the
+    band, by at most the per-order bound per session (``prism.live.cash_holding``).
+    Two things warn. After the decision, the holding still sits more than the
+    band from its target: it is being built or sold over several sessions,
+    which is expected for a few sessions after a start or a large change in the
+    long side, and means its orders are not filling if it persists. And, when
+    the previous record is from the previous session, the holding marked now
+    differs by more than the band from what that session decided. The record is
+    written on refresh sessions only, which for a monthly single book is once a
+    cycle.
+    """
+    from prism.io import sessions
+    from prism.live.cash_holding import TARGETS_LEDGER_KEY
+    from prism.live.ledgers import read_rows
+
+    path = run_dir / "targets.jsonl"
+    rows = [row for row in read_rows(path) if isinstance(row.get(TARGETS_LEDGER_KEY), dict) and "refresh_bar" in row]
+    if not rows:
+        return _result(
+            "cash-holding-drift", True, f"no {TARGETS_LEDGER_KEY} record in {path} — the T-bill holding is not in use"
+        )
+    bar = str(rows[-1]["refresh_bar"])
+    record = rows[-1][TARGETS_LEDGER_KEY]
+    try:
+        symbol = str(record["symbol"])
+        held, target, weight, band = (float(record[key]) for key in ("held_weight", "target_weight", "weight", "band"))
+        action = str(record.get("action"))
+    except (KeyError, TypeError, ValueError) as exc:
+        return _result(
+            "cash-holding-drift", False, f"{path}: {bar} {TARGETS_LEDGER_KEY} record unreadable ({exc})", warn=True
+        )
+    residual = abs(weight - target)
+    detail = (
+        f"{symbol} at {bar}: held {held:.4f}, target {target:.4f}, decided {weight:.4f} of equity "
+        f"({action}, band {band:.4f})"
+    )
+    problems = []
+    if residual > band + 1e-12:
+        problems.append(
+            f"after the decision the holding sits {residual:.4f} from its target, more than the band: it is moving "
+            "toward it within the per-order bound, expected for a few sessions after a start or a large change in the "
+            "long side, and a sign its orders are not filling if it persists"
+        )
+    if len(rows) > 1:
+        previous_bar = str(rows[-2]["refresh_bar"])
+        try:
+            consecutive = sessions.next_session(date.fromisoformat(previous_bar[:10])) == date.fromisoformat(bar[:10])
+            decided_before = float(rows[-2][TARGETS_LEDGER_KEY]["weight"])
+        except (KeyError, TypeError, ValueError):
+            consecutive, decided_before = False, float("nan")
+        if consecutive and abs(held - decided_before) > band:
+            problems.append(
+                f"the holding marked at {bar} ({held:.4f}) differs by more than the band from the "
+                f"{decided_before:.4f} decided at {previous_bar}: that order did not fill as decided, or equity "
+                "moved by more than the band"
+            )
+    if problems:
+        return _result("cash-holding-drift", False, detail + " — " + "; ".join(problems), warn=True)
+    return _result("cash-holding-drift", True, detail)
+
+
+def check_tranche_state(run_dir: Path) -> CheckResult:
+    """The integrity of a tranched book's persisted tranche states (``prism.live.tranches.inspect_tranche_state``).
+
+    Also compares the count and base offset with the newest tranche record in
+    ``targets.jsonl``. A state that cannot be loaded is ``loop-state``'s FAIL;
+    here it is a WARN that defers to it.
+    """
+    from prism.live.ledgers import read_rows
+    from prism.live.state import StateStore
+    from prism.live.tranches import TARGETS_TRANCHES_KEY, inspect_tranche_state
+
+    state_path = run_dir / "state.json"
+    if not state_path.exists():
+        return _result("tranche-state", True, f"{state_path} absent — no tranche state to check")
+    try:
+        state = StateStore(state_path).load()
+    except ValueError as exc:
+        return _result("tranche-state", False, f"cannot read {state_path} (see loop-state): {exc}", warn=True)
+    report = inspect_tranche_state(state)
+    if report is None:
+        return _result("tranche-state", True, "no tranche state — the single book")
+    problems = list(report.problems)
+    records = [
+        row[TARGETS_TRANCHES_KEY]
+        for row in read_rows(run_dir / "targets.jsonl")
+        if isinstance(row.get(TARGETS_TRANCHES_KEY), dict)
+    ]
+    if records:
+        newest = records[-1]
+        if newest.get("count") != report.count:
+            problems.append(
+                f"targets.jsonl's newest tranche record counts {newest.get('count')}, the state {report.count}"
+            )
+        if report.base_offset is not None and newest.get("base_offset") != report.base_offset:
+            problems.append(
+                f"targets.jsonl's newest tranche record has base offset {newest.get('base_offset')}, the state "
+                f"{report.base_offset}"
+            )
+    gross = "n/a" if report.gross is None else f"{report.gross:.3f}"
+    last_refresh = None if state is None else state.last_refresh_bar
+    detail = (
+        f"{report.count} tranche(s) of {report.book}, {report.built} built, base offset {report.base_offset}, cycle "
+        f"{report.cycle} sessions, summed sub-target gross {gross}, last refresh {last_refresh}"
+    )
+    if problems:
+        return _result("tranche-state", False, detail + " — " + "; ".join(problems), warn=True)
+    return _result("tranche-state", True, detail)
+
+
+def check_deployment_profile(run_dir: Path) -> CheckResult:
+    """The deployment seed (``deployment.json``): readable and private when present, warned when a mode needs it.
+
+    A tranched book is recognised from its tranche states, a seeded
+    volatility-scaled book from ``sizing.jsonl`` rows on the seeded grid
+    (``schedule = "grid"``). A seeded single book without the volatility scale
+    leaves no record of its mode beside the profile itself, so its missing
+    profile is not seen here; the loop refuses that run before any venue read
+    (``prism.live.deployment``). The seed is never printed.
+    """
+    import stat
+
+    from prism.live.deployment import (
+        DEPLOYMENT_FILENAME,
+        DeploymentProfileError,
+        read_deployment,
+    )
+    from prism.live.ledgers import read_rows
+    from prism.live.state import StateStore
+    from prism.live.tranches import inspect_tranche_state
+
+    path = run_dir / DEPLOYMENT_FILENAME
+    if path.exists():
+        try:
+            profile = read_deployment(run_dir)
+        except DeploymentProfileError as exc:
+            return _result(
+                "deployment-profile",
+                False,
+                f"{exc} — a seeded session will refuse this run directory",
+                warn=True,
+            )
+        mode = stat.S_IMODE(path.stat().st_mode)
+        if mode & 0o077:
+            return _result(
+                "deployment-profile",
+                False,
+                f"{path} has mode {mode:o}, not 600: the seed predicts the sessions this deployment trades on; "
+                f"chmod 600 {path}",
+                warn=True,
+            )
+        return _result("deployment-profile", True, f"{path}: created {profile.created_bar}, mode 600 (seed not shown)")
+
+    evidence: list[str] = []
+    seeded_offset = False
+    try:
+        state = StateStore(run_dir / "state.json").load() if (run_dir / "state.json").exists() else None
+    except ValueError:
+        state = None  # loop-state reports an unreadable state
+    report = inspect_tranche_state(state)
+    if report is not None:
+        evidence.append(f"state.json holds {report.count} tranche state(s) at base offset {report.base_offset}")
+        seeded_offset = bool(report.base_offset)
+    grid = [row for row in read_rows(run_dir / "sizing.jsonl") if row.get("schedule") == "grid"]
+    if grid:
+        evidence.append(f"sizing.jsonl records {len(grid)} refresh(es) on the seeded grid")
+        seeded_offset = True
+    if not evidence:
+        return _result(
+            "deployment-profile",
+            True,
+            f"{path} absent — no seeded or tranched mode is recorded in this run directory",
+        )
+    if seeded_offset:
+        consequence = (
+            "only a seeded phase puts the book there, so the next session with the same flags will be refused "
+            "(DeploymentProfileMissing); restore the profile from the backup of this run directory"
+        )
+    else:
+        consequence = (
+            "at base offset 0 the book is either unseeded, on the epoch grid every unseeded tranched deployment "
+            "shares (with as many tranches as sessions in the cycle the base only relabels the tranches), or "
+            "seeded at offset 0 with its profile lost"
+        )
+    return _result(
+        "deployment-profile",
+        False,
+        f"{path} absent, but {'; '.join(evidence)}: {consequence}",
+        warn=True,
+    )
+
+
 def check_nightly_log(run_dir: Path, *, today: date | None = None) -> CheckResult:
     """The wrapper's last verdict — including a *stale success*.
 
@@ -1084,7 +1462,7 @@ def check_holdings_priceable(held: Mapping[str, float], prices: Mapping[str, flo
 
 
 def check_alpaca_account(universe_file: Path | None = None, run_dir: Path | None = None) -> list[CheckResult]:
-    """One account read → three answers: keys, book attribution, priceability.
+    """Account reads → four answers: keys, margin cushion, book attribution, priceability.
 
     The account read and the held-book bar probe are both free and unmetered at
     Alpaca, so the reconciliation costs nothing beyond the credential probe it
@@ -1101,6 +1479,8 @@ def check_alpaca_account(universe_file: Path | None = None, run_dir: Path | None
     except Exception as exc:  # any layer: env, auth, transport
         return [_result("alpaca-account", False, f"account read failed: {exc}")]
     results = [_result("alpaca-account", True, f"cash {cash:.2f}, {len(positions)} open positions")]
+    # Read-only margin telemetry: one more account read, a WARN at most.
+    results.append(check_live_margin(broker))
     if run_dir is None:
         return results
 
@@ -1200,6 +1580,13 @@ def run_checks(
     results.append(check_panel_record(run_dir, today=today))
     results.append(check_shadow_record(run_dir, today=today))
     results.append(check_artifact_sync(run_dir, today=today))
+    # Opt-in book features (off by default): each PASSes when not in use and
+    # only ever WARNs, so the nightly verdict of a book without them is unchanged.
+    results.append(check_margin_cushion(run_dir, today=today))
+    results.append(check_vol_scale_fallback(run_dir))
+    results.append(check_cash_holding_drift(run_dir))
+    results.append(check_tranche_state(run_dir))
+    results.append(check_deployment_profile(run_dir))
     if network:
         results.extend(check_alpaca_account(universe_file, run_dir))
         results.append(check_twelvedata_quote(env.get("TWELVEDATA_API_KEY"), data_dir))

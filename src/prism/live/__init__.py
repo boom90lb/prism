@@ -58,6 +58,10 @@ and nothing important may live only in memory:
 * ``buying_power`` — the pre-check that scales a decision's opening orders
   down together when they need more than the venue's buying power. Off unless
   ``decide_and_submit(buying_power_check=True)``.
+* ``margin`` — the account's margin position read from the venue
+  (``AlpacaBroker.account_margin``) and its record ``{run-dir}/margin.jsonl``.
+  Read-only telemetry for ``prism.scripts.margin_report`` and ``prism-doctor``;
+  nothing on the order path reads it.
 * ``regime_step`` — the SPEC §7.7 regime step: per-cycle §7.5 telemetry
   through the ``prism.regime.fetch`` adapters, read by ``daily`` every
   session into the regime ledger (docs/regime_step.md); the de-gross

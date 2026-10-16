@@ -32,6 +32,9 @@ Section 3.9 additions: :meth:`AlpacaBroker.account_identity`,
 :meth:`~AlpacaBroker.capabilities`, :meth:`~AlpacaBroker.buying_power`,
 :meth:`~AlpacaBroker.open_orders`, :meth:`~AlpacaBroker.cancel`,
 :meth:`~AlpacaBroker.fills_since`, and :meth:`~AlpacaBroker.server_time`.
+:meth:`~AlpacaBroker.account_margin` is read-only telemetry
+(:mod:`prism.live.margin`): the margin report and ``prism-doctor`` call it, and
+nothing on the order path does.
 Three rules bind them. There is **no universal $25,000 pattern-day-trading
 rule** here: buying power is the number the venue reports, and an account-level
 restriction is a `mandatory_action` limit derived from the account, not a
@@ -69,6 +72,7 @@ request is built is not a last line.
 from __future__ import annotations
 
 import logging
+import math
 import os
 from typing import Any, Callable, Iterator, Mapping, Sequence
 
@@ -99,12 +103,14 @@ from prism.live.broker import (
     OrderRejected,
     OrderStatus,
 )
+from prism.live.margin import AccountMargin
 
 __all__ = [
     "AlpacaAPIError",  # canonical home is prism.live.alpaca_transport; re-exported for callers
     "AlpacaBroker",
     "CAPABILITY_SOURCE",
     "DEFAULT_ORDER_TYPE_MAP",
+    "DEPRECATED_ACCOUNT_FIELDS",
     "DEPRECATED_ASSET_FIELDS",
     "INFORMATIONAL_ASSET_ATTRIBUTES",
     "LIVE_BASE_URL",
@@ -145,6 +151,32 @@ CAPABILITY_SOURCE = "alpaca"
 #: maintaining. ``tests/test_live_alpaca.py`` asserts the module names them
 #: nowhere but here.
 DEPRECATED_ASSET_FIELDS: frozenset[str] = frozenset({"maintenance_margin_requirement"})
+
+#: Account fields this adapter must not read. Alpaca documents
+#: ``portfolio_value`` as deprecated and equal to ``equity``, which is read instead.
+DEPRECATED_ACCOUNT_FIELDS: frozenset[str] = frozenset({"portfolio_value"})
+
+#: The ``GET /v2/account`` fields an :class:`~prism.live.margin.AccountMargin` needs.
+#: A read that lacks one raises (N7) rather than reporting a cushion it cannot compute.
+_MARGIN_REQUIRED_FIELDS: tuple[str, ...] = (
+    "equity",
+    "cash",
+    "long_market_value",
+    "short_market_value",
+    "initial_margin",
+    "maintenance_margin",
+    "regt_buying_power",
+    "buying_power",
+    "multiplier",
+)
+
+#: Numeric ``GET /v2/account`` fields carried onto the margin read when present.
+_MARGIN_OPTIONAL_FIELDS: tuple[str, ...] = (
+    "last_equity",
+    "last_maintenance_margin",
+    "non_marginable_buying_power",
+    "sma",
+)
 
 #: Asset attributes that classify a name without restricting how it may be
 #: traded. Everything *not* listed here and not in
@@ -492,6 +524,20 @@ class AlpacaBroker(Broker):
             raise AlpacaAPIError("GET /v2/account returned no buying_power", 200)
         return float(payload["buying_power"])
 
+    def account_margin(self) -> AccountMargin:
+        """The account's equity, sides and margin figures from one ``GET /v2/account``. Read-only.
+
+        Telemetry for the margin report and ``prism-doctor``; no order path calls
+        it, so a venue that changes these fields cannot change a decision. Every
+        number is the venue's own: the maintenance requirement is read, never
+        computed from a rule this adapter would have to assume, because a house
+        requirement can exceed the regulatory minimum. A missing or non-numeric
+        required field raises (N7). The short side is stored as its magnitude
+        (:mod:`prism.live.margin`).
+        """
+        payload = self._json_or_raise(self._request("GET", "/v2/account"), "GET /v2/account")
+        return _account_margin(payload)
+
     def capabilities(self, sids: Sequence[str], as_of: str) -> list[CapabilityRow]:
         """Dated ``capabilities`` rows for ``sids`` (§3.2 table, §3.9 refresh).
 
@@ -715,6 +761,57 @@ def _parse_order_type_map(block: Mapping[str, Mapping[str, str]] | None) -> dict
     if not parsed:
         raise ValueError("[order_type_map] declares no order types; an empty vocabulary submits nothing")
     return parsed
+
+
+def _account_margin(payload: Mapping[str, Any]) -> AccountMargin:
+    """One ``GET /v2/account`` payload as an :class:`~prism.live.margin.AccountMargin`.
+
+    Alpaca sends every number as a string. Equity is ``cash + long_market_value
+    + short_market_value`` in its definition, so the short side arrives
+    negative; its magnitude is what is stored.
+    """
+    missing = [name for name in _MARGIN_REQUIRED_FIELDS if payload.get(name) in (None, "")]
+    if missing:
+        raise AlpacaAPIError(f"GET /v2/account returned no {', '.join(missing)}; the margin read needs them", 200)
+    numbers = {name: _account_number(payload, name) for name in _MARGIN_REQUIRED_FIELDS}
+    numbers["short_market_value"] = abs(numbers["short_market_value"])
+    optional = {
+        name: _account_number(payload, name) if payload.get(name) not in (None, "") else None
+        for name in _MARGIN_OPTIONAL_FIELDS
+    }
+    shorting = payload.get("shorting_enabled")
+    status = payload.get("status")
+    balance_asof = payload.get("balance_asof")
+    return AccountMargin(
+        equity=numbers["equity"],
+        cash=numbers["cash"],
+        long_market_value=numbers["long_market_value"],
+        short_market_value=numbers["short_market_value"],
+        initial_margin=numbers["initial_margin"],
+        maintenance_margin=numbers["maintenance_margin"],
+        regt_buying_power=numbers["regt_buying_power"],
+        buying_power=numbers["buying_power"],
+        multiplier=numbers["multiplier"],
+        last_equity=optional["last_equity"],
+        last_maintenance_margin=optional["last_maintenance_margin"],
+        non_marginable_buying_power=optional["non_marginable_buying_power"],
+        sma=optional["sma"],
+        shorting_enabled=None if shorting is None else bool(shorting),
+        status=None if status in (None, "") else str(status),
+        balance_asof=None if balance_asof in (None, "") else str(balance_asof),
+    )
+
+
+def _account_number(payload: Mapping[str, Any], name: str) -> float:
+    """A numeric account field (sent as a string), or raise naming it (N7)."""
+    value = payload[name]
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        raise AlpacaAPIError(f"GET /v2/account field {name} is not a number: {value!r}", 200) from None
+    if not math.isfinite(number):
+        raise AlpacaAPIError(f"GET /v2/account field {name} is not finite: {value!r}", 200)
+    return number
 
 
 def _now_iso() -> str:
