@@ -291,7 +291,9 @@ def test_run_once_decides_one_session_and_refuses_the_second(project: Path, caps
     run_dir = project / "state" / "synthetic"
     state = StateStore(run_dir / "state.json").load()
     assert state is not None
-    assert state.pending_decision_bar == "2027-12-31"
+    # `prism data synthetic` spans the whole bundled session table, so the replay
+    # decides the table's last session (Friday 2028-12-29).
+    assert state.pending_decision_bar == "2028-12-29"
     assert state.pending_orders, "the decided orders are written ahead of submission"
     assert state.schema_version == 3, "the loop writes LoopState at the version the tree carries"
     assert (run_dir / ".lock").exists()

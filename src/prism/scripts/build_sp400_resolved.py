@@ -184,7 +184,13 @@ def main(argv: list[str] | None = None) -> int:
         coverage_path = out_dir / f"sp400_coverage_{args.asof}.json"
         coverage_path.write_text(json.dumps(coverage.to_dict(), indent=2))
         resolved_path = out_dir / f"sp400_pit_resolved_{args.asof}.txt"
-        write_universe_file(coverage.resolved, resolved_path, asof=args.asof, source="wikipedia+exits+twelvedata_resolved")
+        write_universe_file(
+            coverage.resolved,
+            resolved_path,
+            index="sp400",
+            asof=args.asof,
+            source="wikipedia+exits+twelvedata_resolved",
+        )
         result.update({
             "n_window_members": len(final_window),
             "n_resolved": coverage.n_resolved,

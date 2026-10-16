@@ -13,7 +13,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-
 from research.scripts import forward_read as fr  # noqa: E402
 
 FAST = {"block_bars": 42, "n_resamples": 200, "confidence": 0.95}
@@ -51,9 +50,12 @@ def test_scheduled_dates_and_thresholds():
     assert got["earnings_daily_v1"] == got["forward_v1"]
     assert got["buffer_monthly_v1"] == {"interim": (126, "2027-03-30"), "promotion": (252, "2027-09-28")}
     assert got["buffer_daily_v1"] == got["buffer_monthly_v1"]
-    # First kill read at 126, then every 63, as far as the bundled session table (ends 2027-12-31) can date.
+    # First kill read at 126, then every 63, through 504 (two years). Each read is listed once the bundled
+    # session table can date it. Since the table reached 2028-12-31, all seven can be.
     assert got["vol_momentum_v1"] == {"kill_1": (126, "2027-03-29"), "kill_2": (189, "2027-06-28"),
-                                      "kill_3": (252, "2027-09-27"), "kill_4": (315, "2027-12-27")}
+                                      "kill_3": (252, "2027-09-27"), "kill_4": (315, "2027-12-27"),
+                                      "kill_5": (378, "2028-03-27"), "kill_6": (441, "2028-06-27"),
+                                      "kill_7": (504, "2028-09-26")}
 
 
 def test_status_today_reads_nothing_and_says_when():

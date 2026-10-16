@@ -12,9 +12,30 @@ requires-python = ">=3.12"
 authors = [
     { name = "Brendon Reperttang", email = "boom90lb@alum.mit.edu" },
 ]
+# Python and operating-system classifiers name only what CI tests: the 3.12
+# and 3.14 legs of the core job on ubuntu-latest (.github/workflows/ci.yml).
 classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Intended Audience :: Science/Research",
+    "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
-    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Office/Business :: Financial :: Investment",
+    "Typing :: Typed",
+]
+keywords = [
+    "quantitative-finance",
+    "backtesting",
+    "walk-forward",
+    "cross-sectional-momentum",
+    "factor-investing",
+    "transaction-costs",
+    "deflated-sharpe-ratio",
+    "paper-trading",
+    "alpaca",
 ]
 
 # Core = the production import path (SPEC N8): no JAX/torch/mlflow, and —
@@ -108,7 +129,9 @@ dev = [
 
 [project.urls]
 "Homepage" = "https://github.com/boom90lb/prism"
-"Bug Tracker" = "https://github.com/boom90lb/prism/issues"
+"Source" = "https://github.com/boom90lb/prism"
+"Documentation" = "https://github.com/boom90lb/prism/tree/main/docs"
+"Issues" = "https://github.com/boom90lb/prism/issues"
 
 # The batch WFO / sweep / stat-arb CLIs are quarantined under research/
 # (SPEC §9), ship no entry points, and run as modules from the repo root

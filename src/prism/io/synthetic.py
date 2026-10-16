@@ -66,7 +66,13 @@ import numpy as np
 import pandas as pd
 
 from prism.io import sessions
-from prism.io.manifest import Manifest, ManifestError, canonical_json, hash_tree, sha256_bytes
+from prism.io.manifest import (
+    Manifest,
+    ManifestError,
+    canonical_json,
+    hash_tree,
+    sha256_bytes,
+)
 
 _ET = ZoneInfo("America/New_York")
 
@@ -1334,7 +1340,7 @@ class _Builder:
                     "replay_recorded is answerable inside the sample; coverage.first_ingested_at gives the floor "
                     "each table refuses below."
                 ),
-                "session_table_version": sessions.TABLE_VERSION,
+                "session_table_version": sessions.table_version_for(self.grid[-1]),
                 "scenarios_written": list(self.spec.scenarios),
                 "scenario_applied_at_stage": {s: APPLIED_AT_STAGE[s] for s in self.spec.scenarios},
                 "scenarios_written_not_applied": written_not_applied,

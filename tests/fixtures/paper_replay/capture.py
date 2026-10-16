@@ -22,9 +22,9 @@ modified. Deterministic given the same inputs and ``--reconstruction-date``.
 Run it from the repository root::
 
     PYTHONPATH=src python tests/fixtures/paper_replay/capture.py \
-        --run-dir /home/b90/prism/runs/paper_loop_momentum2 \
-        --store-dir /home/b90/prism/data/store \
-        --legacy-cache-dir /home/b90/prism/data
+        --run-dir runs/paper_loop_momentum2 \
+        --store-dir data/store \
+        --legacy-cache-dir data
 """
 
 from __future__ import annotations

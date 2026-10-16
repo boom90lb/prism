@@ -1,4 +1,4 @@
-"""Build a survivorship-bias-free S&P 500 universe (Koker method).
+"""Build a point-in-time S&P 500 universe (Koker method); it is not survivorship-free.
 
 Reconstructs point-in-time membership from Wikipedia (the "List of S&P 500
 companies" constituents table and the "Selected changes" table, which moved to
@@ -90,7 +90,7 @@ CHANGES_BASELINE_ASOF = "2026-07-17"
 
 
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Build a survivorship-bias-free S&P 500 universe.")
+    p = argparse.ArgumentParser(description="Build a point-in-time S&P 500 universe from Wikipedia.")
     p.add_argument("--asof", type=str, default=pd.Timestamp.utcnow().strftime("%Y-%m-%d"),
                    help="As-of date; names the artifacts and closes still-open membership intervals.")
     p.add_argument("--start_date", type=str, default="1990-01-01", help="Price-history start for the pull.")
@@ -279,13 +279,13 @@ def main() -> None:
     membership = membership.assign(ticker=membership["ticker"].map(_to_vendor))
     ever = ever_members(membership)
     # Scope the tradeable universe to names active during the backtest window
-    # (still survivorship-free within it -- includes names removed during the
-    # window); the full membership parquet keeps every interval for the mask.
+    # (it includes names removed during the window); the full membership
+    # parquet keeps every interval for the mask.
     window = members_active_between(membership, args.start_date, args.asof)
 
     universe_path = out_dir / f"{index}_pit_{args.asof}.txt"
     membership_path = out_dir / f"{index}_membership_{args.asof}.parquet"
-    write_universe_file(window, universe_path, asof=args.asof, source="wikipedia")
+    write_universe_file(window, universe_path, index=index, asof=args.asof, source="wikipedia")
     membership.to_parquet(membership_path)
     logger.info(
         "Wrote %d window-active members (of %d ever-members; %d intervals) -> %s",
@@ -324,7 +324,9 @@ def main() -> None:
         coverage_path = out_dir / f"{index}_coverage_{args.asof}.json"
         coverage_path.write_text(json.dumps(coverage.to_dict(), indent=2))
         resolved_path = out_dir / f"{index}_pit_resolved_{args.asof}.txt"
-        write_universe_file(coverage.resolved, resolved_path, asof=args.asof, source="wikipedia+twelvedata_resolved")
+        write_universe_file(
+            coverage.resolved, resolved_path, index=index, asof=args.asof, source="wikipedia+twelvedata_resolved"
+        )
         current_path = out_dir / f"{index}_current.txt"
         _write_current_members(membership, args.asof, current_path, workspace.data, index=index)
         result["coverage_file"] = str(coverage_path)

@@ -24,7 +24,7 @@ Read part 1 first. It bounds what parts 2 and 3 can be judged against.
 ```
 python -m prism.live.parity_gate \
     --capture tests/fixtures/paper_replay \
-    --store-dir /home/b90/prism/data/store \
+    --store-dir data/store \
     --out docs/engine_overhaul_parity_gate.json
 ```
 
@@ -79,7 +79,7 @@ with a declared tolerance and a verdict.
 
 **Not demonstrable here.** The decision itself. The capture's manifest records
 `panels.status = "unavailable"`: 119 of 119 symbols have no bar at any of the five sessions. The
-gate probed this again today rather than quoting it. Against `/home/b90/prism/data/store`,
+gate probed this again today rather than quoting it. Against the live checkout's `data/store`,
 2 of 119 symbols have any cache at all, the newest bar anywhere in the store is 2026-07-06, and
 0 of 119 have a bar at any of the five session dates. So the candidate side of a decision
 comparison cannot be produced, 0 of 5 sessions are compared end to end, and the gate reports NOT
@@ -92,7 +92,7 @@ COMPARED with the reason. It is never reported as a pass.
   and what `ops/paper_loop_nightly.sh:127-132` runs, the loop constructs
   `AlpacaBarSource.from_env()` (`src/prism/scripts/paper_loop.py:337-338`), and that class takes
   no cache directory and no store (`src/prism/live/alpaca_data.py:78-91`). Nothing it fetches is
-  written anywhere. The legacy Twelve Data caches under `/home/b90/prism/data` do cover all 119
+  written anywhere. The legacy Twelve Data caches under the live checkout's `data/` do cover all 119
   symbols but stop at 2026-07-07, which is before the first captured session.
 - **Which symbols.** The roughly 503 the sessions actually scored, not the 119 the capture
   trimmed to. A decile boundary is a property of the whole scored panel, so the trimmed set

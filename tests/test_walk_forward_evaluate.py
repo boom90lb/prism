@@ -48,6 +48,7 @@ from prism.validation.trials import (
     RecordSchemaError,
     ResultRecord,
     TrialLog,
+    host_label,
     validate_result_record,
 )
 from prism.validation.walk_forward import (
@@ -728,8 +729,28 @@ def test_the_run_writes_a_started_row_and_one_terminal_row(baseline, shared_proj
     assert {row["run_id"] for row in rows} == {result.run_id}
     assert rows[0]["config_id"] == result.config_id
     assert rows[0]["data_id"] == result.data_id
-    assert rows[0]["heartbeat_at"] and rows[0]["pid"] and rows[0]["host"]
-    assert rows[1]["summary"]["record"] == str(result.record_path)
+    assert rows[0]["heartbeat_at"] and rows[0]["pid"]
+    # The label, never the machine's hostname; the record path is relative to
+    # the workspace, so a published log names no machine path.
+    assert [row["host"] for row in rows] == [host_label(), host_label()]
+    assert rows[1]["summary"]["record"] == f"results/{result.run_id}/record.json"
+    assert shared_project.root / rows[1]["summary"]["record"] == result.record_path
+
+
+def test_the_record_names_every_file_relative_to_the_workspace(baseline, shared_project: Workspace) -> None:
+    """A published record names no machine path: each file it lists is found again under the workspace root."""
+    result, _ = baseline
+    record = result.record
+    run_dir = f"results/{result.run_id}"
+    names = ("returns.csv", "equity.csv", "costs.csv", "target_weights.csv", "folds.json")
+    assert [entry["path"] for entry in record.artifacts] == [f"{run_dir}/{name}" for name in names] + [
+        "specs/book.toml"
+    ]
+    for entry in record.artifacts:
+        assert (shared_project.root / entry["path"]).is_file()
+    assert record.performance["periodic_returns_path"] == f"{run_dir}/returns.csv"
+    assert record.evaluation["fold_geometry"]["source"] == "specs/book.toml"
+    assert str(shared_project.root) not in json.dumps(record.to_dict())
 
 
 def test_an_unregistered_evaluation_carries_no_selection_set(project: Workspace) -> None:

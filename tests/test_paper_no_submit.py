@@ -68,12 +68,22 @@ from prism.live.state import LoopState, StateStore
 from prism.scripts import paper_loop, paper_sweep
 from prism.scripts.paper_books import (
     ALPACA_CLIENT_ORDER_ID_MAX_CHARS,
+    default_panel_start,
     longest_client_order_id,
     scoped_order_id_prefix,
 )
 
 SYMBOLS = ["AAA", "BBB", "CCC", "DDD", "EEE", "FFF", "GGG", "HHH", "III", "JJJ"]
 ACCOUNT_ID = "PA-TEST-0001"
+
+# The clock every test here runs at: an evening after the last bar any fixture
+# panel reaches (``_panels(402)`` ends 2025-07-16), on a session inside the
+# bundled table. ``paper_loop.main`` reads the clock in two places. The panel
+# window's anchor (``default_panel_start``) asks the session table about today,
+# so on the wall clock every test here would fail on the day the table ends. The
+# partial-bar rail (``require_published_panel``) compares the last bar with now.
+# The ``venue`` fixture pins both.
+_FIXTURE_CLOCK = pd.Timestamp("2025-12-31 18:30", tz="America/New_York")
 
 
 class VenueWriteReached(AssertionError):
@@ -205,6 +215,15 @@ def venue(tmp_path: Path, monkeypatch) -> VenueDouble:
         paper_loop,
         "AlpacaBarSource",
         SimpleNamespace(from_env=lambda **kw: BarSourceDouble(close, volume)),
+        raising=True,
+    )
+    monkeypatch.setattr(
+        paper_loop, "default_panel_start", functools.partial(default_panel_start, now=_FIXTURE_CLOCK), raising=True
+    )
+    monkeypatch.setattr(
+        paper_loop,
+        "require_published_panel",
+        functools.partial(require_published_panel, now=_FIXTURE_CLOCK),
         raising=True,
     )
     return broker

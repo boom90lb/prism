@@ -59,11 +59,11 @@ for promotion (§3.12). The certified reproduction is
 :mod:`prism.scripts.reproduce`, which is unchanged and still runs under
 ``historical_constant_weight``.
 
-Usage::
+Usage, from the repository root::
 
     python -m prism.scripts.engine_comparison \\
-        --recorded /home/b90/prism/results/demotion_b1 \\
-        --cache-dir /home/b90/prism/data --out engine_comparison.json
+        --recorded results/demotion_b1 \\
+        --cache-dir data --out engine_comparison.json
 """
 
 from __future__ import annotations
@@ -80,7 +80,13 @@ from prism.evaluate import CanonicalSettings, EvaluationResult, walk_forward_eva
 from prism.execution.cost_model import CostStack
 from prism.io.dataset import Dataset
 from prism.logging_utils import configure_logging
-from prism.scripts.reproduce import ARMS, FOLD_TABLE, FOLD_TABLE_SHA256, ReproductionError, execution_from_recorded
+from prism.scripts.reproduce import (
+    ARMS,
+    FOLD_TABLE,
+    FOLD_TABLE_SHA256,
+    ReproductionError,
+    execution_from_recorded,
+)
 from prism.scripts.reproduce import open_dataset as _open_dataset
 from prism.spec import load_spec
 from prism.validation.trials import CANONICAL_ENGINE, REPRODUCTION_ENGINE
@@ -248,7 +254,7 @@ def run_comparison(
     return arms
 
 
-def report(arms: Mapping[str, EngineArm]) -> dict[str, Any]:
+def report(arms: Mapping[str, EngineArm], *, workspace: Workspace) -> dict[str, Any]:
     """The side-by-side table: every headline figure, both engines, and the difference."""
     reproduction = arms[REPRODUCTION_ENGINE].metrics()
     canonical = arms[CANONICAL_ENGINE].metrics()
@@ -278,8 +284,8 @@ def report(arms: Mapping[str, EngineArm]) -> dict[str, Any]:
                 "config_id": arm.result.config_id,
                 "holding_process": arm.result.record.evaluation["holding_process"],
                 "executable_return": arm.result.record.conventions["executable_return"],
-                "record": str(arm.result.record_path),
-                "trial_log": str(arm.result.log_path),
+                "record": workspace.relative(arm.result.record_path),
+                "trial_log": workspace.relative(arm.result.log_path),
                 "n_obs": int(len(arm.result.scored.returns)),
                 "seconds": round(arm.seconds, 1),
                 "engine_detail": arm.result.record.evaluation["engine"],
@@ -326,7 +332,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         case=args.case,
         arm=args.arm,
     )
-    payload = report(arms)
+    payload = report(arms, workspace=workspace)
     text = json.dumps(payload, indent=2, sort_keys=True)
     if args.out:
         out = Path(args.out).expanduser()

@@ -13,7 +13,7 @@ During stage 6 of the engine overhaul, an automated verification step ran
 
 intending only to confirm the command still parsed and reached its credential check after
 three modules moved. It did not stop there. Credentials resolved, and the command ran a
-complete decision cycle against Alpaca paper account `PA3RNDGP1KD3`, adopting broker truth
+complete decision cycle against the Alpaca paper account, adopting broker truth
 and submitting 116 market-on-open orders for decision bar 2026-09-08.
 
 The run directory was a temporary one, so the account's real run directory
@@ -52,9 +52,9 @@ reconciles against nothing, so the whole book is emitted from flat).
 
 **2. Credentials crossed the worktree isolation boundary.** `.env` discovery
 walked up from the current directory without bound, so from
-`/home/b90/prism/.claude/worktrees/engine-overhaul` it finds `/home/b90/prism/.env`, the
+`<repo>/.claude/worktrees/engine-overhaul` it finds `<repo>/.env`, the
 live checkout's credentials (Run, 2026-09-15: `dotenv.find_dotenv(usecwd=True)` from the
-worktree returns `/home/b90/prism/.env`). An isolated development checkout therefore
+worktree returns `<repo>/.env`). An isolated development checkout therefore
 inherits the live account. Stage 1 chose the cwd walk deliberately, because a
 package-relative walk breaks under a wheel install, and recorded the tradeoff; the
 consequence for worktrees was not drawn out. **Fixed 2026-09-16**: discovery now stops at the first directory holding a `.git` entry (`prism.workspace.find_dotenv_within_checkout`), so a linked worktree or nested checkout never reads a parent checkout's `.env`; `tests/test_workspace.py::test_load_env_never_crosses_a_checkout_boundary` reproduces the incident layout and asserts nothing is loaded.

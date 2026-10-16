@@ -1,4 +1,4 @@
-"""Survivorship-bias-free S&P 500 universe reconstruction (Koker method).
+"""Point-in-time S&P index membership reconstruction (Koker method).
 
 The headline invariant under test: names removed from the index still appear in
 the ever-member union, and if their prices are unavailable they are *counted* in
@@ -10,6 +10,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
+from prism.io.universe_file import load_universe_symbols
 from prism.io.universe_sp500 import (
     CHANGES_PATCH_TABLE,
     HISTORY_FLOOR,
@@ -75,7 +76,7 @@ def test_ever_members_includes_removed_names_survivorship() -> None:
 
 def test_members_active_between_scopes_to_window() -> None:
     # X left 2018, B joined 2018, A always. A 2020+ window excludes the
-    # pre-window casualty X but keeps it survivorship-free *within* the window.
+    # pre-window casualty X and keeps every name that was a member during it.
     changes = _changes([("2018-06-01", "B", "X")])
     m = reconstruct_membership(["A", "B"], changes, end_date=END)
     assert members_active_between(m, "2020-01-01", "2026-01-01") == ["A", "B"]
@@ -261,7 +262,7 @@ def test_end_to_end_parse_then_reconstruct() -> None:
 
 def test_write_universe_file_matches_load_universe_contract(tmp_path) -> None:
     path = tmp_path / "sp500_pit_2026-01-01.txt"
-    write_universe_file(["B", "A", "x", "A"], path, asof="2026-01-01")
+    write_universe_file(["B", "A", "x", "A"], path, index="sp500", asof="2026-01-01")
     # Mirror research.scripts.training.load_universe: strip '#' comments, dedupe in order.
     loaded: list[str] = []
     for line in path.read_text().splitlines():
@@ -269,6 +270,28 @@ def test_write_universe_file_matches_load_universe_contract(tmp_path) -> None:
         if token and token not in loaded:
             loaded.append(token)
     assert loaded == ["A", "B", "X"]
+    assert load_universe_symbols(path) == ["A", "B", "X"]
+
+
+def test_the_universe_header_names_the_index_it_was_built_from(tmp_path) -> None:
+    """An S&P 400 build is labelled S&P 400, and no header claims to be survivorship-free."""
+    from prism.io.universe_sp500 import CONSTITUENTS_ARTICLE, INDEX_NAME
+
+    assert set(INDEX_NAME) == set(CONSTITUENTS_ARTICLE)
+    for index, name in INDEX_NAME.items():
+        path = tmp_path / f"{index}.txt"
+        write_universe_file(["A"], path, index=index, asof="2026-01-01", source="wikipedia")
+        header = [line for line in path.read_text().splitlines() if line.startswith("#")]
+        assert header[0].startswith(f"# {name} universe as of 2026-01-01")
+        assert f"'{CONSTITUENTS_ARTICLE[index]}'" in "\n".join(header)
+        assert "Survivorship-bias-free" not in "\n".join(header)
+        assert "# Not survivorship-free: the changes tables are selected rather than complete, and price" in header
+        others = [other for other in INDEX_NAME.values() if other != name]
+        assert not any(other in "\n".join(header) for other in others)
+
+    with pytest.raises(ValueError, match="unknown index"):
+        write_universe_file(["A"], tmp_path / "x.txt", index="sp600", asof="2026-01-01")
+    assert not (tmp_path / "x.txt").exists()
 
 
 def test_unrecorded_exits_close_at_the_earliest_evidence_and_unresolved_phantoms_drop():

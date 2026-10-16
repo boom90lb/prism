@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 import multiprocessing
 import os
+import re
 import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
@@ -32,14 +33,20 @@ from pathlib import Path
 import pytest
 
 from prism import history_import
+from prism.validation import trials
 from prism.validation.trials import (
+    HOST_LABEL_ENV,
     RECORD_SCHEMA,
+    RunRecorder,
     TrialLog,
     TrialLogError,
     attempt_counts,
     chain_hash,
+    host_id_path,
+    host_label,
     reconcile_trial_log,
     record_schema_problems,
+    this_host_names,
     utc_now,
     validate_result_record,
 )
@@ -188,6 +195,137 @@ def test_a_run_on_another_host_is_decided_by_heartbeat_age_alone(tmp_path: Path)
     stale = reconcile_trial_log(log.path, host=HOST, max_heartbeat_age_seconds=900)
     assert [verdict.run_id for verdict in stale.closed] == ["run-old-elsewhere"]
     assert "cannot be checked" in str(stale.closed[0].reason)
+
+
+# ---- the host label --------------------------------------------------------
+
+
+@pytest.fixture
+def generated_label(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """No ``PRISM_HOST_LABEL``, and a config directory of the test's own."""
+    monkeypatch.delenv(HOST_LABEL_ENV, raising=False)
+    config = tmp_path / "config"
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(config))
+    return config / "prism" / "host_id"
+
+
+def test_the_host_label_is_the_environment_variable_when_set(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv(HOST_LABEL_ENV, "  lab-1\n")
+    assert host_label() == "lab-1"
+    log = TrialLog(tmp_path / "set.jsonl")
+    recorder = RunRecorder(log=log, run_id="run-1", config_id=None, data_id="d", kind="new", selection_set_id=None)
+    assert recorder.host == "lab-1", "the recorder's default host is the label, not the hostname"
+
+
+@pytest.mark.parametrize("value", ["two words", "a/b", "x" * 65, "unavailable"])
+def test_a_host_label_that_is_not_a_label_is_refused(monkeypatch: pytest.MonkeyPatch, value: str) -> None:
+    monkeypatch.setenv(HOST_LABEL_ENV, value)
+    with pytest.raises(TrialLogError, match=HOST_LABEL_ENV):
+        host_label()
+
+
+def test_the_generated_label_is_created_once_and_read_back(generated_label: Path, monkeypatch) -> None:
+    monkeypatch.setattr("socket.gethostname", lambda: "named-machine")
+
+    first = host_label()
+
+    assert re.fullmatch(r"host-[0-9a-f]{16}", first)
+    assert host_id_path() == generated_label
+    assert generated_label.read_text(encoding="utf-8") == first + "\n"
+    assert host_label() == first, "a second call reads the file rather than minting a new label"
+    assert "named-machine" not in first
+    assert sorted(path.name for path in generated_label.parent.iterdir()) == ["host_id"], "no temporary left behind"
+
+
+def test_an_unset_empty_or_relative_xdg_config_home_means_the_home_config(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path))
+    expected = tmp_path / ".config" / "prism" / "host_id"
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+    assert host_id_path() == expected
+    for value in ("", "relative/config"):
+        monkeypatch.setenv("XDG_CONFIG_HOME", value)
+        assert host_id_path() == expected
+
+
+def test_a_host_label_that_cannot_be_read_or_created_fails_loudly(generated_label: Path, monkeypatch) -> None:
+    generated_label.parent.parent.mkdir(parents=True)
+    generated_label.parent.write_text("a file where the prism config directory belongs\n", encoding="utf-8")
+    with pytest.raises(TrialLogError, match="cannot read the host label"):
+        host_label()
+
+    generated_label.parent.unlink()
+
+    def no_hard_links(source: str, target: str) -> None:
+        raise PermissionError(1, "Operation not permitted")
+
+    monkeypatch.setattr(trials.os, "link", no_hard_links)
+    with pytest.raises(TrialLogError, match="cannot create the host label"):
+        host_label()
+    assert list(generated_label.parent.iterdir()) == [], "neither a label nor a temporary is left behind"
+
+
+def test_a_label_file_that_holds_no_label_is_refused(generated_label: Path) -> None:
+    generated_label.parent.mkdir(parents=True)
+    generated_label.write_text("\n", encoding="utf-8")
+
+    with pytest.raises(TrialLogError, match="holds the host label"):
+        host_label()
+
+
+def test_two_processes_creating_the_label_both_get_the_one_linked(generated_label: Path, monkeypatch) -> None:
+    """The process that loses the race reads the winner's label instead of writing its own."""
+    real_link = os.link
+
+    def link_after_a_rival(source: str, target: str) -> None:
+        Path(target).write_text("host-rival\n", encoding="utf-8")  # the rival links first
+        real_link(source, target)
+
+    monkeypatch.setattr(trials.os, "link", link_after_a_rival)
+
+    assert host_label() == "host-rival"
+    assert generated_label.read_text(encoding="utf-8") == "host-rival\n"
+    assert sorted(path.name for path in generated_label.parent.iterdir()) == ["host_id"]
+
+
+def test_reconcile_reads_rows_under_the_label_or_the_hostname_as_this_host(tmp_path: Path, monkeypatch) -> None:
+    """Rows written before the label carry the hostname and stay reconcilable on the machine that wrote them."""
+    monkeypatch.setenv(HOST_LABEL_ENV, "lab-1")
+    monkeypatch.setattr("socket.gethostname", lambda: "legacy-box")
+    assert this_host_names() == ("lab-1", "legacy-box")
+    log = TrialLog(tmp_path / "set.jsonl")
+    log.append(_row("run-legacy-dead", pid=_dead_pid(), host="legacy-box", heartbeat_at=_aged(4000)))
+    log.append(_row("run-labelled-dead", pid=_dead_pid(), host="lab-1", heartbeat_at=_aged(4000)))
+    log.append(_row("run-labelled-live", pid=os.getpid(), host="lab-1", heartbeat_at=_aged(4000)))
+    log.append(_row("run-legacy-live", pid=os.getpid(), host="legacy-box", heartbeat_at=_aged(4000)))
+    log.append(_row("run-elsewhere", pid=os.getpid(), host="another-host", heartbeat_at=utc_now()))
+
+    report = reconcile_trial_log(log.path, max_heartbeat_age_seconds=900)
+
+    assert {verdict.run_id: verdict.verdict for verdict in report.closed} == {
+        "run-legacy-dead": "closed_incomplete",
+        "run-labelled-dead": "closed_incomplete",
+    }
+    assert {verdict.run_id: verdict.verdict for verdict in report.in_flight} == {
+        "run-labelled-live": "process_alive",
+        "run-legacy-live": "process_alive",
+        "run-elsewhere": "unverifiable_host",
+    }
+    written = [row for row in log.verify() if row["event"] == "incomplete"]
+    assert [row["host"] for row in written] == ["lab-1", "lab-1"], "new rows carry the label, never the hostname"
+    assert all("is gone on this host ('lab-1')" in str(row["reason"]) for row in written)
+    assert not any("legacy-box" in json.dumps(row) for row in written)
+
+
+def test_reconcile_of_a_log_with_no_open_run_needs_no_label(tmp_path: Path, generated_label: Path) -> None:
+    generated_label.parent.parent.mkdir(parents=True)
+    generated_label.parent.write_text("not a directory\n", encoding="utf-8")
+    log = TrialLog(tmp_path / "set.jsonl")
+    log.append(_row("run-1"))
+    log.append(_row("run-1", "finished", summary={}))
+
+    report = reconcile_trial_log(log.path)
+
+    assert report.n_open == 0 and not report.closed and not report.in_flight
 
 
 # ---- the hash chain --------------------------------------------------------

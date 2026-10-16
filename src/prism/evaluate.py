@@ -57,7 +57,6 @@ import json
 import math
 import os
 import platform
-import socket
 import uuid
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
@@ -130,6 +129,7 @@ from prism.validation.trials import (
     classify_claim_tier,
     compute_trial_metrics,
     empty_repair_counts,
+    host_label,
     reconcile_trial_log,
     utc_now,
 )
@@ -1185,6 +1185,8 @@ def walk_forward_evaluate(
     workspace.ensure()
     declared_log = TrialLog(resolve_log_path(workspace, selection_set_id=selection_set_id, run_channel=run_channel))
     identity = run_id or mint_run_id()
+    # Resolved before any row, so a host that cannot be labelled writes none.
+    host = host_label()
     executed = execution or ExecutionConfig()
     try:
         resolved = _resolve(
@@ -1224,7 +1226,7 @@ def walk_forward_evaluate(
                 "summary": None,
                 "reason": f"identity resolution failed: {type(exc).__name__}: {exc}",
                 "pid": os.getpid(),
-                "host": socket.gethostname(),
+                "host": host,
                 "heartbeat_at": None,
             }
         )
@@ -1277,6 +1279,7 @@ def walk_forward_evaluate(
         capital=float(capital),
         synthetic=resolved.synthetic,
         run_channel=channel,
+        host=host,
     )
     started = recorder.started()
     construction_record: dict[str, object] | None = None
@@ -1382,6 +1385,8 @@ def walk_forward_evaluate(
             calibration_hook=calibration_hook,
             construction_record=construction_record,
         )
+        # Relative to the workspace root, so a published log names no machine path.
+        record_reference = workspace.relative(record_path)
     except Exception as exc:
         recorder.failed(f"{type(exc).__name__}: {exc}")
         raise
@@ -1392,7 +1397,7 @@ def walk_forward_evaluate(
             "n_obs": int(len(scored.returns)),
             "n_folds": len(folds),
             "periodic_sharpe": record.performance["sharpe"]["periodic"],
-            "record": str(record_path),
+            "record": record_reference,
         }
     )
     return EvaluationResult(
@@ -1627,7 +1632,7 @@ def _resolve(
         splitter=splitter,
         index=opens.index,
         table_id=fold_table_id,
-        source=str(spec.path),
+        source=workspace.relative(spec.path),
     )
     folds = table.positions(opens.index)
     basis = _price_basis(
@@ -3830,7 +3835,7 @@ def _write_record(
             "hurdle_series_id": UNAVAILABLE,
             "hurdle_conversion": UNAVAILABLE,
             "cash_and_financing": _cash_and_financing(engine, canonical),
-            "execution_profile": _file_reference(spec.policy.execution),
+            "execution_profile": _file_reference(spec.policy.execution, workspace),
         },
         data={
             "visibility_mode": resolved.visibility.mode,
@@ -3903,11 +3908,11 @@ def _write_record(
                 ),
             },
             "calibration": (
-                _calibration_block(spec, folds, calibration_hook is not None)
+                _calibration_block(spec, folds, calibration_hook is not None, workspace)
                 if construction_record is None
-                else _stateful_calibration_block(spec, construction_record)
+                else _stateful_calibration_block(spec, construction_record, workspace)
             ),
-            "risk_model": _file_reference(spec.construction.risk_model),
+            "risk_model": _file_reference(spec.construction.risk_model, workspace),
             "accounting_engine": engine,
             # The engine's *label* and the process it names are recorded
             # together, and validation refuses a record where they disagree: the
@@ -3934,7 +3939,7 @@ def _write_record(
             "folds": [fold.to_record() for fold in folds],
         },
         performance={
-            "periodic_returns_path": str(run_dir / "returns.csv"),
+            "periodic_returns_path": workspace.relative(run_dir / "returns.csv"),
             "gross": {
                 "total_return": metrics["gross_total_return"],
                 "periodic_sharpe": metrics["gross_periodic_sharpe"],
@@ -3994,10 +3999,15 @@ def _write_record(
             "legacy_run_key": None,
             "source_ledger": None,
         },
-        artifacts=[{"path": str(path), "sha256": _sha256_path(path), "artifact_status": "present"} for path in written]
+        # Every path is relative to the workspace root where the file lies inside
+        # it, so a published record names no machine path.
+        artifacts=[
+            {"path": workspace.relative(path), "sha256": _sha256_path(path), "artifact_status": "present"}
+            for path in written
+        ]
         + [
             {
-                "path": str(spec.path),
+                "path": workspace.relative(spec.path),
                 "sha256": _sha256_path(spec.path),
                 "artifact_status": "present" if Path(spec.path).is_file() else "unavailable",
             }
@@ -4148,9 +4158,11 @@ def _coverage(resolved: _Resolved, *, untested_conclusions: Sequence[str]) -> di
     }
 
 
-def _calibration_block(spec: Specification, folds: Sequence[FoldEvaluation], hooked: bool) -> dict[str, object]:
+def _calibration_block(
+    spec: Specification, folds: Sequence[FoldEvaluation], hooked: bool, workspace: Workspace
+) -> dict[str, object]:
     """The record's calibration block (§3.12): the file, its digest, and the per-fold fit."""
-    reference = _file_reference(spec.construction.calibration)
+    reference = _file_reference(spec.construction.calibration, workspace)
     return {
         "file_id": reference["path"],
         "sha256": reference["sha256"],
@@ -4166,7 +4178,9 @@ def _calibration_block(spec: Specification, folds: Sequence[FoldEvaluation], hoo
     }
 
 
-def _stateful_calibration_block(spec: Specification, construction: Mapping[str, object]) -> dict[str, object]:
+def _stateful_calibration_block(
+    spec: Specification, construction: Mapping[str, object], workspace: Workspace
+) -> dict[str, object]:
     """The record's calibration block on the state-coupled path (§3.12).
 
     Everything here comes from the fits the run actually used: the file and its digest,
@@ -4174,7 +4188,7 @@ def _stateful_calibration_block(spec: Specification, construction: Mapping[str, 
     not the same as "not recorded"), and the per-fold fit including the folds the shared
     admission excluded for every arm alike (D6).
     """
-    reference = _file_reference(spec.construction.calibration)
+    reference = _file_reference(spec.construction.calibration, workspace)
     policies = construction.get("policies") or {}
     per_fold = construction.get("calibration") or {}
     confidence: object = None
@@ -4226,12 +4240,12 @@ def _tails(returns: pd.Series) -> dict[str, float | None]:
     }
 
 
-def _file_reference(path: Path | None) -> dict[str, str | None]:
-    """``{path, sha256}`` for a declared file, or nulls when none is declared."""
+def _file_reference(path: Path | None, workspace: Workspace) -> dict[str, str | None]:
+    """``{path, sha256}`` for a declared file, or nulls when none is declared; the path is workspace-relative."""
     if path is None:
         return {"path": None, "sha256": None}
     target = Path(path)
-    return {"path": str(target), "sha256": _sha256_path(target) if target.is_file() else None}
+    return {"path": workspace.relative(target), "sha256": _sha256_path(target) if target.is_file() else None}
 
 
 def _charged_spread_record(charged: pd.Series | pd.DataFrame | None, execution: ExecutionConfig) -> dict[str, object]:

@@ -285,7 +285,7 @@ disabled. `schtasks /query /v` reads `Status: Disabled` for
 apart, the signature of one disable act; the Task Scheduler operational event
 log is not enabled on this machine, so who disabled them is not recorded, and no
 commit or tracked note from that weekend mentions it. The actions still run
-`wsl.exe -d Ubuntu -e bash -c '/home/b90/bin/prism_paper_{loop_nightly,sweep_morning}.sh'`,
+`wsl.exe -d Ubuntu -e bash -c '~/bin/prism_paper_{loop_nightly,sweep_morning}.sh'`,
 and both `~/bin` files are symlinks into `ops/`, so re-enabling restores the
 versioned wrappers unchanged. Both tasks carry `DisallowStartIfOnBatteries`,
 `StartWhenAvailable` and `WakeToRun`.
@@ -384,7 +384,7 @@ traded on 2026-09-25 holding shorts in two names that had left the index.
 
 Creating the two monitors and the notification topic, and setting
 `PRISM_HEARTBEAT_URL`, `PRISM_HEARTBEAT_URL_SWEEP`, `PRISM_ALERT_CMD`
-(`/home/b90/prism/ops/alert_curl.sh`) and `PRISM_ALERT_URL` in `.env`, are the
+(`<repo>/ops/alert_curl.sh`, with `<repo>` the checkout's absolute path) and `PRISM_ALERT_URL` in `.env`, are the
 operator's acts; until then the `alert-transport` row warns on every health
 read. The ping URLs and the topic are secrets in the same sense the API keys
 are: whoever holds them can keep the monitor green or post to the topic. They
@@ -403,7 +403,7 @@ script make one clean commit:
 ```bash
 cd ~/prism-artifacts && git log origin/main..HEAD --format=%s   # confirm: only "backup: … nightly sync" rows
 git -C ~/prism-artifacts reset --soft origin/main
-/home/b90/prism/ops/artifacts_sync.sh && cat /home/b90/prism/runs/paper_loop_momentum2/sync_status.json
+"$REPO"/ops/artifacts_sync.sh && cat "$REPO"/runs/paper_loop_momentum2/sync_status.json   # REPO: the live checkout
 ```
 
 This `reset --soft` repair applies only when the status `detail` says the

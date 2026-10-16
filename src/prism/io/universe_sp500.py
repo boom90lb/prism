@@ -1,19 +1,24 @@
-"""Survivorship-bias-free S&P 500 universe reconstruction (Koker method).
+"""Point-in-time S&P index membership reconstruction (Koker method).
 
 Point-in-time index membership is reconstructed from the Wikipedia "List of
 S&P 500 companies" page: the current-constituents table plus the "Selected
 changes to the list" table (date, added ticker, removed ticker). Walking the
 changes backward from the scrape date yields the member set on any historical
-date; the union over all dates is the survivorship-bias-free universe -- it
-*includes* names since removed by delisting, acquisition, or relegation, which
-a current-constituents snapshot would silently drop.
+date; the union over all dates is the ever-member universe -- it *includes*
+names since removed by delisting, acquisition, or relegation, which a
+current-constituents snapshot would silently drop.
+
+The result is not survivorship-free. The changes tables are selected rather
+than complete, so a former member whose exit or entry the table omits is
+missing or mis-dated (``resolve_unrecorded_exits`` recovers some exits from
+other evidence), and price coverage for removed names is partial.
 
 Price coverage is a separate, measured concern. Free vendors do not always
 retain prices for delisted tickers, so the builder emits an explicit coverage
-ledger (resolved vs skipped) rather than quietly dropping the dead names that
-make the universe survivorship-free in the first place. Re-introducing
-survivorship through missing delisted prices is only acceptable if it is
-*counted* -- see ``compute_coverage`` and ``src/prism/scripts/build_sp500_universe.py``.
+ledger (resolved vs skipped) rather than quietly dropping the removed names the
+reconstruction exists to keep. Losing them again through missing delisted
+prices is only acceptable if it is *counted* -- see ``compute_coverage`` and
+``src/prism/scripts/build_sp500_universe.py``.
 
 Dependency note: the project env has neither lxml nor bs4, so ``pandas.read_html``
 is unavailable. The two tables are extracted with a small stdlib ``html.parser``
@@ -143,6 +148,12 @@ WIKI_INDEX = "https://en.wikipedia.org/w/index.php"
 CONSTITUENTS_ARTICLE: dict[str, str] = {
     "sp500": "List of S&P 500 companies",
     "sp400": "List of S&P 400 companies",
+}
+
+#: Each index's name as a written universe file's header gives it.
+INDEX_NAME: dict[str, str] = {
+    "sp500": "S&P 500",
+    "sp400": "S&P 400",
 }
 
 #: The article holding each index's "Selected changes" table, by the first date
@@ -517,7 +528,11 @@ def reconstruct_membership(
 
 
 def ever_members(membership: pd.DataFrame) -> list[str]:
-    """Sorted union of every ticker that was ever a member (survivorship-free)."""
+    """Sorted union of every ticker the reconstruction found to have been a member.
+
+    It keeps removed names, but it is not survivorship-free: a member the
+    selected changes tables never mention is absent.
+    """
     return sorted(set(membership["ticker"].map(normalize_ticker)))
 
 
@@ -526,9 +541,9 @@ def members_active_between(
 ) -> list[str]:
     """Ever-members whose membership overlaps ``[start, end]``.
 
-    Survivorship-free *within the window*: includes names removed during it,
-    excludes only names that left before it (irrelevant to a backtest over the
-    window). This is the right scoping for a price pull -- fetching names delisted
+    Includes names removed during the window and excludes only names that left
+    before it (irrelevant to a backtest over the window); the reconstruction's
+    own gaps still apply. This is the right scoping for a price pull -- fetching names delisted
     years before ``start`` adds cost without adding in-sample breadth.
     """
     lo = pd.Timestamp(start)
@@ -574,7 +589,7 @@ def build_membership_mask(
 
 
 # --------------------------------------------------------------------------- #
-# Coverage ledger (the integrity crux of free survivorship-free data)
+# Coverage ledger (the integrity crux of free point-in-time data)
 # --------------------------------------------------------------------------- #
 
 
@@ -651,21 +666,29 @@ def compute_coverage(
     )
 
 
-def write_universe_file(symbols: Iterable[str], path: str | Path, *, asof: str, source: str = "wikipedia") -> None:
-    """Write the ever-member union in the ``load_universe`` format.
+def write_universe_file(
+    symbols: Iterable[str], path: str | Path, *, index: str, asof: str, source: str = "wikipedia"
+) -> None:
+    """Write a window's index members in the ``load_universe`` format.
 
-    Mirrors ``data/universe/2026-05-30.txt``: a comment header documenting the
-    survivorship caveat, then one symbol per line.
+    A comment header naming ``index`` (a key of ``CONSTITUENTS_ARTICLE``) and
+    its caveats, then one symbol per line, sorted and de-duplicated. The list
+    is not survivorship-free: the changes tables it is built from are selected
+    rather than complete, and a price-resolved list also drops the removed
+    names the vendor has no bars for.
     """
+    if index not in INDEX_NAME:
+        raise ValueError(f"unknown index {index!r}; the universe header names one of {sorted(INDEX_NAME)}")
     syms = sorted({normalize_ticker(s) for s in symbols})
     header = (
-        f"# Survivorship-bias-free S&P 500 universe (union of all ever-members), as of {asof}.\n"
-        f"# Source: {source} 'List of S&P 500 companies' (current + 'Selected changes').\n"
+        f"# {INDEX_NAME[index]} universe as of {asof}: tickers that were index members at some time in the "
+        "build window.\n"
+        f"# Source: {source}.\n"
+        f"# Membership: Wikipedia '{CONSTITUENTS_ARTICLE[index]}' constituents and the index's changes table.\n"
         "# One symbol per line; '#' starts a comment; blank lines ignored.\n"
-        "# Includes names since removed by delisting/acquisition/relegation. Price\n"
-        "# coverage for those is partial and is recorded in the companion coverage\n"
-        "# JSON -- missing delisted prices are a *measured* survivorship leak, not a\n"
-        "# silent drop.\n"
+        "# Includes names since removed by delisting, acquisition or a change of index.\n"
+        "# Not survivorship-free: the changes tables are selected rather than complete, and price\n"
+        "# coverage for removed names is partial; the companion coverage JSON records how much.\n"
     )
     Path(path).write_text(header + "\n".join(syms) + "\n")
 

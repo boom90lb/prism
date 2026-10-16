@@ -13,8 +13,11 @@ import hashlib
 import json
 import math
 import os
+import re
+import secrets
 import socket
 import subprocess
+import tempfile
 import time
 from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timezone
@@ -1079,6 +1082,110 @@ def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="microseconds").replace("+00:00", "Z")
 
 
+#: Overrides the ``host`` label new trial-log rows carry.
+HOST_LABEL_ENV = "PRISM_HOST_LABEL"
+
+#: Where the generated label is kept, under ``$XDG_CONFIG_HOME`` (default ``~/.config``).
+HOST_ID_RELATIVE_PATH = Path("prism") / "host_id"
+
+#: A label is 1 to 64 characters of letters, digits, ``.``, ``_`` and ``-``.
+_HOST_LABEL_PATTERN = re.compile(r"[A-Za-z0-9._-]{1,64}")
+
+
+def host_id_path() -> Path:
+    """The file :func:`host_label` keeps its generated label in.
+
+    ``$XDG_CONFIG_HOME/prism/host_id``. The XDG base-directory rules apply: an
+    unset, empty or relative ``XDG_CONFIG_HOME`` means ``~/.config``.
+    """
+    configured = os.environ.get("XDG_CONFIG_HOME", "")
+    base = Path(configured) if configured and Path(configured).is_absolute() else Path.home() / ".config"
+    return base / HOST_ID_RELATIVE_PATH
+
+
+def _checked_label(value: str, *, source: str) -> str:
+    label = value.strip()
+    if not _HOST_LABEL_PATTERN.fullmatch(label):
+        raise TrialLogError(
+            f"{source} holds the host label {value!r}; a label is 1 to 64 characters of letters, digits, "
+            "'.', '_' and '-'"
+        )
+    if label == UNAVAILABLE:
+        # Imported legacy rows carry this value; a host using it would claim them.
+        raise TrialLogError(f"{source} holds the host label {UNAVAILABLE!r}, which marks rows with no recorded host")
+    return label
+
+
+def host_label() -> str:
+    """The label new trial-log rows record as ``host``, instead of the machine's hostname.
+
+    ``PRISM_HOST_LABEL`` when it is set and non-empty. Otherwise a random
+    ``host-<16 hex>`` label, generated on first use and kept in
+    :func:`host_id_path` so every later run on this account reads the same one.
+    The label only has to tell this installation's rows apart from another's,
+    which is what :func:`reconcile_trial_log` needs; a published ledger then
+    carries no machine name.
+
+    Raises :class:`TrialLogError` when the file cannot be read or created, or
+    holds something that is not a label: a run whose rows cannot name their
+    host does not start (N7).
+    """
+    configured = os.environ.get(HOST_LABEL_ENV, "")
+    if configured.strip():
+        return _checked_label(configured, source=HOST_LABEL_ENV)
+    path = host_id_path()
+    try:
+        return _checked_label(path.read_text(encoding="utf-8"), source=str(path))
+    except FileNotFoundError:
+        pass
+    except OSError as exc:
+        raise TrialLogError(f"cannot read the host label at {path}: {exc}; set {HOST_LABEL_ENV} instead") from exc
+    return _create_host_id(path)
+
+
+def _create_host_id(path: Path) -> str:
+    """Write a new label to ``path`` unless another process got there first.
+
+    The label is written to a temporary file in the same directory and
+    hard-linked into place, so the file is never seen half-written and two
+    processes racing to create it both end up with the one that was linked.
+    """
+    label = f"host-{secrets.token_hex(8)}"
+    temporary: str | None = None
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        descriptor, temporary = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")
+        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+            handle.write(label + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        try:
+            os.link(temporary, path)
+        except FileExistsError:
+            return _checked_label(path.read_text(encoding="utf-8"), source=str(path))
+    except OSError as exc:
+        raise TrialLogError(
+            f"cannot create the host label at {path}: {exc}; set {HOST_LABEL_ENV} or a writable XDG_CONFIG_HOME"
+        ) from exc
+    finally:
+        if temporary is not None:
+            with contextlib.suppress(FileNotFoundError):
+                os.unlink(temporary)
+    return label
+
+
+def this_host_names() -> tuple[str, ...]:
+    """Every ``host`` value that means "this machine" when reading a trial log.
+
+    The label new rows carry, then ``socket.gethostname()``, which is what rows
+    written before the label existed carry. Reading both keeps those rows
+    reconcilable on the machine that wrote them.
+    """
+    label = host_label()
+    hostname = socket.gethostname()
+    return (label,) if hostname == label else (label, hostname)
+
+
 def process_is_alive(pid: Any) -> bool:
     """True when a process with ``pid`` exists on *this* host.
 
@@ -1326,7 +1433,7 @@ class RunRecorder:
     synthetic: bool = False
     run_channel: str = "evidence"
     pid: int = field(default_factory=os.getpid)
-    host: str = field(default_factory=socket.gethostname)
+    host: str = field(default_factory=host_label)
     started_row: dict[str, Any] | None = field(default=None, init=False)
     terminal_row: dict[str, Any] | None = field(default=None, init=False)
 
@@ -1438,23 +1545,31 @@ def reconcile_trial_log(
     The chain is verified before anything is appended: reconciling onto a log
     whose chain is already broken would put a valid row on top of an invalid
     one and make the break look older than it is.
+
+    "This host" is ``host`` when given. Otherwise it is any of
+    :func:`this_host_names`: the :func:`host_label` new rows carry, and the
+    machine's hostname, which rows written before the label existed carry. An
+    ``incomplete`` row written here records the first of these.
     """
     log = TrialLog(Path(path))
     log.verify()
     moment = now or datetime.now(timezone.utc)
     if moment.tzinfo is None:
         raise TrialLogError("reconcile needs an aware timestamp: a naive 'now' compares against nothing")
-    this_host = host if host is not None else socket.gethostname()
     alive = process_is_alive if process_alive is None else process_alive
 
     closed: list[OrphanVerdict] = []
     in_flight: list[OrphanVerdict] = []
     orphans = log.open_runs()
+    # Resolved only when there is an orphan to judge, so a log with none never
+    # needs a host label.
+    this_hosts = ((host,) if host is not None else this_host_names()) if orphans else ()
+    this_host = this_hosts[0] if this_hosts else ""
     for row in orphans:
         age = _row_age_seconds(row, moment)
         stale = age is None or age > float(max_heartbeat_age_seconds)
         row_host = row.get("host")
-        if row_host != this_host:
+        if row_host not in this_hosts:
             if not stale:
                 in_flight.append(
                     OrphanVerdict(
@@ -1503,11 +1618,13 @@ def reconcile_trial_log(
                     )
                 )
                 continue
+            # Named by the label: a row recorded under the hostname is still this
+            # host, and the row written here must not carry the hostname again.
             verdict_reason = (
                 f"heartbeat {age:.0f}s old (limit {max_heartbeat_age_seconds:.0f}s) and pid {row.get('pid')} is "
-                f"gone on {row_host!r}"
+                f"gone on this host ({this_host!r})"
                 if age is not None
-                else f"no usable heartbeat on the row and pid {row.get('pid')} is gone on {row_host!r}"
+                else f"no usable heartbeat on the row and pid {row.get('pid')} is gone on this host ({this_host!r})"
             )
         text = reason or (
             "the run started and never recorded a terminal row: "

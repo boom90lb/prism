@@ -25,15 +25,33 @@ rules cannot predict (a national day of mourning, a weather or systems
 closure) are not derivable and are carried in ``AD_HOC_CLOSURES``, which the
 exchange's announcement is the only source for.
 
-Coverage runs 2006-2027. It was 2026-2027 at stage 0, which is all the
+Coverage runs 2006-2028. It was 2026-2027 at stage 0, which is all the
 operating assessment needed; stage 2 widened it to 2020 because the recorded
 momentum evaluation decides on every session from 2021-03-30 to 2026-06-12,
 and stage 3b widened it to 2006 (decision D12) because the recorded trend
 evaluation decides from 2006-09-27 and ``DatasetView`` refuses a decision date
 the table does not cover. Two corrections come with the earlier years:
 Juneteenth is not a closure before ``JUNETEENTH_FIRST_OBSERVED``, which alone
-governs sixteen of the twenty-two years; and five announced closures no rule
+governs sixteen of the twenty-three years; and five announced closures no rule
 predicts are carried in ``AD_HOC_CLOSURES``.
+
+2028 was added on 2026-10-14, and only because the exchange had published it:
+NYSE's "Holidays & Trading Hours" page
+(https://www.nyse.com/markets/hours-calendars, retrieved 2026-10-14) lists the
+2026, 2027 and 2028 holidays and 1:00 p.m. early closes. ``HOLIDAYS_2028`` and
+``EARLY_CLOSES_2028`` in ``tests/test_sessions.py`` are transcribed from that
+page, not computed. The rules needed no change to reproduce them: New Year's
+Day 2028 falls on a Saturday and NYSE observes no holiday for it, and July 3
+and November 24 are the early closes (December 24 is a Sunday). Extending the
+end of the range cannot move an earlier row, because each year's rows are
+built from that year's rules alone. ``tests/test_sessions.py`` checks this
+anyway by comparing every 2006-2027 row with a digest taken from the table
+before the extension. Do not extend the table past the last year the exchange
+has published. The weekly CI job fails once the table covers fewer than 180
+days ahead; that is the signal to add the next year. Each extension appends an
+entry to ``TABLE_RELEASES``. A dataset's manifest records the earliest release
+that covers its last date, so adding a year leaves the ``data_id`` of every
+dataset that ends before it unchanged.
 
 The extension is checked two-directionally against market data rather than
 against a transcription. ``tests/test_sessions.py`` compares the table's
@@ -58,10 +76,24 @@ REGULAR_CLOSE = dt.time(16, 0)
 EARLY_CLOSE = dt.time(13, 0)
 
 COVERAGE_START = dt.date(2006, 1, 1)
-COVERAGE_END = dt.date(2027, 12, 31)
+COVERAGE_END = dt.date(2028, 12, 31)
 
-TABLE_SOURCE = "NYSE/Nasdaq published holiday and early-close rules for US equities (rule-derived; 2006-2027)"
-TABLE_VERSION = "2006.2027-1"
+TABLE_SOURCE = "NYSE/Nasdaq published holiday and early-close rules for US equities (rule-derived; 2006-2028)"
+
+#: Every release of this table that a dataset may record, oldest first, as
+#: (version, last covered date). A release only appends years the exchange has
+#: published, so the rows an earlier release covers are identical in every
+#: later one (``tests/test_sessions.py`` checks 2006-2027 against a digest
+#: taken before 2028 was added). A dataset therefore records the earliest
+#: release that covers its last date (``table_version_for``), and its
+#: ``data_id`` survives an extension that changed nothing it depends on.
+#: Releases before 2006.2027-1 started later and were not compared row by row
+#: with this chain, so a dataset built under one keeps the version it recorded.
+TABLE_RELEASES: tuple[tuple[str, dt.date], ...] = (
+    ("2006.2027-1", dt.date(2027, 12, 31)),
+    ("2006.2028-1", COVERAGE_END),
+)
+TABLE_VERSION = TABLE_RELEASES[-1][0]
 
 # The exchange first closed for Juneteenth on 2022-06-20: the federal holiday
 # was signed on 2021-06-17 and June 19, 2021 fell on a Saturday, which the
@@ -250,6 +282,20 @@ def coverage() -> tuple[dt.date, dt.date]:
 def coverage_end() -> dt.date:
     """The last date the table covers — what the health check compares against its ninety-day warning."""
     return COVERAGE_END
+
+
+def table_version_for(last: dt.date) -> str:
+    """The table version a dataset whose dates end on ``last`` records in its manifest.
+
+    That is the earliest entry of ``TABLE_RELEASES`` covering ``last``: every row
+    such a dataset could have read is the same in that release and in every
+    later one. A date past all of them gets ``TABLE_VERSION``, the release that
+    answered for every date it could.
+    """
+    for version, through in TABLE_RELEASES:
+        if last <= through:
+            return version
+    return TABLE_VERSION
 
 
 def _require_covered(date: dt.date) -> None:

@@ -2,10 +2,17 @@
 
 The table is derived from the exchange's rules, so the test's job is to pin
 the derived rows against dates written down independently here — the NYSE and
-Nasdaq published 2020 through 2027 holiday and early-close calendars — and to
-attack the three places rule-derivation goes wrong: the direction of a
-weekend observance, a Christmas Eve that is itself the Christmas closure, and
-a Saturday New Year's leaking a closure back into the previous December.
+Nasdaq published 2020 through 2027 holiday and early-close calendars, and the
+2028 calendar NYSE has published — and to attack the three places
+rule-derivation goes wrong: the direction of a weekend observance, a Christmas
+Eve that is itself the Christmas closure, and a Saturday New Year's leaking a
+closure back into the previous December.
+
+The 2028 lists were transcribed on 2026-10-14 from NYSE's "Holidays & Trading
+Hours" page (https://www.nyse.com/markets/hours-calendars), which then listed
+2026, 2027 and 2028. Extending coverage to 2028 must not move any earlier row,
+so ``test_extending_to_2028_left_every_2006_2027_row_unchanged`` compares the
+2006-2027 rows with a digest taken from the table before the extension.
 
 The 2020-2025 half of the table also has an external check the later years
 cannot have: ``test_the_recorded_momentum_panel_agrees_with_the_table``
@@ -31,6 +38,7 @@ the transcribed literal lists below stay the check that always runs.
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -43,6 +51,8 @@ from prism.io.sessions import (
     EARLY_CLOSE,
     JUNETEENTH_FIRST_OBSERVED,
     REGULAR_CLOSE,
+    TABLE_RELEASES,
+    TABLE_VERSION,
     NotASessionError,
     SessionTableRangeError,
     coverage,
@@ -55,6 +65,7 @@ from prism.io.sessions import (
     session_row,
     sessions_between,
     status,
+    table_version_for,
 )
 
 
@@ -110,11 +121,35 @@ EARLY_CLOSES = _dates(
     "2027-11-26",  # day after Thanksgiving
 )
 
+# Transcribed on 2026-10-14 from https://www.nyse.com/markets/hours-calendars
+# (the 2028 column of its holiday table and its early-close footnotes), not
+# computed. NYSE lists New Year's Day 2028 as "—": "Because the holiday falls on
+# Saturday, January 1, 2028, no New Year's Day holiday is observed."
+HOLIDAYS_2028 = _dates(
+    "2028-01-17",  # Martin Luther King, Jr. Day
+    "2028-02-21",  # Washington's Birthday
+    "2028-04-14",  # Good Friday
+    "2028-05-29",  # Memorial Day
+    "2028-06-19",  # Juneteenth National Independence Day, Monday
+    "2028-07-04",  # Independence Day, Tuesday
+    "2028-09-04",  # Labor Day
+    "2028-11-23",  # Thanksgiving Day
+    "2028-12-25",  # Christmas Day, Monday
+)
+
+# The same page: "Each market will close early at 1:00 p.m. ... on Monday,
+# July 3, 2028" and on "Friday, November 24, 2028 (the day after Thanksgiving)".
+# December 24, 2028 is a Sunday, so there is no Christmas Eve early close.
+EARLY_CLOSES_2028 = _dates(
+    "2028-07-03",  # day before Independence Day
+    "2028-11-24",  # day after Thanksgiving
+)
+
 # Easter Sunday, written down independently; Good Friday is two days earlier.
-EASTER = {2026: _d("2026-04-05"), 2027: _d("2027-03-28")}
+EASTER = {2026: _d("2026-04-05"), 2027: _d("2027-03-28"), 2028: _d("2028-04-16")}
 
 
-@pytest.mark.parametrize("year,expected", [(2026, HOLIDAYS_2026), (2027, HOLIDAYS_2027)])
+@pytest.mark.parametrize("year,expected", [(2026, HOLIDAYS_2026), (2027, HOLIDAYS_2027), (2028, HOLIDAYS_2028)])
 def test_holidays_match_the_published_calendar(year: int, expected: set[dt.date]) -> None:
     assert _statuses(year, "holiday") == expected
     for holiday in expected:
@@ -122,7 +157,7 @@ def test_holidays_match_the_published_calendar(year: int, expected: set[dt.date]
         assert session_row(holiday).close_time is None
 
 
-@pytest.mark.parametrize("year", [2026, 2027])
+@pytest.mark.parametrize("year", [2026, 2027, 2028])
 def test_good_friday_is_two_days_before_easter(year: int) -> None:
     good_friday = EASTER[year] - dt.timedelta(days=2)
     assert good_friday.weekday() == 4
@@ -149,10 +184,15 @@ def test_sunday_holiday_is_observed_the_following_monday() -> None:
 
 
 def test_new_years_saturday_does_not_close_the_previous_december() -> None:
-    """January 1, 2028 is a Saturday and the exchange trades December 31, 2027."""
+    """January 1, 2028 is a Saturday: the exchange trades December 31, 2027 and closes for nothing in its place."""
     assert _d("2028-01-01").weekday() == 5
+    assert status(_d("2028-01-01")) == "weekend"
     assert status(_d("2027-12-31")) == "open"
     assert session_close(_d("2027-12-31")) == REGULAR_CLOSE
+    # Nor is the observance pushed forward: Monday January 3 is the year's first session.
+    assert status(_d("2028-01-03")) == "open"
+    assert next_session(_d("2027-12-31")) == _d("2028-01-03")
+    assert not any(session_row(date).name == "New Year's Day" for date in _statuses(2028, "holiday"))
 
 
 def test_early_closes_are_exactly_the_published_set() -> None:
@@ -162,6 +202,16 @@ def test_early_closes_are_exactly_the_published_set() -> None:
         assert is_session(date) is True
         assert is_early_close(date) is True
         assert session_close(date) == EARLY_CLOSE
+
+
+def test_the_2028_early_closes_are_exactly_the_published_set() -> None:
+    assert _statuses(2028, "early_close") == EARLY_CLOSES_2028
+    for date in EARLY_CLOSES_2028:
+        assert is_early_close(date) is True
+        assert session_close(date) == EARLY_CLOSE
+    assert session_row(_d("2028-07-03")).name == "Day before Independence Day"
+    assert session_row(_d("2028-11-24")).name == "Day after Thanksgiving"
+    assert _d("2028-12-24").weekday() == 6  # a Sunday: no Christmas Eve session to shorten
 
 
 def test_christmas_eve_2027_is_the_holiday_not_an_early_close() -> None:
@@ -216,7 +266,14 @@ def test_neighbour_beyond_the_table_raises_rather_than_guessing() -> None:
         previous_session(COVERAGE_START)
 
 
-@pytest.mark.parametrize("outside", [_d("2005-12-30"), _d("2028-01-01"), _d("2030-06-03")])
+@pytest.mark.parametrize(
+    "outside",
+    [
+        _d("2005-12-30"),
+        COVERAGE_END + dt.timedelta(days=1),
+        COVERAGE_END + dt.timedelta(days=900),
+    ],
+)
 def test_dates_outside_coverage_raise_on_every_entry_point(outside: dt.date) -> None:
     for call in (
         lambda: status(outside),
@@ -235,9 +292,11 @@ def test_dates_outside_coverage_raise_on_every_entry_point(outside: dt.date) -> 
 
 def test_coverage_is_reported_so_the_health_check_can_warn_before_the_table_ends() -> None:
     assert coverage() == (COVERAGE_START, COVERAGE_END)
-    assert coverage_end() == _d("2027-12-31")
-    assert is_session(coverage_end()) is True
-    days_left = (coverage_end() - _d("2027-11-01")).days
+    assert coverage_end() == _d("2028-12-31")
+    # December 31, 2028 is a Sunday: covered, and answered as a weekend.
+    assert status(coverage_end()) == "weekend"
+    assert previous_session(coverage_end()) == _d("2028-12-29")
+    days_left = (coverage_end() - _d("2028-11-01")).days
     assert days_left < 90  # the shape the ninety-day warning consumes
 
 
@@ -262,9 +321,9 @@ def test_weekends_carry_no_row_and_every_weekday_does() -> None:
             assert session_row(date).date == date
             assert status(date) in ("open", "early_close", "holiday")
         date += dt.timedelta(days=1)
-    # Twenty-two years, 2006-01-01 through 2027-12-31: 8,035 days, of which
-    # 2,295 are Saturdays or Sundays.
-    assert weekend_days == 2295
+    # Twenty-three years, 2006-01-01 through 2028-12-31: 8,401 days, of which
+    # 2,401 are Saturdays or Sundays (2,295 through 2027, and 106 in 2028).
+    assert weekend_days == 2401
 
 
 @pytest.mark.parametrize("year", [2026, 2027])
@@ -273,6 +332,69 @@ def test_each_year_has_251_sessions(year: int) -> None:
     year_sessions = sessions_between(dt.date(year, 1, 1), dt.date(year, 12, 31))
     assert len(year_sessions) == 251
     assert len(_statuses(year, "holiday")) == 10
+
+
+def test_2028_has_251_sessions() -> None:
+    """A leap year that opens on a Saturday has 260 weekdays; nine published holidays leave 251."""
+    year_sessions = sessions_between(dt.date(2028, 1, 1), dt.date(2028, 12, 31))
+    assert len(year_sessions) == 251
+    assert len(_statuses(2028, "holiday")) == 9
+    assert year_sessions[0] == _d("2028-01-03")
+    assert year_sessions[-1] == _d("2028-12-29")
+
+
+# Taken from the table at 70e8332, before coverage was extended to 2028. One
+# line per covered weekday, "<date> <status> <close HH:MM or -> <name>", joined
+# with newlines; the session list is the ISO dates joined with newlines.
+PRE_2028_WEEKDAY_ROWS = 5740
+PRE_2028_SESSIONS = 5533
+PRE_2028_ROWS_SHA256 = "3023f571209626eb3d50a26c441f9a9fc43eaa928645ff95c9a4ec02d26b6990"
+PRE_2028_SESSIONS_SHA256 = "811b962ad77a82f8256928e348931b7286613f8312075bd9accafa3bac8db740"
+
+
+def test_extending_to_2028_left_every_2006_2027_row_unchanged() -> None:
+    """The live loop's whole history is answered from 2006-2027 rows, so adding 2028 must not move one of them.
+
+    Every weekday's status, close time and name over 2006-01-01..2027-12-31
+    is compared with the digest recorded before the extension, and the
+    session list separately, so that a drifting holiday name and a moved
+    session are both caught. Only ``TABLE_VERSION`` and the coverage end
+    were meant to change.
+    """
+    rows: list[str] = []
+    date = dt.date(2006, 1, 1)
+    while date <= dt.date(2027, 12, 31):
+        if status(date) != "weekend":
+            row = session_row(date)
+            close = "-" if row.close_time is None else row.close_time.isoformat(timespec="minutes")
+            rows.append(f"{date.isoformat()} {row.status} {close} {row.name}")
+        date += dt.timedelta(days=1)
+    listed = [day.isoformat() for day in sessions_between(dt.date(2006, 1, 1), dt.date(2027, 12, 31))]
+
+    assert len(rows) == PRE_2028_WEEKDAY_ROWS
+    assert len(listed) == PRE_2028_SESSIONS
+    assert (listed[0], listed[-1]) == ("2006-01-03", "2027-12-31")
+    assert hashlib.sha256("\n".join(rows).encode("utf-8")).hexdigest() == PRE_2028_ROWS_SHA256
+    assert hashlib.sha256("\n".join(listed).encode("utf-8")).hexdigest() == PRE_2028_SESSIONS_SHA256
+
+
+def test_a_dataset_records_the_earliest_release_that_covers_its_last_date() -> None:
+    """Adding 2028 moved no earlier row, so a dataset ending in 2027 keeps the version and the id it had.
+
+    The 2006.2027-1 entry ends where the digest above stops, which is what
+    makes it a release of this same table rather than an older one.
+    """
+    ends = [through for _, through in TABLE_RELEASES]
+    assert ends == sorted(set(ends)), "releases are listed oldest first and each ends later"
+    assert TABLE_RELEASES[-1] == (TABLE_VERSION, COVERAGE_END)
+    assert dict(TABLE_RELEASES)["2006.2027-1"] == _d("2027-12-31")
+
+    assert table_version_for(_d("2005-12-30")) == "2006.2027-1"
+    assert table_version_for(_d("2026-06-15")) == "2006.2027-1"
+    assert table_version_for(_d("2027-12-31")) == "2006.2027-1"
+    assert table_version_for(_d("2028-01-03")) == "2006.2028-1"
+    assert table_version_for(COVERAGE_END) == TABLE_VERSION
+    assert table_version_for(COVERAGE_END + dt.timedelta(days=1)) == TABLE_VERSION
 
 
 # ---------------------------------------------------------------------------

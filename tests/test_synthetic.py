@@ -122,6 +122,14 @@ def test_the_same_seed_rewrites_the_same_bytes(tmp_path: Path) -> None:
         assert (tmp_path / "a" / relative).read_bytes() == (tmp_path / "b" / relative).read_bytes()
 
 
+def test_the_manifest_records_the_earliest_session_table_release_covering_its_sessions(tmp_path: Path) -> None:
+    """A fixture that ends in 2027 records the release it had before 2028 was added, so its id did not move."""
+    before = _write(tmp_path / "2027", start=dt.date(2027, 1, 4), end=dt.date(2027, 12, 31))
+    after = _write(tmp_path / "2028", start=dt.date(2028, 1, 3), end=dt.date(2028, 12, 29))
+    assert before.assumptions["session_table_version"] == "2006.2027-1"
+    assert after.assumptions["session_table_version"] == "2006.2028-1"
+
+
 def test_a_different_seed_gives_different_prices_and_a_different_id(tmp_path: Path) -> None:
     first = _write(tmp_path / "a")
     other = _write(tmp_path / "b", seed=SEED + 1)

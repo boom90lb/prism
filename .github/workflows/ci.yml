@@ -1,8 +1,10 @@
-# Two jobs (SPEC N8 enforcement lives in `core`):
+# Three jobs (SPEC N8 enforcement lives in `core`):
 #   core — every push and pull request: slim install (no research extra), the
 #          "not research" test subset including the import-hygiene contract,
 #          wheel build, and a slim-install smoke proving no heavyweight leaks
 #          into the core.
+#   calendar — workflow_dispatch + weekly cron only: fails while the bundled
+#          exchange session table covers fewer than 180 days ahead.
 #   full — workflow_dispatch + weekly cron only: the [research] extra is a
 #          multi-GB install (jax pulls a cu12 stack AND torch a cu13 stack)
 #          on CPU-only runners, too heavy to pay per push.
@@ -45,6 +47,45 @@ jobs:
             exit 1
           fi
           /tmp/slim/bin/python -c "import prism, prism.io.loader, prism.signal.momentum_node, prism.composition, prism.residual.factors, prism.portfolio.construct, prism.live.daily, prism.regime.fetch, prism.validation.metrics"
+
+  calendar:
+    # The tests never compare the wall clock with the bundled exchange calendar
+    # (src/prism/io/sessions.py), so this weekly job is what notices the table
+    # running out. It fails while fewer than 180 days remain; the fix is to add
+    # the next year from NYSE's published holiday and early-close list.
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          python-version: "3.12"
+          cache-suffix: calendar
+      - name: Install core (no dev group, no extras)
+        run: uv sync --locked --no-dev
+      - name: Session table covers at least 180 days ahead
+        env:
+          MIN_DAYS: "180"
+        run: |
+          uv run --locked --no-dev python - <<'EOF'
+          import datetime as dt
+          import os
+          import sys
+
+          from prism.io import sessions
+
+          today = dt.date.today()
+          end = sessions.coverage_end()
+          left = (end - today).days
+          need = int(os.environ["MIN_DAYS"])
+          print(f"session table {sessions.TABLE_VERSION} covers through {end}: {left} day(s) after {today}")
+          if left < need:
+              print(
+                  f"::error::fewer than {need} days of exchange calendar remain; add the next year to "
+                  "src/prism/io/sessions.py from NYSE's published holiday and early-close list"
+              )
+              sys.exit(1)
+          EOF
 
   full:
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
