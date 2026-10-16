@@ -2,10 +2,11 @@
 
 The table is derived from the exchange's rules, so the test's job is to pin
 the derived rows against dates written down independently here — the NYSE and
-Nasdaq published 2020 through 2028 holiday and early-close calendars — and to
-attack the three places rule-derivation goes wrong: the direction of a
-weekend observance, a Christmas Eve that is itself the Christmas closure, and
-a Saturday New Year's leaking a closure back into the previous December.
+Nasdaq published 2020 through 2027 holiday and early-close calendars, and the
+2028 calendar NYSE has published — and to attack the three places
+rule-derivation goes wrong: the direction of a weekend observance, a Christmas
+Eve that is itself the Christmas closure, and a Saturday New Year's leaking a
+closure back into the previous December.
 
 The 2028 lists were transcribed on 2026-10-14 from NYSE's "Holidays & Trading
 Hours" page (https://www.nyse.com/markets/hours-calendars), which then listed
