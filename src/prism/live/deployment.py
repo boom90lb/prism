@@ -21,8 +21,15 @@ deployments share, such as ``paper_loop_momentum``), and it is never written
 anywhere else.
 
 The file is ``{run-dir}/deployment.json``, written atomically with mode 0600.
-The seed is not a credential, but anyone who holds it can predict the sessions
-this deployment trades on, which is exactly what it exists to keep private.
+The seed is not a credential, and the phase it sets is not a secret: the
+offset is written in plain text to the nightly log, to ``state.json`` (each
+tranche's ``phase_offset_bars``), to the ``tranches`` record of
+``targets.jsonl`` and to ``sizing.jsonl``, all of which the off-box backup
+mirrors, and anyone who sees the account's orders sees it from the first
+refresh. What the seed buys is
+independence: two deployments draw unrelated phases. The 0600 mode keeps the
+seed itself to the owner, and so every later draw it would make, such as a
+per-session draw a schedule might take (none is used yet).
 
 **Who creates it.** Only the first submitting session of a new deployment:
 ``--submit --allow-new-run-dir`` on a run directory that held no prior session
@@ -132,7 +139,7 @@ class DeploymentProfile:
         return cls(seed_hex=secrets.token_hex(SEED_BYTES), created_bar=str(created_bar))
 
     def __repr__(self) -> str:
-        # The seed predicts this deployment's trading sessions; keep it out of logs.
+        # The seed determines every draw this deployment makes; keep it out of logs.
         return (
             f"DeploymentProfile(seed_hex=<{2 * SEED_BYTES} hex>, created_bar={self.created_bar!r}, "
             f"schema={self.schema})"
@@ -216,8 +223,8 @@ def read_deployment(run_dir: Path | str) -> DeploymentProfile:
     mode = stat.S_IMODE(path.stat().st_mode)
     if mode & 0o077:
         logger.warning(
-            "deployment profile %s has mode %o; it should be %o (owner only), because its seed predicts the "
-            "sessions this deployment trades on",
+            "deployment profile %s has mode %o; it should be %o (owner only), because its seed determines every "
+            "draw this deployment makes (the phase offset itself is recorded in plain text elsewhere)",
             path,
             mode,
             DEPLOYMENT_FILE_MODE,

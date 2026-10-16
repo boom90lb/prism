@@ -571,10 +571,15 @@ run directory.
   --allow-new-run-dir`) and never overwritten. Every later session and every
   `--no-submit` rehearsal reads it. The offset is HMAC-SHA256 of
   `rebalance_phase:<created_bar>` keyed by the seed, reduced to
-  `[0, decision_every)` (`prism.live.deployment`). Anyone holding the seed can
-  predict the deployment's trading days, so keep the file private. The
-  off-box backup (`ops/artifacts_sync.sh`) mirrors `runs/`, so the seed is in
-  the backup as well, and a restored run directory keeps its phase.
+  `[0, decision_every)` (`prism.live.deployment`). The seed's job is to make
+  phases independent across deployments, not to keep a deployment's schedule
+  secret: the offset it sets is written in plain text to the nightly log, to
+  `state.json` (each tranche's grid offset), to the `tranches` record of
+  `targets.jsonl` and to `sizing.jsonl`, and anyone who sees the account's
+  orders sees it from the first refresh. The 0600 mode keeps the seed itself,
+  and so every later draw it would make (none is used yet), to the owner. The off-box backup
+  (`ops/artifacts_sync.sh`) mirrors `runs/`, so the seed is in the backup as
+  well, and a restored run directory keeps its phase.
 - **Refusals.** A seeded run with no seed file is refused before any venue read:
   a rehearsal of a new directory, or an established directory whose first
   session ran without the flag. Seeded is also refused with `--profile

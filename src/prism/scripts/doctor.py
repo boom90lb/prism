@@ -1112,8 +1112,8 @@ def check_deployment_profile(run_dir: Path) -> CheckResult:
             return _result(
                 "deployment-profile",
                 False,
-                f"{path} has mode {mode:o}, not 600: the seed predicts the sessions this deployment trades on; "
-                f"chmod 600 {path}",
+                f"{path} has mode {mode:o}, not 600: the seed determines every draw this deployment makes (the "
+                f"phase offset itself is recorded in plain text in the log and ledgers); chmod 600 {path}",
                 warn=True,
             )
         return _result("deployment-profile", True, f"{path}: created {profile.created_bar}, mode 600 (seed not shown)")
