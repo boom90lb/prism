@@ -37,7 +37,7 @@ name. Where this page and the contract differ, the contract governs.
 | ratified, RATIFIED | Approved by the owner. Before 2026-09-02 approval was a separate step with its own commit or tag; the current contract needs none. |
 | owner act, owner decision | A decision reserved to the maintainer who owns the accounts: opening or funding an account, arming a sizing rule, changing the live book, publishing a release. No code change or review can make it. |
 | constitution, doctrine, amendments, handoff, program document | Governing documents that [SPEC.md](../SPEC.md) replaced on 2026-09-02. Older records cite them; none of them is in the repository any longer. |
-| launch brief, Q1–Q20, `[Q7]` | The numbered questions of [the engine design brief](prism_engine_decisions.md) of 2026-09-06. |
+| launch brief, Q1–Q22, `[Q7]` | The numbered questions of [the engine design brief](prism_engine_decisions.md) of 2026-09-06. |
 | engine specification, spec §3.x | Sections of the engine overhaul's implementation specification. It is an unpublished draft that is not in the repository, so code comments that cite it cannot be followed from a clone. |
 | stage 0–6 | The delivery phases of the 2026-09 engine overhaul, all complete ([completion record](engine_overhaul_completion_2026-09-15.md)). Older messages and documents use them as a schedule. |
 | Tested, Run, Drafted, Assumed | Status labels on claims (SPEC §7): tests exist and pass; executed, correctness not asserted; written, not executed; not checked. |

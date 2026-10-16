@@ -120,7 +120,7 @@ None of these adds a trial or can choose a configuration.
 
 | Document | What it is |
 |---|---|
-| [Design brief](prism_engine_decisions.md) | The questions Q1–Q20 and their answers that shaped the engine. |
+| [Design brief](prism_engine_decisions.md) | The questions Q1–Q22 and their answers that shaped the engine. |
 | [Operating changes](engine_overhaul_operating_changes.md) | Every intended difference in live behaviour, and the decision-parity check ([result](engine_overhaul_parity_gate.json)). |
 | [Completion record](engine_overhaul_completion_2026-09-15.md) | The release engineering completed before the overhaul was merged. |
 | [Onboarding receipt](onboarding_verification.json) | The recorded run of the onboarding walkthroughs. |

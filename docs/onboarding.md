@@ -145,9 +145,10 @@ focused examples are in [`evaluate.py`](../src/prism/evaluate.py) and
 **CLI boundary:** `prism evaluate` runs the smoke path above and nothing else.
 Recorded evaluation, evaluation bound to a registration, and `--engine canonical`
 are refused by the CLI, with exit 2, even though their Python interfaces exist.
-In the 0.4.0 wheel the refusal reads "not delivered until stage N"; later builds
-name the Python interface to use instead, and `--help` marks the commands that
-are not available. The guide to [research from an installed release](owner_migration.md)
+In wheels built before commit `f3be08d` the refusal reads "not delivered until
+stage N"; builds from that commit onward name the Python interface to use
+instead, and `--help` marks the commands that are not available. Both carry the
+version 0.4.0. The guide to [research from an installed release](owner_migration.md)
 shows a reproduction through the full Python evaluator.
 
 ## 3. Interpret a comparison and recompute one

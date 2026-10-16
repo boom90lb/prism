@@ -10,8 +10,10 @@ SPEC §5 scopes this package to grow RMT cleaning and neutralization (R4).
 The research walk-forward harnesses that consumed it are gone:
 ``research/arbitrage/residual_walk_forward.py`` (removed; last present at commit 5fcac33869e9) and
 ``research/scripts/stat_arb_residual_wfo.py`` (removed; last present at commit 5fcac33869e9).
-``research/arbitrage/pairs.py`` still imports it, as do the engine's signal
-nodes and ``prism.risk_model``.
+Several research modules still import it, ``research/arbitrage/pairs.py`` among
+them, and so does the engine: the signal nodes, ``prism.risk_model``,
+``prism.scripts.paper_books``, ``prism.scripts.replay_loop`` and
+``prism.io.legacy_import``.
 """
 
 __all__: list[str] = []
