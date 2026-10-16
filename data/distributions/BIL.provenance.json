@@ -1,0 +1,38 @@
+{
+ "symbol": "BIL",
+ "issuer": "State Street Global Advisors (SPDR)",
+ "fund_name": "State Street® SPDR® Bloomberg 1-3 Month T-Bill ETF",
+ "source_url": "https://www.ssga.com/library-content/products/fund-data/etfs/us/spdr-etf-historical-distributions.xlsx",
+ "source_page": "https://www.ssga.com/us/en/intermediary/resources/documents/etf-dividend-distributions",
+ "source_page_note": "the page SPY.provenance.json records for the same workbook (2026-09-03); the page itself was not re-fetched in this capture",
+ "source_kind": "issuer_csv",
+ "source_kind_detail": "issuer-hosted XLSX (all SPDR US ETFs historical distributions, single sheet 'dividend'), filtered to TICKER == BIL; the same workbook URL as SPY.csv",
+ "captured_at": "2026-10-16T02:03:08-07:00",
+ "http_status": 200,
+ "fetch_method": "curl -L GET inside the default sandbox (no sandbox override), desktop Chrome User-Agent; Content-Type application/vnd.openxmlformats-officedocument.spreadsheetml.sheet; Date header Fri, 16 Oct 2026 09:03:08 GMT; Last-Modified Fri, 16 Oct 2026 04:18:30 GMT",
+ "raw_file": "/tmp/claude-1000/-home-b90-prism/83aa8297-6173-4d66-b6d2-1ea9e759253e/scratchpad/wpl4_dl/ssga_dist.xlsx",
+ "raw_file_bytes": 581216,
+ "sha256": "6b65cbf956b5d25705d08470006a0e97e6a7d2a0d5cfd08b63f6f79783b06320",
+ "n_records": 232,
+ "first_ex_date": "2007-07-02",
+ "last_ex_date": "2026-10-01",
+ "cutoff_requested": "none: every issuer record at capture (all ex-dates are on or before the capture date)",
+ "columns_in_source": [
+  "FUND NAME",
+  "TICKER",
+  "CUSIP",
+  "EX-DATE",
+  "RECORD DATE",
+  "PAYABLE DATE",
+  "DIVIDEND ($)",
+  "SHORT TERM CAPITAL GAIN ($)",
+  "LONG TERM CAPITAL GAIN ($)",
+  "FREQUENCY"
+ ],
+ "parsing_notes": "Workbook has one sheet ('dividend'): a header row and 13384 rows below it, of which 53 carry no ticker (blank rows and trailing notice text) and the rest cover 181 SPDR US ETF tickers; every cell is a shared string (dates MM/DD/YYYY, amounts as decimal strings with six decimals). Selected the 232 rows with TICKER == 'BIL' (single CUSIP 78468R663, FREQUENCY 'Monthly' on every row). amount = DIVIDEND ($) + SHORT TERM CAPITAL GAIN ($) + LONG TERM CAPITAL GAIN ($) per share, summed as decimals (blank treated as 0). Two rows carry a cash capital-gain component: ex 2008-12-29 = dividend 0.017152 + STCG 0.011056 = 0.028208, and ex 2009-12-29 = STCG 0.003815 alone. 105 rows have a zero amount: every BIL ex-date from 2009-12-01 through 2016-11-01 except 2009-12-29 (0.003815) and 2011-12-28 (0.001893), and every one from 2020-06-01 through 2022-05-02 except 2020-12-01 (0.003251), the near-zero rate periods; the issuer lists them as distributions of 0.000000 and they are kept as zero cash events, not dropped. No duplicate ex-dates, so nothing was summed across rows. Parsed with zipfile + xml.etree, as for SPY.csv; the same parser applied to this capture reproduces the tracked SPY.csv's 135 rows byte for byte (the capture holds one later SPY row, ex 2026-09-18), which checks the parser, not the BIL amounts. Cadence: 12 ex-dates in every full calendar year 2008-2025, 7 in 2007 (first ex-date 2007-07-02) and 9 in 2026 through 2026-10-01; gaps over 45 days (46 days, mid-December to early February 2022, 2025, 2026) are the issuer's second December ex-date with no January one. RECORD DATE is in the raw file but not carried into the CSV.",
+ "anomalies": [
+  "ex 2008-03-03 carries PAYABLE DATE 02/11/2008, before its ex-date (and equal to the previous row's pay date). It is written as the issuer lists it and not corrected; a consumer that credits cash on the pay date should not rely on this row's pay date."
+ ],
+ "cross_check": "none independent: the workbook is the only source read for BIL (no product-page or non-issuer comparison was made)",
+ "gaps": []
+}

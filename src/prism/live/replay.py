@@ -256,6 +256,7 @@ def replay_daily_cycles(
     initial_cash: float = 100_000.0,
     initial_positions: dict[str, float] | None = None,
     unrankable: Callable[[str], Collection[str]] | None = None,
+    tranches: int = 1,
 ) -> tuple[list[DailyCycleResult], ReplayBroker]:
     """Run the real daily cycle over every bar in ``[start_bar, end_bar]``.
 
@@ -265,6 +266,10 @@ def replay_daily_cycles(
     no network, so callers inject a canned mapping (there is no offline event
     source to wire a CLI flag to); the default ``None`` is off — parity with
     every prior replay.
+
+    ``tranches`` replays a tranched book (``run_daily_cycle(tranches=...)``,
+    :mod:`prism.live.tranches`) on the epoch grid (base offset 0; the replay
+    takes no seeded phase). The default 1 is the single book, as before.
 
     Each cycle *t*: arm bar *t*'s opens on the broker (the prior decision's
     N2 next-open fills), fit a fresh ``signal_factory()`` on the trailing
@@ -332,7 +337,16 @@ def replay_daily_cycles(
         broker.set_fill(open_.loc[t], dates[i])
         signal = signal_factory().fit(sub_close, sub_volume)
         results.append(
-            run_daily_cycle(ctx, signal, sub_close, sub_volume, config, decision_bar=dates[i], unrankable=unrankable)
+            run_daily_cycle(
+                ctx,
+                signal,
+                sub_close,
+                sub_volume,
+                config,
+                decision_bar=dates[i],
+                unrankable=unrankable,
+                tranches=tranches,
+            )
         )
     return results, broker
 

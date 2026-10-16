@@ -29,6 +29,14 @@ Neither read gates an order. ``docs/forward_design.md`` and
 ``docs/momentum_design.md`` consume the return verdict under their own
 registered wording; the tracking verdict applies to registrations whose first
 made after 2026-09-30 (``docs/live_monitor_design.md`` §4).
+
+* **T-bill-referenced return read (report only, off by default).** The return
+  monitor again, against the per-session bill rate instead of zero
+  (:func:`tbill_monitor_read`). It is added beside the registered hurdle-0 read
+  and never replaces it: every registered conjunct reads the hurdle-0 verdict.
+  It answers the question the hurdle-0 read does not, whether the paper account
+  beats holding its equity in Treasury bills, and it states how long a stream
+  must run before it could tell (:func:`detection_horizon_years`).
 """
 
 from __future__ import annotations
@@ -36,19 +44,29 @@ from __future__ import annotations
 import datetime as dt
 import logging
 import math
+import tomllib
+from bisect import bisect_right
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping
+from statistics import NormalDist
+from typing import Any, Mapping, Sequence
 
 import numpy as np
 import pandas as pd
 
 from prism.io import sessions
-from prism.live.loop import read_equity_ledger, read_shadow_ledger
+from prism.live.ledgers import read_rows
+from prism.live.loop import (
+    read_equity_ledger,
+    read_shadow_ledger,
+    read_targets_ledger,
+)
 from prism.validation.anytime import (
     anytime_monitor_read,
     empirical_bernstein_confidence_sequence,
     empirical_bernstein_monitor_read,
 )
+from prism.validation.hurdle import tbill_hurdle
 
 logger = logging.getLogger(__name__)
 
@@ -198,6 +216,290 @@ def paper_monitor_read(
     read["skipped_pairs"] = list(series["skipped"]) if series is not None else []
     if shadow_ledger_path is not None:
         read["tracking"] = shadow_tracking_read(equity_ledger_path, shadow_ledger_path, alpha=alpha)
+    return read
+
+
+# ---------------------------------------------------------------------------
+# T-bill-referenced return read (report only)
+# ---------------------------------------------------------------------------
+
+#: Sessions per year the T-bill read divides its annual hurdle by.
+TBILL_PERIODS_PER_YEAR = 252
+
+#: Default annual fee of the T-bill ETF a cash holding buys, as a fraction:
+#: ``[criteria] sleeve_fee_annual`` of ``registrations/2026-10-public-baseline.toml``
+#: (SGOV's expense ratio is about 0.09% by secondary sources, not checked at the issuer).
+DEFAULT_TBILL_ETF_FEE = 0.0010
+
+_TBILL_REQUIRED = ("rf_annual", "rf_source")
+_TBILL_OPTIONAL = ("cash_yield", "cash_yield_source", "etf_fee_annual", "planning_sharpe", "planning_source")
+
+#: How the detection horizon is computed, recorded beside every horizon stated.
+DETECTION_HORIZON_METHOD = (
+    "fixed-sample one-sided z-test on daily returns: years = (z_(1-alpha) / S)^2, the horizon at which the "
+    "expected t-statistic of a stream whose true annualized Sharpe is S reaches the critical value, so about half "
+    "of such streams would have rejected zero by then; a time-uniform confidence sequence pays for being valid at "
+    "every n and needs longer, so this is a lower bound for the anytime read"
+)
+
+
+def _real(name: str, value: Any) -> float:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"{name} must be a real number, got {value!r}")
+    out = float(value)
+    if not math.isfinite(out):
+        raise ValueError(f"{name} must be finite, got {out!r}")
+    return out
+
+
+@dataclass(frozen=True)
+class TbillReference:
+    """The inputs of the report-only T-bill-referenced return read, each with where it came from.
+
+    ``rf_annual`` is the bill rate the account is measured against (0.0421 for
+    4.21%) and ``rf_source`` names it. There is no default rate: a stale one
+    would pass silently.
+
+    ``cash_yield`` is what idle cash earns that the paper NAV does not record.
+    The default, 0, assumes nothing beyond the NAV. Whether Alpaca's paper
+    accounts credit interest on cash is not verified, and a yield the NAV
+    already carries would be counted twice if it were entered here.
+
+    ``etf_fee_annual`` matters only when the targets ledger records a T-bill
+    holding (:mod:`prism.live.cash_holding`). Paper accounts do not simulate
+    dividends, so the ETF's distributions are missing from the paper NAV while
+    the price drop at each ex-date is in it. The read credits the ETF's mean
+    share of equity at ``rf_annual - etf_fee_annual``: an assumption that the
+    ETF distributes at the bill rate less its fee.
+
+    ``planning_sharpe`` (with ``planning_source``) is the annualized Sharpe of
+    the account's excess over bills at which the detection horizon is stated.
+    It is a planning figure, not a measurement; without it no horizon is stated.
+    """
+
+    rf_annual: float
+    rf_source: str
+    cash_yield: float = 0.0
+    cash_yield_source: str = "none assumed beyond the paper NAV"
+    etf_fee_annual: float = DEFAULT_TBILL_ETF_FEE
+    planning_sharpe: float | None = None
+    planning_source: str = ""
+
+    def __post_init__(self) -> None:
+        _real("rf_annual", self.rf_annual)
+        for name in ("cash_yield", "etf_fee_annual"):
+            if _real(name, getattr(self, name)) < 0.0:
+                raise ValueError(f"{name} must be >= 0, got {getattr(self, name)!r}")
+        for name in ("rf_source", "cash_yield_source", "planning_source"):
+            if not isinstance(getattr(self, name), str):
+                raise ValueError(f"{name} must be text, got {getattr(self, name)!r}")
+        if not self.rf_source.strip():
+            raise ValueError("rf_source must name where the bill rate came from")
+        if self.planning_sharpe is not None:
+            if _real("planning_sharpe", self.planning_sharpe) <= 0.0:
+                raise ValueError(f"planning_sharpe must be > 0, got {self.planning_sharpe!r}")
+            if not self.planning_source.strip():
+                raise ValueError("planning_source must name where planning_sharpe came from")
+
+
+def load_tbill_reference(path: Path | str) -> TbillReference:
+    """A :class:`TbillReference` from a TOML file whose top-level keys are its fields.
+
+    Read strictly: an unknown key is refused, so a misspelled field cannot pass
+    as its default (N7). ``rf_annual`` and ``rf_source`` are required.
+    """
+    path = Path(path)
+    try:
+        raw = tomllib.loads(path.read_text(encoding="utf-8"))
+    except (OSError, tomllib.TOMLDecodeError) as exc:
+        raise ValueError(f"T-bill reference {path} cannot be read: {exc}") from exc
+    unknown = sorted(set(raw) - set(_TBILL_REQUIRED) - set(_TBILL_OPTIONAL))
+    if unknown:
+        raise ValueError(f"T-bill reference {path} has unknown key(s) {unknown}; allowed: "
+                         f"{sorted(_TBILL_REQUIRED + _TBILL_OPTIONAL)}")
+    missing = [key for key in _TBILL_REQUIRED if key not in raw]
+    if missing:
+        raise ValueError(f"T-bill reference {path} is missing {missing}")
+    try:
+        return TbillReference(**raw)
+    except ValueError as exc:
+        raise ValueError(f"T-bill reference {path}: {exc}") from exc
+
+
+def detection_horizon_years(sharpe_annual: float, *, alpha: float = 0.05) -> float | None:
+    """Years of daily returns before a stream with true annualized Sharpe ``sharpe_annual`` is expected to reject zero.
+
+    ``(z_(1-alpha) / S)^2`` (:data:`DETECTION_HORIZON_METHOD`): about 30 years at
+    S = 0.30 and about 245 at S = 0.105, at ``alpha = 0.05``. ``None`` when S is
+    not positive, because such a stream is not expected to reject zero at all.
+    """
+    if not 0.0 < alpha < 1.0:
+        raise ValueError(f"alpha must lie in (0, 1), got {alpha!r}")
+    sharpe = _real("sharpe_annual", sharpe_annual)
+    if sharpe <= 0.0:
+        return None
+    return (NormalDist().inv_cdf(1.0 - alpha) / sharpe) ** 2
+
+
+def held_book_exposure(
+    rows: Sequence[Mapping[str, Any]] | None,
+    prev_bars: Sequence[str],
+    *,
+    holding_rows: Sequence[Mapping[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """The stock long side and T-bill ETF share of the book held through each return session.
+
+    For the session whose previous bar is ``prev``, the book is the latest
+    targets-ledger row whose ``refresh_bar`` is on or before ``prev``: decided
+    at or before the previous close and filled at the session's open. Its long
+    side is the sum of its positive weights other than the ETF's. The ETF's
+    share is the decided ``weight`` of the latest per-session holding record
+    (``holding_rows``, ``cash_holding.jsonl``) on or before ``prev``, because
+    the holding trades on sessions the book does not refresh; without that
+    record it is the ``cash_holding`` decision the targets row carries (zero
+    without one), which for a book that refreshes less often than daily is the
+    holding as of its last refresh. Before the first targets row no stock book
+    is held, so the long side is zero; the per-session record counts the ETF
+    from its first decision, which may come first. ``rows=None`` (no targets
+    ledger) gives a zero long side and says so in ``source``.
+    """
+    n = len(prev_bars)
+    long_side = np.zeros(n, dtype=float)
+    sleeve = np.zeros(n, dtype=float)
+    symbols: set[str] = set()
+    without = n
+    held = sorted(holding_rows or [], key=lambda row: str(row["decision_bar"])[:10])
+    held_keys = [str(row["decision_bar"])[:10] for row in held]
+    symbols.update(str(row["symbol"]) for row in held if row.get("symbol") is not None)
+    if holding_rows is not None:
+        # The holding trades whether or not a stock book is held yet.
+        for i, prev in enumerate(prev_bars):
+            found = bisect_right(held_keys, str(prev)[:10]) - 1
+            if found >= 0:
+                sleeve[i] = float(held[found].get("weight", 0.0))
+    if rows:
+        ordered = sorted(rows, key=lambda row: str(row["refresh_bar"])[:10])
+        keys = [str(row["refresh_bar"])[:10] for row in ordered]
+        without = 0
+        for i, prev in enumerate(prev_bars):
+            at = bisect_right(keys, str(prev)[:10]) - 1
+            if at < 0:
+                without += 1
+                continue
+            row = ordered[at]
+            excluded = set(symbols)
+            if holding_rows is None:
+                holding = row.get("cash_holding") or {}
+                symbol = holding.get("symbol")
+                if symbol is not None:
+                    symbols.add(str(symbol))
+                    sleeve[i] = float(holding.get("weight", 0.0))
+                excluded = set() if symbol is None else {str(symbol)}
+            long_side[i] = sum(max(0.0, float(w)) for s, w in (row.get("targets") or {}).items() if s not in excluded)
+    return {
+        "source": None if rows is None else "targets ledger"
+        + ("" if holding_rows is None else " and cash-holding ledger"),
+        "n_sessions": n,
+        "n_sessions_without_book": int(without),
+        "long_over_equity_mean": float(long_side.mean()) if n else 0.0,
+        "sleeve_fraction_mean": float(sleeve.mean()) if n else 0.0,
+        "etf_symbols": sorted(symbols),
+    }
+
+
+def tbill_monitor_read(
+    equity_ledger_path: Path | str,
+    reference: TbillReference,
+    *,
+    targets_ledger_path: Path | str | None = None,
+    cash_holding_ledger_path: Path | str | None = None,
+    alpha: float = 0.05,
+    bound: float = DEFAULT_NAV_RETURN_BOUND,
+    method: str = "empirical_bernstein",
+) -> dict:
+    """The return monitor against the per-session T-bill hurdle instead of zero. Report only.
+
+    SPEC §3's hurdle (:func:`prism.validation.hurdle.tbill_hurdle`) stated for
+    the paper NAV. The account beats bills when its mean daily NAV return
+    exceeds ``return_hurdle_annual / 252``, where
+
+        return_hurdle_annual = rf - (rf - fee) * s - y * max(0, 1 - L/E - s)
+
+    with ``L/E`` the stock long side and ``s`` the T-bill ETF's share of equity
+    of the book held through each session (:func:`held_book_exposure`; ``s``
+    from ``cash_holding_ledger_path``, the per-session holding record, when it
+    is given), averaged over the sessions the read covers; ``y`` is
+    ``reference.cash_yield`` and ``fee`` ``reference.etf_fee_annual``. With no
+    ETF and ``y = 0`` the hurdle is the bill rate itself.
+
+    The read is :func:`paper_monitor_read` at that hurdle, with the same
+    sequence, support and alpha as the registered read, plus
+    ``reference = "tbill"``, ``report_only = True``, ``hurdle_annual``,
+    ``hurdle_inputs`` (every input and its source), ``exposure`` and
+    ``detection_horizon``. The hurdle's Sharpe form needs a positive realized
+    volatility; before two returns exist it is omitted (``None``), and the
+    return hurdle, which does not depend on volatility, is still stated.
+
+    Raises ``ValueError`` when ``reference.cash_yield`` is not zero and no
+    targets ledger is given (the idle fraction it applies to is unknown), and
+    when the ETF's mean share exceeds the idle equity it is bought with
+    (:func:`prism.validation.hurdle.tbill_hurdle` refuses it).
+    """
+    df = read_equity_ledger(Path(equity_ledger_path))
+    series = consecutive_session_returns(df) if len(df) >= 2 else None
+    returns = series["returns"] if series is not None else np.array([], dtype=float)
+    prev_bars = series["prev_bars"] if series is not None else []
+    if targets_ledger_path is None and reference.cash_yield != 0.0:
+        raise ValueError("a non-zero cash yield needs the targets ledger: the idle fraction it applies to is unknown")
+    rows = read_targets_ledger(Path(targets_ledger_path)) if targets_ledger_path is not None else None
+    holding_rows = read_rows(Path(cash_holding_ledger_path)) if cash_holding_ledger_path is not None else None
+    exposure = held_book_exposure(rows, prev_bars, holding_rows=holding_rows)
+    sd = float(np.std(returns, ddof=1)) if returns.size >= 2 else float("nan")
+    vol = sd * math.sqrt(TBILL_PERIODS_PER_YEAR) if math.isfinite(sd) and sd > 0.0 else None
+    sleeve = exposure["sleeve_fraction_mean"]
+    etf_yield = reference.rf_annual - reference.etf_fee_annual if sleeve > 0.0 else 0.0
+    found = tbill_hurdle(
+        reference.rf_annual,
+        reference.cash_yield,
+        exposure["long_over_equity_mean"],
+        1.0 if vol is None else vol,
+        periods_per_year=TBILL_PERIODS_PER_YEAR,
+        rf_source=reference.rf_source,
+        cash_yield_source=reference.cash_yield_source,
+        vol_basis="" if vol is None else "realized_annualized",
+        sleeve_fraction=sleeve,
+        sleeve_yield=etf_yield,
+        sleeve_yield_source=(
+            f"ETF distributions the paper NAV does not record, assumed at rf less a {reference.etf_fee_annual} fee"
+            if sleeve > 0.0
+            else ""
+        ),
+    )
+    read = paper_monitor_read(
+        equity_ledger_path,
+        hurdle=found.return_hurdle_annual / TBILL_PERIODS_PER_YEAR,
+        alpha=alpha,
+        bound=bound,
+        method=method,
+    )
+    inputs = found.to_dict()
+    if vol is None:  # tbill_hurdle needs a volatility for the Sharpe form; none is measured yet
+        inputs.update(vol_annual=None, sharpe_annual=None, sharpe_periodic=None)
+    if reference.planning_sharpe is None:
+        horizon: dict[str, Any] = {"planning_sharpe": None, "years": None,
+                                   "note": "no planning Sharpe was stated in the T-bill reference"}
+    else:
+        horizon = {"planning_sharpe": reference.planning_sharpe, "planning_source": reference.planning_source,
+                   "alpha": float(alpha), "years": detection_horizon_years(reference.planning_sharpe, alpha=alpha),
+                   "method": DETECTION_HORIZON_METHOD}
+    read.update(
+        reference="tbill",
+        report_only=True,
+        hurdle_annual=found.return_hurdle_annual,
+        hurdle_inputs=inputs,
+        exposure=exposure,
+        detection_horizon=horizon,
+    )
     return read
 
 

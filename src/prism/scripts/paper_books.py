@@ -54,14 +54,22 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 
 from prism.io import sessions
+from prism.live.cash_holding import (
+    DEFAULT_BAND,
+    DEFAULT_BUFFER,
+    CashHolding,
+    CashHoldingError,
+)
 from prism.live.daily import EXCHANGE_TZ, DailyBookConfig
 from prism.live.safety import SafetyConfig
+from prism.portfolio.vol_scale import VolScaleRule
 from prism.residual.factors import ResidualStatArbConfig
 from prism.signal.base import Signal
 from prism.signal.momentum_node import MomentumSignalNode
 from prism.signal.trend_node import TREND_V1_UNIVERSE, TrendSignalNode
 
 if TYPE_CHECKING:  # pragma: no cover - import cycle avoidance only
+    from prism.live.risk_profile import RiskProfile
     from prism.spec import Specification
     from prism.workspace import Workspace
 
@@ -508,3 +516,167 @@ def build_safety_config(
         max_order_fraction=resolved_fraction if resolved_fraction > 0 else None,
         max_orders=resolved_orders if resolved_orders > 0 else None,
     )
+
+
+# ------------------------------------------------------------ volatility scale
+
+#: The ``--vol-scale`` value that leaves the book unscaled, the default.
+VOL_SCALE_OFF = "off"
+
+#: The rules ``--vol-scale`` can name. ``bsc-12-126-2`` is the Barroso and
+#: Santa-Clara rule of selection set ``vol_momentum_v1``
+#: (``registrations/2026-09-vol-momentum.toml``): a 12% volatility target, a
+#: 126-session window and a scale cap of 2, so the book's gross ceiling is 2.0.
+VOL_SCALE_PRESETS: dict[str, VolScaleRule] = {
+    "bsc-12-126-2": VolScaleRule(target_vol=0.12, lookback_bars=126, max_scale=2.0),
+}
+
+
+def resolve_vol_scale(
+    choice: str,
+    *,
+    book: str,
+    max_gross: float,
+    profile: "RiskProfile | None" = None,
+) -> VolScaleRule | None:
+    """The volatility-scale rule ``--vol-scale`` names, or None for ``off``.
+
+    The rule sizes the momentum book only, and a book scaled up to 2x gross
+    needs ``--max-gross`` at the rule's ceiling: the flag is the account's gross
+    ceiling, and a lower one would cap the rule rather than run it. A risk
+    profile pins the book's gross at or below the certified 1.0 and profiles
+    only tighten, so the scale is refused under every profile, including the
+    certified ``research_paper`` path. Each refusal is a ``SystemExit`` raised
+    before any venue read.
+    """
+    if choice == VOL_SCALE_OFF:
+        return None
+    try:
+        rule = VOL_SCALE_PRESETS[choice]
+    except KeyError:
+        raise SystemExit(
+            f"--vol-scale {choice!r} is not a known rule; choose {VOL_SCALE_OFF!r} or one of "
+            f"{sorted(VOL_SCALE_PRESETS)}"
+        ) from None
+    if book != "momentum":
+        raise SystemExit(
+            f"--vol-scale applies to --book momentum only (got {book!r}): the rule scales the decile book, whose "
+            "unscaled gross is 1.0"
+        )
+    if profile is not None:
+        raise SystemExit(
+            f"--vol-scale is refused with --profile {profile.profile_id}: that profile pins the book's gross at "
+            f"{profile.book_config.max_gross}, profiles only tighten, and the scale sizes the book up to "
+            f"{rule.max_gross}"
+        )
+    if max_gross != rule.max_gross:
+        raise SystemExit(
+            f"--vol-scale {choice} requires --max-gross {rule.max_gross:g} (got {max_gross:g}): the flag is the "
+            "account's gross ceiling, and the rule sizes the book up to that ceiling"
+        )
+    return rule
+
+
+# ----------------------------------------------------------------- tranches
+
+#: The tranche counts ``--tranches`` offers: the single book (the default), and
+#: the 3- and 21-tranche books of selection set ``public_baseline_v1``.
+TRANCHE_CHOICES: tuple[int, ...] = (1, 3, 21)
+
+
+def resolve_tranches(
+    tranches: int,
+    *,
+    book: str,
+    decision_every: int,
+    wind_down: bool,
+    profile: "RiskProfile | None" = None,
+) -> int:
+    """The tranche count ``--tranches`` names, refused where it cannot run.
+
+    Tranching splits the momentum book's decile construct into overlapping
+    tranches (``prism.live.tranches``), so it needs ``--book momentum`` and a
+    cadence the count divides (21 for 3 or 21 tranches). The certified
+    ``research_paper`` profile is the single monthly book and refuses it.
+    ``--wind-down`` exits a tranched book one tranche per session and has no
+    meaning for the single book. Each refusal is a ``SystemExit`` raised before
+    the writer lock and any venue read.
+    """
+    count = int(tranches)
+    if count not in TRANCHE_CHOICES:
+        raise SystemExit(f"--tranches must be one of {TRANCHE_CHOICES}, got {count}")
+    if count == 1:
+        if wind_down:
+            raise SystemExit(
+                "--wind-down exits a tranched book one tranche per session and needs --tranches 3 or 21 (the "
+                "count the book was built with); the single book stops through the kill switch"
+            )
+        return 1
+    if book != "momentum":
+        raise SystemExit(f"--tranches applies to --book momentum only (got {book!r}): it splits the decile book")
+    if profile is not None and profile.profile_id == "research_paper":
+        raise SystemExit(
+            "--tranches is refused with --profile research_paper: that profile is the certified single monthly "
+            "book, whose construction is pinned"
+        )
+    if decision_every % count != 0:
+        raise SystemExit(
+            f"--tranches {count} needs a cadence it divides (got --decision-every {decision_every}): the tranches "
+            "sit evenly on the cycle, one grid offset each"
+        )
+    return count
+
+
+
+# ------------------------------------------------------------- cash holding
+
+
+def resolve_cash_holding(
+    symbol: str | None,
+    *,
+    buffer: float | None,
+    band: float | None,
+    book: str,
+    universe: Sequence[str],
+    profile: "RiskProfile | None" = None,
+) -> CashHolding | None:
+    """The T-bill holding ``--cash-sleeve`` names, or None when it is not given.
+
+    The holding sits beside the momentum book only, whose membership mask keeps
+    the ETF out of the ranked cross-section. It adds a long position of up to
+    the idle equity, which no risk profile's gross pin allows for, so it is
+    refused under every ``--profile``. The ETF may not be in the configured
+    universe: it is priced, never ranked. ``--cash-sleeve-buffer`` and
+    ``--cash-sleeve-band`` mean nothing without it. Each refusal is a
+    ``SystemExit`` raised before the writer lock and any venue read.
+    """
+    if symbol is None:
+        named = (("--cash-sleeve-buffer", buffer), ("--cash-sleeve-band", band))
+        given = [name for name, value in named if value is not None]
+        if given:
+            raise SystemExit(f"{' and '.join(given)} set the T-bill holding and need --cash-sleeve SYMBOL")
+        return None
+    if book != "momentum":
+        raise SystemExit(
+            f"--cash-sleeve applies to --book momentum only (got {book!r}): that book keeps the ETF out of the ranked "
+            "cross-section"
+        )
+    if profile is not None:
+        raise SystemExit(
+            f"--cash-sleeve is refused with --profile {profile.profile_id}: profiles pin the book's gross and only "
+            "tighten, and the holding adds a long position of up to the idle equity"
+        )
+    try:
+        holding = CashHolding(
+            symbol=symbol,
+            buffer=DEFAULT_BUFFER if buffer is None else buffer,
+            band=DEFAULT_BAND if band is None else band,
+        )
+    except CashHoldingError as exc:
+        raise SystemExit(f"--cash-sleeve: {exc}") from None
+    if holding.symbol in {str(s).strip().upper() for s in universe}:
+        raise SystemExit(
+            f"--cash-sleeve {holding.symbol} is in the configured universe; the T-bill holding is priced and never "
+            "ranked, so it cannot also be a scored name"
+        )
+    return holding

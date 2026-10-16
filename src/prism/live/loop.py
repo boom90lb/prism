@@ -102,13 +102,14 @@ from prism.live.broker import (
     OrderRejected,
     transmits_to_venue,
 )
+from prism.live.buying_power import fit_opening_orders
 from prism.live.lockfile import (
     DEFAULT_MAX_HEARTBEAT_AGE_SECONDS,
     LockHandle,
     account_execution_lock,
 )
 from prism.live.reconcile import ReconcileSettings, Reconciliation, reconcile_loop_state
-from prism.live.state import LoopState, StateStore, record_order_status
+from prism.live.state import ComponentState, LoopState, StateStore, record_order_status
 
 if TYPE_CHECKING:  # the §3.11 report type, for the signature only
     from prism.live.freshness import FreshnessReport
@@ -1057,6 +1058,9 @@ def decide_and_submit(
     freshness: "FreshnessReport | None" = None,
     now: datetime | None = None,
     panel: Mapping[str, Any] | None = None,
+    components: Sequence[ComponentState] | None = None,
+    buying_power_check: bool = False,
+    ledger_targets: pd.Series | None = None,
 ) -> list[Order]:
     """One decision step: reconcile → decide once → write ahead → submit.
 
@@ -1091,6 +1095,25 @@ def decide_and_submit(
     the provenance of the bar panel the decision was made on (the digest and
     file name ``prism.live.panel_log`` recorded); its fields are added to the
     refresh row of the targets ledger so the decision cites its inputs.
+    ``components``, when provided, replaces the persisted per-component states
+    (``LoopState.components``) inside the same write-ahead save, so a tranched
+    book's tranche schedule and sub-targets advance atomically with the decision
+    they produced (:mod:`prism.live.tranches`). ``None`` leaves them as loaded;
+    a resumed decision never rewrites them.
+
+    ``buying_power_check`` (default off: nothing is read and nothing changes)
+    reads the venue's buying power once for a new decision, after sizing and
+    before authorization, the order guard and the write-ahead persist. When the
+    orders that open or extend positions need more than it, each opening
+    quantity is scaled down by one factor and the shortfall is logged at
+    WARNING (:func:`prism.live.buying_power.fit_opening_orders`); a batch that
+    fits is unchanged. A resumed decision is not re-checked.
+
+    ``ledger_targets`` (default None: the targets ledger records
+    ``target_weights``) is what the targets-ledger row records instead of the
+    series the orders are sized from. A tranched book sizes its undecided names
+    at their held weights and records the account target its tranches' holdings
+    make (:mod:`prism.live.tranches`).
     """
     states, action_context, freshness_by_sid = apply_freshness(freshness, states, action_context)
     gate = authorize_session(ctx, intent, states=states, action_context=action_context, now=now)
@@ -1136,6 +1159,15 @@ def decide_and_submit(
                 whole_shares=whole_shares,
                 order_id_prefix=ctx.order_id_prefix,
             )
+            if buying_power_check:
+                orders = _fit_buying_power(
+                    ctx,
+                    orders,
+                    state.positions,
+                    decision_bar,
+                    whole_shares=whole_shares,
+                    min_order_notional=min_order_notional,
+                )
             if gate is not None:
                 # The batch is authorized as a unit, at write-ahead time, before the
                 # persist and before any submission (§3.10).
@@ -1155,6 +1187,8 @@ def decide_and_submit(
             state.pending_decision_bar = decision_bar
             if refresh_bar is not None:
                 state.last_refresh_bar = refresh_bar  # advance the cadence anchor atomically
+            if components is not None:
+                state.components = list(components)  # the tranche states, in the same save
             ctx.store.save(state)  # the write-ahead: persisted before any submit
             if refresh_bar is not None and ctx.targets_ledger is not None:
                 # Persist the constructed book at each refresh — the concordance
@@ -1162,7 +1196,13 @@ def decide_and_submit(
                 # and the audit record behind the completion sweep. Written inside
                 # the write-ahead step, idempotent per refresh bar.
                 append_targets_ledger(
-                    ctx.targets_ledger, refresh_bar, decision_bar, target_weights, prices, equity, extra=panel
+                    ctx.targets_ledger,
+                    refresh_bar,
+                    decision_bar,
+                    target_weights if ledger_targets is None else ledger_targets,
+                    prices,
+                    equity,
+                    extra=panel,
                 )
 
         # Orders whose fate has been settled — a cancellation recorded while
@@ -1171,6 +1211,43 @@ def decide_and_submit(
         # persisted set unchanged on every ordinary pass.
         submit_pending(ctx, state, state.open_pending_orders, gate=gate, now=now)
         return list(state.pending_orders)
+
+
+def _fit_buying_power(
+    ctx: LiveLoopContext,
+    orders: list[Order],
+    positions: Mapping[str, float],
+    decision_bar: str,
+    *,
+    whole_shares: bool,
+    min_order_notional: float,
+) -> list[Order]:
+    """The buying-power pre-check of :func:`decide_and_submit`: one venue read, then the fit."""
+    available = float(ctx.broker.buying_power())
+    fitted, fit = fit_opening_orders(
+        orders, positions, available, whole_shares=whole_shares, min_order_notional=min_order_notional
+    )
+    if fit.binding:
+        logger.warning(
+            "BUYING POWER: the opening orders of %s need %.2f of buying power and the venue reports %.2f; every "
+            "opening quantity is scaled by %.4f (%d order(s) scaled, %d dropped, %.2f opening after the fit). "
+            "Closing orders are unchanged. The book will sit below its target until buying power allows",
+            decision_bar,
+            fit.required,
+            fit.buying_power,
+            fit.factor,
+            len(fit.scaled),
+            len(fit.dropped),
+            fit.fitted,
+        )
+    else:
+        logger.info(
+            "buying power %s: opening orders need %.2f of the venue's %.2f; nothing scaled",
+            decision_bar,
+            fit.required,
+            fit.buying_power,
+        )
+    return fitted
 
 
 def submit_pending(

@@ -35,13 +35,24 @@ Cadence and ordering (one call per session, after the close):
    (``regime_gross_scale``) stays unarmed until
    docs/sizing_preregistration.md ratifies.
 4. **Cadence → score → construct.** On a refresh session (the decision
-   cadence has elapsed — daily by default, ≈monthly for B1) the signal
+   cadence has elapsed — daily by default, ≈monthly for B1; under a seeded
+   phase, the book's session-grid date has come) the signal
    scores the panel's last row and construction maps scores to capped
    weights (linear for the directional book, top/bottom-decile long/short
    for the neutral book; I-4, one sizing point). The online band holds names
    whose target moved less than the band from what is held, and the
    participation gate shrinks trades over the %ADV cap (§7.4). Off a refresh
    session the book holds its filled weights while NAV still marks daily.
+   With the volatility scale on (``vol_scale``, default off;
+   :mod:`prism.live.vol_sizing`) the refresh first decides the decile book's
+   scale from its base book rebuilt on the panel, records it in
+   ``<run_dir>/sizing.jsonl``, and constructs the scaled book. A tranched
+   book (``tranches > 1``, default off; :mod:`prism.live.tranches`) decides on
+   every session one of its tranches is due, re-scoring only the due tranches
+   and composing the account target from every tranche's sub-targets. With a
+   T-bill holding (``cash_holding``, default off; :mod:`prism.live.cash_holding`)
+   the idle equity above a cash buffer is then set in an ETF on every session
+   that is not halted, within a band and a per-order bound.
 5. **Decide/submit.** ``decide_and_submit`` persists the decision before
    the first submit and submits idempotently (N2 crash window).
 6. **Monitor.** After the mark-to-market NAV is appended to the equity
@@ -49,9 +60,10 @@ Cadence and ordering (one call per session, after the close):
    the same closes, ``<run_dir>/shadow.jsonl``) and reads the live monitor
    (:mod:`prism.live.monitor`, registered in docs/live_monitor_design.md): the
    return monitor's confidence sequence over consecutive-session NAV returns
-   and the tracking read of paper minus shadow. Shielded like the regime
-   provider: a failure is logged loudly and recorded, never raised into the
-   cycle. It gates no order.
+   and the tracking read of paper minus shadow; with ``tbill_monitor`` (default
+   off) also a report-only read of the same returns against the T-bill rate.
+   Shielded like the regime provider: a failure is logged loudly and recorded,
+   never raised into the cycle. It gates no order.
 
 Fit cadence is deliberately *not* owned here: the caller passes a fitted
 Signal, and which model serves "today" is the operator's explicit staleness
@@ -84,9 +96,19 @@ from prism.assembly import (
     heuristic_book_rule,
     raw_book_weights,
 )
-from prism.composition import ComponentPlan
+from prism.composition import ComponentPlan, due_on_schedule
 from prism.io import sessions
 from prism.live.broker import Broker, Fill, Order, transmits_to_venue
+from prism.live.cash_holding import LEDGER_FILENAME as CASH_HOLDING_LEDGER
+from prism.live.cash_holding import TARGETS_LEDGER_KEY as CASH_HOLDING_KEY
+from prism.live.cash_holding import (
+    CashHolding,
+    CashHoldingDecision,
+    append_cash_holding_ledger,
+    apply_cash_holding,
+    log_decision,
+    require_cash_holding_inputs,
+)
 from prism.live.loop import (
     LiveLoopContext,
     append_concordance_ledger,
@@ -100,10 +122,12 @@ from prism.live.loop import (
     settle,
 )
 from prism.live.monitor import (
+    TbillReference,
     bar_date,
     book_concordance,
     paper_monitor_read,
     shadow_session_return,
+    tbill_monitor_read,
 )
 from prism.live.panel_log import (
     PanelLogConflict,
@@ -113,6 +137,27 @@ from prism.live.panel_log import (
 )
 from prism.live.safety import SafetyConfig, SafetyViolation, check_orders, halt_reason
 from prism.live.state import LoopState
+from prism.live.tranches import (
+    TrancheDecision,
+    TrancheSession,
+    decide_tranches,
+    open_tranche_session,
+    refuse_tranche_state_under_single_book,
+    require_tranche_inputs,
+)
+from prism.live.vol_sizing import (
+    SIZING_LEDGER_FILENAME,
+    TARGETS_LEDGER_KEY,
+    LiveScale,
+    append_sizing_decision,
+    decide_live_scale,
+    last_good_scale,
+    require_vol_scale_inputs,
+    scaled_book_rule,
+    sizing_row,
+    targets_ledger_record,
+)
+from prism.portfolio.vol_scale import VolScaleRule
 from prism.signal.base import Signal
 
 logger = logging.getLogger(__name__)
@@ -178,7 +223,8 @@ class DailyCycleResult:
 
     ``monitor_read`` is the anytime-valid confidence-sequence verdict over the
     equity ledger after this cycle's NAV mark (additive telemetry, SPEC §10) —
-    ``None`` when no equity ledger is configured.
+    ``None`` when no equity ledger is configured. With ``tbill_monitor`` it also
+    carries the report-only T-bill-referenced read under ``tbill``.
     """
 
     decision_bar: str
@@ -203,6 +249,17 @@ class DailyCycleResult:
     # (``prism.live.panel_log``): None when no run directory was available to
     # record it in.
     panel: dict | None = None
+    # The volatility-scale decision this refresh sized the book with, as its
+    # row in ``{run-dir}/sizing.jsonl`` (``prism.live.vol_sizing``): None when
+    # the scale is off or this session did not refresh.
+    vol_scale: dict | None = None
+    # The tranched book's session record (``prism.live.tranches``): the tranche
+    # count, base grid offset, wind-down flag, the tranches due this session,
+    # how many have been built and any withheld entries. None for the single book.
+    tranches: dict | None = None
+    # The T-bill holding's decision this session (``prism.live.cash_holding``):
+    # None when the holding is off or the session halted.
+    cash_holding: dict | None = None
 
 
 @dataclass(frozen=True)
@@ -216,10 +273,12 @@ class HeldUniverse:
 
     * ``score`` — the configured universe, the only names that may be *ranked*.
       A departed name must be able to leave the book but never re-enter it.
-    * ``valuation_only`` — held names outside ``score``. Fetched so they can be
-      marked and exited; masked out of scoring by the caller, where the decile
-      construct's explicit-flat pin turns them into exit orders at the next
-      refresh.
+    * ``valuation_only`` — held names outside ``score``, and the ``unscored``
+      names the caller asked to price (the T-bill holding). Fetched so they can
+      be marked, exited or sized; masked out of scoring by the caller, where the
+      decile construct's explicit-flat pin turns a held name outside ``score``
+      into an exit order at the next refresh unless a later step (the cash
+      holding) sets its weight.
     * ``fetch`` — ``score`` + ``valuation_only``, in that order.
     * ``held`` — the broker-truth position book (nonzero shares) the split was
       derived from. Every one of these names MUST come back priced, which is
@@ -237,6 +296,7 @@ def resolve_fetch_universe(
     broker: Broker,
     *,
     state: LoopState | None = None,
+    unscored: Sequence[str] = (),
 ) -> HeldUniverse:
     """Reconcile the configured universe against the broker's actual book.
 
@@ -257,23 +317,37 @@ def resolve_fetch_universe(
     never make a name *required* to price, because a position the venue has
     already closed must not be able to fail the fetch.
 
-    Raises only on an empty configured universe; a broker read that fails
-    raises from the broker (loudly, before any vendor call).
+    ``unscored`` (default empty, unchanged behaviour) names symbols to fetch and
+    price that are never ranked, whether held or not: the T-bill holding of
+    :mod:`prism.live.cash_holding`. They join ``valuation_only`` and are not
+    reported as outside names; a symbol that is also in the configured universe
+    is refused, since it cannot be both ranked and not.
+
+    Raises on an empty configured universe and on that overlap; a broker read
+    that fails raises from the broker (loudly, before any vendor call).
     """
     score = tuple(dict.fromkeys(str(s).strip().upper() for s in configured if str(s).strip()))
     if not score:
         raise ValueError("empty configured universe — nothing to score (N7)")
+    priced = {str(s).strip().upper() for s in unscored if str(s).strip()}
+    overlap = sorted(priced & set(score))
+    if overlap:
+        raise ValueError(
+            f"{overlap} are both in the configured universe and named unscored; a name is either ranked or "
+            "priced only, never both (N7)"
+        )
     held = {str(s): float(q) for s, q in broker.positions().items() if float(q) != 0.0}
     persisted = {str(s) for s, q in (state.positions if state is not None else {}).items() if float(q) != 0.0}
 
-    valuation_only = tuple(sorted((set(held) | persisted) - set(score)))
-    if valuation_only:
+    outside = tuple(sorted((set(held) | persisted) - set(score) - priced))
+    valuation_only = tuple(sorted(set(outside) | priced))
+    if outside:
         logger.warning(
             "%d held name(s) are outside the configured universe %s; fetching them for "
             "valuation/exit only (masked out of scoring, so they exit at the next refresh "
             "and cannot re-enter)",
-            len(valuation_only),
-            list(valuation_only),
+            len(outside),
+            list(outside),
         )
     if held and not persisted:
         # The 2026-07-23 class: a run directory with no memory of the account's
@@ -512,6 +586,13 @@ def run_daily_cycle(
     regime: Callable[[str], dict] | None = None,
     regime_gross_scale: Callable[[dict], float] | None = None,
     run_dir: Path | None = None,
+    phase_offset: int | None = None,
+    vol_scale: VolScaleRule | None = None,
+    tranches: int = 1,
+    wind_down: bool = False,
+    cash_holding: CashHolding | None = None,
+    buying_power_check: bool = False,
+    tbill_monitor: TbillReference | None = None,
 ) -> DailyCycleResult:
     """Run one settle → mark → score → construct → decide/submit cycle.
 
@@ -560,7 +641,11 @@ def run_daily_cycle(
     multiplier is recorded (``regime_scale``; regime ledger). On a dirty
     read the refresh constructs at the configured gross with a loud
     warning — a telemetry failure de-arms the action, it never silently
-    de-grosses. Requires ``regime``; a non-finite scale raises (N7).
+    de-grosses. Requires ``regime``; a non-finite scale raises (N7). It is
+    refused with ``config.max_gross > 1``: the hook's multiplier is clamped to
+    ``[0, 1]`` of the configured gross, so above 1 a clean read could size a
+    book above the unscaled one, and it is refused beside ``vol_scale``, which
+    sizes the same gross. Both refusals raise before any state moves.
 
     ``run_dir`` is where the panel this cycle decides on is recorded
     (``prism.live.panel_log``, under ``<run_dir>/panels/``) before anything is
@@ -570,12 +655,93 @@ def run_daily_cycle(
     driver (and the scratch mirror under a rehearsal); with neither, nothing is
     recorded and ``DailyCycleResult.panel`` is None. A failure to record raises
     before any state changes: the cycle decides only on a recorded panel.
+
+    ``phase_offset`` (``None`` = off, bit-identical: the first refresh sets the
+    phase and ``config.decision_every`` sessions separate refreshes) puts the
+    refresh cadence on the fixed session grid of ``prism.io.sessions``: the book
+    refreshes where ``(grid_position - phase_offset) % decision_every == 0``.
+    A book with no refresh yet waits for its first grid date instead of
+    refreshing on its first session, and a missed grid date (an outage) is
+    caught up once, on the first session after more than ``decision_every`` have
+    elapsed, after which the book is back on its grid. The schedule is
+    :func:`prism.composition.due_on_schedule`, the predicate composition and the
+    evaluator use. The paper loop's ``--rebalance-phase seeded`` draws the
+    offset from the run directory's deployment seed
+    (:mod:`prism.live.deployment`), so deployments that start on the same day
+    do not refresh on the same day. It must be an integer in
+    ``[0, decision_every)`` with ``decision_every > 1`` (a book that refreshes
+    every session has no phase), and the decision bar must be an exchange
+    session in the bundled table; anything else raises before any state moves.
+
+    ``vol_scale`` (``None`` = off, bit-identical) sizes the decile book by the
+    Barroso and Santa-Clara constant-volatility rule
+    (:mod:`prism.live.vol_sizing`). On each refresh the scale is decided from
+    the unscaled base book rebuilt point in time on this panel, the account
+    target is that scale times the unscaled book capped at
+    ``min(config.max_gross, vol_scale.max_gross)``, and the decision is recorded
+    in ``{run-dir}/sizing.jsonl`` before the write-ahead step and in the refresh
+    row of the targets ledger. A window it cannot trust falls back to
+    ``min(1, last good scale)``, so a failure never sizes the book above the
+    unscaled one. It is independent of the ``regime`` telemetry, which still
+    reads every session. It refuses, before any state moves, a book other than
+    ``decile_neutral``, a regime gross-scale hook, ``config.max_gross < 1``, a
+    signal that does not declare ``fitted_state = "none"``, a context without a
+    targets ledger, and a panel shorter than
+    :func:`prism.live.vol_sizing.required_panel_bars`.
+
+    ``tranches`` (``1`` = off, bit-identical) splits the decile book into that
+    many overlapping tranches on the session grid (:mod:`prism.live.tranches`),
+    each holding ``1/tranches`` of capital and refreshing every
+    ``config.decision_every`` sessions on its own grid date, offset from
+    ``phase_offset`` (0 when it is None). The cycle decides on every session a
+    tranche is due, re-scores only the due tranches, and sizes orders against the
+    sum of every tranche's sub-targets. Tranches start empty and are built one
+    per grid date (staged entry); their states persist in
+    ``LoopState.components`` in the write-ahead save, and each refresh session
+    appends one targets-ledger row. With ``vol_scale`` each due tranche's scale
+    is decided from the tranched base book rebuilt point in time from the panel.
+    The concordance read runs only for the single book. ``wind_down`` (tranched
+    books only) sets each tranche flat on its own due date, so the book exits over
+    one cycle. Refused before any state moves: a book other than
+    ``decile_neutral``, a count that does not divide ``decision_every``, the
+    regime gross-scale hook, a run directory whose tranche layout differs or that
+    holds an untranched book, and a first tranched decision on an account that
+    holds positions. With ``tranches=1`` the cycle refuses a run directory that
+    holds tranche states.
+
+    ``cash_holding`` (``None`` = off, bit-identical) holds the idle own equity in
+    a T-bill ETF (:mod:`prism.live.cash_holding`): on every session that is not
+    halted, after the book's target is decided, the ETF's weight is set to
+    ``max(0, 1 - buffer - L)``, ``L`` the stock long side of that target, when the
+    held weight is more than ``band`` away from it, in steps no larger than the
+    per-order bound of ``safety`` less one share. Under ``wind_down`` its target
+    is zero. Every such session appends the decision to
+    ``{run-dir}/cash_holding.jsonl`` once the decision is persisted, and a
+    refresh row of the targets ledger also carries it under ``cash_holding``.
+    The caller must fetch the ETF as a priced, unscored name
+    (``resolve_fetch_universe(..., unscored=...)``) and keep it out of the
+    signal's cross-section; the cycle refuses, before any state moves, a book
+    other than ``decile_neutral`` and a panel without a usable close for it.
+
+    ``buying_power_check`` (``False`` = off, bit-identical) has
+    :func:`prism.live.loop.decide_and_submit` fit the opening orders inside the
+    venue's buying power (:mod:`prism.live.buying_power`), scaling them down
+    together, loudly, when they do not fit.
+
+    ``tbill_monitor`` (``None`` = off, bit-identical) adds a report-only read to
+    the live monitor: the same return sequence against the per-session T-bill
+    hurdle instead of zero, with its inputs and a detection horizon
+    (:func:`prism.live.monitor.tbill_monitor_read`). It lands under
+    ``monitor_read["tbill"]``, beside the registered hurdle-0 read, which is
+    computed exactly as without it. It gates nothing, and a failure of it is
+    logged and recorded as ``unavailable`` without touching the cycle.
     """
     if regime_gross_scale is not None and regime is None:
         raise ValueError(
             "regime_gross_scale requires the regime telemetry provider: the hook fires only on "
             "a clean regime read, so without one it could never legally apply (a dead switch, N7)"
         )
+    _require_bounded_regime_hook(config, regime_gross_scale)
     if close.empty:
         raise ValueError("empty close panel — nothing to decide on")
     if len(close) < signal.required_history:
@@ -583,7 +749,28 @@ def run_daily_cycle(
             f"panel has {len(close)} rows < signal required_history "
             f"{signal.required_history}; refusing to score a truncated panel (N7)"
         )
+    if vol_scale is not None:
+        require_vol_scale_inputs(
+            vol_scale,
+            config=config,
+            signal=signal,
+            close=close,
+            regime_gross_scale=regime_gross_scale,
+            targets_ledger=ctx.targets_ledger,
+        )
+    if cash_holding is not None:
+        require_cash_holding_inputs(cash_holding, book=config.book, close=close)
     decision_bar = decision_bar or str(close.index[-1].date())
+    if phase_offset is not None:
+        _require_grid_schedule(phase_offset, config.decision_every, decision_bar)
+    base_offset = require_tranche_inputs(
+        tranches,
+        config,
+        phase_offset=phase_offset,
+        decision_bar=decision_bar,
+        regime_gross_scale=regime_gross_scale,
+        wind_down=wind_down,
+    )
 
     # 0. Record the panel this cycle decides on, before any state moves. The
     # refresh row in targets.jsonl cites its digest (step 4). The persisted
@@ -591,6 +778,24 @@ def run_daily_cycle(
     # bar's write-ahead step already ran: a re-run of such a bar resumes or
     # holds and decides nothing from the panel fetched now.
     state = ctx.store.load()
+    tranche_session: TrancheSession | None = None
+    if base_offset is not None:
+        # The tranched book plans its session (layout, flat start, due tranches)
+        # before anything is recorded, so each refusal leaves the run directory as it was.
+        tranche_session = open_tranche_session(
+            signal,
+            config,
+            tranches,
+            base_offset,
+            state,
+            decision_bar,
+            [str(bar.date()) for bar in close.index],
+            broker=ctx.broker,
+            wind_down=wind_down,
+            exclude=() if cash_holding is None else (cash_holding.symbol,),
+        )
+    else:
+        refuse_tranche_state_under_single_book(state)
     decided_already = state is not None and state.pending_decision_bar == decision_bar
     panel_record = _record_decision_panel(
         ctx, run_dir, decision_bar, close, volume, decided_already=decided_already
@@ -601,10 +806,13 @@ def run_daily_cycle(
 
     # 2. Mark broker truth at today's closes.
     prices = close.iloc[-1]
-    equity, cash, prev_weights = _mark_book(ctx.broker, prices)
+    equity, cash, prev_weights, positions = _mark_book(ctx.broker, prices)
 
-    # 2b. Book-concordance telemetry (pure; gates nothing).
-    concordance = _concordance_read(ctx, prev_weights, decision_bar)
+    # 2b. Book-concordance telemetry (pure; gates nothing). The single book only:
+    # a tranched book refreshes on most sessions, so its baseline would be the
+    # previous session's target and the read a fill-rate read, not the drift read
+    # the ledger records.
+    concordance = _concordance_read(ctx, prev_weights, decision_bar) if tranche_session is None else None
 
     # 2c. Halt rails (kill switch, drawdown) — decided on the marked equity
     # before any decision is constructed or persisted.
@@ -617,15 +825,72 @@ def run_daily_cycle(
     # session (the decision cadence has not elapsed) the book holds its filled
     # weights — no re-score, no trades — so a monthly book rebalances monthly
     # while NAV still marks daily.
-    refresh = halted is None and _is_refresh_session(
-        state, decision_bar, close.index, config.decision_every
-    )
+    if tranche_session is not None:
+        refresh = halted is None and bool(tranche_session.due)
+    else:
+        refresh = halted is None and _is_refresh_session(
+            state, decision_bar, close.index, config.decision_every, phase_offset
+        )
     effective_max_gross, regime_scale = _effective_gross(
         config, refresh, regime_gross_scale, regime_state, decision_bar
     )
 
     masked: list[str] | None = None
-    if refresh:
+    sizing: dict | None = None
+    live_scale: LiveScale | None = None
+    tranche_decision: TrancheDecision | None = None
+    if refresh and tranche_session is not None:
+        # 3t. The tranched book (default off): every tranche composed, the due
+        # ones re-scored (or set flat under a wind-down), sized per tranche when
+        # the volatility scale is on.
+        tranche_decision = decide_tranches(
+            tranche_session,
+            signal,
+            close,
+            volume,
+            config,
+            prev_weights=prev_weights,
+            positions=positions,
+            equity=equity,
+            unrankable=None if unrankable is None or wind_down else unrankable(decision_bar),
+            decision_bar=decision_bar,
+            vol_scale=vol_scale,
+            exclude=() if cash_holding is None else (cash_holding.symbol,),
+        )
+        targets, masked = tranche_decision.targets, tranche_decision.masked
+        sizing = tranche_decision.sizing
+        if sizing is not None:
+            _record_tranched_sizing(ctx, run_dir, sizing)
+    elif refresh and vol_scale is not None:
+        # 3a. The volatility scale (default off): decided from the base book
+        # rebuilt on this panel, then applied inside the construct, before the
+        # band and the participation gate see the target.
+        live_scale = decide_live_scale(
+            signal,
+            close,
+            volume,
+            config,
+            vol_scale,
+            decision_bar=decision_bar,
+            phase_offset=phase_offset,
+            last_good=last_good_scale(ctx.targets_ledger, decision_bar),
+        )
+        weights_fn, applied = scaled_book_rule(config, close, effective_max_gross, live_scale)
+        targets, masked = _construct_refresh_targets(
+            signal,
+            close,
+            volume,
+            config,
+            prev_weights,
+            equity,
+            effective_max_gross,
+            unrankable,
+            decision_bar,
+            weights_fn=weights_fn,
+        )
+        sizing = sizing_row(live_scale, targets, applied)
+        _record_sizing(ctx, run_dir, sizing)
+    elif refresh:
         targets, masked = _construct_refresh_targets(
             signal,
             close,
@@ -640,11 +905,43 @@ def run_daily_cycle(
     else:
         targets = prev_weights  # hold the filled book: no decision this session
 
+    # 3c. The T-bill holding (default off): idle own equity above the buffer, set
+    # after the book's target on every session that is not halted.
+    cash_record: dict | None = None
+    cash_decision: CashHoldingDecision | None = None
+    if cash_holding is not None and halted is None:
+        targets, cash_decision = apply_cash_holding(
+            cash_holding,
+            targets,
+            prev_weights,
+            prices=prices,
+            equity=equity,
+            max_order_fraction=None if safety is None else safety.max_order_fraction,
+            wind_down=wind_down,
+        )
+        cash_record = cash_decision.to_row()
+        log_decision(cash_decision, decision_bar)
+
     # 4. Write-ahead decide and idempotent submit. Skipped entirely under a
     # halt — a persisted-but-unsubmitted decision would resume trading on the
     # next non-halted run, which is not what a kill switch means.
     orders: list[Order] = []
     if halted is None:
+        panel_fields: dict[str, Any] | None
+        if tranche_decision is not None:
+            panel_fields = {**(_panel_provenance(panel_record) or {}), **tranche_decision.targets_extra}
+        elif live_scale is None:
+            panel_fields = _panel_provenance(panel_record)
+        else:
+            panel_fields = {
+                **(_panel_provenance(panel_record) or {}),
+                TARGETS_LEDGER_KEY: targets_ledger_record(live_scale),
+            }
+        if cash_record is not None and refresh:
+            panel_fields = {**(panel_fields or {}), CASH_HOLDING_KEY: cash_record}
+        # A tranched book's targets-ledger row is the account target its tranches'
+        # holdings make, not the held weights its undecided names were sized at.
+        ledger_targets = None if tranche_decision is None else tranche_decision.recorded_targets(targets)
         orders = decide_and_submit(
             ctx,
             decision_bar,
@@ -656,8 +953,13 @@ def run_daily_cycle(
             order_guard=(
                 None if safety is None else (lambda order_list: check_orders(order_list, equity, safety))
             ),
-            panel=_panel_provenance(panel_record),
+            panel=panel_fields,
+            components=None if tranche_decision is None else tranche_decision.components,
+            buying_power_check=buying_power_check,
+            ledger_targets=ledger_targets,
         )
+        if cash_decision is not None:
+            _record_cash_holding(_cash_holding_ledger(ctx, run_dir), decision_bar, cash_decision)
         logger.info(
             "decision %s: %d orders %s, equity %.2f, gross %.4f",
             decision_bar,
@@ -683,7 +985,9 @@ def run_daily_cycle(
         # the return and tracking reads. Telemetry, shielded like the regime
         # provider: it can never take down a cycle whose orders are already
         # persisted and whose NAV is already marked.
-        monitor_read = _monitor_read(ctx, decision_bar, close)
+        monitor_read = _monitor_read(
+            ctx, decision_bar, close, tbill_monitor, cash_holding_ledger=_cash_holding_ledger(ctx, run_dir)
+        )
     return DailyCycleResult(
         decision_bar=decision_bar,
         settled_fills=settled,
@@ -700,6 +1004,13 @@ def run_daily_cycle(
         # inputs must produce identical results (the bit-identity tests compare
         # them field by field), and recorded_at is the one field that cannot.
         panel=None if panel_record is None else {k: v for k, v in panel_record.to_row().items() if k != "recorded_at"},
+        vol_scale=sizing,
+        tranches=(
+            None
+            if tranche_session is None
+            else tranche_session.record() if tranche_decision is None else tranche_decision.record
+        ),
+        cash_holding=cash_record,
     )
 
 
@@ -767,6 +1078,106 @@ def _record_decision_panel(
         return recorded
 
 
+def _record_sizing(ctx: LiveLoopContext, run_dir: Path | None, row: dict) -> None:
+    """Step 3a: write this refresh's scale decision ahead of the write-ahead step.
+
+    The ledger is ``<run_dir>/sizing.jsonl``, where ``run_dir`` defaults to the
+    directory that holds the targets ledger (the volatility scale refuses a
+    context without one). A same-bar re-run finds its own row and writes
+    nothing; a row that disagrees raises before anything is persisted.
+    """
+    if run_dir is not None:
+        directory = Path(run_dir)
+    elif ctx.targets_ledger is not None:
+        directory = Path(ctx.targets_ledger).parent
+    else:  # refused up front by require_vol_scale_inputs; kept so the record can never go nowhere
+        raise ValueError("the volatility scale has no run directory to record its decision in (N7)")
+    written = append_sizing_decision(directory / SIZING_LEDGER_FILENAME, row)
+    message = (
+        "volatility scale %.4f at refresh %s (%s%s): sigma %s over %d finite returns, zero fraction %s, last good %s; "
+        "target gross %.4f, long side %.4f of equity%s"
+    )
+    arguments = (
+        row["scale"],
+        row["decision_bar"],
+        row["status"],
+        "" if row["reason"] is None else f", {row['reason']}",
+        "n/a" if row["sigma"] is None else f"{row['sigma']:.4f}",
+        row["n_valid"],
+        "n/a" if row["zero_fraction"] is None else f"{row['zero_fraction']:.3f}",
+        row["last_good"],
+        row["target_gross"],
+        row["long_over_equity"],
+        "" if written else " (already recorded for this bar)",
+    )
+    if row["status"] == "fallback":
+        # N7: loud. The book is sized at min(1, last good scale), never above the unscaled book.
+        logger.warning("FALLBACK " + message, *arguments)
+    else:
+        logger.info(message, *arguments)
+
+
+def _record_tranched_sizing(ctx: LiveLoopContext, run_dir: Path | None, row: dict) -> None:
+    """Step 3t: write a tranched refresh's scale decisions ahead of the write-ahead step.
+
+    The same ledger and directory rule as :func:`_record_sizing`, one row per
+    session (``schedule = "tranches"``) carrying every due tranche's decision.
+    A fallback is logged at WARNING (N7).
+    """
+    if run_dir is not None:
+        directory = Path(run_dir)
+    elif ctx.targets_ledger is not None:
+        directory = Path(ctx.targets_ledger).parent
+    else:  # refused up front by require_vol_scale_inputs; kept so the record can never go nowhere
+        raise ValueError("the volatility scale has no run directory to record its decision in (N7)")
+    written = append_sizing_decision(directory / SIZING_LEDGER_FILENAME, row)
+    decisions = row["tranches"]
+    described = ", ".join(
+        f"{tid} {entry['scale']:.4f} {entry['status']}" + ("" if entry["reason"] is None else f" ({entry['reason']})")
+        for tid, entry in decisions.items()
+    )
+    message = (
+        "volatility scale at tranched refresh %s: %s; sigma %s over %d finite returns, zero fraction %s; account "
+        "scale %s, target gross %.4f, long side %.4f of equity%s"
+    )
+    arguments = (
+        row["decision_bar"],
+        described,
+        "n/a" if row["sigma"] is None else f"{row['sigma']:.4f}",
+        row["n_valid"],
+        "n/a" if row["zero_fraction"] is None else f"{row['zero_fraction']:.3f}",
+        "n/a" if row["account_scale"] is None else f"{row['account_scale']:.4f}",
+        row["target_gross"],
+        row["long_over_equity"],
+        "" if written else " (already recorded for this bar)",
+    )
+    if any(entry["status"] == "fallback" for entry in decisions.values()):
+        logger.warning("FALLBACK " + message, *arguments)
+    else:
+        logger.info(message, *arguments)
+
+
+def _cash_holding_ledger(ctx: LiveLoopContext, run_dir: Path | None) -> Path | None:
+    """``<run_dir>/cash_holding.jsonl``, ``run_dir`` defaulting to the directory holding the targets ledger."""
+    if run_dir is not None:
+        return Path(run_dir) / CASH_HOLDING_LEDGER
+    if ctx.targets_ledger is not None:
+        return Path(ctx.targets_ledger).parent / CASH_HOLDING_LEDGER
+    return None
+
+
+def _record_cash_holding(path: Path | None, decision_bar: str, decision: CashHoldingDecision) -> None:
+    """Step 4c: this session's T-bill holding decision, once the decision is persisted.
+
+    One row per decided session, idempotent per bar, so the doctor and the
+    T-bill monitor read the holding on every session it trades, not only on the
+    refresh sessions that write a ``targets.jsonl`` row. With no run directory
+    there is nowhere to record and nothing is written.
+    """
+    if path is not None:
+        append_cash_holding_ledger(path, decision_bar, decision)
+
+
 def _panel_provenance(record: PanelRecord | None) -> dict[str, Any] | None:
     """The fields the refresh row in ``targets.jsonl`` carries for its panel."""
     if record is None:
@@ -801,12 +1212,13 @@ def _settle_prior(ctx: LiveLoopContext, state: LoopState | None, decision_bar: s
     return settled
 
 
-def _mark_book(broker: Broker, prices: pd.Series) -> tuple[float, float, pd.Series]:
+def _mark_book(broker: Broker, prices: pd.Series) -> tuple[float, float, pd.Series, dict[str, float]]:
     """Step 2: broker-truth positions and cash marked at today's closes.
 
-    Returns ``(equity, cash, prev_weights)`` — the same marks
-    ``decide_and_submit`` sizes with. Every held position must price
-    (``require_price``, N7) and equity must be positive.
+    Returns ``(equity, cash, prev_weights, positions)`` — the same marks
+    ``decide_and_submit`` sizes with, and the non-zero share counts they were
+    marked from. Every held position must price (``require_price``, N7) and
+    equity must be positive.
     """
     positions = {s: q for s, q in broker.positions().items() if q != 0.0}
     cash = broker.cash()
@@ -817,7 +1229,7 @@ def _mark_book(broker: Broker, prices: pd.Series) -> tuple[float, float, pd.Seri
         {s: shares * require_price(prices, s) / equity for s, shares in positions.items()},
         dtype=float,
     )
-    return equity, cash, prev_weights
+    return equity, cash, prev_weights, positions
 
 
 def _concordance_read(ctx: LiveLoopContext, prev_weights: pd.Series, decision_bar: str) -> dict | None:
@@ -923,7 +1335,14 @@ def _shadow_record(ctx: LiveLoopContext, decision_bar: str, close: pd.DataFrame)
     return row
 
 
-def _monitor_read(ctx: LiveLoopContext, decision_bar: str, close: pd.DataFrame) -> dict:
+def _monitor_read(
+    ctx: LiveLoopContext,
+    decision_bar: str,
+    close: pd.DataFrame,
+    tbill: TbillReference | None = None,
+    *,
+    cash_holding_ledger: Path | None = None,
+) -> dict:
     """The live monitor after this cycle's NAV mark, shielded so it can never kill a cycle.
 
     Records the shadow row, then reads the return monitor and, when a shadow
@@ -933,6 +1352,10 @@ def _monitor_read(ctx: LiveLoopContext, decision_bar: str, close: pd.DataFrame) 
     ``verdict = "unavailable"`` and the error, so a broken monitor is visible in
     the log and the session record and never aborts a legitimate session whose
     orders are persisted and whose NAV is marked (N7: loud and named, not fatal).
+
+    With ``tbill`` the report-only T-bill-referenced read is attached under
+    ``tbill`` after the registered read is complete (:func:`_tbill_read`); the
+    registered read is the same dict, key for key, as without it.
     """
     assert ctx.equity_ledger is not None
     try:
@@ -982,6 +1405,53 @@ def _monitor_read(ctx: LiveLoopContext, decision_bar: str, close: pd.DataFrame) 
             tracking.get("n_transition"),
             tracking.get("n_unmatched"),
         )
+    if tbill is not None:
+        read["tbill"] = _tbill_read(ctx, decision_bar, tbill, cash_holding_ledger=cash_holding_ledger)
+    return read
+
+
+def _tbill_read(
+    ctx: LiveLoopContext, decision_bar: str, tbill: TbillReference, *, cash_holding_ledger: Path | None = None
+) -> dict:
+    """The report-only T-bill-referenced return read, shielded like the registered one.
+
+    The T-bill ETF's share of each session comes from the per-session holding
+    record when the run directory has one (``cash_holding.jsonl``). A failure is
+    logged at WARNING and recorded as ``unavailable`` with the error; it never
+    changes the registered read or the cycle.
+    """
+    assert ctx.equity_ledger is not None
+    holding = cash_holding_ledger if cash_holding_ledger is not None and cash_holding_ledger.exists() else None
+    try:
+        read = tbill_monitor_read(
+            ctx.equity_ledger,
+            tbill,
+            targets_ledger_path=ctx.targets_ledger,
+            cash_holding_ledger_path=holding,
+        )
+    except Exception as exc:  # noqa: BLE001 — report-only telemetry, never a cycle precondition
+        logger.warning(
+            "LIVE MONITOR: T-BILL READ FAILED for %s (%s: %s) — report only; the registered read stands (N7)",
+            decision_bar,
+            type(exc).__name__,
+            exc,
+        )
+        return {"verdict": "unavailable", "n": 0, "report_only": True, "error": type(exc).__name__,
+                "detail": str(exc)}
+    logger.info(
+        "monitor vs T-bills (report only) %s: verdict=%s n=%s mean=%s hurdle=%s ci=[%s, %s] long=%s etf=%s "
+        "detection_years=%s",
+        decision_bar,
+        read.get("verdict"),
+        read.get("n"),
+        read.get("mean"),
+        read.get("hurdle"),
+        read.get("ci_lower"),
+        read.get("ci_upper"),
+        round(read["exposure"]["long_over_equity_mean"], 4),
+        round(read["exposure"]["sleeve_fraction_mean"], 4),
+        None if read["detection_horizon"]["years"] is None else round(read["detection_horizon"]["years"], 1),
+    )
     return read
 
 
@@ -1035,6 +1505,25 @@ def _regime_read(regime: Callable[[str], dict] | None, decision_bar: str) -> dic
         }
 
 
+def _require_bounded_regime_hook(
+    config: DailyBookConfig, regime_gross_scale: Callable[[dict], float] | None
+) -> None:
+    """Refuse the §7.5 de-gross hook on a book configured above 1x gross (N7).
+
+    The hook multiplies ``config.max_gross`` by a factor clamped to ``[0, 1]``,
+    which de-grosses a book whose ceiling is its unscaled gross. With a ceiling
+    above 1 the same factor admits a book above the unscaled one -- the
+    inverse-vol book is scaled to its ceiling outright -- so a de-gross action
+    could lever up. It has no CLI path, so the live loop never reaches this; the
+    refusal keeps a future caller from arming it on a levered configuration.
+    """
+    if regime_gross_scale is not None and config.max_gross > 1.0:
+        raise ValueError(
+            f"regime_gross_scale is refused with max_gross={config.max_gross} > 1.0: the hook scales the "
+            "configured gross ceiling, so above 1 a de-gross action could size a book above the unscaled one (N7)"
+        )
+
+
 def _effective_gross(
     config: DailyBookConfig,
     refresh: bool,
@@ -1084,6 +1573,8 @@ def _construct_refresh_targets(
     effective_max_gross: float,
     unrankable: Callable[[str], Collection[str]] | None,
     decision_bar: str,
+    *,
+    weights_fn: Callable[[pd.Series], pd.Series] | None = None,
 ) -> tuple[pd.Series, list[str] | None]:
     """Step 3 on a refresh session: the shared decision assembly (§3.8).
 
@@ -1095,6 +1586,10 @@ def _construct_refresh_targets(
     actually applied to (the provider's list intersected with the scored
     cross-section).
 
+    ``weights_fn`` replaces the book's construct as the component's rule; the
+    volatility scale passes the construct times its scale
+    (:func:`prism.live.vol_sizing.scaled_book_rule`). ``None`` is the construct.
+
     Returns ``(targets, masked)``. No order intents are sized here: the
     write-ahead protocol reconciles against broker truth and sizes inside
     ``decide_and_submit``, which is why ``AccountState.positions`` is None.
@@ -1104,7 +1599,7 @@ def _construct_refresh_targets(
         component=signal,
         component_id=config.book,
         to_weights=config.book,
-        weights_fn=heuristic_book_rule(config, close, effective_max_gross),
+        weights_fn=heuristic_book_rule(config, close, effective_max_gross) if weights_fn is None else weights_fn,
     )
     output = assemble(
         DecisionContext(
@@ -1144,20 +1639,54 @@ def _is_refresh_session(
     decision_bar: str,
     index: pd.DatetimeIndex,
     decision_every: int,
+    phase_offset: int | None = None,
 ) -> bool:
     """Whether this session refreshes the book (SPEC §7.7 decision cadence).
 
     ``decision_every`` trading sessions must elapse between refreshes (1 = every
-    session, the frozen daily default). The first cycle, or a state with no
-    cadence anchor, always refreshes. The elapsed count is read off the panel's
-    own index — the trading calendar the loop already holds — so it matches the
-    backtest's bar-count cadence, not wall-clock months.
+    session, the frozen daily default). Without a ``phase_offset`` the first
+    cycle, or a state with no cadence anchor, always refreshes. The elapsed
+    count is read off the panel's own index — the trading calendar the loop
+    already holds — so it matches the backtest's bar-count cadence, not
+    wall-clock months.
+
+    With a ``phase_offset`` the book is on the session grid
+    (:func:`prism.composition.due_on_schedule`, the predicate composition uses):
+    due on its grid dates, waiting for the first one when it has never
+    refreshed, and catching up once after a missed one.
     """
     if decision_every <= 1:
         return True
     last_refresh = state.last_refresh_bar if state is not None else None
-    if last_refresh is None:
-        return True
-    dates = [str(d.date()) for d in index]
-    elapsed = sum(1 for dt in dates if last_refresh < dt <= decision_bar)
-    return elapsed >= decision_every
+    elapsed = 0
+    if last_refresh is not None:
+        dates = [str(d.date()) for d in index]
+        elapsed = sum(1 for dt in dates if last_refresh < dt <= decision_bar)
+    return due_on_schedule(
+        decision_every, phase_offset, last_refresh, decision_bar, elapsed=elapsed, owner="the live book"
+    )
+
+
+def _require_grid_schedule(phase_offset: int, decision_every: int, decision_bar: str) -> None:
+    """Refuse a grid schedule the cycle cannot honour, before any state moves (N7).
+
+    The offset is a residue of the refresh cycle, so it must be an integer in
+    ``[0, decision_every)``; a daily book has no phase to set; and the decision
+    bar must have a grid position, which a closed day or a date outside the
+    bundled session table does not.
+    """
+    if decision_every <= 1:
+        raise ValueError(
+            "phase_offset requires decision_every > 1: a book that refreshes every session has no phase to set"
+        )
+    if isinstance(phase_offset, bool) or not isinstance(phase_offset, int) or not 0 <= phase_offset < decision_every:
+        raise ValueError(
+            f"phase_offset must be an integer in [0, decision_every={decision_every}), got {phase_offset!r}"
+        )
+    try:
+        sessions.grid_position(dt.date.fromisoformat(decision_bar[:10]))
+    except ValueError as exc:
+        raise ValueError(
+            f"decision bar {decision_bar!r} has no session-grid position, so the seeded phase cannot place it: "
+            f"{exc}; refusing to decide (N7)"
+        ) from exc

@@ -31,7 +31,8 @@ component is scaled up to replace it.
 
 One predicate, :func:`due_on_grid`, decides when a component is due, here and
 in the evaluator: by elapsed sessions, unless the plan declares a phase offset,
-which puts it on the session grid of ``prism.io.sessions``.
+which puts it on the session grid of ``prism.io.sessions``. The live loop's
+single book uses the same predicate on plain values (:func:`due_on_schedule`).
 :func:`tranche_plans` builds overlapping tranches on that grid.
 
 What this module does **not** do: it never fetches the unrankable mask (the
@@ -337,21 +338,51 @@ def due_on_grid(
       up once, on the first session after more than ``update_every_bars`` have
       elapsed, and is back on its grid at its next grid date;
     * a plan that already produced an output on this bar is not due again.
+
+    The arithmetic is :func:`due_on_schedule`, which takes the same inputs as
+    plain values for a caller that schedules a book without a plan.
     """
-    last = None if state is None else state.last_output_bar
-    every = int(plan.update_every_bars)
-    if plan.phase_offset_bars is None:
-        return last is None or elapsed >= every
-    on_grid = (_grid_position(plan, decision_bar) - int(plan.phase_offset_bars)) % every == 0
-    if last is None:
+    return due_on_schedule(
+        plan.update_every_bars,
+        plan.phase_offset_bars,
+        None if state is None else state.last_output_bar,
+        decision_bar,
+        elapsed=elapsed,
+        owner=f"component {plan.component_id!r}",
+    )
+
+
+def due_on_schedule(
+    update_every_bars: int,
+    phase_offset_bars: int | None,
+    last_output_bar: str | None,
+    decision_bar: str,
+    *,
+    elapsed: int,
+    owner: str,
+) -> bool:
+    """:func:`due_on_grid` on plain values: the same predicate, for a schedule with no plan.
+
+    The live loop's single book (``prism.live.daily``) has a cadence and, under
+    a seeded phase, a grid offset, but no :class:`ComponentPlan`; it calls this
+    so that it refreshes on exactly the sessions a plan with the same cadence
+    and offset would. ``phase_offset_bars`` must already be a residue in
+    ``[0, update_every_bars)``, which :class:`ComponentPlan` and the live
+    loop's own input checks enforce. ``owner`` names the schedule in a refusal.
+    """
+    every = int(update_every_bars)
+    if phase_offset_bars is None:
+        return last_output_bar is None or elapsed >= every
+    on_grid = (_grid_position(owner, phase_offset_bars, decision_bar) - int(phase_offset_bars)) % every == 0
+    if last_output_bar is None:
         return on_grid
     if elapsed < 1:
         return False
     return on_grid or elapsed > every
 
 
-def _grid_position(plan: ComponentPlan, decision_bar: str) -> int:
-    """The decision bar's session-grid position, or a refusal naming the plan (N7).
+def _grid_position(owner: str, phase_offset_bars: int, decision_bar: str) -> int:
+    """The decision bar's session-grid position, or a refusal naming the schedule (N7).
 
     The session table is imported here, so a book with no plan on the grid never
     loads it through this module.
@@ -362,8 +393,8 @@ def _grid_position(plan: ComponentPlan, decision_bar: str) -> int:
         return grid_position(dt.date.fromisoformat(str(decision_bar)[:10]))
     except (TypeError, ValueError) as exc:
         raise CompositionError(
-            f"component {plan.component_id!r} is scheduled on the session grid (phase_offset_bars="
-            f"{plan.phase_offset_bars}), and decision bar {decision_bar!r} has no grid position: {exc}"
+            f"{owner} is scheduled on the session grid (phase_offset_bars="
+            f"{phase_offset_bars}), and decision bar {decision_bar!r} has no grid position: {exc}"
         ) from exc
 
 

@@ -57,6 +57,67 @@ second. A run that does submit says so on one line
 the decision bar and the order count; a run that submits nothing never prints
 it.
 
+**The rebalance phase.** By default a monthly book's first session sets its
+phase, so deployments that start on the same day trade on the same days.
+``--rebalance-phase seeded`` puts the book on the fixed session grid
+(``prism.io.sessions.grid_position``) at an offset drawn from the run
+directory's own seed (``prism.live.deployment``, ``{run-dir}/deployment.json``,
+mode 0600). The first submitting session of a new run directory
+(``--submit --allow-new-run-dir``) creates the seed; every later session and
+every rehearsal reads it, and a seeded run with no seed file is refused before
+any venue read. A new seeded book waits for its first grid date before it
+builds, and a grid date missed to an outage is caught up once
+(``prism.live.daily.run_daily_cycle``, ``phase_offset``).
+
+**The volatility scale.** ``--vol-scale bsc-12-126-2`` (default ``off``) sizes
+the momentum book by the Barroso and Santa-Clara rule: at each refresh the
+scale is ``min(2, 0.12 / sigma)``, sigma the annualized volatility of the last
+126 daily returns of the unscaled book rebuilt point in time from the panel
+(``prism.live.vol_sizing``). A window it cannot trust falls back to ``min(1,
+last good scale)``, and each refresh is recorded in ``{run-dir}/sizing.jsonl``.
+It needs ``--book momentum`` and ``--max-gross 2.0`` and is refused under any
+``--profile``; the regime de-gross hook, which has no flag, is refused beside
+it in ``run_daily_cycle``.
+
+**Tranches.** ``--tranches 21`` (or 3; default 1, the single book) splits the
+momentum book into overlapping tranches that each hold 1/21 (1/3) of capital
+and refresh every 21 sessions on their own session-grid date
+(``prism.live.tranches``), so with 21 tranches one tranche refreshes on every
+session. Each tranche is held in shares between its refreshes, so a session
+trades only the refreshing tranche's change (plus any unfilled order being
+caught up), never a rebalance of the drifted book. A new tranched book starts
+empty and builds one tranche per grid date over 21 sessions; it must start on
+a flat account (a T-bill holding aside) and in its own run directory.
+``--wind-down`` sets each tranche flat on its own date, so the book exits over
+21 sessions. With ``--vol-scale`` each tranche is scaled at its own refresh.
+
+**The T-bill holding.** ``--cash-sleeve SGOV`` (default none) holds the equity
+the stock long side does not use, less a 2% cash buffer, in a T-bill ETF
+(``prism.live.cash_holding``): ``max(0, 1 - buffer - L)`` of equity, ``L`` the
+long side of the decided book. The ETF is fetched and priced but never ranked,
+it trades only when it has drifted more than the band (2% of equity) from that
+target, and one session's change stays inside the per-order bound
+(``--max-order-fraction``, 20% of equity by default), so the holding is built
+over a few sessions. ``--wind-down`` sells it with the book. It needs ``--book
+momentum`` and is refused under any ``--profile``. Not armed by the nightly
+wrapper. Removing the flag while the ETF is held makes the next refresh exit
+it in one order, which the per-order bound refuses: lower it first with
+``--cash-sleeve-buffer 1`` (target zero), or under ``--wind-down``.
+
+**The buying-power check.** ``--buying-power-check`` (default off) reads the
+venue's buying power before each new decision is persisted and, when the
+orders that open or extend positions need more, scales them down together and
+says so at WARNING (``prism.live.buying_power``). Alpaca reports intraday
+buying power for a 4x account, which can exceed overnight capacity.
+
+**The T-bill-referenced monitor read.** ``--tbill-monitor FILE`` (default
+none) adds a report-only read to the live monitor: the same anytime return
+sequence against the per-session bill rate instead of zero
+(``prism.live.monitor.tbill_monitor_read``), logged beside the registered
+hurdle-0 read, which is unchanged. ``FILE`` is a TOML file of
+``prism.live.monitor.TbillReference`` fields, each number with its source
+(``examples/reference/monitor/tbill_reference.toml``). It gates no order.
+
 Fit policy (explicit, §7.7 model staleness): the signal is refit every run
 on the full trailing panel up to the decision bar. Causal for live use —
 fitting on bars ≤ *t* to decide at *t* sees no future — and at paper-book
@@ -91,7 +152,9 @@ from prism.live import (
 )
 from prism.live.authorization import refuse_an_unbindable_record, resolve_endpoint
 from prism.live.daily import require_published_panel, warn_if_stale_panel
+from prism.live.deployment import establish_deployment
 from prism.live.lockfile import run_dir_lock
+from prism.live.monitor import load_tbill_reference
 from prism.live.no_submit import no_submit_session
 from prism.live.safety import (
     SUBMISSION_MODE_EXIT_CODE,
@@ -103,11 +166,18 @@ from prism.live.safety import (
 from prism.scripts import announce_alias
 from prism.scripts.paper_books import (
     BOOKS,
+    TRANCHE_CHOICES,
+    VOL_SCALE_OFF,
+    VOL_SCALE_PRESETS,
     BookParams,
     apply_certified_paper_pin,
     build_safety_config,
     default_panel_start,
+    last_published_session,
+    resolve_cash_holding,
     resolve_cli_universe,
+    resolve_tranches,
+    resolve_vol_scale,
     scoped_order_id_prefix,
     valuation_masked_membership,
 )
@@ -170,6 +240,90 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Refresh cadence in trading sessions; default 1 (daily) for ensemble, 21 "
         "(≈monthly) for momentum/trend — B1/T0 cadence.",
+    )
+    parser.add_argument(
+        "--rebalance-phase",
+        choices=("first-session", "seeded"),
+        default="first-session",
+        help="Which sessions a book with a cadence above one session refreshes on. 'first-session' (default, "
+        "unchanged behaviour): the first session refreshes and sets the phase. 'seeded': the book refreshes on "
+        "the fixed session grid at an offset drawn from this run directory's deployment seed "
+        "({run-dir}/deployment.json, mode 0600), so deployments that start together do not trade together; a "
+        "new book waits for its first grid date, and a missed grid date is caught up once. The seed is created "
+        "only by the first session of a new run directory (--submit --allow-new-run-dir); without it a seeded "
+        "run is refused. Refused with --profile research_paper and with a one-session cadence.",
+    )
+    parser.add_argument(
+        "--vol-scale",
+        choices=(VOL_SCALE_OFF, *sorted(VOL_SCALE_PRESETS)),
+        default=VOL_SCALE_OFF,
+        help="Size the momentum book by a constant-volatility rule. 'off' (default, unchanged behaviour): the "
+        "book trades at its unscaled gross 1.0. 'bsc-12-126-2': at each refresh the book is scaled to a 12%% "
+        "volatility target estimated over the last 126 daily returns of the unscaled book, rebuilt point in "
+        "time from the panel, with the scale capped at 2 (Barroso and Santa-Clara 2015; selection set "
+        "vol_momentum_v1). A window that cannot be trusted (stale or flat bars, too few returns) falls back "
+        "to min(1, last good scale). Each refresh is recorded in {run-dir}/sizing.jsonl. Requires --book "
+        "momentum and --max-gross 2.0; refused with any --profile. Not armed by the nightly wrapper.",
+    )
+    parser.add_argument(
+        "--tranches",
+        type=int,
+        choices=TRANCHE_CHOICES,
+        default=1,
+        help="Split the momentum book into this many overlapping tranches. 1 (default, unchanged behaviour): the "
+        "single book. 3 or 21: each tranche holds 1/N of capital and refreshes every 21 sessions on its own date "
+        "of the fixed session grid (offset from the seeded phase under --rebalance-phase seeded, else from the "
+        "epoch grid), so with 21 tranches one tranche refreshes every session. A new tranched book starts empty "
+        "and is built one tranche per grid date (staged entry), and must start on a flat account in its own run "
+        "directory. Requires --book momentum and a cadence it divides; refused with --profile research_paper.",
+    )
+    parser.add_argument(
+        "--wind-down",
+        action="store_true",
+        help="With --tranches 3 or 21: set each tranche flat on its own refresh date instead of re-scoring it, so "
+        "the book exits one tranche per date over one cycle. Pass the same --tranches and other flags the book "
+        "runs with. The kill switch still stops everything at once.",
+    )
+    parser.add_argument(
+        "--cash-sleeve",
+        default=None,
+        metavar="SYMBOL",
+        help="Hold idle own equity in this T-bill ETF (e.g. SGOV; BIL). Default none (unchanged behaviour). The "
+        "target is max(0, 1 - buffer - L) of equity, L the stock long side of the decided book; the ETF is "
+        "priced, never ranked, rebalanced only when it drifts more than the band from the target, and changed by "
+        "at most the per-order bound (--max-order-fraction) less one share per session. --wind-down sells it. "
+        "Requires --book momentum; refused with any --profile and with a symbol in the universe.",
+    )
+    parser.add_argument(
+        "--cash-sleeve-buffer",
+        type=float,
+        default=None,
+        help="With --cash-sleeve: equity kept as cash beside the ETF, as a fraction of equity (default 0.02). "
+        "1 sets the target to zero, which sells the holding over a few sessions.",
+    )
+    parser.add_argument(
+        "--cash-sleeve-band",
+        type=float,
+        default=None,
+        help="With --cash-sleeve: the drift from the target, in weight units, below which the ETF is not traded "
+        "(default 0.02).",
+    )
+    parser.add_argument(
+        "--buying-power-check",
+        action="store_true",
+        help="Before a new decision is persisted, compare the notional of the orders that open or extend positions "
+        "with the venue's buying power and, when they do not fit, scale them down together (WARNING; closing "
+        "orders unchanged). Default off (unchanged behaviour). For a 4x account Alpaca reports intraday buying "
+        "power, which can exceed what the account may hold overnight.",
+    )
+    parser.add_argument(
+        "--tbill-monitor",
+        type=Path,
+        default=None,
+        metavar="FILE",
+        help="Add a report-only live-monitor read against the T-bill rate, beside the registered hurdle-0 read "
+        "(unchanged). FILE is a TOML file of prism.live.monitor.TbillReference fields (rf_annual and rf_source "
+        "required; see examples/reference/monitor/tbill_reference.toml). Default off. It gates no order.",
     )
     parser.add_argument(
         "--max-missing",
@@ -411,6 +565,45 @@ def main(argv: list[str] | None = None) -> int:
             "--spinoff-mask applies to --book momentum only (the lookback-window mechanic, "
             "docs/bar_vendor_divergence.md §5)"
         )
+    if args.rebalance_phase == "seeded":
+        if args.profile == "research_paper":
+            raise SystemExit(
+                "--rebalance-phase seeded is refused with --profile research_paper: that profile is the "
+                "certified B1 paper path, whose refresh sessions are set by its first session"
+            )
+        if spec.decision_every(params) <= 1:
+            raise SystemExit(
+                "--rebalance-phase seeded needs a cadence above one session (--decision-every > 1): a book "
+                "that refreshes every session has no phase to set"
+            )
+    # The volatility scale's refusals (book, profile, gross ceiling) are made
+    # here, before the writer lock and any venue read.
+    vol_scale = resolve_vol_scale(args.vol_scale, book=args.book, max_gross=params.max_gross, profile=resolved_profile)
+    # The tranche count's refusals (book, profile, cadence, a wind-down of the
+    # single book) likewise, before the writer lock and any venue read.
+    tranches = resolve_tranches(
+        args.tranches,
+        book=args.book,
+        decision_every=spec.decision_every(params),
+        wind_down=args.wind_down,
+        profile=resolved_profile,
+    )
+    # The T-bill holding's refusals (book, profile, a ranked symbol), likewise.
+    cash_holding = resolve_cash_holding(
+        args.cash_sleeve,
+        buffer=args.cash_sleeve_buffer,
+        band=args.cash_sleeve_band,
+        book=args.book,
+        universe=symbols,
+        profile=resolved_profile,
+    )
+    # The report-only T-bill monitor read's inputs, read and checked here too.
+    tbill_monitor = None
+    if args.tbill_monitor is not None:
+        try:
+            tbill_monitor = load_tbill_reference(args.tbill_monitor)
+        except ValueError as exc:
+            raise SystemExit(f"--tbill-monitor: {exc}") from exc
 
     # One writer per run directory: state.json and the ledgers are shared with
     # the morning sweep and any manual invocation, and the write-ahead protocol
@@ -448,7 +641,23 @@ def main(argv: list[str] | None = None) -> int:
             # And the directory must be the one the scheduled wrappers' switch
             # names: an established directory is not necessarily the live book.
             require_active_run_dir(args.run_dir, entry_point="the paper loop")
-        universe = resolve_fetch_universe(symbols, broker, state=store.load())
+        # The seeded phase's seed, read (or, on a new deployment's first submitting
+        # session, created) before the first venue read, so a seeded run with no
+        # seed is refused having read and sent nothing.
+        deployment = (
+            establish_deployment(
+                work_dir,
+                history=run_dir_history,
+                submit=args.submit,
+                allow_new_run_dir=args.allow_new_run_dir,
+                created_bar=last_published_session().isoformat(),
+            )
+            if args.rebalance_phase == "seeded"
+            else None
+        )
+        # The T-bill holding is fetched and priced whether held or not, and never ranked.
+        unscored = () if cash_holding is None else (cash_holding.symbol,)
+        universe = resolve_fetch_universe(symbols, broker, state=store.load(), unscored=unscored)
         score_universe = list(universe.score)
         symbols = list(universe.fetch)
         valuation_extras = list(universe.valuation_only)
@@ -472,7 +681,7 @@ def main(argv: list[str] | None = None) -> int:
             symbols,
             start_date=start_date,
             max_missing=max_missing,
-            required=sorted(universe.held),
+            required=sorted(set(universe.held) | set(unscored)),
         )
         logger.info(
             "panels: %d bars x %d symbols through %s (source=%s)",
@@ -495,6 +704,49 @@ def main(argv: list[str] | None = None) -> int:
         )
 
         decision_every = spec.decision_every(params)
+        phase_offset = None if deployment is None else deployment.phase_offset(decision_every)
+        if vol_scale is not None:
+            logger.info(
+                "volatility scale: %s (target %.2f, %d-return window, scale cap %.1f, gross ceiling %.1f)",
+                args.vol_scale,
+                vol_scale.target_vol,
+                vol_scale.lookback_bars,
+                vol_scale.max_scale,
+                vol_scale.max_gross,
+            )
+        if deployment is not None:
+            logger.info(
+                "rebalance phase: seeded, session-grid offset %d of %d (deployment created %s)",
+                phase_offset,
+                decision_every,
+                deployment.created_bar,
+            )
+        if tranches > 1:
+            logger.info(
+                "tranched book: %d tranches of 1/%d, each refreshing every %d sessions from base grid offset %d%s",
+                tranches,
+                tranches,
+                decision_every,
+                0 if phase_offset is None else phase_offset,
+                "; WIND-DOWN: each tranche goes flat on its own date" if args.wind_down else "",
+            )
+        if cash_holding is not None:
+            logger.info(
+                "T-bill holding: %s, target max(0, 1 - %.2f - long side), band %.2f%s",
+                cash_holding.symbol,
+                cash_holding.buffer,
+                cash_holding.band,
+                "; WIND-DOWN: target zero" if args.wind_down else "",
+            )
+        if args.buying_power_check:
+            logger.info("buying-power check: on (opening orders fitted inside the venue's buying power)")
+        if tbill_monitor is not None:
+            logger.info(
+                "monitor vs T-bills: on, report only (rf %.4f from %s; cash yield %.4f)",
+                tbill_monitor.rf_annual,
+                tbill_monitor.rf_source,
+                tbill_monitor.cash_yield,
+            )
         # Valuation-only extras are masked ineligible (momentum only): NaN-scored
         # names get an explicit 0.0 from the decile construct (its explicit-flat
         # pin), so a departed-but-held name exits at the next refresh and cannot
@@ -571,7 +823,21 @@ def main(argv: list[str] | None = None) -> int:
             order_id_prefix=scoped_order_id_prefix(spec.order_id_prefix, args.run_dir),
         )
         result = run_daily_cycle(
-            ctx, signal, close, volume, config, safety=safety, unrankable=unrankable, regime=regime_provider
+            ctx,
+            signal,
+            close,
+            volume,
+            config,
+            safety=safety,
+            unrankable=unrankable,
+            regime=regime_provider,
+            phase_offset=phase_offset,
+            vol_scale=vol_scale,
+            tranches=tranches,
+            wind_down=args.wind_down,
+            cash_holding=cash_holding,
+            buying_power_check=args.buying_power_check,
+            tbill_monitor=tbill_monitor,
         )
 
     held = result.target_weights[result.target_weights.abs() > 1e-9]

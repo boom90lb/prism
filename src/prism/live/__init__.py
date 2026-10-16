@@ -39,6 +39,31 @@ and nothing important may live only in memory:
 * ``daily``  — the one-cycle driver wiring delta-fetched panels → Signal
   → online construction (caps, stateful band, participation gate) → the
   decision protocol (``prism.scripts.paper_loop`` is its CLI shell).
+* ``deployment`` — the per-deployment seed (``{run-dir}/deployment.json``,
+  mode 0600) and the draws taken from it, such as the seeded rebalance phase
+  that keeps deployments started on the same day from trading on the same
+  days. Off unless a seeded mode is requested.
+* ``vol_sizing`` — the volatility scale of the decile book (Barroso and
+  Santa-Clara, ``prism.portfolio.vol_scale``): the base book rebuilt point in
+  time from the panel, the scale decided at each refresh with its failure
+  path, and the per-refresh record ``{run-dir}/sizing.jsonl``. Off unless
+  ``run_daily_cycle(vol_scale=...)`` is given.
+* ``tranches`` — the tranched decile book: overlapping tranches on the session
+  grid, each held in shares between its refreshes, built one per grid date
+  (staged entry) and exited one per grid date (wind-down), their states and
+  holdings persisted in ``LoopState.components``. A session trades only the
+  refreshing tranche's change and catch-ups. Off unless
+  ``run_daily_cycle(tranches=...)`` is given a count above one.
+* ``cash_holding`` — idle own equity above a cash buffer held in a T-bill ETF
+  beside the decile book, set every session within a band and the per-order
+  bound. Off unless ``run_daily_cycle(cash_holding=...)`` is given.
+* ``buying_power`` — the pre-check that scales a decision's opening orders
+  down together when they need more than the venue's buying power. Off unless
+  ``decide_and_submit(buying_power_check=True)``.
+* ``margin`` — the account's margin position read from the venue
+  (``AlpacaBroker.account_margin``) and its record ``{run-dir}/margin.jsonl``.
+  Read-only telemetry for ``prism.scripts.margin_report`` and ``prism-doctor``;
+  nothing on the order path reads it.
 * ``regime_step`` — the SPEC §7.7 regime step: per-cycle §7.5 telemetry
   through the ``prism.regime.fetch`` adapters, read by ``daily`` every
   session into the regime ledger (docs/regime_step.md); the de-gross
@@ -78,7 +103,14 @@ from prism.live.authorization import (
     permitted_classes,
     resolve_endpoint,
 )
-from prism.live.broker import Broker, DuplicateOrder, Fill, Order, OrderRejected, transmits_to_venue
+from prism.live.broker import (
+    Broker,
+    DuplicateOrder,
+    Fill,
+    Order,
+    OrderRejected,
+    transmits_to_venue,
+)
 from prism.live.daily import (
     DailyBookConfig,
     DailyCycleResult,

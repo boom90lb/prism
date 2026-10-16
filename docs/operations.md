@@ -554,3 +554,381 @@ session or no refresh book predates it; FAIL when a row was owed and is missing,
 since the shadow step is shielded from the trading cycle and would otherwise
 fail every session with nothing but a log line to show for it, leaving the
 tracking read empty.
+
+## 2026-10-16: a seeded rebalance phase for new paper deployments (off by default)
+
+A monthly book's first session used to set its rebalance phase, so every
+deployment of this repository that started on the same day rebalanced on the
+same days and sent its orders into the same opening auctions.
+`python -m prism.scripts.paper_loop --rebalance-phase seeded` instead puts the
+book on a fixed session grid (`prism.io.sessions.grid_position`, session 0 is
+2006-01-03) and refreshes it where `(grid position − offset) mod
+decision_every = 0`. The offset is drawn from a random seed that belongs to the
+run directory.
+
+- **The seed.** `{run-dir}/deployment.json`, mode 0600, written once by the
+  first submitting session of a new run directory (`--submit
+  --allow-new-run-dir`) and never overwritten. Every later session and every
+  `--no-submit` rehearsal reads it. The offset is HMAC-SHA256 of
+  `rebalance_phase:<created_bar>` keyed by the seed, reduced to
+  `[0, decision_every)` (`prism.live.deployment`). The seed's job is to make
+  phases independent across deployments, not to keep a deployment's schedule
+  secret: the offset it sets is written in plain text to the nightly log, to
+  `state.json` (each tranche's grid offset), to the `tranches` record of
+  `targets.jsonl` and to `sizing.jsonl`, and anyone who sees the account's
+  orders sees it from the first refresh. The 0600 mode keeps the seed itself,
+  and so every later draw it would make (none is used yet), to the owner. The off-box backup
+  (`ops/artifacts_sync.sh`) mirrors `runs/`, so the seed is in the backup as
+  well, and a restored run directory keeps its phase.
+- **Refusals.** A seeded run with no seed file is refused before any venue read:
+  a rehearsal of a new directory, or an established directory whose first
+  session ran without the flag. Seeded is also refused with `--profile
+  research_paper` and with a one-session cadence.
+- **Behaviour.** A new seeded book places no orders until its first grid date,
+  up to `decision_every − 1` sessions away, then builds in one session. A grid date missed
+  to an outage is caught up once, on the first session after more than
+  `decision_every` have elapsed, and the book is back on its grid at the next
+  grid date. The cadence is `prism.composition.due_on_schedule`, the predicate
+  the evaluator uses for grid-scheduled components.
+- **Not armed.** `ops/paper_loop_nightly.sh` does not pass the flag, and the
+  live book's schedule is unchanged. The default, `first-session`, decides
+  exactly as before. Limits: the session table ends 2027-12-31, after which a
+  seeded run refuses to decide; and the replay harness (`prism.live.replay`)
+  does not take an offset yet, so it replays a seeded run directory on the
+  first-session schedule.
+
+## 2026-10-16: a volatility scale for the momentum paper book (off by default)
+
+`python -m prism.scripts.paper_loop --book momentum --vol-scale bsc-12-126-2
+--max-gross 2` sizes the decile momentum book by the Barroso and Santa-Clara
+constant-volatility rule that selection set `vol_momentum_v1` registered: at
+each refresh the scale is `min(2, 0.12 / sigma)`, where sigma is the annualized
+standard deviation of the last 126 daily returns of the unscaled book, and the
+account target is that scale times the unscaled book. The scale is held until
+the next refresh. Code: `prism.live.vol_sizing` (the live seam) on top of
+`prism.portfolio.vol_scale` (the rule).
+
+- **Which returns.** Not the paper account's own: those are scaled, rounded to
+  whole shares and charged costs. At every refresh the unscaled book is
+  rebuilt from the panel the cycle already holds: the signal is scored at each
+  past refresh date of the book's schedule on the panel truncated at that date,
+  the same decile construct turns each score into weights, and the weights are
+  held from one refresh date to the next, close to close, gross of costs. The
+  schedule is the book's own: the seeded grid dates under `--rebalance-phase
+  seeded`, otherwise every `decision_every`-th bar back from the refresh being
+  decided.
+- **History.** The rebuild needs the signal's history before the oldest
+  refresh date the window reaches: 253 + 126 + 21 − 1 = 399 bars for 12−1
+  momentum at the monthly cadence. A shorter panel is refused before any state
+  moves; the loop's default three-year fetch holds about 750.
+- **Failure path.** When the window cannot be trusted — the panel's last bar is
+  not the decision bar, fewer than 126 finite returns, more than 5% of them
+  exactly zero (stale or flat bars), or a degenerate estimate — the scale is
+  `min(1, last good scale)`, or 1 with none, and the cycle logs a `FALLBACK`
+  warning. A failure therefore never sizes the book above the unscaled book.
+  The last good scale is read from the refresh rows of `targets.jsonl`, each of
+  which carries the scale decision it was persisted with under `vol_scale`, so
+  a decision the order guard refused never bounds a later one.
+- **Record.** Each refresh appends one row to `{run-dir}/sizing.jsonl` before
+  the write-ahead save: the rule, the scale, sigma, the status and reason, the
+  base book's refresh dates, the unscaled and target gross, the long side over
+  equity and the cash-sleeve fraction `max(0, 0.98 − L/E)`. A same-bar re-run
+  that decides again finds its own row and writes nothing; a row that disagrees
+  raises before anything is persisted.
+- **Refusals.** Only `--book momentum`; `--max-gross` must be 2.0, the rule's
+  gross ceiling; refused under every `--profile`, since each pins gross at or
+  below 1.0 and profiles only tighten. In `run_daily_cycle` it also refuses a
+  regime gross-scale hook (which has no flag), a signal with fitted state, and a
+  context without a targets ledger. Regime telemetry (`--regime`) still reads
+  every session beside it.
+- **Regime hook guard.** Independently of the scale, `run_daily_cycle` now
+  refuses the regime gross-scale hook whenever `max_gross > 1`: the hook
+  multiplies the configured ceiling by a factor in [0, 1], so above 1 a
+  de-gross could size a book above the unscaled one. The hook has no CLI path,
+  so the live book is unaffected.
+- **Not armed.** `ops/paper_loop_nightly.sh` does not pass the flag, and the
+  live book is unchanged; off, the cycle decides exactly as before. Arming it,
+  and changing the live book, are owner acts (SPEC §6). Limits: the spin-off
+  mask applies to the decision being made but not to the rebuilt past books, so
+  a corporate action the bars do not adjust for enters sigma as a return (a
+  jump of that kind almost always raises sigma and lowers the scale); and the
+  replay harness (`prism.live.replay`) does not take a scale, so it replays a
+  scaled run directory unscaled.
+
+## 2026-10-16: a tranched momentum paper book (off by default)
+
+`python -m prism.scripts.paper_loop --book momentum --tranches 21` splits the
+decile momentum book into 21 overlapping tranches. Each holds 1/21 of capital
+and refreshes every 21 sessions on its own date of the fixed session grid
+(tranche *j* where `(grid position − base − j) mod 21 = 0`), so one tranche
+refreshes on every session. The base is the seeded offset under
+`--rebalance-phase seeded`, otherwise 0; with 21 tranches it only relabels
+them. `--tranches 3` gives tranches 7 sessions apart. Code:
+`prism.live.tranches`, composed by `prism.composition.compose` with
+`tranche_plans` and `due_on_grid`, the schedule the evaluator uses.
+
+- **Held in shares.** Each tranche is held in shares between its refreshes, as
+  the registered evaluation holds it (`prism.evaluate._TrancheHoldings`,
+  `docs/public_baseline_design.md` §1.1). At its refresh a tranche's holding is
+  reset to 1/21 × its book (times its volatility scale) × equity / close shares
+  of each name; until its next refresh the shares are held and drift with
+  prices. A session decides only the names the refreshing tranche held or now
+  holds, plus any name whose account shares differ from the tranches' total by
+  more than half a share (an unfilled order or a position no tranche holds);
+  every other name is held. So a session's orders are the refreshing tranche's
+  change and those catch-ups, never a rebalance of the drifted book back to
+  constant weights. Each tranche's holding is persisted with the session and
+  close it was sized at, and a split since then is restated from the panel
+  (the live bars are split-adjusted, so the close the panel now shows for that
+  session differs from the recorded one by the split ratio).
+
+- **Staged entry.** A new tranched book starts empty and builds each tranche on
+  its own grid date, so it reaches full size over 21 sessions; it never buys the
+  whole book on its first day. It must start in its own run directory on a flat
+  account: a run directory that holds an untranched book, or an account that
+  holds positions no tranche holds (the T-bill holding aside), is refused before
+  any state moves, because the first session would sell all but 1/21 of what
+  is held.
+- **State.** Each tranche's schedule anchor, sub-targets, holding in shares and
+  grid offset (and, with the volatility scale, its scale decision) are
+  `LoopState.components` in `state.json`, saved in the same write-ahead step as
+  the decision, so a restart in the middle of the build resumes the same
+  schedule. No schema bump: the three new component fields are written only
+  when set. A built tranche state without share holdings (written before
+  tranches were held in shares) is refused. A run directory
+  whose persisted layout (count, ids, offsets) differs from the flags is
+  refused, and `--tranches 1` (the default) refuses a run directory that holds
+  tranches, so a forgotten flag fails rather than holding the book for a month.
+- **Outages.** A tranche whose grid date was missed catches up once on the
+  first session back and then returns to its grid, so after an outage of *n*
+  sessions the return session refreshes *n* + 1 tranches; only then do trades
+  net across tranches. A tranche output is valid for 42 sessions; after a longer
+  outage every tranche is expired and rebuilt at once.
+- **Whole-book refreshes and deferred entries.** A tranche's refresh is its
+  whole book: a name it held that is no longer scored is set flat in it. A name
+  the refreshing tranche targets that has no price at the close keeps the
+  tranche's previous holding of it, or, if it held none, is not entered until
+  that tranche's next refresh; it is logged and listed under `deferred` in the
+  session record, instead of failing the sizing step. A name the spin-off mask
+  holds out of ranking keeps the refreshing tranche's previous holding and is
+  never entered.
+- **Wind-down.** `--wind-down` with the same `--tranches` sets each tranche flat
+  on its own date, so the book exits over 21 sessions; the spin-off mask is not
+  consulted and the scale is not decided while winding down. The kill switch
+  still stops everything at once.
+- **With `--vol-scale bsc-12-126-2 --max-gross 2`.** Each tranche is scaled at
+  its own refresh by the rule applied to the tranched base book rebuilt point in
+  time from the panel: the mean of all 21 tranche books as last refreshed,
+  `Σ D_j / 21` at raw gross 1.0. A tranche's sub-targets are its book times its
+  scale, capped at the gross ceiling. Because held shares drift, the account
+  target the holdings make is capped at the ceiling as well; on a session where
+  that cap binds, every tranche's holding is scaled by the same factor and every
+  name is decided (`ceiling_factor` in the session record). A failed estimate
+  gives `min(1, that
+  tranche's last good scale)`, read from its persisted state. `sizing.jsonl` gets
+  one row per session (`schedule = "tranches"`, per-tranche decisions under
+  `tranches`). The rebuild scores the signal at about 146 past dates per session
+  (about 0.2 s each for 12−1 momentum on 500 names, so roughly half a minute).
+- **Telemetry.** Every refresh session appends a `targets.jsonl` row: the
+  account target the tranches' holdings make, before whole-share rounding, and
+  a `tranches` record (count, base offset, due tranches, tranches built, names
+  decided, names caught up, ceiling factor). The
+  concordance read is skipped for a tranched book (its baseline would be
+  yesterday's target, a fill-rate read). The shadow tracking read still runs,
+  but with a refresh every session every row is a transition, so it carries no
+  tracking information for a 21-tranche book.
+- **Not armed.** `ops/paper_loop_nightly.sh` does not pass the flag, and the
+  live book is unchanged; with `--tranches 1` the cycle decides exactly as before
+  (checked byte for byte against the previous code on synthetic replays).
+  Refused with `--profile research_paper`, with a book other than momentum, and
+  with a cadence the count does not divide. Arming it, and changing the live
+  book, are owner acts (SPEC §6). The replay harness takes `tranches` on the
+  epoch grid (base 0); it takes no seeded phase. `prism-doctor` checks the
+  tranche states (`tranche-state`, below).
+
+## 2026-10-16: a T-bill ETF holding for idle equity and a buying-power check (off by default)
+
+`python -m prism.scripts.paper_loop --book momentum --cash-sleeve SGOV` holds the
+equity the stock long side does not use, less a 2% cash buffer, in a T-bill ETF
+beside the decile book. The target is `max(0, 1 − buffer − L)` of equity, where
+`L` is the stock long side of the book the cycle decided (after the caps, the
+band and the participation gate). Short-sale proceeds are collateral and are not
+invested; only idle own equity is. At the recorded mean volatility scale (long
+side about 0.54 of equity) the holding is about 0.44 of equity; at a scale of
+1.96 or more it is zero. Code: `prism.live.cash_holding`, applied in
+`prism.live.daily.run_daily_cycle(cash_holding=...)`.
+
+- **Not ranked.** The ETF is fetched and priced every session whether held or
+  not (`resolve_fetch_universe(..., unscored=...)`, and a held position must
+  price), and the momentum membership mask keeps it out of the ranked
+  cross-section, so the stock book is the one decided without it. A symbol in
+  the universe file is refused.
+- **When it trades.** On every session that is not halted, refresh or not: the
+  holding is left alone while it is within the band (default 0.02 of equity) of
+  its target and otherwise moved to the target. A target of zero sells any
+  holding, even inside the band, because the ETF would then be held on a margin
+  debit. `--wind-down` sets the target to zero, so the holding is sold with the
+  tranches.
+- **Order size.** One session's change is at most the per-order bound
+  (`--max-order-fraction`, default 2 × the per-name cap = 20% of equity) less
+  one share, so the order passes that guard after whole-share rounding. A 0.44
+  holding is therefore built over three sessions (0.199, 0.199, then the rest
+  on 100,000 at $100 a share). During a 21-tranche staged entry the long side
+  is small at first, so the holding is built toward a larger target and then
+  trimmed as the tranches fill. An account where one share exceeds the bound is
+  refused.
+- **Record.** `DailyCycleResult.cash_holding` and one log line every session,
+  and one row per decided session in `{run-dir}/cash_holding.jsonl` (decision
+  bar, long side, held weight, target, applied weight, step bound, action
+  `hold` / `rebalance` / `bounded`), written once the decision is persisted.
+  Each refresh row of `targets.jsonl` also carries the decision under
+  `cash_holding`, but for a monthly book that is once a cycle while the holding
+  trades on other sessions too, so the doctor's drift check and the T-bill
+  monitor read `cash_holding.jsonl`.
+- **Stopping it.** Pass `--cash-sleeve-buffer 1` (target zero) until the ETF is
+  sold, or run `--wind-down`. Simply removing `--cash-sleeve` while the ETF is
+  held makes the next refresh exit it in one order, which the per-order bound
+  refuses: the session stops before anything is persisted.
+- **Distributions.** Alpaca paper accounts do not credit dividends, so the paper
+  NAV omits the ETF's monthly distributions. Their histories are in
+  `data/distributions/SGOV.csv` and `BIL.csv` (issuer files captured
+  2026-10-16, provenance beside each), for forward reads to add back.
+
+`--buying-power-check` (default off) reads the venue's buying power before a
+new decision is persisted. When the orders that open or extend positions need
+more notional than that, every opening quantity is scaled down by one factor
+(rounded down to whole shares) and a `BUYING POWER` warning names the
+shortfall; closing orders are unchanged, and a batch that fits is unchanged.
+Alpaca states buying power as notional (twice the excess equity in a 2x
+margin account), so this is the same test as the 50% initial requirement fitting
+the excess. For a 4x account Alpaca reports intraday buying power, which can
+exceed what the account may hold overnight; the check does not see that case.
+Code: `prism.live.buying_power`, called from `decide_and_submit`.
+
+Neither is armed. `ops/paper_loop_nightly.sh` passes neither flag, and with both
+off the cycle decides exactly as before (tests compare every result field and
+ledger byte). The holding is refused under any `--profile` and with a book
+other than momentum. Holding the ETF changes the live book and is an owner act
+(SPEC §6). The replay harness takes neither. `prism-doctor` checks the
+holding's drift (`cash-holding-drift`, below).
+
+## 2026-10-16: an account margin report and doctor warnings for the opt-in features
+
+Read-only telemetry; nothing on the order path reads it, and nothing acts on
+it.
+
+- **The margin read.** `AlpacaBroker.account_margin()` reads `GET /v2/account`
+  once and returns equity, cash, the long and short market values (the short
+  side as a magnitude: Alpaca defines equity as cash + long + short, so it
+  reports the short side negative), the Reg T initial and the maintenance
+  requirement as the venue computes them, Reg T buying power, buying power and
+  the multiplier, plus the previous-session snapshot fields when present. A
+  missing or non-numeric required field raises. The deprecated
+  `portfolio_value` is not read. Code: `prism.live.margin`, `prism.live.alpaca`.
+  The field list follows Alpaca's documented account object (checked
+  2026-10-16); whether a paper account fills every field has not been checked
+  against a live response.
+- **The report.** `python -m prism.scripts.margin_report` prints the read:
+  both sides over equity, gross over equity, the excess over each requirement,
+  and the cushion `(equity − maintenance margin) / equity`. `--json` prints the
+  row. `--run-dir DIR --record` appends the row to `DIR/margin.jsonl` under the
+  run directory's writer lock (so never during a loop session; a held lock
+  refuses the record with exit 1), keyed by the read's UTC timestamp, with the
+  New York date beside it; a directory that does not exist is refused before
+  any read. It sends no order and calls no other endpoint. It is the place to
+  check the broker facts the cash-holding estimates rest on: the requirement
+  with shorts and the ETF held, the cushion at the gross the book actually
+  runs, and, read beside the account statement, whether short proceeds offset
+  a margin debit (`cash` includes the proceeds; the interest charged is only on
+  the statement).
+- **Not scheduled.** The nightly wrapper does not run the report, so
+  `margin.jsonl` is written only when someone runs it. A daily record needs a
+  line such as `"$PY" -m prism.scripts.margin_report --run-dir "$RUN_DIR"
+  --record` after the loop in a wrapper variant; adding it to
+  `ops/paper_loop_nightly.sh` is an owner act, with the other arming flags.
+  The nightly's `prism-doctor --network` reads the cushion live every session
+  regardless (`alpaca-margin-cushion`, one more free account read).
+- **Doctor warnings.** Five offline checks, each a PASS when its feature has
+  left no record in the run directory, and otherwise a WARN, never a FAIL.
+  Promoting any of them to a failure is the owner's decision.
+  - `margin-cushion`: the newest `margin.jsonl` row's cushion below 25%, or a
+    read two or more weekdays old. With no record it passes, unless
+    `sizing.jsonl`, `cash_holding.jsonl` or a `cash_holding` record in
+    `targets.jsonl` shows a scaled book or a T-bill holding, which draw on
+    margin. The 25% line is a
+    monitoring choice: an unscaled long/short book at FINRA's minimums (25% of
+    the long side, 30% of the short) sits near 72%, the same book at gross 2
+    near 45%.
+  - `vol-scale-fallback`: two or more consecutive `sizing.jsonl` rows whose
+    scale fell back to `min(1, last good scale)`; a tranched row counts when any
+    due tranche fell back, and a warm-up is not a fallback.
+  - `cash-holding-drift`: after the newest decision in `cash_holding.jsonl`
+    the holding is more than its band from target (it is being built or sold
+    within the per-order bound, expected for a few sessions after a start or a
+    large change in the long side), or, when the previous record is from the
+    previous session, the holding marked now is more than the band away from
+    what that session decided (an order that did not fill). The record is
+    written on every session the holding is decided, refresh or not.
+  - `tranche-state`: tranche states the cycle could not have written: ids
+    other than `decile_neutral/t00..tK-1`, grid offsets that are not
+    `(base + j·s) mod (s·K)`, non-finite sub-targets, a tranche holding a
+    sub-target without share holdings, holdings sized after the last refresh,
+    an invalid last good scale, output bars after the last refresh, expiry
+    before output, other
+    components mixed in, or a count or base offset that disagrees with the
+    newest tranche record in `targets.jsonl`. The cadence is inferred from the
+    offsets, since it is not persisted.
+  - `deployment-profile`: `deployment.json` unreadable or readable by group or
+    others; or absent while the state holds tranches or `sizing.jsonl` shows
+    refreshes on the seeded grid. A nonzero tranche base offset or a seeded
+    grid means the next session with the same flags will be refused; a base of
+    0 can be an unseeded book on the epoch grid every unseeded deployment
+    shares. A seeded single book without the volatility scale leaves no other
+    record of its mode, so its missing profile is not seen here; the loop
+    refuses that run before any venue read. The seed is never printed.
+- **Acting on the cushion** (selling the T-bill holding first when the cushion
+  is thin) is not implemented; the doctor says so in its warning.
+
+## 2026-10-16: a report-only live-monitor read against the T-bill rate (off by default)
+
+`python -m prism.scripts.paper_loop ... --tbill-monitor FILE` adds a second
+return read to the live monitor. It is the same empirical-Bernstein sequence
+over consecutive-session NAV returns (bound 0.1, α 0.05), read against the
+per-session bill rate instead of zero (`prism.live.monitor.tbill_monitor_read`).
+It is logged beside the registered read and recorded under
+`monitor_read["tbill"]`. The registered hurdle-0 read is computed exactly as
+before, and every registered "not in contradiction" conjunct still reads it
+(`docs/live_monitor_design.md` §4). The new read gates nothing.
+
+- **The hurdle.** SPEC §3 through `prism.validation.hurdle.tbill_hurdle`:
+  `rf − (rf − fee)·s − y·max(0, 1 − L/E − s)`, divided by 252. `L/E` is the
+  stock long side and `s` the T-bill ETF's share of equity of the book held
+  through each session (the latest `targets.jsonl` row decided at or before the
+  previous close), averaged over the sessions read. With no ETF and `y = 0` it
+  is the bill rate.
+- **The inputs.** `FILE` is a TOML file of `TbillReference` fields, each number
+  with its source (`examples/reference/monitor/tbill_reference.toml`). An
+  unknown key is refused, and so is a file without `rf_annual` and `rf_source`.
+  The rate goes stale; the file is the operator's to keep current.
+- **What the paper NAV leaves out.** `y` (default 0) is idle-cash interest the
+  NAV does not record. Whether Alpaca paper accounts credit any is unverified,
+  and entering a yield the NAV already carries would count it twice. Paper
+  accounts do not simulate dividends, so with `--cash-sleeve` the ETF's
+  distributions are missing from the NAV; the read credits the ETF's share at
+  `rf − fee` (fee 10 bp by default), an assumption about the ETF's distribution
+  yield. Borrow fees, which paper accounts do not charge either, are not
+  added: this read is telemetry, and the registered forward read of a T21
+  paper stream (`research/scripts/public_baseline_forward.py`) makes both
+  corrections.
+- **The detection horizon.** With `planning_sharpe` (and `planning_source`) in
+  the file, the read states `(z_0.95 / S)²` years: the horizon at which the
+  expected t-statistic of a stream whose true Sharpe over bills is `S` reaches
+  the one-sided 5% critical value. That is about 30 years at 0.30 and about
+  245 at 0.105, and the anytime sequence needs longer. It is a planning
+  figure, not a measurement.
+- **Failure.** A read that cannot be computed (a non-zero `y` with no targets
+  ledger, an ETF share above the idle equity, an unreadable ledger) is logged
+  at WARNING and recorded as `unavailable`; the cycle and the registered read
+  are unaffected.
+- **Not armed.** The nightly wrapper does not pass the flag; adding it is an
+  owner act.
