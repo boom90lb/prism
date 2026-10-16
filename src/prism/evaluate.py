@@ -125,6 +125,7 @@ from prism.spec import (
     Specification,
     apply_to_weights,
     engine_version,
+    rule_dollar_volume,
 )
 from prism.validation.trials import (
     CANONICAL_ENGINE,
@@ -452,7 +453,12 @@ def _decide(spec: Specification, view: DatasetView, day: str, universe: Sequence
         marks = loaded.component.instructions(basis, volume)
         no_decision = _marked(marks, "no_decision")
         sub = apply_to_weights(
-            loaded.spec.to_weights, scores, loaded.spec.to_weights_params, close=basis, no_decision=no_decision
+            loaded.spec.to_weights,
+            scores,
+            loaded.spec.to_weights_params,
+            close=basis,
+            no_decision=no_decision,
+            dollar_volume=rule_dollar_volume(loaded.spec.to_weights, loaded.spec.to_weights_params, close, volume),
         )
         liquidate = [sid for sid in _marked(marks, "liquidate") if sid in sub.index]
         if liquidate:
@@ -744,6 +750,20 @@ COUPLED_NOTE = (
     "dollar volume from that equity, batch rounding rounds at the per-sid increment against it, and the "
     "reduce-only box is written on the held position (§3.7, §3.8)."
 )
+
+
+#: Appended to the engine note when the run declared ``fills.model = "split_open_close"``,
+#: whose fills are not all at the next open as the notes above say. Every other model leaves
+#: the note exactly as it was.
+SPLIT_FILLS_NOTE = (
+    " fills.model = split_open_close: each order filled half at the next open and the rest at that "
+    "session's close, both legs charged under the declared stack (a diagnostic model, N2)."
+)
+
+
+def _fills_note(note: str, fills: FillPolicy) -> str:
+    """``note`` with the split fill model stated when it was declared, and unchanged otherwise."""
+    return note + SPLIT_FILLS_NOTE if fills.model == "split_open_close" else note
 
 
 @dataclass(frozen=True)
@@ -2766,7 +2786,7 @@ def _evaluate_stateful(
     )
     stale = int(simulation.ledger["stale"].max()) if len(simulation.ledger) else 0
     detail: dict[str, object] = {
-        "note": COUPLED_NOTE,
+        "note": _fills_note(COUPLED_NOTE, canonical.fills),
         "decision_coupling": "account_state",
         "n_decision_bars": sum(len(rows) for rows in decisions_by_fold.values()),
         "n_target_rows": int(targets.notna().any(axis=1).sum()),
@@ -4018,7 +4038,7 @@ def _simulate_canonical(
         )
     stale = int(simulation.ledger["stale"].max()) if len(simulation.ledger) else 0
     detail: dict[str, object] = {
-        "note": CANONICAL_NOTE,
+        "note": _fills_note(CANONICAL_NOTE, canonical.fills),
         "n_decision_bars": len(decision_bars),
         "n_target_rows": int(targets.notna().any(axis=1).sum()),
         "n_fills": int(len(simulation.fills)),
@@ -4534,9 +4554,12 @@ def _engine_note(engine: str, engine_detail: Mapping[str, object]) -> str:
     """
     if engine == REPRODUCTION_ENGINE:
         return REPRODUCTION_CAVEAT
-    if str(engine_detail.get("decision_coupling")) == "account_state":
-        return COUPLED_NOTE
-    return CANONICAL_NOTE
+    note = COUPLED_NOTE if str(engine_detail.get("decision_coupling")) == "account_state" else CANONICAL_NOTE
+    settings = engine_detail.get("settings")
+    fills = settings.get("fills") if isinstance(settings, Mapping) else None
+    if isinstance(fills, Mapping) and fills.get("model") == "split_open_close":
+        return note + SPLIT_FILLS_NOTE
+    return note
 
 
 def _repair_counts(construction: Mapping[str, object]) -> dict[str, object]:

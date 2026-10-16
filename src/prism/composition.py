@@ -57,7 +57,12 @@ import numpy as np
 import pandas as pd
 
 from prism.signal.base import Signal
-from prism.spec import TO_WEIGHTS_RULES, apply_to_weights, resolve_to_weights_params
+from prism.spec import (
+    TO_WEIGHTS_RULES,
+    apply_to_weights,
+    resolve_to_weights_params,
+    rule_dollar_volume,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -562,7 +567,14 @@ def _compose_one(
             elif mark == "liquidate":
                 flat.add(str(sid))
 
-    values = _rule_values(plan, raw, close, no_decision=no_decision, previous=state.sub_targets)
+    dollar_volume = (
+        None
+        if plan.weights_fn is not None
+        else rule_dollar_volume(plan.to_weights, plan.to_weights_params, scoring_panels.get("price"), volume)
+    )
+    values = _rule_values(
+        plan, raw, close, no_decision=no_decision, previous=state.sub_targets, dollar_volume=dollar_volume
+    )
     if flat:
         values = values.copy()
     for sid in flat:
@@ -697,8 +709,13 @@ def _rule_values(
     *,
     no_decision: Collection[str],
     previous: Mapping[str, float] | None = None,
+    dollar_volume: pd.DataFrame | None = None,
 ) -> pd.Series:
     """The rank-to-weight rule's output for this cross-section.
+
+    ``dollar_volume`` is the trailing dollar-volume panel a liquidity-weighted rule reads,
+    built from the ``price`` scoring panel and ``volume`` (``prism.spec.rule_dollar_volume``);
+    it is None for every other rule.
 
     The rule runs over the whole cross-section before any state rule, so a name
     the rule declines gets an explicit 0.0 (a full exit) and only a no-decision
@@ -724,6 +741,7 @@ def _rule_values(
         close=close,
         no_decision=no_decision,
         previous=previous,
+        dollar_volume=dollar_volume,
     )
 
 

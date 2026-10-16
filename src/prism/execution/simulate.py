@@ -23,10 +23,19 @@ The ``[fills]`` block is declared, never assumed, and two rules in it are absolu
 simulated fill is never created for a bar that did not trade, and never at a price the bar
 did not print. Everything else -- participation caps, partial fractions, rejections -- is a
 declared value whose reference setting is the trivial one.
+
+``fills.model = "split_open_close"`` is a diagnostic model, declared under N2: an order
+decided at the close of *t* fills :data:`SPLIT_OPEN_SHARE` of its quantity at the open of
+*t+1* (rounded to the increment, ties to even) and the rest at the close of *t+1*, each leg
+at the price that bar printed and each charged as a fill under the declared stack, so both
+legs pay the bucket half spread. The close leg runs between steps 4 and 5, and the
+open-auction expiry of step 3 moves after it, so a remainder that cannot fill at the close
+(the bar traded but printed no close) expires on the same bar rather than carrying over.
 """
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 from dataclasses import dataclass
 from typing import Any, Callable, Literal, Mapping, Sequence
@@ -63,7 +72,11 @@ __all__ = [
     "simulate",
 ]
 
-FILL_MODELS = ("full_next_open", "participation_capped")
+FILL_MODELS = ("full_next_open", "participation_capped", "split_open_close")
+
+#: The share of each order ``fills.model = "split_open_close"`` fills at the open; the rest
+#: fills at the close of the same session.
+SPLIT_OPEN_SHARE = 0.5
 
 
 @dataclass(frozen=True)
@@ -78,7 +91,7 @@ class FillPolicy:
     run rejects the same orders every time, on any machine.
     """
 
-    model: Literal["full_next_open", "participation_capped"] = "full_next_open"
+    model: Literal["full_next_open", "participation_capped", "split_open_close"] = "full_next_open"
     max_participation_of_bar_volume: float = 0.0
     partial_fill_fraction: float = 1.0
     reject_probability: float = 0.0
@@ -95,6 +108,15 @@ class FillPolicy:
             )
         if not 0.0 < float(self.partial_fill_fraction) <= 1.0:
             raise AccountingError(f"partial_fill_fraction must be in (0, 1], got {self.partial_fill_fraction!r}")
+        if self.model == "split_open_close" and (
+            float(self.partial_fill_fraction) != 1.0 or float(self.max_participation_of_bar_volume) != 0.0
+        ):
+            raise AccountingError(
+                "fills.model = 'split_open_close' fixes both legs' quantities (half at the open, the rest at the "
+                "close), so it takes partial_fill_fraction = 1.0 and max_participation_of_bar_volume = 0.0; got "
+                f"{self.partial_fill_fraction!r} and {self.max_participation_of_bar_volume!r}, which would have no "
+                "declared meaning on it"
+            )
         if not 0.0 <= float(self.reject_probability) < 1.0:
             raise AccountingError(f"reject_probability must be in [0, 1), got {self.reject_probability!r}")
         if self.missing_open_policy != "reference_price":
@@ -336,9 +358,13 @@ def simulate(
             for fill in applied.applied:
                 fill_rows.append(_fill_row(fill))
 
-        # 3. opg remainders expire at the open of a bar that traded.
-        state, expired = expire_orders(state, bar=bar, phase="open", sids=traded)
-        orders.extend(expired)
+        # 3. opg remainders expire at the open of a bar that traded. Under split_open_close
+        #    the remainder is the close leg, so the expiry waits until after step 4b.
+        split = policy.model == "split_open_close"
+        expired: tuple[OrderRecord, ...] = ()
+        if not split:
+            state, expired = expire_orders(state, bar=bar, phase="open", sids=traded)
+            orders.extend(expired)
 
         # 4. a mark at the open, for the record, valued at the marks the state then
         #    carries: the open where the name printed one, the prior close where it did
@@ -346,6 +372,34 @@ def simulate(
         #    so nothing goes stale here and nothing is refused for want of a quote.
         state, _ = mark_prices(state, bar=bar, prices=open_row, stale_on_missing=False)
         equity_open = state.carried_equity()
+
+        # 4b. split_open_close only: what step 2 left of each order eligible on this bar
+        #     fills at this bar's close, before the close mark; then the expiry of step 3.
+        if split:
+            close_fills, close_cost = _fills_at_close(
+                state,
+                bar=bar,
+                close_row=close_row,
+                traded=traded,
+                cost_model=cost_model,
+                decision_equity=decision_equity,
+            )
+            if close_fills:
+                applied = apply_fills(state, close_fills)
+                state = applied.state
+                orders.extend(applied.completed)
+                for fill in applied.applied:
+                    fill_rows.append(_fill_row(fill))
+                bar_fills = bar_fills + close_fills
+                trade_cost = trade_cost + close_cost
+            state, expired = expire_orders(
+                state,
+                bar=bar,
+                phase="open",
+                sids=traded,
+                reason=f"split_open_close: {bar} printed no close, so the close leg's remainder expired",
+            )
+            orders.extend(expired)
 
         # 5. the close mark and this bar's holding-cost accrual.
         close_mark = mark_at_close(state, bar=bar, prices=close_row, cost_model=cost_model)
@@ -579,6 +633,10 @@ def _fills_at_open(
             if not np.isfinite(volume) or volume <= 0.0:
                 continue
             eligible = min(eligible, policy.max_participation_of_bar_volume * volume)
+        elif policy.model == "split_open_close":
+            # The open leg; the rest fills at this bar's close (_fills_at_close). An order
+            # whose half rounds to zero (one whole share) fills entirely at the close.
+            eligible *= SPLIT_OPEN_SHARE
         eligible *= policy.partial_fill_fraction
         quantity = round_to_increment(eligible, order.intent.increment)
         quantity = min(quantity, abs(remaining))
@@ -626,6 +684,74 @@ def _fills_at_open(
     return out, rejected, charged
 
 
-def _execution_id(order: OrderRecord, bar: str) -> str:
-    """A deterministic simulated execution id: the fills-ledger key, and the idempotence key."""
-    return f"sim:{order.client_order_id}:{bar}:{len(order.fills)}"
+def _fills_at_close(
+    state: PortfolioState,
+    *,
+    bar: str,
+    close_row: pd.Series | None,
+    traded: set[str],
+    cost_model: CostModel,
+    decision_equity: Mapping[str, float],
+) -> tuple[list[Fill], CostBreakdown]:
+    """The close leg of ``fills.model = "split_open_close"``: the rest of every order eligible on this bar.
+
+    The orders are exactly the ones :func:`_fills_at_open` considered on this bar and did
+    not reject: submitted at an earlier close, on a name that traded. Each fills its whole
+    remaining quantity at the price the bar printed at its close. A bar that traded but
+    printed no close creates no fill, and the remainder expires with the open-auction
+    remainders straight after this step (§3.6: never a price the bar did not print).
+
+    The leg is charged like any fill: half spread and commission on its own notional at the
+    close price, and its pro-rata share of the superlinear terms of the decided order, so the
+    two legs together charge what one decided order is charged (``CostModel.charge_trade``).
+    """
+    out: list[Fill] = []
+    charged = CostBreakdown()
+    for order in state.open_orders():
+        if bar_key(order.submitted_at or order.intent.decision_bar) >= bar:
+            continue  # decided at this close or later: it fills no earlier than the next open
+        sid = order.sid
+        if sid not in traded or close_row is None or sid not in close_row.index:
+            continue
+        price = float(close_row.loc[sid])
+        if not (np.isfinite(price) and price > 0.0):
+            continue
+        remaining = order.remaining_qty
+        if remaining == 0.0:
+            continue
+        provisional = Fill(
+            execution_id=_execution_id(order, bar, leg="close"),
+            client_order_id=order.client_order_id,
+            sid=sid,
+            ts=bar,
+            qty=remaining,
+            fill_price=price,
+            reference_price=order.intent.reference_price,
+            source="simulated",
+        )
+        equity = decision_equity.get(order.client_order_id)
+        if equity is None:
+            equity = state.carried_equity()
+        breakdown = cost_model.at_equity(equity).charge_trade(
+            [provisional], decided_notional={order.client_order_id: abs(order.intent.notional)}
+        )
+        charged = charged + breakdown
+        out.append(
+            dataclasses.replace(
+                provisional,
+                commission=breakdown.commission,
+                spread_dollars=breakdown.spread,
+                impact_dollars=breakdown.impact_quadratic + breakdown.impact_participation,
+            )
+        )
+    return out, charged
+
+
+def _execution_id(order: OrderRecord, bar: str, *, leg: str | None = None) -> str:
+    """A deterministic simulated execution id: the fills-ledger key, and the idempotence key.
+
+    The close leg of ``split_open_close`` carries a ``:close`` suffix, so the fills ledger
+    says which auction a fill came from without re-reading the bar's prices.
+    """
+    base = f"sim:{order.client_order_id}:{bar}:{len(order.fills)}"
+    return base if leg is None else f"{base}:{leg}"
