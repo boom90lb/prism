@@ -1,0 +1,33 @@
+# Inputs of the report-only T-bill-referenced live-monitor read
+# (python -m prism.scripts.paper_loop ... --tbill-monitor <this file>;
+# prism.live.monitor.TbillReference, read strictly: an unknown key is refused).
+#
+# The read is the live return monitor's anytime confidence sequence against the
+# per-session bill rate instead of zero. It sits beside the registered hurdle-0
+# read, which it never changes, and it gates no order.
+#
+# Every number here goes stale. Replace each one, and its source, before use.
+
+# The bill rate the account is measured against, an annual fraction. This is the
+# mean of the last 252 sessions of Kenneth French's daily RF in the 202607 vintage,
+# as recorded in results/2026-09-vol-momentum/summary.json (economics.rf_annual).
+rf_annual = 0.0421
+rf_source = "French RF, mean of the last 252 sessions of the 202607 file (results/2026-09-vol-momentum/summary.json)"
+
+# What idle cash earns that the paper NAV does not record. 0 assumes nothing beyond
+# the NAV. Whether Alpaca paper accounts credit interest on cash is not verified,
+# and a yield the NAV already carries would be counted twice if entered here.
+cash_yield = 0.0
+cash_yield_source = "none assumed beyond the paper NAV"
+
+# Used only when the targets ledger records a T-bill holding (--cash-sleeve).
+# Paper accounts do not simulate dividends, so the ETF's distributions are missing
+# from the NAV; the read credits its mean share of equity at rf_annual - etf_fee_annual.
+etf_fee_annual = 0.0010
+
+# Optional: the annualized Sharpe of the account's excess over bills at which the
+# read states its detection horizon, (z_0.95 / S)^2 years at alpha 0.05 (about 30
+# years at S = 0.30, about 245 at S = 0.105). A planning figure, never a measurement;
+# with no figure the read states no horizon.
+# planning_sharpe = 0.105
+# planning_source = "..."

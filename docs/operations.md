@@ -854,3 +854,47 @@ it.
     refuses that run before any venue read. The seed is never printed.
 - **Acting on the cushion** (selling the T-bill holding first when the cushion
   is thin) is not implemented; the doctor says so in its warning.
+
+## 2026-10-16: a report-only live-monitor read against the T-bill rate (off by default)
+
+`python -m prism.scripts.paper_loop ... --tbill-monitor FILE` adds a second
+return read to the live monitor. It is the same empirical-Bernstein sequence
+over consecutive-session NAV returns (bound 0.1, α 0.05), read against the
+per-session bill rate instead of zero (`prism.live.monitor.tbill_monitor_read`).
+It is logged beside the registered read and recorded under
+`monitor_read["tbill"]`. The registered hurdle-0 read is computed exactly as
+before, and every registered "not in contradiction" conjunct still reads it
+(`docs/live_monitor_design.md` §4). The new read gates nothing.
+
+- **The hurdle.** SPEC §3 through `prism.validation.hurdle.tbill_hurdle`:
+  `rf − (rf − fee)·s − y·max(0, 1 − L/E − s)`, divided by 252. `L/E` is the
+  stock long side and `s` the T-bill ETF's share of equity of the book held
+  through each session (the latest `targets.jsonl` row decided at or before the
+  previous close), averaged over the sessions read. With no ETF and `y = 0` it
+  is the bill rate.
+- **The inputs.** `FILE` is a TOML file of `TbillReference` fields, each number
+  with its source (`examples/reference/monitor/tbill_reference.toml`). An
+  unknown key is refused, and so is a file without `rf_annual` and `rf_source`.
+  The rate goes stale; the file is the operator's to keep current.
+- **What the paper NAV leaves out.** `y` (default 0) is idle-cash interest the
+  NAV does not record. Whether Alpaca paper accounts credit any is unverified,
+  and entering a yield the NAV already carries would count it twice. Paper
+  accounts do not simulate dividends, so with `--cash-sleeve` the ETF's
+  distributions are missing from the NAV; the read credits the ETF's share at
+  `rf − fee` (fee 10 bp by default), an assumption about the ETF's distribution
+  yield. Borrow fees, which paper accounts do not charge either, are not
+  added: this read is telemetry, and the registered forward read of a T21
+  paper stream (`research/scripts/public_baseline_forward.py`) makes both
+  corrections.
+- **The detection horizon.** With `planning_sharpe` (and `planning_source`) in
+  the file, the read states `(z_0.95 / S)²` years: the horizon at which the
+  expected t-statistic of a stream whose true Sharpe over bills is `S` reaches
+  the one-sided 5% critical value. That is about 30 years at 0.30 and about
+  245 at 0.105, and the anytime sequence needs longer. It is a planning
+  figure, not a measurement.
+- **Failure.** A read that cannot be computed (a non-zero `y` with no targets
+  ledger, an ETF share above the idle equity, an unreadable ledger) is logged
+  at WARNING and recorded as `unavailable`; the cycle and the registered read
+  are unaffected.
+- **Not armed.** The nightly wrapper does not pass the flag; adding it is an
+  owner act.

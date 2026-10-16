@@ -60,9 +60,10 @@ Cadence and ordering (one call per session, after the close):
    the same closes, ``<run_dir>/shadow.jsonl``) and reads the live monitor
    (:mod:`prism.live.monitor`, registered in docs/live_monitor_design.md): the
    return monitor's confidence sequence over consecutive-session NAV returns
-   and the tracking read of paper minus shadow. Shielded like the regime
-   provider: a failure is logged loudly and recorded, never raised into the
-   cycle. It gates no order.
+   and the tracking read of paper minus shadow; with ``tbill_monitor`` (default
+   off) also a report-only read of the same returns against the T-bill rate.
+   Shielded like the regime provider: a failure is logged loudly and recorded,
+   never raised into the cycle. It gates no order.
 
 Fit cadence is deliberately *not* owned here: the caller passes a fitted
 Signal, and which model serves "today" is the operator's explicit staleness
@@ -118,10 +119,12 @@ from prism.live.loop import (
     settle,
 )
 from prism.live.monitor import (
+    TbillReference,
     bar_date,
     book_concordance,
     paper_monitor_read,
     shadow_session_return,
+    tbill_monitor_read,
 )
 from prism.live.panel_log import (
     PanelLogConflict,
@@ -217,7 +220,8 @@ class DailyCycleResult:
 
     ``monitor_read`` is the anytime-valid confidence-sequence verdict over the
     equity ledger after this cycle's NAV mark (additive telemetry, SPEC §10) —
-    ``None`` when no equity ledger is configured.
+    ``None`` when no equity ledger is configured. With ``tbill_monitor`` it also
+    carries the report-only T-bill-referenced read under ``tbill``.
     """
 
     decision_bar: str
@@ -585,6 +589,7 @@ def run_daily_cycle(
     wind_down: bool = False,
     cash_holding: CashHolding | None = None,
     buying_power_check: bool = False,
+    tbill_monitor: TbillReference | None = None,
 ) -> DailyCycleResult:
     """Run one settle → mark → score → construct → decide/submit cycle.
 
@@ -717,6 +722,14 @@ def run_daily_cycle(
     :func:`prism.live.loop.decide_and_submit` fit the opening orders inside the
     venue's buying power (:mod:`prism.live.buying_power`), scaling them down
     together, loudly, when they do not fit.
+
+    ``tbill_monitor`` (``None`` = off, bit-identical) adds a report-only read to
+    the live monitor: the same return sequence against the per-session T-bill
+    hurdle instead of zero, with its inputs and a detection horizon
+    (:func:`prism.live.monitor.tbill_monitor_read`). It lands under
+    ``monitor_read["tbill"]``, beside the registered hurdle-0 read, which is
+    computed exactly as without it. It gates nothing, and a failure of it is
+    logged and recorded as ``unavailable`` without touching the cycle.
     """
     if regime_gross_scale is not None and regime is None:
         raise ValueError(
@@ -957,7 +970,7 @@ def run_daily_cycle(
         # the return and tracking reads. Telemetry, shielded like the regime
         # provider: it can never take down a cycle whose orders are already
         # persisted and whose NAV is already marked.
-        monitor_read = _monitor_read(ctx, decision_bar, close)
+        monitor_read = _monitor_read(ctx, decision_bar, close, tbill_monitor)
     return DailyCycleResult(
         decision_bar=decision_bar,
         settled_fills=settled,
@@ -1283,7 +1296,9 @@ def _shadow_record(ctx: LiveLoopContext, decision_bar: str, close: pd.DataFrame)
     return row
 
 
-def _monitor_read(ctx: LiveLoopContext, decision_bar: str, close: pd.DataFrame) -> dict:
+def _monitor_read(
+    ctx: LiveLoopContext, decision_bar: str, close: pd.DataFrame, tbill: TbillReference | None = None
+) -> dict:
     """The live monitor after this cycle's NAV mark, shielded so it can never kill a cycle.
 
     Records the shadow row, then reads the return monitor and, when a shadow
@@ -1293,6 +1308,10 @@ def _monitor_read(ctx: LiveLoopContext, decision_bar: str, close: pd.DataFrame) 
     ``verdict = "unavailable"`` and the error, so a broken monitor is visible in
     the log and the session record and never aborts a legitimate session whose
     orders are persisted and whose NAV is marked (N7: loud and named, not fatal).
+
+    With ``tbill`` the report-only T-bill-referenced read is attached under
+    ``tbill`` after the registered read is complete (:func:`_tbill_read`); the
+    registered read is the same dict, key for key, as without it.
     """
     assert ctx.equity_ledger is not None
     try:
@@ -1342,6 +1361,43 @@ def _monitor_read(ctx: LiveLoopContext, decision_bar: str, close: pd.DataFrame) 
             tracking.get("n_transition"),
             tracking.get("n_unmatched"),
         )
+    if tbill is not None:
+        read["tbill"] = _tbill_read(ctx, decision_bar, tbill)
+    return read
+
+
+def _tbill_read(ctx: LiveLoopContext, decision_bar: str, tbill: TbillReference) -> dict:
+    """The report-only T-bill-referenced return read, shielded like the registered one.
+
+    A failure is logged at WARNING and recorded as ``unavailable`` with the
+    error; it never changes the registered read or the cycle.
+    """
+    assert ctx.equity_ledger is not None
+    try:
+        read = tbill_monitor_read(ctx.equity_ledger, tbill, targets_ledger_path=ctx.targets_ledger)
+    except Exception as exc:  # noqa: BLE001 — report-only telemetry, never a cycle precondition
+        logger.warning(
+            "LIVE MONITOR: T-BILL READ FAILED for %s (%s: %s) — report only; the registered read stands (N7)",
+            decision_bar,
+            type(exc).__name__,
+            exc,
+        )
+        return {"verdict": "unavailable", "n": 0, "report_only": True, "error": type(exc).__name__,
+                "detail": str(exc)}
+    logger.info(
+        "monitor vs T-bills (report only) %s: verdict=%s n=%s mean=%s hurdle=%s ci=[%s, %s] long=%s etf=%s "
+        "detection_years=%s",
+        decision_bar,
+        read.get("verdict"),
+        read.get("n"),
+        read.get("mean"),
+        read.get("hurdle"),
+        read.get("ci_lower"),
+        read.get("ci_upper"),
+        round(read["exposure"]["long_over_equity_mean"], 4),
+        round(read["exposure"]["sleeve_fraction_mean"], 4),
+        None if read["detection_horizon"]["years"] is None else round(read["detection_horizon"]["years"], 1),
+    )
     return read
 
 

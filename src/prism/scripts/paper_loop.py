@@ -108,6 +108,14 @@ orders that open or extend positions need more, scales them down together and
 says so at WARNING (``prism.live.buying_power``). Alpaca reports intraday
 buying power for a 4x account, which can exceed overnight capacity.
 
+**The T-bill-referenced monitor read.** ``--tbill-monitor FILE`` (default
+none) adds a report-only read to the live monitor: the same anytime return
+sequence against the per-session bill rate instead of zero
+(``prism.live.monitor.tbill_monitor_read``), logged beside the registered
+hurdle-0 read, which is unchanged. ``FILE`` is a TOML file of
+``prism.live.monitor.TbillReference`` fields, each number with its source
+(``examples/reference/monitor/tbill_reference.toml``). It gates no order.
+
 Fit policy (explicit, §7.7 model staleness): the signal is refit every run
 on the full trailing panel up to the decision bar. Causal for live use —
 fitting on bars ≤ *t* to decide at *t* sees no future — and at paper-book
@@ -144,6 +152,7 @@ from prism.live.authorization import refuse_an_unbindable_record, resolve_endpoi
 from prism.live.daily import require_published_panel, warn_if_stale_panel
 from prism.live.deployment import establish_deployment
 from prism.live.lockfile import run_dir_lock
+from prism.live.monitor import load_tbill_reference
 from prism.live.no_submit import no_submit_session
 from prism.live.safety import (
     SUBMISSION_MODE_EXIT_CODE,
@@ -304,6 +313,15 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "with the venue's buying power and, when they do not fit, scale them down together (WARNING; closing "
         "orders unchanged). Default off (unchanged behaviour). For a 4x account Alpaca reports intraday buying "
         "power, which can exceed what the account may hold overnight.",
+    )
+    parser.add_argument(
+        "--tbill-monitor",
+        type=Path,
+        default=None,
+        metavar="FILE",
+        help="Add a report-only live-monitor read against the T-bill rate, beside the registered hurdle-0 read "
+        "(unchanged). FILE is a TOML file of prism.live.monitor.TbillReference fields (rf_annual and rf_source "
+        "required; see examples/reference/monitor/tbill_reference.toml). Default off. It gates no order.",
     )
     parser.add_argument(
         "--max-missing",
@@ -577,6 +595,13 @@ def main(argv: list[str] | None = None) -> int:
         universe=symbols,
         profile=resolved_profile,
     )
+    # The report-only T-bill monitor read's inputs, read and checked here too.
+    tbill_monitor = None
+    if args.tbill_monitor is not None:
+        try:
+            tbill_monitor = load_tbill_reference(args.tbill_monitor)
+        except ValueError as exc:
+            raise SystemExit(f"--tbill-monitor: {exc}") from exc
 
     # One writer per run directory: state.json and the ledgers are shared with
     # the morning sweep and any manual invocation, and the write-ahead protocol
@@ -713,6 +738,13 @@ def main(argv: list[str] | None = None) -> int:
             )
         if args.buying_power_check:
             logger.info("buying-power check: on (opening orders fitted inside the venue's buying power)")
+        if tbill_monitor is not None:
+            logger.info(
+                "monitor vs T-bills: on, report only (rf %.4f from %s; cash yield %.4f)",
+                tbill_monitor.rf_annual,
+                tbill_monitor.rf_source,
+                tbill_monitor.cash_yield,
+            )
         # Valuation-only extras are masked ineligible (momentum only): NaN-scored
         # names get an explicit 0.0 from the decile construct (its explicit-flat
         # pin), so a departed-but-held name exits at the next refresh and cannot
@@ -803,6 +835,7 @@ def main(argv: list[str] | None = None) -> int:
             wind_down=args.wind_down,
             cash_holding=cash_holding,
             buying_power_check=args.buying_power_check,
+            tbill_monitor=tbill_monitor,
         )
 
     held = result.target_weights[result.target_weights.abs() > 1e-9]
