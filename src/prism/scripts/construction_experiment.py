@@ -149,6 +149,13 @@ def freeze_scores(
     from prism.evaluate import _resolve, _score_bar  # noqa: PLC0415
 
     spec = registration.arm_specification(registration.arm_ids[0], workspace=workspace)
+    gridded = [loaded.component_id for loaded in spec.components if loaded.spec.grid_schedule is not None]
+    if gridded:
+        raise ExperimentError(
+            f"component(s) {gridded} declare tranches or phase_offset_bars; the freeze scores every "
+            "update_every_bars sessions from the first test bar, which is not the session grid the "
+            "specification declares, so the frozen panel would not be the one the arms decide on"
+        )
     resolved = _resolve(
         spec,
         workspace=workspace,

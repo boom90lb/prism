@@ -66,7 +66,14 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from prism.composition import ComponentPlan, ComponentState, CompositionResult, compose
+from prism.composition import (
+    ComponentPlan,
+    ComponentState,
+    CompositionResult,
+    compose,
+    due_on_grid,
+    tranche_plans,
+)
 from prism.config import ExecutionConfig
 from prism.execution.cost_model import (
     SPREAD_BUCKET_SCHEDULE_V1,
@@ -256,6 +263,13 @@ def smoke_evaluate(
         raise EvaluationError(
             "the canonical engine charges dollars, so the smoke path needs CanonicalSettings carrying a declared "
             "CostStack (§3.6); there is deliberately no 'no costs' default"
+        )
+    gridded = [loaded.component_id for loaded in spec.components if loaded.spec.grid_schedule is not None]
+    if gridded:
+        raise EvaluationError(
+            f"component(s) {gridded} declare tranches or phase_offset_bars, and the smoke path decides every "
+            "update_every_bars sessions from the first decidable bar with no component state, so it would run a "
+            "different schedule from the one declared; evaluate them with walk_forward_evaluate"
         )
     if engine == REPRODUCTION_ENGINE and canonical is not None:
         raise EvaluationError(
@@ -831,6 +845,19 @@ class FittedComponent:
         return dataclasses.replace(
             ComponentPlan.from_loaded(self.loaded, combination=combination), component=self.component
         )
+
+    def plans(self, *, combination: str = "position_space") -> tuple[ComponentPlan, ...]:
+        """The plans composition runs for this component: one, or one per declared tranche.
+
+        Every tranche carries the same fitted object, so a tranched component is
+        fitted once per fold and scored by whichever tranche is due.
+        """
+        plan = self.plan(combination=combination)
+        grid = self.loaded.spec.grid_schedule
+        if grid is None:
+            return (plan,)
+        tranches, offset = grid
+        return tranche_plans(plan, tranches, offset)
 
     def to_record(self) -> dict[str, object]:
         return {
@@ -2127,7 +2154,7 @@ def _evaluate_folds(
         if fold_portfolio == "reset" or excluded:
             states = {}
             held = pd.Series(0.0, index=pd.Index(universe), dtype=float)
-        plans = tuple(component.plan() for component in fitted)
+        plans = tuple(plan for component in fitted for plan in component.plans())
         inputs = _fold_cost_inputs(
             spec,
             resolved,
@@ -2154,7 +2181,7 @@ def _evaluate_folds(
         else:
             for position in range(fold.test_start, fold.test_stop):
                 day = labels[position]
-                if not _due(plans, states, index_of, position):
+                if not _due(plans, states, index_of, position, decision_bar=day):
                     # Nothing is due and nothing expires: composition would
                     # return the carried sub-targets and the constructor would
                     # step the held book toward itself. The emitted row is the
@@ -2440,7 +2467,12 @@ def _evaluate_stateful(
             elapsed_bars=elapsed,
         )
         previous, previous_cutoff = fitted, cutoff_position
-        plans = tuple(component.plan(combination=spec.strategy.combination) for component in fitted)
+        # Fold admission calibrates each declared component once; composition
+        # runs its tranches, which share the component's fitted object.
+        declared_plans = tuple(component.plan(combination=spec.strategy.combination) for component in fitted)
+        plans = tuple(
+            plan for component in fitted for plan in component.plans(combination=spec.strategy.combination)
+        )
 
         close = fit_view.panel(list(members), train_end, "close").reindex(
             index=resolved.session_index[: fold.formation_stop]
@@ -2457,7 +2489,7 @@ def _evaluate_stateful(
         if family is not None:
             fits: dict[str, object] = {}
             records: dict[str, object] = {}
-            for plan in plans:
+            for plan in declared_plans:
                 declared = declarations[plan.component_id]
                 positions = _training_positions(
                     fold,
@@ -2595,7 +2627,7 @@ def _evaluate_stateful(
                 return None
             targets.iloc[position] = 0.0
             return pd.Series(held, dtype=float)
-        if not _due(plan.plans, states, index_of, position):
+        if not _due(plan.plans, states, index_of, position, decision_bar=call.bar):
             return None
         scored = _score_bar(
             spec,
@@ -2628,6 +2660,11 @@ def _evaluate_stateful(
             decide_bar=decide_bar,
         )
         bar_records.append(outcome.record)
+        if outcome.record.get("deferred_unpriced_entries"):
+            warnings.append(
+                f"{call.bar}: entries into {outcome.record['deferred_unpriced_entries']} deferred; a tranche carries "
+                "a target for them, the account does not hold them, and they have no price on this bar"
+            )
         decisions_by_fold[plan.fold.fold].append(call.bar)
         if outcome.construction is not None:
             row = pd.Series(outcome.construction.w_target, dtype=float).reindex(pd.Index(universe))
@@ -2800,7 +2837,11 @@ def _construct_at_bar(
             halted=[sid for sid in sids if sid not in call.traded],
         )
 
-    return decide_bar(
+    target = None if heuristic_target is None else heuristic_target.reindex(index)
+    deferred: list[str] = []
+    if target is not None and any(component.phase_offset_bars is not None for component in plan.plans):
+        target, deferred = _defer_unpriced_entries(target, marks=marks, shares=shares)
+    outcome = decide_bar(
         decision_bar=call.bar,
         policies=policies,
         state=call.state,
@@ -2811,12 +2852,40 @@ def _construct_at_bar(
         positions=shares,
         adv_dollars=adv.reindex(index),
         costs=costs,
-        heuristic_target=None if heuristic_target is None else heuristic_target.reindex(index),
+        heuristic_target=target,
         forecasts=tuple(forecasts),
         risk=risk,
         component_outputs=component_outputs,
         fold=int(plan.fold.fold),
     )
+    if deferred:
+        outcome.record["deferred_unpriced_entries"] = deferred
+    return outcome
+
+
+def _defer_unpriced_entries(
+    target: pd.Series, *, marks: pd.Series, shares: pd.Series
+) -> tuple[pd.Series, list[str]]:
+    """Withhold the target of a name the account does not hold and cannot price on this bar.
+
+    Only a book on the session grid reaches this. Its tranches carry their sub-targets
+    between their own refreshes, and the account decides on every session one of them
+    refreshes, so the account target can name a stock no tranche is refreshing that has
+    no price on this bar: typically an entry ordered on the previous bar that did not
+    fill because the stock stopped trading. Rounding refuses to size a non-flat target
+    without a price (N7), and with nothing held there is nothing to keep or exit, so the
+    name carries no decision on this bar -- the heuristic construction reads that as the
+    held weight, zero -- and the entry waits for a priced bar. The deferred names are
+    returned so the bar record and the run's warnings carry them.
+    """
+    values = target.to_numpy(dtype=float)
+    unpriced = marks.reindex(target.index).to_numpy(dtype=float) <= 0.0
+    unheld = shares.reindex(target.index).to_numpy(dtype=float) == 0.0
+    mask = unpriced & unheld & np.isfinite(values) & (values != 0.0)
+    if not mask.any():
+        return target, []
+    deferred = [str(sid) for sid in target.index[mask]]
+    return target.where(~mask), deferred
 
 
 def _decision_marks(prices: pd.Series, index: pd.Index, *, state: object, bar: str) -> pd.Series:
@@ -3004,24 +3073,37 @@ def _due(
     states: Mapping[str, ComponentState],
     positions: Mapping[str, int],
     position: int,
+    *,
+    decision_bar: str | None = None,
 ) -> bool:
     """Whether any component is due for a refresh, or expires, at this bar (§3.3).
 
-    The same two predicates ``_compose_one`` evaluates, read here so a bar on
-    which neither fires can skip the panel read entirely. When this is False,
-    composition returns the carried sub-targets unchanged and the constructor
-    steps the held book toward itself, so the emitted row is the held book —
-    which is what the caller writes instead.
+    The same two predicates ``_compose_one`` evaluates — due-ness is
+    :func:`prism.composition.due_on_grid` in both places — read here so a bar
+    on which neither fires can skip the panel read entirely. When this is
+    False, composition returns the carried sub-targets unchanged and the
+    constructor steps the held book toward itself, so the emitted row is the
+    held book — which is what the caller writes instead. ``decision_bar`` is
+    the label at ``position``; a plan on the session grid needs it, and an
+    elapsed-count plan never reads it.
     """
     for plan in plans:
         state = states.get(plan.component_id)
-        if state is None or state.last_output_bar is None:
+        last = None if state is None else state.last_output_bar
+        elapsed = 0
+        if last is not None:
+            anchor = positions.get(last)
+            if anchor is None:
+                return True
+            elapsed = position - anchor
+        if plan.phase_offset_bars is not None and decision_bar is None:
+            raise EvaluationError(
+                f"component {plan.component_id!r} is scheduled on the session grid and the due-ness check was "
+                "given no decision bar label to place on it"
+            )
+        if due_on_grid(plan, state, str(decision_bar), elapsed=elapsed):
             return True
-        anchor = positions.get(state.last_output_bar)
-        if anchor is None:
-            return True
-        elapsed = position - anchor
-        if elapsed >= int(plan.update_every_bars) or elapsed > int(plan.valid_for_bars):
+        if last is not None and elapsed > int(plan.valid_for_bars):
             return True
     return False
 
@@ -3265,7 +3347,7 @@ def _replay_targets(
             # it can score, not before.
             rows.append(np.zeros(len(universe), dtype=float))
             continue
-        if not _due(plans, states, index, position):
+        if not _due(plans, states, index, position, decision_bar=day):
             rows.append(last)
             continue
         row, states, _ = _decide_bar(

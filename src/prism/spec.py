@@ -89,6 +89,14 @@ TO_WEIGHTS_RULES: tuple[str, ...] = (
 #: The three schedule fields the component table carries (§3.3), all required.
 SCHEDULE_FIELDS: tuple[str, ...] = ("horizon_bars", "update_every_bars", "valid_for_bars")
 
+#: The optional session-grid fields of a component table. ``tranches`` splits the
+#: component into that many overlapping tranches, each refreshing every
+#: ``update_every_bars`` sessions on its own grid offset; ``phase_offset_bars`` is
+#: the first tranche's offset on the grid of ``prism.io.sessions.grid_position``.
+#: They enter ``config_id`` only when declared; ``prism.composition.tranche_plans``
+#: builds the tranches.
+GRID_FIELDS: tuple[str, ...] = ("tranches", "phase_offset_bars")
+
 #: ``[strategy.eligibility]`` with the defaults §3.3 declares. Resolved into the
 #: specification before hashing so a field left implicit still enters ``config_id``.
 ELIGIBILITY_DEFAULTS: dict[str, Any] = {
@@ -199,10 +207,31 @@ class ComponentSpec:
     valid_for_bars: int
     params: Mapping[str, Any]
     to_weights_params: Mapping[str, Any]
+    #: The session-grid schedule (``GRID_FIELDS``). Both None means the
+    #: elapsed-count cadence every specification had before the grid existed;
+    #: declaring either one puts the component on the grid and resolves the
+    #: other (``tranches = 1``, ``phase_offset_bars = 0``).
+    tranches: int | None = None
+    phase_offset_bars: int | None = None
+
+    @property
+    def grid_schedule(self) -> tuple[int, int] | None:
+        """``(tranches, phase_offset_bars)`` resolved, or None for an elapsed-count component."""
+        if self.tranches is None and self.phase_offset_bars is None:
+            return None
+        return (
+            1 if self.tranches is None else int(self.tranches),
+            0 if self.phase_offset_bars is None else int(self.phase_offset_bars),
+        )
 
     def to_dict(self) -> dict[str, Any]:
-        """The component table as plain JSON values, defaults resolved."""
-        return {
+        """The component table as plain JSON values, defaults resolved.
+
+        The grid fields appear only for a component on the grid, so a
+        specification that declares neither keeps the identity it had before
+        the fields existed.
+        """
+        payload: dict[str, Any] = {
             "id": self.id,
             "path": self.path,
             "weight": self.weight,
@@ -213,6 +242,10 @@ class ComponentSpec:
             "params": dict(self.params),
             "to_weights_params": dict(self.to_weights_params),
         }
+        grid = self.grid_schedule
+        if grid is not None:
+            payload["tranches"], payload["phase_offset_bars"] = grid
+        return payload
 
 
 @dataclass(frozen=True)
@@ -648,6 +681,19 @@ def _parse_strategy(table: Mapping[str, Any], *, where: str) -> StrategySpec:
             f"{where} declares component id(s) {duplicates} more than once; component state is "
             "keyed by id, so two components cannot share one"
         )
+    tranched = [component.id for component in components if (component.grid_schedule or (1, 0))[0] > 1]
+    if tranched and combination != "position_space":
+        raise SpecError(
+            f"{where} [strategy] combination={combination!r} with tranched component(s) {tranched}; a tranche is "
+            "a position-space sub-target, and the calibrated flow fits and forecasts per declared component, so "
+            "tranches > 1 needs combination = 'position_space'"
+        )
+    if tranched and renormalize:
+        raise SpecError(
+            f"{where} [strategy] renormalize = true with tranched component(s) {tranched}; renormalization "
+            "scales the tranches that hold a sub-target up to the declared gross, so a new book would trade its "
+            "whole size on its first session instead of entering one tranche per session"
+        )
     eligibility = _parse_eligibility(table.get("eligibility", {}), where=where)
     return StrategySpec(
         name=name,
@@ -666,7 +712,7 @@ def _parse_component(entry: Any, *, index: int, where: str) -> ComponentSpec:
     label = f"{where} [[strategy.components]] #{index}"
     if not isinstance(entry, Mapping):
         raise SpecError(f"{label} is {entry!r}, not a table")
-    permitted = ("id", "path", "weight", "to_weights", *SCHEDULE_FIELDS, "params", "to_weights_params")
+    permitted = ("id", "path", "weight", "to_weights", *SCHEDULE_FIELDS, *GRID_FIELDS, "params", "to_weights_params")
     _reject_unknown(entry, permitted, where=label)
     component_id = _require_str(entry, "id", where=label)
     path = _require_str(entry, "path", where=label)
@@ -679,6 +725,7 @@ def _parse_component(entry: Any, *, index: int, where: str) -> ComponentSpec:
             f"update_every_bars={schedule['update_every_bars']}; an output that expires before "
             "its own next refresh has no reachable valid state (§3.3)"
         )
+    grid = _parse_grid(entry, update_every_bars=schedule["update_every_bars"], where=label)
     params = entry.get("params", {})
     if not isinstance(params, Mapping):
         raise SpecError(f"{label} declares params={params!r}, which is not a table")
@@ -691,7 +738,33 @@ def _parse_component(entry: Any, *, index: int, where: str) -> ComponentSpec:
         params=dict(params),
         to_weights_params=to_weights_params,
         **schedule,
+        **grid,
     )
+
+
+def _parse_grid(entry: Mapping[str, Any], *, update_every_bars: int, where: str) -> dict[str, int | None]:
+    """The component's session-grid fields, both resolved when either is declared.
+
+    ``tranches`` may not exceed ``update_every_bars``, or two tranches would
+    share a grid offset; ``phase_offset_bars`` is a residue of the refresh cycle,
+    ``0 <= offset < update_every_bars``, so one schedule has one spelling and one
+    identity.
+    """
+    if not any(key in entry for key in GRID_FIELDS):
+        return {"tranches": None, "phase_offset_bars": None}
+    tranches = _optional_int(entry, "tranches", default=1, minimum=1, where=where)
+    offset = _optional_int(entry, "phase_offset_bars", default=0, minimum=0, where=where)
+    if tranches > update_every_bars:
+        raise SpecError(
+            f"{where} declares tranches={tranches} above update_every_bars={update_every_bars}; each tranche "
+            "refreshes on its own session of the cycle, and the cycle has only that many sessions"
+        )
+    if offset >= update_every_bars:
+        raise SpecError(
+            f"{where} declares phase_offset_bars={offset}; it is a position in the {update_every_bars}-session "
+            f"refresh cycle, so it must lie in [0, {update_every_bars})"
+        )
+    return {"tranches": tranches, "phase_offset_bars": offset}
 
 
 def _parse_eligibility(table: Any, *, where: str) -> Eligibility:

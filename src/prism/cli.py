@@ -627,6 +627,12 @@ def _cmd_run(args: argparse.Namespace) -> int:
             "the single-component daily cycle of §4",
         )
     loaded = spec.components[0]
+    if loaded.spec.grid_schedule is not None:
+        raise CommandError(
+            f"{spec.path} declares tranches or phase_offset_bars for component {loaded.component_id!r}, and "
+            "`prism run` schedules the daily cycle by elapsed sessions only; running it would trade a schedule "
+            "the specification does not declare. Evaluate the specification with `prism evaluate` instead"
+        )
     config = _daily_book_config(spec, loaded)
 
     dataset = _open_dataset(Dataset, workspace)
