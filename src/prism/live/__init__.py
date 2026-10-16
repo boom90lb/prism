@@ -48,6 +48,10 @@ and nothing important may live only in memory:
   time from the panel, the scale decided at each refresh with its failure
   path, and the per-refresh record ``{run-dir}/sizing.jsonl``. Off unless
   ``run_daily_cycle(vol_scale=...)`` is given.
+* ``tranches`` — the tranched decile book: overlapping tranches on the session
+  grid, built one per grid date (staged entry) and exited one per grid date
+  (wind-down), their states persisted in ``LoopState.components``. Off unless
+  ``run_daily_cycle(tranches=...)`` is given a count above one.
 * ``regime_step`` — the SPEC §7.7 regime step: per-cycle §7.5 telemetry
   through the ``prism.regime.fetch`` adapters, read by ``daily`` every
   session into the regime ledger (docs/regime_step.md); the de-gross

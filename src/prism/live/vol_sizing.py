@@ -64,6 +64,13 @@ save) decides on the same recorded panel and finds an identical row, which it
 leaves alone; a row that disagrees raises, because one bar cannot carry two
 scale decisions.
 
+**Tranches.** The tranched book (:mod:`prism.live.tranches`) decides a scale
+per tranche at its refresh, on the tranched base book of
+:func:`tranched_base_book_window`, and bounds a failure by the tranche's own
+last good scale, persisted in its component state. Its sizing row has
+``schedule = "tranches"`` and carries the due tranches' decisions under
+``tranches``, which is part of the decision a re-run must reproduce.
+
 Production-import-path safe (N8): numpy and pandas only.
 """
 
@@ -74,7 +81,7 @@ import logging
 import math
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Mapping
+from typing import TYPE_CHECKING, Any, Callable, Mapping, Sequence
 
 import numpy as np
 import pandas as pd
@@ -124,6 +131,7 @@ DECISION_FIELDS: tuple[str, ...] = (
     "last_good",
     "schedule",
     "base_refresh_bars",
+    "tranches",
 )
 
 
@@ -273,6 +281,81 @@ def base_book_window(
     weights = pd.DataFrame(held, index=window.index, columns=close.columns)
     returns = base_book_returns(window, weights).to_numpy(dtype=float)[1:]
     return returns, tuple(_iso(close.index[p]) for p in used), schedule
+
+
+def tranched_base_book_window(
+    signal: "Signal",
+    close: pd.DataFrame,
+    volume: pd.DataFrame | None,
+    config: "DailyBookConfig",
+    *,
+    max_gross: float,
+    lookback_bars: int,
+    offsets: Sequence[int],
+) -> tuple[np.ndarray, tuple[str, ...]]:
+    """The tranched base book's last ``lookback_bars`` returns through the panel's last bar.
+
+    The tranched book of :mod:`prism.live.tranches` holds ``len(offsets)``
+    tranches; tranche *j* refreshes on the panel bars whose session-grid
+    position is ``offsets[j]`` modulo ``config.decision_every``. Its base book at
+    a close is the plain mean of every tranche's unscaled book as last refreshed
+    at or before that close, ``sum_j D_j / K`` at raw gross 1.0, which is the
+    book the volatility scale is defined on whatever share of the tranches the
+    paper account has built. Each tranche book is the cycle's own construct
+    applied to the signal scored on the panel truncated at its refresh date (N1),
+    exactly as :func:`base_book_window` builds the single book.
+
+    A window bar at which some tranche has no scoreable refresh date at or
+    before it holds no base book, and its return is NaN, which
+    :func:`prism.portfolio.vol_scale.decide_scale` reads as a short window.
+    Returns ``(returns, refresh_bars)``: the refresh dates whose books entered
+    the window, oldest first.
+    """
+    if not offsets:
+        raise VolSizingError("a tranched base book needs at least one tranche offset")
+    n = len(close.index)
+    last = n - 1
+    first = last - int(lookback_bars)
+    if first < 0:
+        raise VolSizingError(f"a {lookback_bars}-return window needs {lookback_bars + 1} bars, the panel has {n}")
+    every = max(1, int(config.decision_every))
+    low = max(0, first - every + 1)
+    candidates = np.arange(low, last + 1)
+    positions = np.array([_grid_position(close.index[int(p)]) for p in candidates], dtype=np.int64)
+    schedules = [candidates[(positions - int(offset)) % every == 0] for offset in offsets]
+
+    books: dict[int, np.ndarray | None] = {}
+    held = np.full((lookback_bars + 1, close.shape[1]), np.nan)
+    used: set[int] = set()
+    count = float(len(offsets))
+    for row, bar in enumerate(range(first, last)):
+        dates: list[int] = []
+        for refreshes in schedules:
+            at = int(np.searchsorted(refreshes, bar, side="right")) - 1
+            if at < 0:
+                break
+            dates.append(int(refreshes[at]))
+        if len(dates) < len(schedules):
+            continue
+        vectors: list[np.ndarray] = []
+        for refresh in dates:
+            if refresh not in books:
+                books[refresh] = _book_at(signal, close, volume, config, max_gross=max_gross, position=refresh)
+            book = books[refresh]
+            if book is None:
+                break
+            vectors.append(book)
+        if len(vectors) < len(dates):
+            continue
+        total = vectors[0].copy()
+        for vector in vectors[1:]:
+            total = total + vector
+        held[row] = total / count
+        used.update(dates)
+    window = close.iloc[first : last + 1]
+    weights = pd.DataFrame(held, index=window.index, columns=close.columns)
+    returns = base_book_returns(window, weights).to_numpy(dtype=float)[1:]
+    return returns, tuple(_iso(close.index[p]) for p in sorted(used))
 
 
 def decide_live_scale(

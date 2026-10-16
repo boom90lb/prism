@@ -108,7 +108,7 @@ from prism.live.lockfile import (
     account_execution_lock,
 )
 from prism.live.reconcile import ReconcileSettings, Reconciliation, reconcile_loop_state
-from prism.live.state import LoopState, StateStore, record_order_status
+from prism.live.state import ComponentState, LoopState, StateStore, record_order_status
 
 if TYPE_CHECKING:  # the §3.11 report type, for the signature only
     from prism.live.freshness import FreshnessReport
@@ -1057,6 +1057,7 @@ def decide_and_submit(
     freshness: "FreshnessReport | None" = None,
     now: datetime | None = None,
     panel: Mapping[str, Any] | None = None,
+    components: Sequence[ComponentState] | None = None,
 ) -> list[Order]:
     """One decision step: reconcile → decide once → write ahead → submit.
 
@@ -1091,6 +1092,11 @@ def decide_and_submit(
     the provenance of the bar panel the decision was made on (the digest and
     file name ``prism.live.panel_log`` recorded); its fields are added to the
     refresh row of the targets ledger so the decision cites its inputs.
+    ``components``, when provided, replaces the persisted per-component states
+    (``LoopState.components``) inside the same write-ahead save, so a tranched
+    book's tranche schedule and sub-targets advance atomically with the decision
+    they produced (:mod:`prism.live.tranches`). ``None`` leaves them as loaded;
+    a resumed decision never rewrites them.
     """
     states, action_context, freshness_by_sid = apply_freshness(freshness, states, action_context)
     gate = authorize_session(ctx, intent, states=states, action_context=action_context, now=now)
@@ -1155,6 +1161,8 @@ def decide_and_submit(
             state.pending_decision_bar = decision_bar
             if refresh_bar is not None:
                 state.last_refresh_bar = refresh_bar  # advance the cadence anchor atomically
+            if components is not None:
+                state.components = list(components)  # the tranche states, in the same save
             ctx.store.save(state)  # the write-ahead: persisted before any submit
             if refresh_bar is not None and ctx.targets_ledger is not None:
                 # Persist the constructed book at each refresh — the concordance

@@ -569,3 +569,54 @@ def resolve_vol_scale(
             "account's gross ceiling, and the rule sizes the book up to that ceiling"
         )
     return rule
+
+
+# ----------------------------------------------------------------- tranches
+
+#: The tranche counts ``--tranches`` offers: the single book (the default), and
+#: the 3- and 21-tranche books of selection set ``public_baseline_v1``.
+TRANCHE_CHOICES: tuple[int, ...] = (1, 3, 21)
+
+
+def resolve_tranches(
+    tranches: int,
+    *,
+    book: str,
+    decision_every: int,
+    wind_down: bool,
+    profile: "RiskProfile | None" = None,
+) -> int:
+    """The tranche count ``--tranches`` names, refused where it cannot run.
+
+    Tranching splits the momentum book's decile construct into overlapping
+    tranches (``prism.live.tranches``), so it needs ``--book momentum`` and a
+    cadence the count divides (21 for 3 or 21 tranches). The certified
+    ``research_paper`` profile is the single monthly book and refuses it.
+    ``--wind-down`` exits a tranched book one tranche per session and has no
+    meaning for the single book. Each refusal is a ``SystemExit`` raised before
+    the writer lock and any venue read.
+    """
+    count = int(tranches)
+    if count not in TRANCHE_CHOICES:
+        raise SystemExit(f"--tranches must be one of {TRANCHE_CHOICES}, got {count}")
+    if count == 1:
+        if wind_down:
+            raise SystemExit(
+                "--wind-down exits a tranched book one tranche per session and needs --tranches 3 or 21 (the "
+                "count the book was built with); the single book stops through the kill switch"
+            )
+        return 1
+    if book != "momentum":
+        raise SystemExit(f"--tranches applies to --book momentum only (got {book!r}): it splits the decile book")
+    if profile is not None and profile.profile_id == "research_paper":
+        raise SystemExit(
+            "--tranches is refused with --profile research_paper: that profile is the certified single monthly "
+            "book, whose construction is pinned"
+        )
+    if decision_every % count != 0:
+        raise SystemExit(
+            f"--tranches {count} needs a cadence it divides (got --decision-every {decision_every}): the tranches "
+            "sit evenly on the cycle, one grid offset each"
+        )
+    return count
+

@@ -46,7 +46,10 @@ Cadence and ordering (one call per session, after the close):
    With the volatility scale on (``vol_scale``, default off;
    :mod:`prism.live.vol_sizing`) the refresh first decides the decile book's
    scale from its base book rebuilt on the panel, records it in
-   ``<run_dir>/sizing.jsonl``, and constructs the scaled book.
+   ``<run_dir>/sizing.jsonl``, and constructs the scaled book. A tranched
+   book (``tranches > 1``, default off; :mod:`prism.live.tranches`) decides on
+   every session one of its tranches is due, re-scoring only the due tranches
+   and composing the account target from every tranche's sub-targets.
 5. **Decide/submit.** ``decide_and_submit`` persists the decision before
    the first submit and submits idempotently (N2 crash window).
 6. **Monitor.** After the mark-to-market NAV is appended to the equity
@@ -118,6 +121,14 @@ from prism.live.panel_log import (
 )
 from prism.live.safety import SafetyConfig, SafetyViolation, check_orders, halt_reason
 from prism.live.state import LoopState
+from prism.live.tranches import (
+    TrancheDecision,
+    TrancheSession,
+    decide_tranches,
+    open_tranche_session,
+    refuse_tranche_state_under_single_book,
+    require_tranche_inputs,
+)
 from prism.live.vol_sizing import (
     SIZING_LEDGER_FILENAME,
     TARGETS_LEDGER_KEY,
@@ -225,6 +236,10 @@ class DailyCycleResult:
     # row in ``{run-dir}/sizing.jsonl`` (``prism.live.vol_sizing``): None when
     # the scale is off or this session did not refresh.
     vol_scale: dict | None = None
+    # The tranched book's session record (``prism.live.tranches``): the tranche
+    # count, base grid offset, wind-down flag, the tranches due this session,
+    # how many have been built and any withheld entries. None for the single book.
+    tranches: dict | None = None
 
 
 @dataclass(frozen=True)
@@ -536,6 +551,8 @@ def run_daily_cycle(
     run_dir: Path | None = None,
     phase_offset: int | None = None,
     vol_scale: VolScaleRule | None = None,
+    tranches: int = 1,
+    wind_down: bool = False,
 ) -> DailyCycleResult:
     """Run one settle → mark → score → construct → decide/submit cycle.
 
@@ -631,6 +648,26 @@ def run_daily_cycle(
     signal that does not declare ``fitted_state = "none"``, a context without a
     targets ledger, and a panel shorter than
     :func:`prism.live.vol_sizing.required_panel_bars`.
+
+    ``tranches`` (``1`` = off, bit-identical) splits the decile book into that
+    many overlapping tranches on the session grid (:mod:`prism.live.tranches`),
+    each holding ``1/tranches`` of capital and refreshing every
+    ``config.decision_every`` sessions on its own grid date, offset from
+    ``phase_offset`` (0 when it is None). The cycle decides on every session a
+    tranche is due, re-scores only the due tranches, and sizes orders against the
+    sum of every tranche's sub-targets. Tranches start empty and are built one
+    per grid date (staged entry); their states persist in
+    ``LoopState.components`` in the write-ahead save, and each refresh session
+    appends one targets-ledger row. With ``vol_scale`` each due tranche's scale
+    is decided from the tranched base book rebuilt point in time from the panel.
+    The concordance read runs only for the single book. ``wind_down`` (tranched
+    books only) sets each tranche flat on its own due date, so the book exits over
+    one cycle. Refused before any state moves: a book other than
+    ``decile_neutral``, a count that does not divide ``decision_every``, the
+    regime gross-scale hook, a run directory whose tranche layout differs or that
+    holds an untranched book, and a first tranched decision on an account that
+    holds positions. With ``tranches=1`` the cycle refuses a run directory that
+    holds tranche states.
     """
     if regime_gross_scale is not None and regime is None:
         raise ValueError(
@@ -657,6 +694,14 @@ def run_daily_cycle(
     decision_bar = decision_bar or str(close.index[-1].date())
     if phase_offset is not None:
         _require_grid_schedule(phase_offset, config.decision_every, decision_bar)
+    base_offset = require_tranche_inputs(
+        tranches,
+        config,
+        phase_offset=phase_offset,
+        decision_bar=decision_bar,
+        regime_gross_scale=regime_gross_scale,
+        wind_down=wind_down,
+    )
 
     # 0. Record the panel this cycle decides on, before any state moves. The
     # refresh row in targets.jsonl cites its digest (step 4). The persisted
@@ -664,6 +709,23 @@ def run_daily_cycle(
     # bar's write-ahead step already ran: a re-run of such a bar resumes or
     # holds and decides nothing from the panel fetched now.
     state = ctx.store.load()
+    tranche_session: TrancheSession | None = None
+    if base_offset is not None:
+        # The tranched book plans its session (layout, flat start, due tranches)
+        # before anything is recorded, so each refusal leaves the run directory as it was.
+        tranche_session = open_tranche_session(
+            signal,
+            config,
+            tranches,
+            base_offset,
+            state,
+            decision_bar,
+            [str(bar.date()) for bar in close.index],
+            broker=ctx.broker,
+            wind_down=wind_down,
+        )
+    else:
+        refuse_tranche_state_under_single_book(state)
     decided_already = state is not None and state.pending_decision_bar == decision_bar
     panel_record = _record_decision_panel(
         ctx, run_dir, decision_bar, close, volume, decided_already=decided_already
@@ -676,8 +738,11 @@ def run_daily_cycle(
     prices = close.iloc[-1]
     equity, cash, prev_weights = _mark_book(ctx.broker, prices)
 
-    # 2b. Book-concordance telemetry (pure; gates nothing).
-    concordance = _concordance_read(ctx, prev_weights, decision_bar)
+    # 2b. Book-concordance telemetry (pure; gates nothing). The single book only:
+    # a tranched book refreshes on most sessions, so its baseline would be the
+    # previous session's target and the read a fill-rate read, not the drift read
+    # the ledger records.
+    concordance = _concordance_read(ctx, prev_weights, decision_bar) if tranche_session is None else None
 
     # 2c. Halt rails (kill switch, drawdown) — decided on the marked equity
     # before any decision is constructed or persisted.
@@ -690,9 +755,12 @@ def run_daily_cycle(
     # session (the decision cadence has not elapsed) the book holds its filled
     # weights — no re-score, no trades — so a monthly book rebalances monthly
     # while NAV still marks daily.
-    refresh = halted is None and _is_refresh_session(
-        state, decision_bar, close.index, config.decision_every, phase_offset
-    )
+    if tranche_session is not None:
+        refresh = halted is None and bool(tranche_session.due)
+    else:
+        refresh = halted is None and _is_refresh_session(
+            state, decision_bar, close.index, config.decision_every, phase_offset
+        )
     effective_max_gross, regime_scale = _effective_gross(
         config, refresh, regime_gross_scale, regime_state, decision_bar
     )
@@ -700,7 +768,28 @@ def run_daily_cycle(
     masked: list[str] | None = None
     sizing: dict | None = None
     live_scale: LiveScale | None = None
-    if refresh and vol_scale is not None:
+    tranche_decision: TrancheDecision | None = None
+    if refresh and tranche_session is not None:
+        # 3t. The tranched book (default off): every tranche composed, the due
+        # ones re-scored (or set flat under a wind-down), sized per tranche when
+        # the volatility scale is on.
+        tranche_decision = decide_tranches(
+            tranche_session,
+            signal,
+            close,
+            volume,
+            config,
+            prev_weights=prev_weights,
+            equity=equity,
+            unrankable=None if unrankable is None or wind_down else unrankable(decision_bar),
+            decision_bar=decision_bar,
+            vol_scale=vol_scale,
+        )
+        targets, masked = tranche_decision.targets, tranche_decision.masked
+        sizing = tranche_decision.sizing
+        if sizing is not None:
+            _record_tranched_sizing(ctx, run_dir, sizing)
+    elif refresh and vol_scale is not None:
         # 3a. The volatility scale (default off): decided from the base book
         # rebuilt on this panel, then applied inside the construct, before the
         # band and the participation gate see the target.
@@ -749,6 +838,16 @@ def run_daily_cycle(
     # next non-halted run, which is not what a kill switch means.
     orders: list[Order] = []
     if halted is None:
+        panel_fields: dict[str, Any] | None
+        if tranche_decision is not None:
+            panel_fields = {**(_panel_provenance(panel_record) or {}), **tranche_decision.targets_extra}
+        elif live_scale is None:
+            panel_fields = _panel_provenance(panel_record)
+        else:
+            panel_fields = {
+                **(_panel_provenance(panel_record) or {}),
+                TARGETS_LEDGER_KEY: targets_ledger_record(live_scale),
+            }
         orders = decide_and_submit(
             ctx,
             decision_bar,
@@ -760,11 +859,8 @@ def run_daily_cycle(
             order_guard=(
                 None if safety is None else (lambda order_list: check_orders(order_list, equity, safety))
             ),
-            panel=(
-                _panel_provenance(panel_record)
-                if live_scale is None
-                else {**(_panel_provenance(panel_record) or {}), TARGETS_LEDGER_KEY: targets_ledger_record(live_scale)}
-            ),
+            panel=panel_fields,
+            components=None if tranche_decision is None else tranche_decision.components,
         )
         logger.info(
             "decision %s: %d orders %s, equity %.2f, gross %.4f",
@@ -809,6 +905,11 @@ def run_daily_cycle(
         # them field by field), and recorded_at is the one field that cannot.
         panel=None if panel_record is None else {k: v for k, v in panel_record.to_row().items() if k != "recorded_at"},
         vol_scale=sizing,
+        tranches=(
+            None
+            if tranche_session is None
+            else tranche_session.record() if tranche_decision is None else tranche_decision.record
+        ),
     )
 
 
@@ -910,6 +1011,46 @@ def _record_sizing(ctx: LiveLoopContext, run_dir: Path | None, row: dict) -> Non
     )
     if row["status"] == "fallback":
         # N7: loud. The book is sized at min(1, last good scale), never above the unscaled book.
+        logger.warning("FALLBACK " + message, *arguments)
+    else:
+        logger.info(message, *arguments)
+
+
+def _record_tranched_sizing(ctx: LiveLoopContext, run_dir: Path | None, row: dict) -> None:
+    """Step 3t: write a tranched refresh's scale decisions ahead of the write-ahead step.
+
+    The same ledger and directory rule as :func:`_record_sizing`, one row per
+    session (``schedule = "tranches"``) carrying every due tranche's decision.
+    A fallback is logged at WARNING (N7).
+    """
+    if run_dir is not None:
+        directory = Path(run_dir)
+    elif ctx.targets_ledger is not None:
+        directory = Path(ctx.targets_ledger).parent
+    else:  # refused up front by require_vol_scale_inputs; kept so the record can never go nowhere
+        raise ValueError("the volatility scale has no run directory to record its decision in (N7)")
+    written = append_sizing_decision(directory / SIZING_LEDGER_FILENAME, row)
+    decisions = row["tranches"]
+    described = ", ".join(
+        f"{tid} {entry['scale']:.4f} {entry['status']}" + ("" if entry["reason"] is None else f" ({entry['reason']})")
+        for tid, entry in decisions.items()
+    )
+    message = (
+        "volatility scale at tranched refresh %s: %s; sigma %s over %d finite returns, zero fraction %s; account "
+        "scale %s, target gross %.4f, long side %.4f of equity%s"
+    )
+    arguments = (
+        row["decision_bar"],
+        described,
+        "n/a" if row["sigma"] is None else f"{row['sigma']:.4f}",
+        row["n_valid"],
+        "n/a" if row["zero_fraction"] is None else f"{row['zero_fraction']:.3f}",
+        "n/a" if row["account_scale"] is None else f"{row['account_scale']:.4f}",
+        row["target_gross"],
+        row["long_over_equity"],
+        "" if written else " (already recorded for this bar)",
+    )
+    if any(entry["status"] == "fallback" for entry in decisions.values()):
         logger.warning("FALLBACK " + message, *arguments)
     else:
         logger.info(message, *arguments)

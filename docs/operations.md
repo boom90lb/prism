@@ -649,3 +649,72 @@ the next refresh. Code: `prism.live.vol_sizing` (the live seam) on top of
   jump of that kind almost always raises sigma and lowers the scale); and the
   replay harness (`prism.live.replay`) does not take a scale, so it replays a
   scaled run directory unscaled.
+
+## 2026-10-16: a tranched momentum paper book (off by default)
+
+`python -m prism.scripts.paper_loop --book momentum --tranches 21` splits the
+decile momentum book into 21 overlapping tranches. Each holds 1/21 of capital
+and refreshes every 21 sessions on its own date of the fixed session grid
+(tranche *j* where `(grid position − base − j) mod 21 = 0`), so one tranche
+refreshes on every session and the account trades about 1/21 of the monthly
+change each day instead of all of it on one day. The base is the seeded offset
+under `--rebalance-phase seeded`, otherwise 0; with 21 tranches it only
+relabels them. `--tranches 3` gives tranches 7 sessions apart. Code:
+`prism.live.tranches`, composed by `prism.assembly.assemble` with
+`prism.composition.tranche_plans` and `due_on_grid`, the schedule the evaluator
+uses.
+
+- **Staged entry.** A new tranched book starts empty and builds each tranche on
+  its own grid date, so it reaches full size over 21 sessions; it never buys the
+  whole book on its first day. It must start in its own run directory on a flat
+  account: a run directory that holds an untranched book, or an account that
+  holds positions no tranche holds, is refused before any state moves, because
+  the first session would sell all but 1/21 of what is held.
+- **State.** Each tranche's schedule anchor, sub-targets and grid offset (and,
+  with the volatility scale, its scale decision) are `LoopState.components` in
+  `state.json`, saved in the same write-ahead step as the decision, so a
+  restart in the middle of the build resumes the same schedule. No schema bump:
+  the two new component fields are written only when set. A run directory
+  whose persisted layout (count, ids, offsets) differs from the flags is
+  refused, and `--tranches 1` (the default) refuses a run directory that holds
+  tranches, so a forgotten flag fails rather than holding the book for a month.
+- **Outages.** A tranche whose grid date was missed catches up once on the
+  first session back and then returns to its grid, so after an outage of *n*
+  sessions the return session refreshes *n* + 1 tranches; only then do trades
+  net across tranches. A tranche output is valid for 42 sessions; after a longer
+  outage every tranche is expired and rebuilt at once.
+- **Whole-book refreshes and withheld entries.** A tranche's refresh is its
+  whole book: a name it held that is no longer scored is set flat in it. Between
+  refreshes tranches carry their sub-targets, so the account target can name a
+  stock the account does not hold and cannot price at the close (it left the
+  universe, or yesterday's entry did not fill because it stopped trading); that
+  entry is withheld (target zero) and logged, instead of failing the sizing
+  step.
+- **Wind-down.** `--wind-down` with the same `--tranches` sets each tranche flat
+  on its own date, so the book exits over 21 sessions; the spin-off mask is not
+  consulted and the scale is not decided while winding down. The kill switch
+  still stops everything at once.
+- **With `--vol-scale bsc-12-126-2 --max-gross 2`.** Each tranche is scaled at
+  its own refresh by the rule applied to the tranched base book rebuilt point in
+  time from the panel: the mean of all 21 tranche books as last refreshed,
+  `Σ D_j / 21` at raw gross 1.0. A tranche's sub-targets are its book times its
+  scale, capped at the gross ceiling; because tranche weights sum to one, the
+  account never exceeds the ceiling. A failed estimate gives `min(1, that
+  tranche's last good scale)`, read from its persisted state. `sizing.jsonl` gets
+  one row per session (`schedule = "tranches"`, per-tranche decisions under
+  `tranches`). The rebuild scores the signal at about 146 past dates per session
+  (about 0.2 s each for 12−1 momentum on 500 names, so roughly half a minute).
+- **Telemetry.** Every refresh session appends a `targets.jsonl` row carrying a
+  `tranches` record (count, base offset, due tranches, tranches built). The
+  concordance read is skipped for a tranched book (its baseline would be
+  yesterday's target, a fill-rate read). The shadow tracking read still runs,
+  but with a refresh every session every row is a transition, so it carries no
+  tracking information for a 21-tranche book.
+- **Not armed.** `ops/paper_loop_nightly.sh` does not pass the flag, and the
+  live book is unchanged; with `--tranches 1` the cycle decides exactly as before
+  (checked byte for byte against the previous code on synthetic replays).
+  Refused with `--profile research_paper`, with a book other than momentum, and
+  with a cadence the count does not divide. Arming it, and changing the live
+  book, are owner acts (SPEC §6). The replay harness takes `tranches` on the
+  epoch grid (base 0); it takes no seeded phase. `prism-doctor` has no tranche
+  check yet.

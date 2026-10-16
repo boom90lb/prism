@@ -79,6 +79,16 @@ It needs ``--book momentum`` and ``--max-gross 2.0`` and is refused under any
 ``--profile``; the regime de-gross hook, which has no flag, is refused beside
 it in ``run_daily_cycle``.
 
+**Tranches.** ``--tranches 21`` (or 3; default 1, the single book) splits the
+momentum book into overlapping tranches that each hold 1/21 (1/3) of capital
+and refresh every 21 sessions on their own session-grid date
+(``prism.live.tranches``), so with 21 tranches one tranche refreshes on every
+session and the account trades about 1/21 of the monthly change each day. A new
+tranched book starts empty and builds one tranche per grid date over 21
+sessions; it must start on a flat account and in its own run directory.
+``--wind-down`` sets each tranche flat on its own date, so the book exits over
+21 sessions. With ``--vol-scale`` each tranche is scaled at its own refresh.
+
 Fit policy (explicit, §7.7 model staleness): the signal is refit every run
 on the full trailing panel up to the decision bar. Causal for live use —
 fitting on bars ≤ *t* to decide at *t* sees no future — and at paper-book
@@ -126,6 +136,7 @@ from prism.live.safety import (
 from prism.scripts import announce_alias
 from prism.scripts.paper_books import (
     BOOKS,
+    TRANCHE_CHOICES,
     VOL_SCALE_OFF,
     VOL_SCALE_PRESETS,
     BookParams,
@@ -134,6 +145,7 @@ from prism.scripts.paper_books import (
     default_panel_start,
     last_published_session,
     resolve_cli_universe,
+    resolve_tranches,
     resolve_vol_scale,
     scoped_order_id_prefix,
     valuation_masked_membership,
@@ -221,6 +233,25 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "vol_momentum_v1). A window that cannot be trusted (stale or flat bars, too few returns) falls back "
         "to min(1, last good scale). Each refresh is recorded in {run-dir}/sizing.jsonl. Requires --book "
         "momentum and --max-gross 2.0; refused with any --profile. Not armed by the nightly wrapper.",
+    )
+    parser.add_argument(
+        "--tranches",
+        type=int,
+        choices=TRANCHE_CHOICES,
+        default=1,
+        help="Split the momentum book into this many overlapping tranches. 1 (default, unchanged behaviour): the "
+        "single book. 3 or 21: each tranche holds 1/N of capital and refreshes every 21 sessions on its own date "
+        "of the fixed session grid (offset from the seeded phase under --rebalance-phase seeded, else from the "
+        "epoch grid), so with 21 tranches one tranche refreshes every session. A new tranched book starts empty "
+        "and is built one tranche per grid date (staged entry), and must start on a flat account in its own run "
+        "directory. Requires --book momentum and a cadence it divides; refused with --profile research_paper.",
+    )
+    parser.add_argument(
+        "--wind-down",
+        action="store_true",
+        help="With --tranches 3 or 21: set each tranche flat on its own refresh date instead of re-scoring it, so "
+        "the book exits one tranche per date over one cycle. Pass the same --tranches and other flags the book "
+        "runs with. The kill switch still stops everything at once.",
     )
     parser.add_argument(
         "--max-missing",
@@ -476,6 +507,15 @@ def main(argv: list[str] | None = None) -> int:
     # The volatility scale's refusals (book, profile, gross ceiling) are made
     # here, before the writer lock and any venue read.
     vol_scale = resolve_vol_scale(args.vol_scale, book=args.book, max_gross=params.max_gross, profile=resolved_profile)
+    # The tranche count's refusals (book, profile, cadence, a wind-down of the
+    # single book) likewise, before the writer lock and any venue read.
+    tranches = resolve_tranches(
+        args.tranches,
+        book=args.book,
+        decision_every=spec.decision_every(params),
+        wind_down=args.wind_down,
+        profile=resolved_profile,
+    )
 
     # One writer per run directory: state.json and the ledgers are shared with
     # the morning sweep and any manual invocation, and the write-ahead protocol
@@ -591,6 +631,15 @@ def main(argv: list[str] | None = None) -> int:
                 decision_every,
                 deployment.created_bar,
             )
+        if tranches > 1:
+            logger.info(
+                "tranched book: %d tranches of 1/%d, each refreshing every %d sessions from base grid offset %d%s",
+                tranches,
+                tranches,
+                decision_every,
+                0 if phase_offset is None else phase_offset,
+                "; WIND-DOWN: each tranche goes flat on its own date" if args.wind_down else "",
+            )
         # Valuation-only extras are masked ineligible (momentum only): NaN-scored
         # names get an explicit 0.0 from the decile construct (its explicit-flat
         # pin), so a departed-but-held name exits at the next refresh and cannot
@@ -677,6 +726,8 @@ def main(argv: list[str] | None = None) -> int:
             regime=regime_provider,
             phase_offset=phase_offset,
             vol_scale=vol_scale,
+            tranches=tranches,
+            wind_down=args.wind_down,
         )
 
     held = result.target_weights[result.target_weights.abs() > 1e-9]

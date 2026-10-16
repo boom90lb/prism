@@ -93,6 +93,13 @@ class ComponentState:
     component on the day it came back. ``fitted_state_ref`` names the artifact
     under ``workspace.state / "fits"`` (:mod:`prism.fits`), null for a component
     declaring itself stateless.
+
+    Two optional fields belong to the tranched paper book
+    (:mod:`prism.live.tranches`) and are written only when set, so a document
+    that never carried them is byte-identical: ``phase_offset_bars`` is the
+    session-grid offset the component refreshes on, and ``sizing`` is the
+    volatility-scale decision its sub-targets were sized with (scale, status,
+    reason, sigma and the last good scale that bounds a later failure).
     """
 
     component_id: str
@@ -104,9 +111,11 @@ class ComponentState:
     fitted_state_ref: str | None = None
     fitted_through_bar: str | None = None
     fit_scope: str = FIT_SCOPE_TRAILING
+    phase_offset_bars: int | None = None
+    sizing: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        payload: dict[str, Any] = {
             "component_id": self.component_id,
             "last_output_bar": self.last_output_bar,
             "decision_bar": self.decision_bar,
@@ -117,9 +126,16 @@ class ComponentState:
             "fitted_through_bar": self.fitted_through_bar,
             "fit_scope": self.fit_scope,
         }
+        if self.phase_offset_bars is not None:
+            payload["phase_offset_bars"] = int(self.phase_offset_bars)
+        if self.sizing is not None:
+            payload["sizing"] = dict(self.sizing)
+        return payload
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> "ComponentState":
+        offset = payload.get("phase_offset_bars")
+        sizing = payload.get("sizing")
         return cls(
             component_id=str(payload["component_id"]),
             last_output_bar=_opt_str(payload.get("last_output_bar")),
@@ -130,6 +146,8 @@ class ComponentState:
             fitted_state_ref=_opt_str(payload.get("fitted_state_ref")),
             fitted_through_bar=_opt_str(payload.get("fitted_through_bar")),
             fit_scope=str(payload.get("fit_scope", FIT_SCOPE_TRAILING)),
+            phase_offset_bars=None if offset is None else int(offset),
+            sizing=None if sizing is None else dict(sizing),
         )
 
 
