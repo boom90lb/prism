@@ -1,0 +1,181 @@
+# Public baseline: tranched, volatility-scaled 12-1 momentum, replication route
+# (SPEC.md §4; docs/public_baseline_design.md, which states every rule below in prose).
+#
+# One candidate (T21) and 29 diagnostic rows, 30 counted rows in all. The only
+# driver is `python -m research.scripts.public_baseline`
+# (research/scripts/public_baseline.py), which reads this file strictly: an unknown
+# key is refused, and so is any edit, because the driver runs only when this file,
+# the design document, the cost stack, the four policy files and the parity series
+# are committed unchanged at HEAD. A different vintage, dataset, parameter, row or
+# threshold is a new registration.
+id = "2026-10-public-baseline"
+created = 2026-10-16
+selection_set = "public_baseline_v1"
+route = "replication"
+trial_budget = 30
+candidate = "T21"
+
+[source]
+citation_characteristic = "Jegadeesh, N. and Titman, S. (1993). Returns to buying winners and selling losers: Implications for stock market efficiency. Journal of Finance 48(1), 65-91."
+citation_sizing = "Barroso, P. and Santa-Clara, P. (2015). Momentum has its moments. Journal of Financial Economics 116(1), 111-120."
+publication = "2015-04"
+target_vol = 0.12
+lookback_sessions = 126
+refresh_sessions = 21
+# The paper leaves the weight uncapped; 2.0 is the gross ceiling of a raw-gross-1.0
+# book at the cap, as in registrations/2026-09-vol-momentum.toml. The same cap is
+# applied to the public reference.
+max_scale = 2.0
+
+# ------------------------------------------------------------ public reference
+# Kenneth French's daily momentum factor and three-factor files as served on
+# 2026-10-16: the 202608 CRSP vintage, daily rows 1926-11-03 (Mom) and
+# 1926-07-01 (RF) through 2026-08-31. Fetched with `--part pin`, which hashes and
+# computes no statistic. Cached under data/public/vintages/<sha256[:12]>/, which is
+# git-ignored and never overwritten; a file whose sha256, byte count or vintage
+# line differs from what is pinned here is refused. These two files were read by
+# another package before this commit; docs/public_baseline_design.md section 2
+# lists what it computed on them.
+[reference]
+momentum_source = "ff_mom_daily"
+momentum_url = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Momentum_Factor_daily_CSV.zip"
+momentum_sha256 = "ecf82b116e6ec56d2b79a2f27bd1d1598c217b5c6c25caa55b945bdd8a2c0b78"
+momentum_bytes = 85269
+momentum_last_modified = "Fri, 25 Sep 2026 21:55:02 GMT"
+# The file's first line, verbatim (the sentence continues on the next line).
+momentum_vintage_line = "This file was created by using the 202608 CRSP database.  It"
+momentum_column = "Mom"
+cash_source = "ff3_daily"
+cash_url = "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_Factors_daily_CSV.zip"
+cash_sha256 = "2f29e22546069914890a712680a6f81f3680ebc3543b52864484d209ca13a7db"
+cash_bytes = 178184
+cash_last_modified = "Fri, 25 Sep 2026 21:55:02 GMT"
+cash_vintage_line = "This file was created by using the 202608 CRSP database."
+cash_column = "RF"
+cache_dir = "data/public/vintages"
+# The scaled reference is scored from Mom's session 1,261, as in vol_momentum_v1.
+warmup_sessions = 1260
+
+# ------------------------------------------------------------ SPEC §4 criteria
+[criteria]
+publication_bar_t = 3.0
+publication_bar_min_years = 20.0
+post_publication_min_years = 10.0
+pre_publication_haircut = 0.4
+# The post-publication prior is also reported cut at this date (not a criterion).
+prior_cut = "2025-12-31"
+fidelity_floor = 0.75
+# rf = mean of the last 252 rows of French RF in the pinned file, annualized x 252.
+hurdle_window_sessions = 252
+sessions_per_year = 252
+vol_basis_rule = "larger_hurdle_of_target_and_realized"
+# Governing hurdle: idle own equity above a 2% cash buffer held in a T-bill ETF
+# earning rf - 0.0010; the buffer earns buffer_cash_yield.
+sleeve_buffer = 0.02
+sleeve_fee_annual = 0.0010
+buffer_cash_yield = 0.0
+# Reported cases, no ETF: idle own cash earning these yields.
+reported_cash_yields = [0.0, 0.033]
+parity_min_daily_corr = 0.99
+parity_max_abs_sharpe_diff = 0.05
+tranching_paired_lower_bound = 0.0
+
+# ------------------------------------------------------------ implementation
+[implementation]
+# The frozen dataset of characteristics_v1: registrations/2026-09-characteristics.toml
+# names data/frozen/characteristics_v1.freeze.json, whose data_id this manifest id is.
+# 578 files, bars 2020-01-02 .. 2026-06-15; S&P 500 point-in-time membership of 574
+# resolved names out of 633 ever-members (coverage 0.907, manifest coverage block).
+# The path is relative to the workspace; `--dataset` may point elsewhere, and the
+# manifest id and vintage are what is checked. On 2026-10-16 every file of the
+# copy at data/frozen/demotion_b1 hashed to its manifest entry
+# (prism.io.manifest.Manifest.verify_files); manifest.json itself has sha256
+# 0b1d66612dc210b03baa3c87d56ac78cea64bbd17d6c9873c9ba5be59765c72d.
+dataset = { path = "data/frozen/demotion_b1", manifest_id = "bedf8c4c0f0c2195ce5aace938f4ad38e23e6b69b57075080073004692d46eef", vintage = "demotion_b1_2026-06-16" }
+universe_index = "sp500"
+signal = { node = "prism.signal.momentum_node.MomentumSignalNode", lookback = 252, skip = 21 }
+# to_weights = "decile_long_short": equal-weight top and bottom decile, each leg 0.5
+# of the tranche's capital, per-name cap 0.10 (prism.portfolio.construct.construct_decile_neutral).
+construction = { rule = "decile_neutral", decile = 0.10, max_symbol_abs_weight = 0.10, raw_gross = 1.0 }
+# The characteristics_v1 control's screen (examples/characteristics/control.toml).
+eligibility = { min_price = 5.0, min_median_dollar_volume = 1000000.0, dollar_volume_window = 20, return_history_bars = 252, listing_seasoning_bars = 0, membership_required = true, exclude_asset_classes = [] }
+# The characteristics_v1 momentum_control arm's policy files; the cost stack is replaced.
+policy = { profile = "examples/reference/profiles/experiment_v1.toml", execution = "examples/reference/profiles/execution_alpaca.toml", monitoring = "examples/reference/policies/monitoring.toml", recovery = "examples/reference/policies/recovery.toml" }
+grid_epoch = "2006-01-03"
+# vol_momentum_v1's refresh_phase_start, a rebalance date of the unscaled control
+# book; grid position 4087, so P00 and the first tranche of every tranched row sit
+# at grid offset 13 (mod 21).
+p00_anchor = "2022-03-29"
+# 17 contiguous test windows of 63 sessions from p00_anchor (the last 48), each after
+# a 312-session formation window: folds 4-20 of folds/demotion_b1.toml, the geometry
+# vol_momentum_v1's in-house book was charged under. Spread buckets are set per fold
+# from its formation window.
+folds = { test_sessions = 63, formation_sessions = 312 }
+# A tranched row's tranche output stays valid for 42 sessions, so a missed grid date
+# is caught up late rather than expired; a single-tranche row keeps 21.
+tranche_valid_for_sessions = 42
+initial_capital = 100000.0
+share_increment = 1.0
+fill_model = "full_next_open"
+cost_stack = "examples/reference/costs/retail_v3.toml"
+scored_last = "2026-06-12"
+# P00's parity gate: column in_house|net, its own 929-session window 2022-09-29 .. 2026-06-12.
+parity_series = "results/2026-09-vol-momentum/series.csv"
+
+# ------------------------------------------------------------ scale failure guards
+# prism.portfolio.vol_scale.decide_scale: a window with fewer finite returns than
+# the lookback, more than 5% exact zeros, a decision bar that is not the panel's last
+# bar, or a non-finite or non-positive estimate gives min(1, last good scale), or 1.
+[guards]
+min_valid_returns = 126
+max_zero_return_fraction = 0.05
+require_decision_bar_is_last_bar = true
+
+# ------------------------------------------------------------ the 30 counted rows
+# Run order: P00 (parity gate) first, then T21, then the rest in this order.
+[rows]
+# Single-tranche books at grid offsets (13 + k) mod 21, k = 0..20.
+phases = { ids = "P00..P20", tranches = 1, offsets = "0..20" }
+# The candidate: 21 tranches at offsets 13, 14, ..., 33 (mod 21), one refreshing per session.
+T21 = { tranches = 21 }
+D-split = { tranches = 21, fill_model = "split_open_close" }
+D-liq = { tranches = 21, leg_weights = "sqrt_median_dollar_volume_20" }
+# Rows D-part1, D-part2, D-part3: S&P 500 membership kept where
+# HMAC-SHA256(seed, sid) / 2**64 < 0.8 (research/scripts/universe_partition.py).
+# Seeds drawn with secrets.randbits(63) on 2026-10-16.
+D-part = { tranches = 21, keep_fraction = 0.8, seeds = [7053991885234548036, 2558821157755196735, 2051921000763820944] }
+T21-25k = { tranches = 21, initial_capital = 25000.0 }
+T21-1m = { tranches = 21, initial_capital = 1000000.0 }
+T3-25k = { tranches = 3, offsets = "r, r+7, r+14", initial_capital = 25000.0 }
+
+[bootstrap]
+block_bars = 42
+n_resamples = 2000
+seed = 20261015
+confidence = 0.95
+
+# ------------------------------------------------------------ forward stop rule
+# Read by a forward reader that is not part of this commit (design section 10).
+[kill]
+first_read_min_sessions = 126
+read_every_sessions = 63
+max_drawdown = 0.25
+min_forward_fidelity = 0.5
+economics_consecutive_reads = 2
+monitor = { method = "empirical_bernstein", bound = 0.1, alpha = 0.05, report_only = true }
+
+# ------------------------------------------------------------ crowding scenarios
+# Uncounted re-pricing of recorded trades (design section 9). It adds no ledger row
+# and may not choose a configuration.
+[capacity]
+rows = ["T21", "P00", "D-split", "D-liq"]
+follower_capital = [0.0, 1e6, 1e7, 1e8, 1e9, 1e10]
+window_share = { open_low = 0.01, open_high = 0.03, close = 0.08, full_day = 1.0 }
+# P00 at phi = 1 (every follower on one phase) and 1/21 (uniform phases); T21 at
+# phi = 1. A capacity row not named here (D-split, D-liq) is priced at phi = 1.
+synchronization = ["P00:1", "P00:1/21", "T21:1"]
+impact_y = [0.5, 0.7, 1.0]
+sigma = "trailing_20_session_daily"
+users_at = [100000.0, 1000000.0]
+thin_dollar_volume = 100000000.0
+selection_forbidden = true
