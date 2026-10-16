@@ -414,6 +414,29 @@ def test_get_n_splits_refuses_to_guess_without_the_sample() -> None:
         RollingWalkForward(formation_bars=10, test_bars=5, min_test_bars=5).get_n_splits()
 
 
+@pytest.mark.parametrize(
+    "make_splitter",
+    [
+        lambda: PurgedWalkForward(n_splits=4, purge_horizon=5, embargo_pct=0.01),
+        lambda: RollingWalkForward(formation_bars=100, test_bars=50, min_test_bars=20),
+    ],
+    ids=["purged", "rolling"],
+)
+def test_splitters_accept_the_scikit_learn_call_signature(make_splitter) -> None:
+    """scikit-learn's model-selection functions call ``split(X, y, groups)`` and
+    ``get_n_splits(X, y, groups)``. The extra arguments are ignored: the folds are the ones
+    ``split(X)`` yields, so a splitter passed as ``cv=`` evaluates the same geometry."""
+    frame = pd.DataFrame({"x": np.arange(400)})
+    target = np.zeros(400)
+    plain = list(make_splitter().split(frame))
+    splitter = make_splitter()
+    called = list(splitter.split(frame, target, groups=np.zeros(400)))
+    assert len(plain) == len(called) == splitter.get_n_splits(frame, target, groups=None) > 0
+    for (train_a, test_a), (train_b, test_b) in zip(plain, called):
+        np.testing.assert_array_equal(train_a, train_b)
+        np.testing.assert_array_equal(test_a, test_b)
+
+
 def test_purged_splitter_cannot_express_the_recorded_geometry() -> None:
     """Why walk_forward.py is a Correction and not a no-op at stage 2."""
     sessions = _sessions("demotion_b1_sessions.json")

@@ -225,6 +225,28 @@ estimated.
   time series of ICs is autocorrelated when forward-return windows overlap, so its plain mean
   and standard error overstate precision.
 
+## 6. Walk-forward splitters with scikit-learn
+
+`PurgedWalkForward` and `RollingWalkForward` accept scikit-learn's call signatures,
+`split(X, y=None, groups=None)` and `get_n_splits(X, y=None, groups=None)`, so either can be
+passed as `cv=` to `cross_val_score` and the other model-selection functions. The folds
+depend on `len(X)` only. scikit-learn is not a dependency of the core package.
+
+**Limits.**
+
+- *The embargo does nothing useful in a forward-only split.* In `PurgedWalkForward`,
+  `embargo_pct` removes the bars just after each test fold from later training sets. Training
+  data always come before the test window here, so those bars never follow a later test
+  window. The embargo therefore prevents no leakage and only discards data. The embargo in
+  López de Prado's *Advances in Financial Machine Learning* (2018, chapter 7) protects k-fold
+  splits, where training data can come after the test fold. Set `embargo_pct=0.0` unless you
+  mean to discard those bars.
+- *Purging is the control that matters.* Set `purge_horizon` to the label horizon (5 for a
+  five-day forward return), so no training label overlaps the test window.
+- *Fold counts can shrink.* A fold whose training set is emptied is skipped with a warning
+  (or refused with `strict=True`), and `get_n_splits` on `PurgedWalkForward` still reports
+  the requested count. Pass `strict=True` when the fold count matters.
+
 ## What has not been checked
 
 - Sharpe-difference intervals against the Ledoit–Wolf R code (see section 1).
@@ -254,6 +276,7 @@ estimated.
 - Ledoit, O., and M. Wolf (2008). Robust performance hypothesis testing with the Sharpe ratio.
   *Journal of Empirical Finance* 15(5), 850–859.
 - Lo, A. W. (2002). The statistics of Sharpe ratios. *Financial Analysts Journal* 58(4), 36–52.
+- López de Prado, M. (2018). *Advances in Financial Machine Learning*. Wiley.
 - Mertens, E. (2002). Comments on variance of the IID estimator in Lo (2002). Working paper,
   University of Basel.
 - Politis, D. N., and J. P. Romano (1992). A circular block-resampling procedure for

@@ -145,11 +145,17 @@ class PurgedWalkForward:
         warnings.warn(msg, RuntimeWarning, stacklevel=3)
         self.n_skipped_ = (self.n_skipped_ or 0) + 1
 
-    def get_n_splits(self, X: Sized | None = None) -> int:
+    def get_n_splits(self, X: Sized | None = None, y: Any = None, groups: Any = None) -> int:
+        """Number of folds requested. ``y`` and ``groups`` are ignored (scikit-learn signature)."""
         return self.n_splits
 
-    def split(self, X: Sized) -> Iterator[Tuple[np.ndarray, np.ndarray]]:
-        """Yield ``(train_idx, test_idx)`` integer arrays for each fold."""
+    def split(self, X: Sized, y: Any = None, groups: Any = None) -> Iterator[Tuple[np.ndarray, np.ndarray]]:
+        """Yield ``(train_idx, test_idx)`` integer arrays for each fold.
+
+        ``y`` and ``groups`` are accepted and ignored, so the splitter can be passed as
+        ``cv=`` to scikit-learn's model-selection functions; the folds depend on ``len(X)``
+        only.
+        """
         n = len(X)
         if n < (self.n_splits + 1) * 2:
             raise ValueError(
@@ -363,8 +369,8 @@ class RollingWalkForward:
             fold += 1
             formation_start += step
 
-    def get_n_splits(self, X: Sized | None = None) -> int:
-        """Number of folds this geometry cuts from ``X``.
+    def get_n_splits(self, X: Sized | None = None, y: Any = None, groups: Any = None) -> int:
+        """Number of folds this geometry cuts from ``X``. ``y`` and ``groups`` are ignored.
 
         Unlike :class:`PurgedWalkForward`, the count is a function of the
         sample length, so ``X`` is required: answering without it would be a
@@ -374,8 +380,11 @@ class RollingWalkForward:
             raise ValueError("RollingWalkForward.get_n_splits needs the sample: the fold count depends on its length")
         return sum(1 for _ in self.iter_folds(len(X)))
 
-    def split(self, X: Sized) -> Iterator[Tuple[np.ndarray, np.ndarray]]:
-        """Yield ``(formation_idx, test_idx)`` integer arrays for each fold."""
+    def split(self, X: Sized, y: Any = None, groups: Any = None) -> Iterator[Tuple[np.ndarray, np.ndarray]]:
+        """Yield ``(formation_idx, test_idx)`` integer arrays for each fold.
+
+        ``y`` and ``groups`` are accepted and ignored (scikit-learn ``cv=`` signature).
+        """
         for fold in self.iter_folds(len(X)):
             yield fold.formation_positions, fold.test_positions
 
