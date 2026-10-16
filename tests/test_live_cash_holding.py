@@ -336,6 +336,25 @@ def test_a_tranched_book_carries_the_holding(tmp_path: Path) -> None:
     assert results[-1].tranches is not None and results[-1].tranches["built"] == 3
 
 
+def test_a_tranched_book_started_off_its_grid_buys_the_holding_and_then_builds(tmp_path: Path) -> None:
+    """The holding trades before the first tranche is due; the flat-account check does not count it."""
+    close, volume = _panel(30)
+    ctx = _ctx(tmp_path)
+    tranched = replace(CONFIG, decision_every=21)
+    start = 5  # 2025-01-10, grid position 19 mod 21: tranches 0, 7 and 14 are not due for two sessions
+    assert sessions.grid_position(close.index[start].date()) % 21 == 19
+    results = [
+        _cycle(ctx, close, volume, t, cash_holding=HOLDING, config=tranched, tranches=3) for t in range(start, 23)
+    ]
+    assert [r.tranches["due"] for r in results[:2]] == [[], []]
+    assert _etf_orders(results)[:2] == [199.0, 199.0]
+    assert all(o.symbol == ETF for r in results[:2] for o in r.submitted_orders)
+    assert results[2].tranches["due"] == ["decile_neutral/t00"] and results[2].tranches["built"] == 1
+    assert results[2].tranches["catch_up"] == []  # the ETF is not the tranches' to flatten
+    assert results[-1].tranches["built"] == 3
+    assert all(abs(order) * PRICE <= 0.2 * CASH for order in _etf_orders(results))
+
+
 def test_the_cycle_refuses_a_holding_it_cannot_run_before_any_state_moves(tmp_path: Path) -> None:
     close, volume = _panel()
     cases = [

@@ -49,8 +49,10 @@ and nothing important may live only in memory:
   path, and the per-refresh record ``{run-dir}/sizing.jsonl``. Off unless
   ``run_daily_cycle(vol_scale=...)`` is given.
 * ``tranches`` — the tranched decile book: overlapping tranches on the session
-  grid, built one per grid date (staged entry) and exited one per grid date
-  (wind-down), their states persisted in ``LoopState.components``. Off unless
+  grid, each held in shares between its refreshes, built one per grid date
+  (staged entry) and exited one per grid date (wind-down), their states and
+  holdings persisted in ``LoopState.components``. A session trades only the
+  refreshing tranche's change and catch-ups. Off unless
   ``run_daily_cycle(tranches=...)`` is given a count above one.
 * ``cash_holding`` — idle own equity above a cash buffer held in a T-bill ETF
   beside the decile book, set every session within a band and the per-order
@@ -101,7 +103,14 @@ from prism.live.authorization import (
     permitted_classes,
     resolve_endpoint,
 )
-from prism.live.broker import Broker, DuplicateOrder, Fill, Order, OrderRejected, transmits_to_venue
+from prism.live.broker import (
+    Broker,
+    DuplicateOrder,
+    Fill,
+    Order,
+    OrderRejected,
+    transmits_to_venue,
+)
 from prism.live.daily import (
     DailyBookConfig,
     DailyCycleResult,

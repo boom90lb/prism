@@ -83,9 +83,11 @@ it in ``run_daily_cycle``.
 momentum book into overlapping tranches that each hold 1/21 (1/3) of capital
 and refresh every 21 sessions on their own session-grid date
 (``prism.live.tranches``), so with 21 tranches one tranche refreshes on every
-session and the account trades about 1/21 of the monthly change each day. A new
-tranched book starts empty and builds one tranche per grid date over 21
-sessions; it must start on a flat account and in its own run directory.
+session. Each tranche is held in shares between its refreshes, so a session
+trades only the refreshing tranche's change (plus any unfilled order being
+caught up), never a rebalance of the drifted book. A new tranched book starts
+empty and builds one tranche per grid date over 21 sessions; it must start on
+a flat account (a T-bill holding aside) and in its own run directory.
 ``--wind-down`` sets each tranche flat on its own date, so the book exits over
 21 sessions. With ``--vol-scale`` each tranche is scaled at its own refresh.
 

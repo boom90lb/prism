@@ -656,25 +656,41 @@ the next refresh. Code: `prism.live.vol_sizing` (the live seam) on top of
 decile momentum book into 21 overlapping tranches. Each holds 1/21 of capital
 and refreshes every 21 sessions on its own date of the fixed session grid
 (tranche *j* where `(grid position − base − j) mod 21 = 0`), so one tranche
-refreshes on every session and the account trades about 1/21 of the monthly
-change each day instead of all of it on one day. The base is the seeded offset
-under `--rebalance-phase seeded`, otherwise 0; with 21 tranches it only
-relabels them. `--tranches 3` gives tranches 7 sessions apart. Code:
-`prism.live.tranches`, composed by `prism.assembly.assemble` with
-`prism.composition.tranche_plans` and `due_on_grid`, the schedule the evaluator
-uses.
+refreshes on every session. The base is the seeded offset under
+`--rebalance-phase seeded`, otherwise 0; with 21 tranches it only relabels
+them. `--tranches 3` gives tranches 7 sessions apart. Code:
+`prism.live.tranches`, composed by `prism.composition.compose` with
+`tranche_plans` and `due_on_grid`, the schedule the evaluator uses.
+
+- **Held in shares.** Each tranche is held in shares between its refreshes, as
+  the registered evaluation holds it (`prism.evaluate._TrancheHoldings`,
+  `docs/public_baseline_design.md` §1.1). At its refresh a tranche's holding is
+  reset to 1/21 × its book (times its volatility scale) × equity / close shares
+  of each name; until its next refresh the shares are held and drift with
+  prices. A session decides only the names the refreshing tranche held or now
+  holds, plus any name whose account shares differ from the tranches' total by
+  more than half a share (an unfilled order or a position no tranche holds);
+  every other name is held. So a session's orders are the refreshing tranche's
+  change and those catch-ups, never a rebalance of the drifted book back to
+  constant weights. Each tranche's holding is persisted with the session and
+  close it was sized at, and a split since then is restated from the panel
+  (the live bars are split-adjusted, so the close the panel now shows for that
+  session differs from the recorded one by the split ratio).
 
 - **Staged entry.** A new tranched book starts empty and builds each tranche on
   its own grid date, so it reaches full size over 21 sessions; it never buys the
   whole book on its first day. It must start in its own run directory on a flat
   account: a run directory that holds an untranched book, or an account that
-  holds positions no tranche holds, is refused before any state moves, because
-  the first session would sell all but 1/21 of what is held.
-- **State.** Each tranche's schedule anchor, sub-targets and grid offset (and,
-  with the volatility scale, its scale decision) are `LoopState.components` in
-  `state.json`, saved in the same write-ahead step as the decision, so a
-  restart in the middle of the build resumes the same schedule. No schema bump:
-  the two new component fields are written only when set. A run directory
+  holds positions no tranche holds (the T-bill holding aside), is refused before
+  any state moves, because the first session would sell all but 1/21 of what
+  is held.
+- **State.** Each tranche's schedule anchor, sub-targets, holding in shares and
+  grid offset (and, with the volatility scale, its scale decision) are
+  `LoopState.components` in `state.json`, saved in the same write-ahead step as
+  the decision, so a restart in the middle of the build resumes the same
+  schedule. No schema bump: the three new component fields are written only
+  when set. A built tranche state without share holdings (written before
+  tranches were held in shares) is refused. A run directory
   whose persisted layout (count, ids, offsets) differs from the flags is
   refused, and `--tranches 1` (the default) refuses a run directory that holds
   tranches, so a forgotten flag fails rather than holding the book for a month.
@@ -683,13 +699,14 @@ uses.
   sessions the return session refreshes *n* + 1 tranches; only then do trades
   net across tranches. A tranche output is valid for 42 sessions; after a longer
   outage every tranche is expired and rebuilt at once.
-- **Whole-book refreshes and withheld entries.** A tranche's refresh is its
-  whole book: a name it held that is no longer scored is set flat in it. Between
-  refreshes tranches carry their sub-targets, so the account target can name a
-  stock the account does not hold and cannot price at the close (it left the
-  universe, or yesterday's entry did not fill because it stopped trading); that
-  entry is withheld (target zero) and logged, instead of failing the sizing
-  step.
+- **Whole-book refreshes and deferred entries.** A tranche's refresh is its
+  whole book: a name it held that is no longer scored is set flat in it. A name
+  the refreshing tranche targets that has no price at the close keeps the
+  tranche's previous holding of it, or, if it held none, is not entered until
+  that tranche's next refresh; it is logged and listed under `deferred` in the
+  session record, instead of failing the sizing step. A name the spin-off mask
+  holds out of ranking keeps the refreshing tranche's previous holding and is
+  never entered.
 - **Wind-down.** `--wind-down` with the same `--tranches` sets each tranche flat
   on its own date, so the book exits over 21 sessions; the spin-off mask is not
   consulted and the scale is not decided while winding down. The kill switch
@@ -698,14 +715,19 @@ uses.
   its own refresh by the rule applied to the tranched base book rebuilt point in
   time from the panel: the mean of all 21 tranche books as last refreshed,
   `Σ D_j / 21` at raw gross 1.0. A tranche's sub-targets are its book times its
-  scale, capped at the gross ceiling; because tranche weights sum to one, the
-  account never exceeds the ceiling. A failed estimate gives `min(1, that
+  scale, capped at the gross ceiling. Because held shares drift, the account
+  target the holdings make is capped at the ceiling as well; on a session where
+  that cap binds, every tranche's holding is scaled by the same factor and every
+  name is decided (`ceiling_factor` in the session record). A failed estimate
+  gives `min(1, that
   tranche's last good scale)`, read from its persisted state. `sizing.jsonl` gets
   one row per session (`schedule = "tranches"`, per-tranche decisions under
   `tranches`). The rebuild scores the signal at about 146 past dates per session
   (about 0.2 s each for 12−1 momentum on 500 names, so roughly half a minute).
-- **Telemetry.** Every refresh session appends a `targets.jsonl` row carrying a
-  `tranches` record (count, base offset, due tranches, tranches built). The
+- **Telemetry.** Every refresh session appends a `targets.jsonl` row: the
+  account target the tranches' holdings make, before whole-share rounding, and
+  a `tranches` record (count, base offset, due tranches, tranches built, names
+  decided, names caught up, ceiling factor). The
   concordance read is skipped for a tranched book (its baseline would be
   yesterday's target, a fill-rate read). The shadow tracking read still runs,
   but with a refresh every session every row is a transition, so it carries no
@@ -839,8 +861,10 @@ it.
     refresh sessions only, so for a monthly single book it is a monthly read.
   - `tranche-state`: tranche states the cycle could not have written: ids
     other than `decile_neutral/t00..tK-1`, grid offsets that are not
-    `(base + j·s) mod (s·K)`, non-finite sub-targets, an invalid last good
-    scale, output bars after the last refresh, expiry before output, other
+    `(base + j·s) mod (s·K)`, non-finite sub-targets, a tranche holding a
+    sub-target without share holdings, holdings sized after the last refresh,
+    an invalid last good scale, output bars after the last refresh, expiry
+    before output, other
     components mixed in, or a count or base offset that disagrees with the
     newest tranche record in `targets.jsonl`. The cadence is inferred from the
     offsets, since it is not persisted.

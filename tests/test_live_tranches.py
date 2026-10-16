@@ -6,7 +6,11 @@ Pinned here:
 * a 21-tranche state survives a round trip through the state store, and a
   component without the tranche fields serializes exactly as before;
 * staged entry: a new book builds one tranche per session on its grid dates,
-  and its target grows by one twenty-first a session;
+  each tranche sized at one twenty-first of the equity of its own session;
+* each tranche is held in shares between its refreshes: a session decides only
+  the names the refreshing tranche held or holds (plus catch-ups), its orders
+  are that tranche's change, a split is restated from the panel, and a state
+  without share holdings is refused;
 * every session of a built 21-tranche book has exactly one due tranche, and a
   3-tranche book refreshes on three sessions a cycle and holds in between;
 * restarts: a same-bar re-run and a process restart in the middle of the build
@@ -15,8 +19,8 @@ Pinned here:
 * catch-up: an outage is caught up on the return session and the tranches go
   back to their grid; an outage of more than two cycles expires and rebuilds;
 * wind-down takes 21 sessions and leaves the account flat;
-* a tranche's refresh is its whole book, and a carried entry the account cannot
-  price is withheld instead of failing the sizing step;
+* a tranche's refresh is its whole book, and an entry the refreshing tranche
+  cannot price is deferred instead of failing the sizing step;
 * the volatility scale per tranche: the scale is the rule on an independently
   rebuilt tranched base book, and a failure is bounded by the tranche's own
   last good scale;
@@ -48,7 +52,9 @@ from prism.live import (
     StateStore,
 )
 from prism.live import daily as daily_module
-from prism.live import run_daily_cycle
+from prism.live import (
+    run_daily_cycle,
+)
 from prism.live.replay import ReplayBroker, replay_daily_cycles
 from prism.live.safety import SafetyViolation
 from prism.live.state import ComponentState, LoopState
@@ -153,6 +159,24 @@ def _tranche_id(j: int) -> str:
     return f"decile_neutral/t{j:02d}"
 
 
+def _held_target(close: pd.DataFrame, refreshes: list[tuple[int, float]], at: int, *, k: int = 21) -> pd.Series:
+    """The account target of tranches built from ``BOOK``, each held in shares since its refresh.
+
+    ``refreshes`` are ``(bar, marked equity)`` of the tranches currently held:
+    each holds ``BOOK / k * equity / close`` shares from that bar, and the
+    target at ``at`` is their shares times the close at ``at`` over the equity
+    there, which the caller supplies as the last entry's equity when ``at`` is
+    the last refresh, or reads from the result.
+    """
+    shares = sum(BOOK.reindex(NAMES) / k * equity / close.iloc[bar][NAMES] for bar, equity in refreshes)
+    return shares
+
+
+def _ledger_target(ctx: LiveLoopContext, bar: str) -> pd.Series:
+    row = next(row for row in _rows(Path(ctx.targets_ledger)) if row["refresh_bar"] == bar)
+    return pd.Series(row["targets"], dtype=float).reindex(NAMES).fillna(0.0)
+
+
 # ---------------------------------------------------------------------------
 # Off is bit-identical
 # ---------------------------------------------------------------------------
@@ -205,6 +229,23 @@ def test_a_component_without_the_tranche_fields_serializes_as_before() -> None:
     assert ComponentState.from_dict(plain.to_dict()) == plain
 
 
+def test_a_holding_round_trips_and_a_malformed_one_is_refused_on_load() -> None:
+    entry = {"shares": -3.5, "bar": "2026-07-01", "close": 10.25}
+    held = ComponentState(component_id=_tranche_id(0), holdings={"AAA": dict(entry)})
+    assert held.to_dict()["holdings"] == {"AAA": entry}
+    assert ComponentState.from_dict(json.loads(json.dumps(held.to_dict()))) == held
+    for bad in (
+        {"AAA": {"shares": 3.0, "bar": "2026-07-01"}},
+        {"AAA": {**entry, "shares": "three"}},
+        {"AAA": {**entry, "shares": float("nan")}},
+        {"AAA": {**entry, "close": 0.0}},
+        {"AAA": {**entry, "shares": True}},
+        [entry],
+    ):
+        with pytest.raises(ValueError):
+            ComponentState.from_dict({**held.to_dict(), "holdings": bad})
+
+
 def test_a_21_tranche_state_survives_a_round_trip(tmp_path: Path) -> None:
     close, volume = _walk(60)
     ctx = _ctx(tmp_path)
@@ -229,6 +270,7 @@ def test_staged_entry_builds_one_tranche_per_session_on_its_grid_date(tmp_path: 
     close, volume = _walk(80)
     ctx = _ctx(tmp_path)
     start = 30
+    refreshes: list[tuple[int, float]] = []
     for n in range(1, 22):
         i = start + n - 1
         result = _session(ctx, close, volume, i, tranches=21)
@@ -242,9 +284,15 @@ def test_staged_entry_builds_one_tranche_per_session_on_its_grid_date(tmp_path: 
             assert sessions.grid_position(dt.date.fromisoformat(component.last_output_bar)) % EVERY == (
                 component.phase_offset_bars
             )
-        # Constant scores: every built tranche holds the same book, so the target is n/21 of it.
-        target = result.target_weights.reindex(NAMES)
-        np.testing.assert_allclose(target.to_numpy(), (n / 21.0) * BOOK.reindex(NAMES).to_numpy(), atol=1e-12)
+        # Constant scores: each built tranche holds BOOK/21 of the equity of its own session, in shares,
+        # so the target is those shares at this close over this equity.
+        refreshes.append((i, result.equity))
+        expected = _held_target(close, refreshes, i) * close.iloc[i][NAMES] / result.equity
+        np.testing.assert_allclose(result.target_weights.reindex(NAMES).to_numpy(), expected.to_numpy(), atol=1e-12)
+        np.testing.assert_allclose(_ledger_target(ctx, _bar(close, i)).to_numpy(), expected.to_numpy(), atol=1e-12)
+        holding = _components(ctx)[expected_due].holdings
+        assert set(holding) == {"S0", "S1", "S8", "S9"}
+        assert all(entry["bar"] == _bar(close, i) for entry in holding.values())
         assert result.concordance is None
     assert not (tmp_path / "concordance.jsonl").exists()
     rows = _rows(tmp_path / "targets.jsonl")
@@ -378,8 +426,9 @@ def test_an_outage_of_more_than_two_cycles_expires_and_rebuilds_every_tranche(tm
 def test_wind_down_takes_21_sessions_and_leaves_the_account_flat(tmp_path: Path) -> None:
     close, volume = _walk(110)
     ctx = _ctx(tmp_path)
+    equity_at: dict[int, float] = {}
     for i in range(30, 51):
-        _session(ctx, close, volume, i, tranches=21)
+        equity_at[i] = _session(ctx, close, volume, i, tranches=21).equity
     assert all(c.last_output_bar is not None for c in _components(ctx).values())
     provider_calls: list[str] = []
 
@@ -392,11 +441,11 @@ def test_wind_down_takes_21_sessions_and_leaves_the_account_flat(tmp_path: Path)
         result = _session(ctx, close, volume, i, tranches=21, wind_down=True, unrankable=unrankable)
         assert result.tranches["wind_down"] is True and len(result.tranches["due"]) == 1
         flat = [c for c in _components(ctx).values() if all(v == 0.0 for v in c.sub_targets.values())]
-        assert len(flat) == j
-        target = result.target_weights.reindex(NAMES)
-        np.testing.assert_allclose(
-            target.to_numpy(), ((21 - j) / 21.0) * BOOK.reindex(NAMES).to_numpy(), atol=1e-12
-        )
+        assert len(flat) == j and all(c.holdings == {} for c in flat)
+        # The tranches built at bars 30 + j .. 50 are still held, in the shares they were built with.
+        remaining = [(b, equity_at[b]) for b in range(30 + j, 51)]
+        expected = _held_target(close, remaining, i) * close.iloc[i][NAMES] / result.equity
+        np.testing.assert_allclose(result.target_weights.reindex(NAMES).to_numpy(), expected.to_numpy(), atol=1e-12)
     assert provider_calls == []  # a wind-down ranks nothing, so the mask is not consulted
     assert (result.target_weights.fillna(0.0) == 0.0).all()
     _session(ctx, close, volume, 72, tranches=21, wind_down=True)  # the last decision's fills settle here
@@ -408,12 +457,31 @@ def test_wind_down_takes_21_sessions_and_leaves_the_account_flat(tmp_path: Path)
 # ---------------------------------------------------------------------------
 
 
-def _seeded_state(close: pd.DataFrame, decision: int, holdings: dict[int, dict[str, float]]) -> LoopState:
-    """A built 21-tranche state whose tranche ``j`` last refreshed on its latest grid date before ``decision``."""
+def _seeded_state(
+    close: pd.DataFrame,
+    decision: int,
+    extra: dict[int, dict[str, float]],
+    *,
+    equity: float = 1_000_000.0,
+    holdings: bool = True,
+) -> LoopState:
+    """A built 21-tranche state whose tranche ``j`` last refreshed on its latest grid date before ``decision``.
+
+    Each tranche holds ``BOOK`` in shares sized at ``equity`` and the close of
+    its refresh bar (``holdings=False`` leaves the share holdings out, as a
+    state written before tranches were held in shares). ``extra`` adds
+    sub-targets the tranche carries and does not hold.
+    """
     components = []
     for j in range(21):
         last = max(p for p in range(decision) if _grid(close, p) % EVERY == j)
-        sub = {**BOOK.to_dict(), **holdings.get(j, {})}
+        sub = {**BOOK.to_dict(), **extra.get(j, {})}
+        held = {
+            sid: {"shares": weight / 21.0 * equity / float(close.iloc[last][sid]), "bar": _bar(close, last),
+                  "close": float(close.iloc[last][sid])}
+            for sid, weight in BOOK.items()
+            if weight != 0.0
+        }
         components.append(
             ComponentState(
                 component_id=_tranche_id(j),
@@ -421,21 +489,129 @@ def _seeded_state(close: pd.DataFrame, decision: int, holdings: dict[int, dict[s
                 decision_bar=_bar(close, last),
                 sub_targets=sub,
                 phase_offset_bars=j,
+                holdings=held if holdings else None,
             )
         )
     return LoopState(components=components, last_refresh_bar=_bar(close, decision - 1))
 
 
-def test_a_carried_entry_the_account_cannot_price_is_withheld_and_its_tranche_drops_it(tmp_path: Path) -> None:
+def _account_of(state: LoopState) -> dict[str, float]:
+    """The account that holds exactly the tranches' shares."""
+    totals: dict[str, float] = {}
+    for component in state.components:
+        for sid, entry in (component.holdings or {}).items():
+            totals[sid] = totals.get(sid, 0.0) + entry["shares"]
+    return totals
+
+
+def test_a_session_decides_only_the_refreshing_tranches_change(tmp_path: Path) -> None:
+    """Constant scores, a built book: the orders are the refreshing tranche's change and nothing else."""
+    close, volume = _walk(120)
+    results, _ = replay_daily_cycles(
+        lambda: ConstSignal(SCORES),
+        close,
+        volume,
+        close,
+        CONFIG,
+        tmp_path / "replay",
+        start_bar=_bar(close, 30),
+        initial_cash=1_000_000.0,
+        tranches=21,
+    )
+    by_bar = {r.decision_bar: r for r in results}
+    position = {_bar(close, i): i for i in range(len(close))}
+    checked = 0
+    for r in results[21:]:
+        i = position[r.decision_bar]
+        before = by_bar[_bar(close, i - 21)]  # the same tranche's previous refresh
+        assert r.tranches["due"] == before.tranches["due"]
+        fresh = BOOK / 21.0 * r.equity / close.iloc[i]
+        previous = BOOK / 21.0 * before.equity / close.iloc[i - 21]
+        change = (fresh - previous)[["S0", "S1", "S8", "S9"]]
+        orders = {o.symbol: o.qty for o in r.submitted_orders}
+        assert set(orders) <= {"S0", "S1", "S8", "S9"}
+        np.testing.assert_allclose(
+            [orders.get(sid, 0.0) for sid in change.index], change.to_numpy(), rtol=1e-9, atol=1e-9
+        )
+        assert r.tranches["catch_up"] == [] and r.tranches["decided"] == 4
+        checked += 1
+    assert checked == len(results) - 21 > 50
+
+
+def test_a_changing_book_orders_only_names_the_refreshing_tranche_touches(tmp_path: Path) -> None:
+    close, volume = _walk(120, seed=5)
+    monthly = replace(CONFIG, whole_shares=True)
+    ctx = _ctx(tmp_path, ReplayBroker(1_000_000.0))
+    signal = TrailingReturn()
+    for i in range(30, 100):
+        before = _components(ctx)
+        result = _session(ctx, close, volume, i, signal=signal, config=monthly, tranches=21)
+        (tid,) = result.tranches["due"]
+        touched = set((before.get(tid).holdings or {}) if tid in before else {}) | set(_components(ctx)[tid].holdings)
+        ordered = {o.symbol for o in result.submitted_orders}
+        assert ordered <= touched | set(result.tranches["catch_up"]), _bar(close, i)
+        # The undecided names are held: their sized target is the held weight.
+        for sid in set(NAMES) - touched - set(result.tranches["catch_up"]):
+            held = ctx.broker.positions().get(sid, 0.0) * close.iloc[i][sid] / result.equity
+            assert float(result.target_weights.get(sid, 0.0)) == pytest.approx(held, abs=1e-12)
+
+
+def test_a_split_is_restated_from_the_panel_and_orders_nothing_extra(tmp_path: Path) -> None:
+    close, volume = _walk(80)
+    decision = 50
+    state = _seeded_state(close, decision, {})
+    account = _account_of(state)
+
+    plain_ctx = _ctx(tmp_path / "plain", FakeBroker(cash=1_000_000.0))
+    plain_ctx.broker._positions = dict(account)
+    plain_ctx.store.save(state)
+    plain = _session(plain_ctx, close, volume, decision, tranches=21)
+
+    # A 2-for-1 split of S8 effective on the decision bar: the venue doubled the account's shares, and the
+    # panel fetched now shows every S8 close halved (split-adjusted to its last session).
+    split = close.copy()
+    split["S8"] = split["S8"] / 2.0
+    split_ctx = _ctx(tmp_path / "split", FakeBroker(cash=1_000_000.0))
+    split_ctx.broker._positions = {**account, "S8": 2.0 * account["S8"]}
+    split_ctx.store.save(state)
+    after = _session(split_ctx, split, volume, decision, tranches=21)
+
+    plain_orders = {o.symbol: o.qty for o in plain.submitted_orders}
+    split_orders = {o.symbol: o.qty for o in after.submitted_orders}
+    assert set(split_orders) == set(plain_orders) <= {"S0", "S1", "S8", "S9"}
+    assert split_orders["S8"] == pytest.approx(2.0 * plain_orders["S8"], rel=1e-9)
+    for sid in ("S0", "S1", "S9"):
+        assert split_orders[sid] == pytest.approx(plain_orders[sid], rel=1e-9)
+    assert after.tranches["catch_up"] == []
+    pd.testing.assert_series_equal(
+        after.target_weights.reindex(NAMES), plain.target_weights.reindex(NAMES), rtol=1e-9, atol=1e-12
+    )
+
+
+def test_a_state_without_share_holdings_is_refused(tmp_path: Path) -> None:
+    close, volume = _walk(80)
+    ctx = _ctx(tmp_path, FakeBroker(cash=1_000_000.0))
+    ctx.store.save(_seeded_state(close, 50, {}, holdings=False))
+    before = (tmp_path / "state.json").read_bytes()
+    with pytest.raises(TrancheError, match="no share holdings"):
+        _session(ctx, close, volume, 50, tranches=21)
+    assert (tmp_path / "state.json").read_bytes() == before
+    assert ctx.broker.submitted_order_ids() == set()
+
+
+def test_a_carried_sub_target_the_tranche_does_not_hold_is_never_ordered_and_its_refresh_drops_it(
+    tmp_path: Path,
+) -> None:
     close, volume = _walk(80)
     decision = 50
     holder = (_grid(close, decision) + 3) % EVERY  # refreshes three sessions later
+    state = _seeded_state(close, decision, {holder: {"GONE": 0.25}})  # not in the panel, not held
     ctx = _ctx(tmp_path, FakeBroker(cash=1_000_000.0))
-    ctx.store.save(_seeded_state(close, decision, {holder: {"GONE": 0.25}}))  # not in the panel, not held
+    ctx.broker._positions = _account_of(state)
+    ctx.store.save(state)
 
     result = _session(ctx, close, volume, decision, tranches=21)
-    assert result.tranches["deferred"] == ["GONE"]
-    assert float(result.target_weights["GONE"]) == 0.0
+    assert "GONE" not in result.target_weights.index or float(result.target_weights["GONE"]) == 0.0
     assert all(order.symbol != "GONE" for order in result.submitted_orders)
     assert _components(ctx)[_tranche_id(holder)].sub_targets["GONE"] == 0.25  # carried until its own refresh
 
@@ -444,6 +620,24 @@ def test_a_carried_entry_the_account_cannot_price_is_withheld_and_its_tranche_dr
     assert result.tranches["due"] == [_tranche_id(holder)]
     assert _components(ctx)[_tranche_id(holder)].sub_targets["GONE"] == 0.0  # its refresh is its whole book
     assert result.tranches["deferred"] == []
+
+
+def test_an_entry_without_a_price_is_deferred_until_the_tranches_next_refresh(tmp_path: Path) -> None:
+    close, volume = _walk(80)
+    i = 40
+    gapped = close.copy()
+    gapped["GAP"] = 100.0
+    gapped.loc[gapped.index[i], "GAP"] = np.nan  # no print on the decision bar
+    volume = volume.reindex(columns=[*NAMES, "GAP"], fill_value=1e6)
+    ctx = _ctx(tmp_path, FakeBroker(cash=1_000_000.0))
+    scores = {**SCORES, "GAP": 99.0}  # the top name: in the long leg of every refresh
+    result = _session(ctx, gapped, volume, i, signal=ConstSignal(scores), tranches=21)
+    (tid,) = result.tranches["due"]
+    assert result.tranches["deferred"] == ["GAP"]
+    assert all(order.symbol != "GAP" for order in result.submitted_orders)
+    assert "GAP" not in _components(ctx)[tid].holdings
+    assert _components(ctx)[tid].sub_targets["GAP"] > 0.0
+    assert "GAP" not in _rows(tmp_path / "targets.jsonl")[-1]["targets"]
 
 
 # ---------------------------------------------------------------------------
@@ -543,6 +737,50 @@ def test_the_tranched_account_never_exceeds_the_ceiling(tmp_path: Path) -> None:
         assert float(result.target_weights.abs().sum()) <= 1.5 + 1e-12
         for entry in result.vol_scale["tranche_targets"].values():
             assert entry["ceiling_factor"] == pytest.approx(0.75)
+
+
+class StatelessConst(ConstSignal):
+    """Fixed scores that declare no fitted state, which the volatility scale requires."""
+
+    output_kind = "rank_score"
+    units = "rank"
+    scoring_basis = "price"
+    price_scale_invariant = True
+    fitted_state = "none"
+    estimated_decay_bars = None
+
+    @property
+    def horizon_bars(self) -> int:
+        return EVERY
+
+    @property
+    def required_history(self) -> int:
+        return 6
+
+
+def test_a_drifted_account_above_the_ceiling_is_scaled_whole_and_every_name_decided(tmp_path: Path) -> None:
+    close, volume = _walk(110, seed=2)
+    loud = replace(RULE, target_vol=5.0)  # every tranche at its cap: each refresh sized at the 1.5 ceiling
+    config = replace(SCALED, max_gross=1.5)
+    ctx = _ctx(tmp_path, ReplayBroker(1_000_000.0))
+    bound = []
+    for i in range(45, 105):
+        result = _session(ctx, close, volume, i, signal=StatelessConst(SCORES), config=config, tranches=21,
+                          vol_scale=loud)
+        recorded = _ledger_target(ctx, _bar(close, i))
+        assert float(recorded.abs().sum()) <= 1.5 * (1.0 + 1e-9)
+        if result.tranches["ceiling_factor"] < 1.0:
+            bound.append(i)
+            assert result.tranches["decided"] == N_SYM  # every name, the drift included
+            assert float(recorded.abs().sum()) == pytest.approx(1.5, rel=1e-9)
+            # The persisted holdings were scaled with the target: at this close they make the capped book.
+            totals = pd.Series(0.0, index=NAMES)
+            for component in _components(ctx).values():
+                for sid, entry in component.holdings.items():
+                    totals[sid] += entry["shares"]
+            held_target = totals * close.iloc[i][NAMES] / result.equity
+            np.testing.assert_allclose(held_target.to_numpy(), recorded.to_numpy(), atol=1e-12)
+    assert bound, "the drifted book never reached the ceiling, so this test exercised nothing"
 
 
 # ---------------------------------------------------------------------------

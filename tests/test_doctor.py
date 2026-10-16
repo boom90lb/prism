@@ -1192,6 +1192,10 @@ def test_inspect_tranche_state_names_each_defect():
             "expires_bar": "2026-10-30",
             "sub_targets": {"AAA": 0.25, "BBB": -0.25},
             "phase_offset_bars": offset,
+            "holdings": {
+                "AAA": {"shares": 10.0, "bar": "2026-10-01", "close": 100.0},
+                "BBB": {"shares": -10.0, "bar": "2026-10-01", "close": 100.0},
+            },
         }
         values.update(overrides)
         return ComponentState(**values)
@@ -1217,6 +1221,12 @@ def test_inspect_tranche_state_names_each_defect():
             tranche(2, 18),
         ],
         "before its output": [tranche(0, 4, expires_bar="2026-09-01"), tranche(1, 11), tranche(2, 18)],
+        "persists no share holdings": [tranche(0, 4, holdings=None), tranche(1, 11), tranche(2, 18)],
+        "sized after the state's last refresh": [
+            tranche(0, 4, holdings={"AAA": {"shares": 1.0, "bar": "2026-10-02", "close": 100.0}}),
+            tranche(1, 11),
+            tranche(2, 18),
+        ],
         "mixes tranche states": [*good, ComponentState(component_id="momentum")],
         "implemented for": [
             ComponentState(component_id=f"trend/t{j:02d}", phase_offset_bars=o) for j, o in enumerate((0, 7, 14))

@@ -12,13 +12,36 @@ tranche refreshes on every session. ``base`` is the seeded phase offset when
 one is given (``--rebalance-phase seeded``), else 0, the epoch grid; at ``K =
 decision_every`` the base only relabels the tranches.
 
-The account target is the sum of the tranches' sub-targets in position space
-(:mod:`prism.composition`, :func:`prism.assembly.assemble`), and orders are the
-difference between that target and the whole shares held, as for the single
-book. Tranching changes when trades happen, not what is held: on a session where
-one tranche refreshes, the account trades roughly ``1/K`` of the monthly change.
-It does not net trades away in general; the only sessions where several
-tranches refresh at once are catch-ups after an outage.
+**Holdings in shares.** Each tranche is held in shares between its refreshes,
+the way overlapping Jegadeesh-Titman cohorts are held and the way the evaluator
+holds them (``prism.evaluate._TrancheHoldings``; the registered rule is
+``docs/public_baseline_design.md`` §1.1). At tranche *j*'s refresh at close *t*
+its holding is reset to ``(1/K) * w_j,i * E_t / P_t,i`` shares of each name
+*i*, where ``w_j`` is its book (times its volatility scale, under ``vol_scale``),
+``E_t`` the marked equity and ``P_t,i`` the decision close. Between refreshes the
+shares are held and drift with prices. The account target at close *t* is
+``sum_j shares_j * P_t / E_t``, but a session decides only the names the
+refreshing tranche held or now holds, plus any name whose account shares differ
+from the tranches' total by more than half a share (an unfilled order, a share
+lost to rounding, or a position no tranche holds); every other name carries no
+decision and is held. So a session's orders are the refreshing tranche's change
+and those catch-ups, never a rebalance of the drifted book back to constant
+weights. The cash-holding ETF (``exclude``) is not the tranches' to decide.
+
+The holdings are persisted per tranche (``ComponentState.holdings``) with the
+session and decision close each name was sized at. A split between that session
+and the decision bar shows in the panel, whose bars are split-adjusted to their
+last session (the live source's ``adjustment=split``): the close the panel now
+shows for the sizing session differs from the one recorded, and the shares are
+restated by the ratio, as the evaluator restates them by the account's split
+factor. Bars adjusted for dividends as well would restate holdings for
+dividends, which is wrong; the live source does not serve those.
+
+With the volatility scale on, the account target the holdings make is capped at
+the account gross ceiling; when the cap binds, every tranche's holding is scaled
+by the same factor and every name is decided on that session, as in the
+evaluator. Without it the account target is not capped between refreshes, as
+the single book is not.
 
 **Schedule and state.** The due-ness predicate is
 :func:`prism.composition.due_on_grid`, the one the evaluator and composition
@@ -29,20 +52,21 @@ on the first session after more than ``decision_every`` have elapsed. Each
 tranche's output is valid for ``2 * decision_every`` sessions, so a missed date
 makes a tranche late, not expired, unless the loop was dark for more than two
 cycles, in which case the tranche goes flat and is rebuilt. The tranche states
-(schedule anchor, sub-targets, grid offset and, with the volatility scale, the
-scale decision) are ``LoopState.components``, persisted in the same write-ahead
+(schedule anchor, sub-targets, holding in shares, grid offset and, with the
+volatility scale, the scale decision) are ``LoopState.components``, persisted in
+the same write-ahead
 save that advances ``last_refresh_bar``, so a restart in the middle of the build
 resumes the same schedule and never rebuilds a tranche twice.
 
 **A tranche's refresh is its whole book.** The decile construct gives an
 explicit weight to every scored name; a name the tranche held that is no longer
 in the scored cross-section (it left the universe and is not held, or returned
-no bars) is set flat in that tranche as well, so stale sub-targets cannot
-accumulate. Between its refreshes a tranche carries its sub-targets, so a name
-the account no longer holds and cannot price at the decision close can remain
-in the account target; its entry is withheld (target zero, its held weight)
-and named in the log, as the evaluator does (``prism.evaluate``), rather than
-failing the sizing step.
+no bars) is set flat in that tranche as well, so stale holdings cannot
+accumulate. A name the refreshing tranche targets that has no price at the
+decision close keeps the tranche's previous holding of it, or, if it held none,
+is not entered and is named in the log and the session record (``deferred``),
+as the evaluator does. A name masked as unrankable keeps the refreshing
+tranche's previous holding and is never entered.
 
 **Wind-down.** ``wind_down=True`` sets each tranche flat on its own due date
 instead of re-scoring it, so the book exits over one cycle, a ``1/K`` slice per
@@ -55,8 +79,9 @@ at its refresh from the tranched base book rebuilt point in time from the panel
 (:func:`prism.live.vol_sizing.tranched_base_book_window`): the mean of every
 tranche's unscaled book as last refreshed, ``sum_j D_j / K`` at raw gross 1.0.
 The tranche's sub-targets are its construct times that scale, capped at the
-account gross ceiling; since the tranche weights sum to one, a ceiling on each
-tranche is a ceiling on the account. A window that cannot be trusted gives
+account gross ceiling, so each tranche is sized within the ceiling at its
+refresh; the account target its held shares make is capped again as they drift
+(above). A window that cannot be trusted gives
 ``min(1, the tranche's last good scale)``, or 1 with none. The last good scale
 is read from the tranche's persisted state, so only decisions that reached the
 write-ahead save bound a later one. Each refresh session appends one row to
@@ -66,9 +91,11 @@ write-ahead save bound a later one. Each refresh session appends one row to
 ``decile_neutral``; a tranche count that does not divide ``decision_every``; the
 regime gross-scale hook; a run directory whose persisted tranche layout (count,
 ids, offsets) differs from the one requested; a run directory that holds an
-untranched book; and a first tranched decision on an account that already holds
-positions, because staged entry would sell all but ``1/K`` of them on its first
-session. The single book (``tranches=1``) refuses a run directory that holds
+untranched book; a built tranche state that carries no share holdings (written
+before tranches were held in shares, so its holdings are unknown); and a first
+tranched decision on an account that already holds positions other than the
+cash-holding ETF, because staged entry would sell all but ``1/K`` of them on its
+first session. The single book (``tranches=1``) refuses a run directory that holds
 tranche states, so a session that forgets ``--tranches`` cannot silently treat a
 tranched book as a monthly one.
 
@@ -87,10 +114,10 @@ from typing import TYPE_CHECKING, Any, Callable, Collection, Mapping, Sequence
 import numpy as np
 import pandas as pd
 
-from prism.assembly import AccountState, DecisionContext, assemble, heuristic_book_rule
+from prism.assembly import construct_targets, heuristic_book_rule
 from prism.composition import ComponentPlan
 from prism.composition import ComponentState as PlanState
-from prism.composition import due_on_grid, tranche_plans
+from prism.composition import compose, due_on_grid, tranche_plans
 from prism.io import sessions
 from prism.live.state import ComponentState, LoopState
 from prism.live.vol_sizing import (
@@ -99,7 +126,12 @@ from prism.live.vol_sizing import (
     scaled_book_rule,
     tranched_base_book_window,
 )
-from prism.portfolio.vol_scale import SLEEVE_BUFFER, VolScaleRule, decide_scale
+from prism.portfolio.vol_scale import (
+    SLEEVE_BUFFER,
+    VolScaleRule,
+    cap_gross,
+    decide_scale,
+)
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from prism.live.broker import Broker
@@ -155,8 +187,23 @@ class TrancheSession:
         """Tranches that have produced an output, as persisted before this session."""
         return sum(1 for state in self.prior.values() if state.last_output_bar is not None)
 
-    def record(self, *, built: int | None = None, deferred: Sequence[str] = ()) -> dict[str, Any]:
-        """The session's tranche record (``DailyCycleResult.tranches`` and the targets-ledger row)."""
+    def record(
+        self,
+        *,
+        built: int | None = None,
+        deferred: Sequence[str] = (),
+        decided: int = 0,
+        catch_up: Sequence[str] = (),
+        ceiling_factor: float = 1.0,
+    ) -> dict[str, Any]:
+        """The session's tranche record (``DailyCycleResult.tranches`` and the targets-ledger row).
+
+        ``decided`` counts the names the session decided, ``catch_up`` names
+        those decided only because the account's shares differ from the
+        tranches' total, and ``ceiling_factor`` is below 1 when the account
+        target was capped at the gross ceiling. A session with no tranche due
+        decides nothing.
+        """
         return {
             "count": self.count,
             "base_offset": self.base_offset,
@@ -164,26 +211,53 @@ class TrancheSession:
             "due": list(self.due),
             "built": self.built() if built is None else int(built),
             "deferred": list(deferred),
+            "decided": int(decided),
+            "catch_up": list(catch_up),
+            "ceiling_factor": float(ceiling_factor),
         }
 
 
 @dataclass(frozen=True)
 class TrancheDecision:
-    """A refresh session's account target and the state it persists.
+    """A refresh session's decision, the account target the tranches' holdings make, and the state it persists.
 
-    ``components`` are every tranche's new persisted state, in index order, for
-    the write-ahead save. ``sizing`` is the ``sizing.jsonl`` row (None when the
-    volatility scale is off or the book is winding down). ``targets_extra`` is
-    what the refresh row of ``targets.jsonl`` carries beside the panel provenance.
+    ``targets`` is what the session sizes orders from: the decided names at the
+    account target, every other name at its held weight (no decision). ``full``
+    is the account target at this close, ``sum_j shares_j * P / E`` for every
+    name a tranche holds or the composition scored (NaN where a held name has
+    no price), capped at the ceiling when the volatility scale is on.
+    ``decided`` names what this session decides. ``components`` are every
+    tranche's new persisted state, in index order, for the write-ahead save.
+    ``sizing`` is the ``sizing.jsonl`` row (None when the volatility scale is off
+    or the book is winding down). ``targets_extra`` is what the row of
+    ``targets.jsonl`` carries beside the panel provenance.
     """
 
     targets: pd.Series
+    full: pd.Series
+    decided: tuple[str, ...]
     masked: list[str] | None
     components: tuple[ComponentState, ...]
     deferred: tuple[str, ...]
     sizing: dict[str, Any] | None
     targets_extra: dict[str, Any]
     record: dict[str, Any]
+
+    def recorded_targets(self, targets: pd.Series) -> pd.Series:
+        """The account target for ``targets.jsonl``: ``targets`` with each undecided name at its ``full`` value.
+
+        ``targets`` is the series the session sized from (after the T-bill
+        holding, when there is one). An undecided name is held, and the
+        tranches' holdings put it at ``full``; recording that rather than the
+        held weight makes the row the account target, before whole-share
+        rounding, as the evaluator records it.
+        """
+        recorded = targets.astype(float).copy()
+        decided = set(self.decided)
+        held = [sid for sid in self.full.index if sid not in decided]
+        for sid in held:
+            recorded.loc[sid] = float(self.full[sid])
+        return recorded
 
 
 def require_tranche_inputs(
@@ -283,10 +357,12 @@ def inspect_tranche_state(state: LoopState | None) -> TrancheStateReport | None:
     one book with indices ``0..K-1``; grid offsets ``(base + j * s) % (s * K)``
     (:func:`prism.composition.tranche_plans`, where ``s`` is the spacing and
     ``s * K`` the cadence, inferred from the offsets because the cadence is not
-    persisted); finite sub-targets; a scale record whose last good scale is
-    finite and positive (the cycle refuses otherwise); output bars no later
-    than the state's last refresh; expiry bars no earlier than the output; and
-    no other component kind in the same state.
+    persisted); finite sub-targets; share holdings on every tranche that holds
+    a sub-target (the cycle refuses a state without them), none sized after the
+    state's last refresh; a scale record whose last good scale is finite and
+    positive (the cycle refuses otherwise); output bars no later than the
+    state's last refresh; expiry bars no earlier than the output; and no other
+    component kind in the same state.
     """
     if state is None:
         return None
@@ -361,12 +437,24 @@ def inspect_tranche_state(state: LoopState | None) -> TrancheStateReport | None:
             finite_gross = False
         else:
             gross += sum(abs(float(value)) for value in component.sub_targets.values()) / count
+        last_refresh = state.last_refresh_bar
+        holds_target = any(
+            not isinstance(value, bool) and isinstance(value, (int, float)) and float(value) != 0.0
+            for value in component.sub_targets.values()
+        )
+        if component.holdings is None and holds_target:
+            problems.append(f"{tid} carries sub-targets and persists no share holdings")
+        elif component.holdings is not None and last_refresh is not None:
+            late = sorted(sid for sid, entry in component.holdings.items() if str(entry["bar"]) > str(last_refresh))
+            if late:
+                problems.append(
+                    f"{tid} holds {late[:3]} in shares sized after the state's last refresh {last_refresh}"
+                )
         if component.sizing is not None:
             try:
                 _last_good(component)
             except TrancheError as exc:
                 problems.append(str(exc))
-        last_refresh = state.last_refresh_bar
         if component.last_output_bar is not None and last_refresh is not None:
             if str(component.last_output_bar) > str(last_refresh):
                 problems.append(
@@ -399,19 +487,24 @@ def open_tranche_session(
     *,
     broker: "Broker",
     wind_down: bool,
+    exclude: Collection[str] = (),
 ) -> TrancheSession:
     """Plan the session: the layout, its compatibility with the run directory, and which tranches are due.
 
     Raises before any state moves when the persisted layout differs from the
-    requested one, when the run directory holds an untranched book, or when the
-    tranched book's first decision would start from an account that holds
-    positions.
+    requested one, when the run directory holds an untranched book, when a
+    built tranche persists no share holdings, or when the tranched book's first
+    decision would start from an account that holds positions. ``exclude``
+    names positions that are not the tranches' (the cash-holding ETF), which
+    the flat-account check ignores: the ETF is traded on every session,
+    including those before the first tranche is due.
     """
     plans = _layout(signal, config, tranches, base_offset)
     ids = [plan.component_id for plan in plans]
     persisted = list(state.components) if state is not None else []
     if persisted:
         _require_same_layout(persisted, plans)
+        _require_share_holdings(persisted)
         prior = {component.component_id: component for component in persisted}
     else:
         prior = {}
@@ -422,7 +515,10 @@ def open_tranche_session(
                 f"1/{tranches} of the held book on its first session. Start the tranched book in its own run "
                 "directory on a flat account (N7)"
             )
-        held = {str(s): float(q) for s, q in broker.positions().items() if float(q) != 0.0}
+        excluded = {str(sid) for sid in exclude}
+        held = {
+            str(s): float(q) for s, q in broker.positions().items() if float(q) != 0.0 and str(s) not in excluded
+        }
         if held:
             raise TrancheError(
                 f"the tranched book's first decision would start from an account holding {len(held)} position(s) "
@@ -469,24 +565,33 @@ def decide_tranches(
     config: "DailyBookConfig",
     *,
     prev_weights: pd.Series,
+    positions: Mapping[str, float],
     equity: float,
     unrankable: Collection[str] | None,
     decision_bar: str,
     vol_scale: VolScaleRule | None,
+    exclude: Collection[str] = (),
 ) -> TrancheDecision:
-    """The account target of a refresh session: every tranche composed, the due ones re-scored.
+    """The decision of a refresh session: the due tranches re-scored and re-held in shares, the rest held.
 
-    ``unrankable`` is the mask the caller fetched for this bar (None = no
-    provider, or a wind-down, which ranks nothing).
+    ``positions`` are the account's shares at the decision close and
+    ``prev_weights`` the same book as weights of ``equity``. ``unrankable`` is
+    the mask the caller fetched for this bar (None = no provider, or a
+    wind-down, which ranks nothing). ``exclude`` names symbols that are not the
+    tranches' to decide (the cash-holding ETF): they are neither caught up nor
+    flattened here.
     """
     if not session.due:
         raise TrancheError(f"{decision_bar}: no tranche is due, so there is nothing to decide (N7)")
+    if not (math.isfinite(float(equity)) and float(equity) > 0.0):
+        raise TrancheError(f"{decision_bar}: a tranched book needs a positive marked equity, got {equity!r} (N7)")
     max_gross = float(config.max_gross)
     base_rule = heuristic_book_rule(config, close, max_gross)
     decisions: dict[str, LiveScale] = {}
     applied: dict[str, dict[str, float]] = {}
     rules: dict[str, Callable[[pd.Series], pd.Series]] = {}
     refresh_bars: tuple[str, ...] = ()
+    ceiling: float | None = None
     sized = vol_scale is not None and not session.wind_down
     if sized:
         assert vol_scale is not None
@@ -521,36 +626,53 @@ def decide_tranches(
     plans: list[ComponentPlan] = []
     for plan in session.plans:
         tid = plan.component_id
-        held = tuple((session.prior[tid].sub_targets if tid in session.prior else {}).keys())
+        prior_state = session.prior.get(tid)
+        held = () if prior_state is None else tuple(dict.fromkeys([*prior_state.sub_targets, *_entries(prior_state)]))
         if session.wind_down:
             rule = _flat_rule(held)
         else:
             rule = _whole_book_rule(rules.get(tid, base_rule), held)
         plans.append(replace(plan, weights_fn=rule))
 
-    output = assemble(
-        DecisionContext(
-            decision_bar=decision_bar,
-            components=tuple(plans),
-            scoring_panels={"price": close},
-            volume=volume,
-            construction=config,
-            state=AccountState(equity=equity, held_weights=prev_weights, positions=None),
-            sessions=[str(bar.date()) for bar in close.index],
-            component_state={tid: _plan_state(state, tid) for tid, state in session.prior.items()},
-            unrankable=() if unrankable is None else frozenset(unrankable),
-            max_gross=max_gross,
-        )
+    composition = compose(
+        tuple(plans),
+        decision_bar=decision_bar,
+        scoring_panels={"price": close},
+        sessions=[str(bar.date()) for bar in close.index],
+        volume=volume,
+        states={tid: _plan_state(state, tid) for tid, state in session.prior.items()},
+        unrankable=() if unrankable is None else frozenset(unrankable),
     )
-    ran = tuple(out.component_id for out in output.component_outputs if out.due)
+    ran = tuple(out.component_id for out in composition.component_outputs if out.due)
     if ran != session.due:
         raise TrancheError(
             f"{decision_bar}: the session planned tranches {list(session.due)} and composition refreshed "
             f"{list(ran)}; the two read one predicate, so this is a defect, and nothing is decided on it (N7)"
         )
-    targets, deferred = defer_unpriced_entries(output.targets, close.iloc[-1], prev_weights, decision_bar)
 
-    new_states: Mapping[str, PlanState] = output.diagnostics["component_states"]
+    held_book = _hold_in_shares(
+        session,
+        composition,
+        close,
+        positions=positions,
+        equity=float(equity),
+        decision_bar=decision_bar,
+        whole_shares=bool(config.whole_shares),
+        cap=ceiling,
+        exclude=exclude,
+    )
+    targets = construct_targets(
+        held_book.row,
+        prev_weights=prev_weights,
+        close=close,
+        volume=volume,
+        config=config,
+        equity=float(equity),
+        liquidate=composition.liquidate,
+        max_gross=max_gross,
+    )
+
+    new_states: Mapping[str, PlanState] = composition.states
     components: list[ComponentState] = []
     for plan in session.plans:
         tid = plan.component_id
@@ -561,17 +683,49 @@ def decide_tranches(
             sizing = _sizing_state(decisions[tid], _last_good(prior)) if tid in decisions else None
         else:
             sizing = None if prior is None else prior.sizing
-        components.append(_persisted_state(new_states[tid], offset=_offset(plan), sizing=sizing))
+        components.append(
+            _persisted_state(
+                new_states[tid], offset=_offset(plan), sizing=sizing, holdings=held_book.holdings.get(tid)
+            )
+        )
 
-    masked = None if unrankable is None else sorted(output.diagnostics["masked"])
+    masked: list[str] | None = None
+    if unrankable is not None:
+        masked = sorted({str(sid) for out in composition.component_outputs for sid in out.masked})
     if masked:
         # As for the single book: a masked name is held out of the due tranches'
-        # ranking and carries no decision in them, so each holds its prior sub-target.
+        # ranking and carries no decision in them, so each keeps its prior holding.
         logger.info("unrankable mask: %d name(s) held out of ranking this refresh: %s", len(masked), masked)
+    deferred = list(held_book.deferred)
+    if deferred:
+        logger.warning(
+            "%s: entries into %d name(s) a refreshing tranche targets and that have no price at this close are "
+            "deferred: that tranche does not hold them until its next refresh: %s",
+            decision_bar,
+            len(deferred),
+            deferred[:20],
+        )
     built = sum(1 for component in components if component.last_output_bar is not None)
-    record = session.record(built=built, deferred=deferred)
+    record = session.record(
+        built=built,
+        deferred=deferred,
+        decided=len(held_book.decided),
+        catch_up=held_book.catch_up,
+        ceiling_factor=held_book.ceiling_factor,
+    )
+    logger.info(
+        "tranches %s: %d name(s) decided (%d caught up%s), every other name held; account target gross %.4f",
+        decision_bar,
+        len(held_book.decided),
+        len(held_book.catch_up),
+        "" if held_book.ceiling_factor == 1.0 else f", ceiling binding at {held_book.ceiling_factor:.6f}",
+        float(np.nansum(np.abs(held_book.full.to_numpy(dtype=float)))),
+    )
     extra: dict[str, Any] = {
-        TARGETS_TRANCHES_KEY: {key: record[key] for key in ("count", "base_offset", "wind_down", "due", "built")}
+        TARGETS_TRANCHES_KEY: {
+            key: record[key]
+            for key in ("count", "base_offset", "wind_down", "due", "built", "decided", "catch_up", "ceiling_factor")
+        }
     }
     row: dict[str, Any] | None = None
     if sized:
@@ -582,7 +736,7 @@ def decide_tranches(
             decisions,
             applied,
             refresh_bars,
-            targets,
+            held_book.full,
             account_scale=_account_scale(session.plans, components),
         )
         extra[TARGETS_LEDGER_KEY] = {
@@ -594,6 +748,8 @@ def decide_tranches(
         }
     return TrancheDecision(
         targets=targets,
+        full=held_book.full,
+        decided=held_book.decided,
         masked=masked,
         components=tuple(components),
         deferred=tuple(deferred),
@@ -603,42 +759,231 @@ def decide_tranches(
     )
 
 
-def defer_unpriced_entries(
-    targets: pd.Series, prices: pd.Series, held_weights: pd.Series, decision_bar: str
-) -> tuple[pd.Series, list[str]]:
-    """Withhold the target of a name the account does not hold and cannot price at the decision close.
+@dataclass(frozen=True)
+class _HeldBook:
+    """One session's tranche holdings in shares and the decision row they make.
 
-    A tranche carries its sub-targets between its refreshes, so the account
-    target can name a stock no tranche is refreshing that has no price on this
-    bar: one that left the universe and was never held, or an entry ordered on
-    the previous bar that did not fill because the stock stopped trading.
-    Sizing refuses a non-flat target without a price (N7), and with nothing held
-    there is nothing to keep or exit, so its target is its held weight, zero,
-    and the entry waits for a priced bar. ``prism.evaluate`` does the same on a
-    grid book. A held name always has a price here: the mark step refused the
-    cycle otherwise.
+    ``holdings`` are every tranche's persisted holdings after this session (the
+    refreshing ones reset, the rest unchanged, all scaled when the ceiling
+    binds). ``full`` is the account target they make at this close; ``row`` is
+    ``full`` on the decided names and NaN (no decision) elsewhere.
     """
-    held = {str(sid) for sid, weight in held_weights.items() if float(weight) != 0.0}
+
+    holdings: dict[str, dict[str, dict[str, Any]]]
+    full: pd.Series
+    row: pd.Series
+    decided: tuple[str, ...]
+    catch_up: tuple[str, ...]
+    deferred: tuple[str, ...]
+    ceiling_factor: float
+
+
+def _hold_in_shares(
+    session: TrancheSession,
+    composition: Any,
+    close: pd.DataFrame,
+    *,
+    positions: Mapping[str, float],
+    equity: float,
+    decision_bar: str,
+    whole_shares: bool,
+    cap: float | None,
+    exclude: Collection[str],
+) -> _HeldBook:
+    """Reset the refreshing tranches' holdings, restate the rest, and say which names this session decides.
+
+    The live counterpart of ``prism.evaluate._TrancheHoldings.target``: a
+    refreshing tranche (due, or its output expired) holds ``weight * sub_target
+    * E / P`` shares of each name it targets, a name without a price keeps its
+    previous holding or is deferred, and a masked name keeps its previous
+    holding. The decided names are those a refreshing tranche held or now holds
+    and those whose account shares differ from the tranches' total by more than
+    half a share (or, for fractional shares, by more than rounding); all names
+    when the ceiling binds.
+    """
+    excluded = {str(sid) for sid in exclude}
+    prices = close.iloc[-1]
+    row_of = {str(ts.date()): number for number, ts in enumerate(close.index)}
+    outputs = {str(out.component_id): out for out in composition.component_outputs}
+    refreshed = {tid for tid, out in outputs.items() if out.due or out.expired}
+
+    holdings: dict[str, dict[str, dict[str, Any]]] = {}
+    touched: set[str] = set()
     deferred: list[str] = []
-    for sid, weight in targets.items():
-        value = float(weight)
-        if not math.isfinite(value) or value == 0.0 or str(sid) in held:
+    for plan in session.plans:
+        tid = str(plan.component_id)
+        previous = _entries(session.prior.get(tid))
+        if tid not in refreshed:
+            holdings[tid] = {sid: dict(entry) for sid, entry in previous.items()}
             continue
-        price = prices.get(sid)
-        if price is None or not math.isfinite(float(price)) or float(price) <= 0.0:
-            deferred.append(str(sid))
-    if not deferred:
-        return targets, []
-    withheld = targets.copy()
-    withheld.loc[deferred] = 0.0
-    logger.warning(
-        "%s: entries into %d name(s) the account does not hold and cannot price at this close withheld (target "
-        "zero, the held weight); a tranche carries a sub-target for each until its next refresh: %s",
-        decision_bar,
-        len(deferred),
-        deferred[:20],
+        touched.update(previous)
+        masked = {str(sid) for sid in outputs[tid].masked}
+        fresh: dict[str, dict[str, Any]] = {}
+        for sid, value in composition.states[tid].sub_targets.items():
+            key = str(sid)
+            weight = float(value)
+            if key in excluded:
+                if math.isfinite(weight) and weight != 0.0:
+                    raise TrancheError(
+                        f"{decision_bar}: tranche {tid} targets {key}, which is not the tranches' to hold (the cash "
+                        "holding); the ETF must stay out of the scored cross-section (N7)"
+                    )
+                continue
+            if key in masked or not math.isfinite(weight):
+                # No decision on this name in this tranche: it keeps what it held, and is never entered.
+                if key in previous:
+                    fresh[key] = dict(previous[key])
+                continue
+            if weight == 0.0:
+                continue
+            price = _positive_price(prices.get(key))
+            if price is not None:
+                shares = float(plan.weight) * weight * equity / price
+                fresh[key] = {"shares": shares, "bar": decision_bar, "close": price}
+            elif key in previous:
+                fresh[key] = dict(previous[key])
+            else:
+                deferred.append(key)
+        for key in sorted(masked & set(previous) - set(fresh)):
+            fresh[key] = dict(previous[key])
+        holdings[tid] = fresh
+        touched.update(fresh)
+
+    restated: dict[str, float] = {}
+    totals: dict[str, float] = {}
+    for tid, entries in holdings.items():
+        for sid, entry in entries.items():
+            shares = _current_shares(sid, entry, close, row_of, decision_bar, prices, restated)
+            totals[sid] = totals.get(sid, 0.0) + shares
+    if restated:
+        logger.warning(
+            "%s: tranche holdings restated for a change in the panel's close at their sizing session (a split): %s",
+            decision_bar,
+            sorted(restated.items())[:10],
+        )
+
+    scored = composition.targets
+    names = [
+        sid
+        for sid in dict.fromkeys([*(str(sid) for sid in scored.index), *totals, *touched, *deferred])
+        if sid not in excluded
+    ]
+    values = np.zeros(len(names), dtype=float)
+    for number, sid in enumerate(names):
+        if sid in scored.index and not math.isfinite(float(scored[sid])):
+            values[number] = np.nan
+        total = totals.get(sid, 0.0)
+        if total != 0.0:
+            price = _positive_price(prices.get(sid))
+            values[number] = np.nan if price is None else total * price / equity
+        elif sid in deferred:
+            values[number] = np.nan
+    full = pd.Series(values, index=pd.Index(names, dtype=object), dtype=float)
+
+    ceiling_factor = 1.0
+    if cap is not None:
+        full, ceiling_factor = cap_gross(full, float(cap))
+        if ceiling_factor != 1.0:
+            for entries in holdings.values():
+                for entry in entries.values():
+                    entry["shares"] = float(entry["shares"]) * ceiling_factor
+            totals = {sid: total * ceiling_factor for sid, total in totals.items()}
+
+    account = {str(sid): float(q) for sid, q in positions.items() if float(q) != 0.0 and str(sid) not in excluded}
+    catch_up: list[str] = []
+    slot = set(full.index)
+    for sid in sorted(set(totals) | set(account)):
+        if sid in touched or sid not in slot:
+            continue
+        planned, held = totals.get(sid, 0.0), account.get(sid, 0.0)
+        gap = abs(planned - held)
+        if (whole_shares and gap > 0.5) or (not whole_shares and gap > 1e-9 * max(1.0, abs(planned))):
+            catch_up.append(sid)
+    if ceiling_factor != 1.0:
+        decided = tuple(full.index)
+    else:
+        decided = tuple(sid for sid in full.index if sid in touched or sid in catch_up)
+    row = pd.Series(np.nan, index=full.index, dtype=float)
+    if decided:
+        row.loc[list(decided)] = full.loc[list(decided)].to_numpy(dtype=float)
+    return _HeldBook(
+        holdings=holdings,
+        full=full,
+        row=row,
+        decided=decided,
+        catch_up=tuple(catch_up),
+        deferred=tuple(dict.fromkeys(deferred)),
+        ceiling_factor=float(ceiling_factor),
     )
-    return withheld, deferred
+
+
+def _current_shares(
+    sid: str,
+    entry: Mapping[str, Any],
+    close: pd.DataFrame,
+    row_of: Mapping[str, int],
+    decision_bar: str,
+    prices: pd.Series,
+    restated: dict[str, float],
+) -> float:
+    """A holding's shares at the decision close, restated for any split since it was sized.
+
+    The panel's bars are split-adjusted to its last session, so the close it now
+    shows for the sizing session is the recorded close divided by every split
+    since; their ratio restates the shares. A name with no price at the decision
+    close has no target and is not restated. A priced name whose sizing session
+    is missing from the panel, or unpriced there, cannot be checked and is
+    refused (N7): a missed split would size an order off by the split ratio.
+    """
+    shares = float(entry["shares"])
+    bar = str(entry["bar"])
+    if bar == decision_bar or _positive_price(prices.get(sid)) is None:
+        return shares
+    at = row_of.get(bar)
+    then = None if at is None or sid not in close.columns else _positive_price(close[sid].iat[at])
+    if then is None:
+        raise TrancheError(
+            f"{decision_bar}: a tranche holds {sid} in shares sized at {bar}, and this panel has no close for it "
+            "there, so a split since then cannot be checked; refusing to size against it (N7)"
+        )
+    factor = float(entry["close"]) / then
+    if factor != 1.0:
+        restated[sid] = factor
+    return shares * factor
+
+
+def _positive_price(value: object) -> float | None:
+    try:
+        number = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+    return number if math.isfinite(number) and number > 0.0 else None
+
+
+def _entries(state: ComponentState | None) -> dict[str, dict[str, Any]]:
+    """A persisted tranche's holdings in shares (none for a tranche that has never held any)."""
+    if state is None or state.holdings is None:
+        return {}
+    return state.holdings
+
+
+def _require_share_holdings(persisted: Sequence[ComponentState]) -> None:
+    """Every built tranche persists its holdings in shares (N7).
+
+    A state written before tranches were held in shares carries sub-targets and
+    no holdings; reading it as empty would sell the whole book as catch-ups.
+    """
+    missing = sorted(
+        c.component_id
+        for c in persisted
+        if c.holdings is None and any(float(value) != 0.0 for value in c.sub_targets.values())
+    )
+    if missing:
+        raise TrancheError(
+            f"tranche state(s) {missing[:3]}{'…' if len(missing) > 3 else ''} carry sub-targets and no share "
+            "holdings: they were written before the tranched book held its tranches in shares, so what each holds "
+            "is unknown. Wind the book down or flatten the account and start a new run directory (N7)"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -713,7 +1058,13 @@ def _plan_state(state: ComponentState | None, component_id: str) -> PlanState:
     )
 
 
-def _persisted_state(state: PlanState, *, offset: int, sizing: dict[str, Any] | None) -> ComponentState:
+def _persisted_state(
+    state: PlanState,
+    *,
+    offset: int,
+    sizing: dict[str, Any] | None,
+    holdings: Mapping[str, Mapping[str, Any]] | None,
+) -> ComponentState:
     return ComponentState(
         component_id=state.component_id,
         last_output_bar=state.last_output_bar,
@@ -726,6 +1077,7 @@ def _persisted_state(state: PlanState, *, offset: int, sizing: dict[str, Any] | 
         fit_scope=state.fit_scope,
         phase_offset_bars=int(offset),
         sizing=None if sizing is None else dict(sizing),
+        holdings=None if holdings is None else {str(sid): dict(entry) for sid, entry in holdings.items()},
     )
 
 
@@ -808,6 +1160,7 @@ def _sizing_row(
     The window statistics (sigma, finite returns, zero fraction) are the shared
     base book's and do not depend on the tranche; each due tranche's decision is
     under ``tranches`` and the target it describes under ``tranche_targets``.
+    ``targets`` is the account target the tranches' holdings make at this close.
     """
     first = next(iter(decisions.values()))
     values = pd.to_numeric(pd.Series(targets, dtype=float), errors="coerce").to_numpy(dtype=float)

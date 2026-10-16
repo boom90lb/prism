@@ -1060,6 +1060,7 @@ def decide_and_submit(
     panel: Mapping[str, Any] | None = None,
     components: Sequence[ComponentState] | None = None,
     buying_power_check: bool = False,
+    ledger_targets: pd.Series | None = None,
 ) -> list[Order]:
     """One decision step: reconcile → decide once → write ahead → submit.
 
@@ -1107,6 +1108,12 @@ def decide_and_submit(
     quantity is scaled down by one factor and the shortfall is logged at
     WARNING (:func:`prism.live.buying_power.fit_opening_orders`); a batch that
     fits is unchanged. A resumed decision is not re-checked.
+
+    ``ledger_targets`` (default None: the targets ledger records
+    ``target_weights``) is what the targets-ledger row records instead of the
+    series the orders are sized from. A tranched book sizes its undecided names
+    at their held weights and records the account target its tranches' holdings
+    make (:mod:`prism.live.tranches`).
     """
     states, action_context, freshness_by_sid = apply_freshness(freshness, states, action_context)
     gate = authorize_session(ctx, intent, states=states, action_context=action_context, now=now)
@@ -1189,7 +1196,13 @@ def decide_and_submit(
                 # and the audit record behind the completion sweep. Written inside
                 # the write-ahead step, idempotent per refresh bar.
                 append_targets_ledger(
-                    ctx.targets_ledger, refresh_bar, decision_bar, target_weights, prices, equity, extra=panel
+                    ctx.targets_ledger,
+                    refresh_bar,
+                    decision_bar,
+                    target_weights if ledger_targets is None else ledger_targets,
+                    prices,
+                    equity,
+                    extra=panel,
                 )
 
         # Orders whose fate has been settled — a cancellation recorded while

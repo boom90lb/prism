@@ -787,6 +787,7 @@ def run_daily_cycle(
             [str(bar.date()) for bar in close.index],
             broker=ctx.broker,
             wind_down=wind_down,
+            exclude=() if cash_holding is None else (cash_holding.symbol,),
         )
     else:
         refuse_tranche_state_under_single_book(state)
@@ -800,7 +801,7 @@ def run_daily_cycle(
 
     # 2. Mark broker truth at today's closes.
     prices = close.iloc[-1]
-    equity, cash, prev_weights = _mark_book(ctx.broker, prices)
+    equity, cash, prev_weights, positions = _mark_book(ctx.broker, prices)
 
     # 2b. Book-concordance telemetry (pure; gates nothing). The single book only:
     # a tranched book refreshes on most sessions, so its baseline would be the
@@ -844,10 +845,12 @@ def run_daily_cycle(
             volume,
             config,
             prev_weights=prev_weights,
+            positions=positions,
             equity=equity,
             unrankable=None if unrankable is None or wind_down else unrankable(decision_bar),
             decision_bar=decision_bar,
             vol_scale=vol_scale,
+            exclude=() if cash_holding is None else (cash_holding.symbol,),
         )
         targets, masked = tranche_decision.targets, tranche_decision.masked
         sizing = tranche_decision.sizing
@@ -930,6 +933,9 @@ def run_daily_cycle(
             }
         if cash_record is not None and refresh:
             panel_fields = {**(panel_fields or {}), CASH_HOLDING_KEY: cash_record}
+        # A tranched book's targets-ledger row is the account target its tranches'
+        # holdings make, not the held weights its undecided names were sized at.
+        ledger_targets = None if tranche_decision is None else tranche_decision.recorded_targets(targets)
         orders = decide_and_submit(
             ctx,
             decision_bar,
@@ -944,6 +950,7 @@ def run_daily_cycle(
             panel=panel_fields,
             components=None if tranche_decision is None else tranche_decision.components,
             buying_power_check=buying_power_check,
+            ledger_targets=ledger_targets,
         )
         logger.info(
             "decision %s: %d orders %s, equity %.2f, gross %.4f",
@@ -1174,12 +1181,13 @@ def _settle_prior(ctx: LiveLoopContext, state: LoopState | None, decision_bar: s
     return settled
 
 
-def _mark_book(broker: Broker, prices: pd.Series) -> tuple[float, float, pd.Series]:
+def _mark_book(broker: Broker, prices: pd.Series) -> tuple[float, float, pd.Series, dict[str, float]]:
     """Step 2: broker-truth positions and cash marked at today's closes.
 
-    Returns ``(equity, cash, prev_weights)`` — the same marks
-    ``decide_and_submit`` sizes with. Every held position must price
-    (``require_price``, N7) and equity must be positive.
+    Returns ``(equity, cash, prev_weights, positions)`` — the same marks
+    ``decide_and_submit`` sizes with, and the non-zero share counts they were
+    marked from. Every held position must price (``require_price``, N7) and
+    equity must be positive.
     """
     positions = {s: q for s, q in broker.positions().items() if q != 0.0}
     cash = broker.cash()
@@ -1190,7 +1198,7 @@ def _mark_book(broker: Broker, prices: pd.Series) -> tuple[float, float, pd.Seri
         {s: shares * require_price(prices, s) / equity for s, shares in positions.items()},
         dtype=float,
     )
-    return equity, cash, prev_weights
+    return equity, cash, prev_weights, positions
 
 
 def _concordance_read(ctx: LiveLoopContext, prev_weights: pd.Series, decision_bar: str) -> dict | None:

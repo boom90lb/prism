@@ -44,6 +44,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -94,12 +95,16 @@ class ComponentState:
     under ``workspace.state / "fits"`` (:mod:`prism.fits`), null for a component
     declaring itself stateless.
 
-    Two optional fields belong to the tranched paper book
+    Three optional fields belong to the tranched paper book
     (:mod:`prism.live.tranches`) and are written only when set, so a document
     that never carried them is byte-identical: ``phase_offset_bars`` is the
-    session-grid offset the component refreshes on, and ``sizing`` is the
+    session-grid offset the component refreshes on, ``sizing`` is the
     volatility-scale decision its sub-targets were sized with (scale, status,
-    reason, sigma and the last good scale that bounds a later failure).
+    reason, sigma and the last good scale that bounds a later failure), and
+    ``holdings`` is the tranche's holding in shares as set at its last refresh:
+    per name, ``{"shares", "bar", "close"}``, the signed share count and the
+    session and decision close it was sized at, which is what lets a later
+    session restate it for a split.
     """
 
     component_id: str
@@ -113,6 +118,7 @@ class ComponentState:
     fit_scope: str = FIT_SCOPE_TRAILING
     phase_offset_bars: int | None = None
     sizing: dict[str, Any] | None = None
+    holdings: dict[str, dict[str, Any]] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         payload: dict[str, Any] = {
@@ -130,12 +136,18 @@ class ComponentState:
             payload["phase_offset_bars"] = int(self.phase_offset_bars)
         if self.sizing is not None:
             payload["sizing"] = dict(self.sizing)
+        if self.holdings is not None:
+            payload["holdings"] = {
+                str(sid): {"shares": float(entry["shares"]), "bar": str(entry["bar"]), "close": float(entry["close"])}
+                for sid, entry in self.holdings.items()
+            }
         return payload
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> "ComponentState":
         offset = payload.get("phase_offset_bars")
         sizing = payload.get("sizing")
+        holdings = payload.get("holdings")
         return cls(
             component_id=str(payload["component_id"]),
             last_output_bar=_opt_str(payload.get("last_output_bar")),
@@ -148,7 +160,31 @@ class ComponentState:
             fit_scope=str(payload.get("fit_scope", FIT_SCOPE_TRAILING)),
             phase_offset_bars=None if offset is None else int(offset),
             sizing=None if sizing is None else dict(sizing),
+            holdings=None if holdings is None else _holdings_of(holdings),
         )
+
+
+def _holdings_of(payload: Any) -> dict[str, dict[str, Any]]:
+    """A persisted tranche holding, read strictly: a malformed entry raises (N7).
+
+    A share count that loaded as something else would size a live order from it.
+    """
+    if not isinstance(payload, Mapping):
+        raise ValueError(f"component holdings must be an object of per-name entries, got {type(payload).__name__}")
+    holdings: dict[str, dict[str, Any]] = {}
+    for sid, entry in payload.items():
+        if not isinstance(entry, Mapping) or set(entry) != {"shares", "bar", "close"}:
+            raise ValueError(f"holding {sid!r} must carry exactly shares, bar and close, got {entry!r}")
+        try:
+            shares, close = float(entry["shares"]), float(entry["close"])
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"holding {sid!r} has a non-numeric shares or close: {entry!r}") from exc
+        if isinstance(entry["shares"], bool) or isinstance(entry["close"], bool):
+            raise ValueError(f"holding {sid!r} has a boolean shares or close: {entry!r}")
+        if not math.isfinite(shares) or not (math.isfinite(close) and close > 0.0):
+            raise ValueError(f"holding {sid!r} needs finite shares and a positive close, got {entry!r}")
+        holdings[str(sid)] = {"shares": shares, "bar": str(entry["bar"]), "close": close}
+    return holdings
 
 
 def _opt_str(value: Any) -> str | None:
