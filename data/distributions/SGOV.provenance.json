@@ -1,0 +1,49 @@
+{
+ "symbol": "SGOV",
+ "issuer": "iShares (BlackRock)",
+ "fund_name": "iShares 0-3 Month Treasury Bond ETF",
+ "fund_inception_date": "2020-05-26",
+ "source_url": "https://www.blackrock.com/varnish-api/blk-one01-product-data/product-data/api/v1/get-fund-document?appType=PRODUCT_PAGE&appSubType=ISHARES&targetSite=us-ishares&locale=en_US&portfolioId=314116&component=fundDownload&userType=individual",
+ "source_page_url": "https://www.ishares.com/us/products/314116/ishares-0-3-month-treasury-bond-etf",
+ "source_kind": "issuer_xls",
+ "source_kind_detail": "Issuer 'Data Download' workbook (Excel 2003 SpreadsheetML XML served as application/vnd.ms-excel, Content-Disposition filename=iShares-0-3-Month-Treasury-Bond-ETF_fund.xls), worksheet 'Distributions'. The link is the 'Data Download' href on the issuer product page (present in the captured page HTML with this fund's portfolioId 314116).",
+ "captured_at": "2026-10-16T02:03:58-07:00",
+ "fetch_method": "curl -L GET inside the default sandbox (no sandbox override), desktop Chrome User-Agent; Date header Fri, 16 Oct 2026 09:03:58 GMT; no Last-Modified header served",
+ "http_status": 200,
+ "content_type": "application/vnd.ms-excel",
+ "raw_file": "/tmp/claude-1000/-home-b90-prism/83aa8297-6173-4d66-b6d2-1ea9e759253e/scratchpad/wpl4_dl/sgov_fund.xls",
+ "raw_file_bytes": 704711,
+ "sha256": "080f3af03726041bebc93183a13868b8b31e870f445c8f6f53f7e9596990ff50",
+ "fetched": true,
+ "n_records": 76,
+ "first_ex_date": "2020-07-01",
+ "last_ex_date": "2026-10-01",
+ "cutoff_requested": "none: every issuer record at capture (all ex-dates are on or before the capture date)",
+ "columns_in_source": [
+  "Record Date",
+  "Ex-Date",
+  "Payable Date",
+  "Total Distribution",
+  "Income",
+  "ST Cap Gains",
+  "LT Cap Gains",
+  "Return of Capital"
+ ],
+ "output_columns": {
+  "ex_date": "Ex-Date (YYYY-MM-DD)",
+  "pay_date": "Payable Date (YYYY-MM-DD)",
+  "amount": "Total Distribution (USD per share; equals Income + ST Cap Gains + LT Cap Gains + Return of Capital on every row), written with six decimals; no source value carries more than six"
+ },
+ "parsing_notes": "The workbook is not well-formed XML (ElementTree stops at line 47, column 138, as the IEF capture's workbook did), so the 'Distributions' worksheet was read by regex over <ss:Row>/<ss:Cell>/<ss:Data> elements, the IEF capture's method; all 76 data rows have 8 cells. Dates parsed with format '%b %d, %Y' (0 failures). amount = 'Total Distribution'; Total == Income + ST + LT + ROC exactly (max abs diff 0.0) on every row. ST/LT capital gains and return of capital are 0 on every row, so every amount is income. No duplicate ex-dates, so nothing was summed. Every pay date is on or after its ex-date. One row has a zero amount: ex 2021-03-01 (pay 2021-03-05), total 0, as the issuer lists it; it is kept (a zero cash event), not dropped. Coverage: inception 2020-05-26, first ex-date 2020-07-01; 12 ex-dates in every full calendar year 2021-2025, 7 in 2020 and 9 in 2026 through 2026-10-01. The issuer pays the year-end distribution on a second December ex-date and lists no January ex-date, so the gaps over 45 days (mid-December to early February, 46-49 days) are not missing months. Record dates are in the source but not written to the CSV. Parsed with the Python standard library only; rows written sorted by ex-date.",
+ "cross_check": {
+  "source": "the same table embedded server-side in the issuer product page HTML (PerformanceV3 component, containersByNameMap.distributions.subContainersByNameMap.table.dataPointsByNameMap), parsed with html.parser and json.loads",
+  "url": "https://www.ishares.com/us/products/314116/ishares-0-3-month-treasury-bond-etf",
+  "raw_file": "/tmp/claude-1000/-home-b90-prism/83aa8297-6173-4d66-b6d2-1ea9e759253e/scratchpad/wpl4_dl/sgov_page.html",
+  "raw_file_bytes": 1759579,
+  "sha256": "4454c36c0ed9344a23c7a45b25ccfede2ec88805aed06a6b0afa41b397a833ac",
+  "captured_at": "2026-10-16T02:03:14-07:00",
+  "result": "76 records on the page; outer join on ex-date matched 76/76 with zero pay-date and zero amount mismatches. Both documents are the issuer's; no independent (non-issuer) source was checked"
+ },
+ "fund_facts_on_issuer_page": "Expense Ratio 0.09% (labelled 'As stated in the Fund’s current prospectus') and Management Fee 0.09%, read from the captured product page; recorded for reference, not used by the CSV",
+ "gaps": []
+}
