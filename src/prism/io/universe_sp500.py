@@ -1,19 +1,24 @@
-"""Survivorship-bias-free S&P 500 universe reconstruction (Koker method).
+"""Point-in-time S&P index membership reconstruction (Koker method).
 
 Point-in-time index membership is reconstructed from the Wikipedia "List of
 S&P 500 companies" page: the current-constituents table plus the "Selected
 changes to the list" table (date, added ticker, removed ticker). Walking the
 changes backward from the scrape date yields the member set on any historical
-date; the union over all dates is the survivorship-bias-free universe -- it
-*includes* names since removed by delisting, acquisition, or relegation, which
-a current-constituents snapshot would silently drop.
+date; the union over all dates is the ever-member universe -- it *includes*
+names since removed by delisting, acquisition, or relegation, which a
+current-constituents snapshot would silently drop.
+
+The result is not survivorship-free. The changes tables are selected rather
+than complete, so a former member whose exit or entry the table omits is
+missing or mis-dated (``resolve_unrecorded_exits`` recovers some exits from
+other evidence), and price coverage for removed names is partial.
 
 Price coverage is a separate, measured concern. Free vendors do not always
 retain prices for delisted tickers, so the builder emits an explicit coverage
-ledger (resolved vs skipped) rather than quietly dropping the dead names that
-make the universe survivorship-free in the first place. Re-introducing
-survivorship through missing delisted prices is only acceptable if it is
-*counted* -- see ``compute_coverage`` and ``src/prism/scripts/build_sp500_universe.py``.
+ledger (resolved vs skipped) rather than quietly dropping the removed names the
+reconstruction exists to keep. Losing them again through missing delisted
+prices is only acceptable if it is *counted* -- see ``compute_coverage`` and
+``src/prism/scripts/build_sp500_universe.py``.
 
 Dependency note: the project env has neither lxml nor bs4, so ``pandas.read_html``
 is unavailable. The two tables are extracted with a small stdlib ``html.parser``
@@ -523,7 +528,11 @@ def reconstruct_membership(
 
 
 def ever_members(membership: pd.DataFrame) -> list[str]:
-    """Sorted union of every ticker that was ever a member (survivorship-free)."""
+    """Sorted union of every ticker the reconstruction found to have been a member.
+
+    It keeps removed names, but it is not survivorship-free: a member the
+    selected changes tables never mention is absent.
+    """
     return sorted(set(membership["ticker"].map(normalize_ticker)))
 
 
@@ -532,9 +541,9 @@ def members_active_between(
 ) -> list[str]:
     """Ever-members whose membership overlaps ``[start, end]``.
 
-    Survivorship-free *within the window*: includes names removed during it,
-    excludes only names that left before it (irrelevant to a backtest over the
-    window). This is the right scoping for a price pull -- fetching names delisted
+    Includes names removed during the window and excludes only names that left
+    before it (irrelevant to a backtest over the window); the reconstruction's
+    own gaps still apply. This is the right scoping for a price pull -- fetching names delisted
     years before ``start`` adds cost without adding in-sample breadth.
     """
     lo = pd.Timestamp(start)
@@ -580,7 +589,7 @@ def build_membership_mask(
 
 
 # --------------------------------------------------------------------------- #
-# Coverage ledger (the integrity crux of free survivorship-free data)
+# Coverage ledger (the integrity crux of free point-in-time data)
 # --------------------------------------------------------------------------- #
 
 

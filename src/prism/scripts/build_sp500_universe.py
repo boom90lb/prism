@@ -1,4 +1,4 @@
-"""Build a survivorship-bias-free S&P 500 universe (Koker method).
+"""Build a point-in-time S&P 500 universe (Koker method); it is not survivorship-free.
 
 Reconstructs point-in-time membership from Wikipedia (the "List of S&P 500
 companies" constituents table and the "Selected changes" table, which moved to
@@ -90,7 +90,7 @@ CHANGES_BASELINE_ASOF = "2026-07-17"
 
 
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Build a survivorship-bias-free S&P 500 universe.")
+    p = argparse.ArgumentParser(description="Build a point-in-time S&P 500 universe from Wikipedia.")
     p.add_argument("--asof", type=str, default=pd.Timestamp.utcnow().strftime("%Y-%m-%d"),
                    help="As-of date; names the artifacts and closes still-open membership intervals.")
     p.add_argument("--start_date", type=str, default="1990-01-01", help="Price-history start for the pull.")
@@ -279,8 +279,8 @@ def main() -> None:
     membership = membership.assign(ticker=membership["ticker"].map(_to_vendor))
     ever = ever_members(membership)
     # Scope the tradeable universe to names active during the backtest window
-    # (still survivorship-free within it -- includes names removed during the
-    # window); the full membership parquet keeps every interval for the mask.
+    # (it includes names removed during the window); the full membership
+    # parquet keeps every interval for the mask.
     window = members_active_between(membership, args.start_date, args.asof)
 
     universe_path = out_dir / f"{index}_pit_{args.asof}.txt"

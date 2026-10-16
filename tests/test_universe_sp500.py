@@ -1,4 +1,4 @@
-"""Survivorship-bias-free S&P 500 universe reconstruction (Koker method).
+"""Point-in-time S&P index membership reconstruction (Koker method).
 
 The headline invariant under test: names removed from the index still appear in
 the ever-member union, and if their prices are unavailable they are *counted* in
@@ -76,7 +76,7 @@ def test_ever_members_includes_removed_names_survivorship() -> None:
 
 def test_members_active_between_scopes_to_window() -> None:
     # X left 2018, B joined 2018, A always. A 2020+ window excludes the
-    # pre-window casualty X but keeps it survivorship-free *within* the window.
+    # pre-window casualty X and keeps every name that was a member during it.
     changes = _changes([("2018-06-01", "B", "X")])
     m = reconstruct_membership(["A", "B"], changes, end_date=END)
     assert members_active_between(m, "2020-01-01", "2026-01-01") == ["A", "B"]
