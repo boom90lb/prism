@@ -1,16 +1,17 @@
 """The `prism` command surface (spec §3.14).
 
 Two things are being protected here. The first is the vocabulary: every command
-the specification declares parses from the first release, and the ones a later
-stage delivers say which stage, because an operator reading a refusal should
-learn a date rather than a stack trace. The second is the one operating session
-stage 1 does deliver — `prism run --once --broker synthetic` — whose refusals
-(a live account, a real broker, a scheduled stage) are the ones that must never
-quietly succeed.
+the specification declares parses from the first release, and the ones this
+release does not run from the command line say so and name what works instead,
+because an operator reading a refusal should learn where to go rather than read
+a stack trace. The second is the one operating session the command line does
+run — `prism run --once --broker synthetic` — whose refusals (a live account, a
+real broker, a scheduled stage) are the ones that must never quietly succeed.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import logging
 import os
@@ -26,47 +27,55 @@ from prism.cli import EXIT_LATER_STAGE, EXIT_REFUSED, build_parser, main
 from prism.live.broker import Broker
 from prism.template import write_template
 
-# argv, and the stage the refusal must name.
+#: The phrase every command-line refusal of an unavailable path carries.
+NOT_AVAILABLE = "is not available from the command line in this release: "
+
+#: Internal references a user cannot look up: delivery stages of the engine
+#: overhaul, sections of its unpublished implementation specification, and its
+#: numbered design questions. None may reach a user-visible message.
+INTERNAL_REFERENCE = re.compile(r"\bstage \d|§\s?3\.|\[Q\d")
+
+# argv, and a fragment of what the refusal must name as working instead.
 DEFERRED_COMMANDS = [
-    (["data", "fetch", "--source", "twelvedata", "--symbols", "u.txt"], 3),
-    (["data", "manifest", "--freeze"], 3),
-    (["data", "status"], 3),
-    (["data", "universe", "--index", "sp500"], 3),
-    (["compare", "a.json", "b.json"], 2),
-    (["compare", "--registration", "2026-09-construction"], 2),
-    (["trials", "reconcile"], 2),
-    (["folds", "import", "--from", "folds.json", "--out", "folds.toml"], 2),
-    (["reconcile", "runs/paper"], 5),
-    (["check", "runs/paper", "--monitor"], 5),
+    (["data", "fetch", "--source", "twelvedata", "--symbols", "u.txt"], "prism data ingest"),
+    (["data", "manifest", "--freeze"], "manifest.json"),
+    (["data", "status"], "manifest.json"),
+    (["data", "universe", "--index", "sp500"], "prism-build-universe"),
+    (["compare", "a.json", "b.json"], "prism.validation.compare.compare_reevaluation"),
+    (["compare", "--registration", "2026-09-construction"], "prism.validation.compare.compare_reevaluation"),
+    (["trials", "reconcile"], "prism.validation.trials.reconcile_trial_log"),
+    (["folds", "import", "--from", "folds.json", "--out", "folds.toml"], "FoldTable.from_records"),
+    (["reconcile", "runs/paper"], "prism-doctor --network"),
+    (["check", "runs/paper", "--monitor"], "prism.scripts.paper_monitor"),
 ]
 
 #: `prism replay` and `prism upgrade-diff` are delivered: both drive
 #: `prism.live.replay.upgrade_diff_report` over recorded captures. Their exit
 #: codes and refusals are tested at the end of this file, and the rows above
-#: no longer name them, so a stale "not delivered until stage 5" cannot return
-#: without this list changing.
+#: no longer name them, so a stale refusal cannot return without this list
+#: changing.
 
-#: `prism check` landed at stage 5 (§3.11 freshness and the missed-run monitor);
-#: only its `--monitor` telemetry read is still deferred, which is the row above.
+#: `prism check` runs (freshness and the missed-run monitor); only its
+#: `--monitor` statistics are still refused, which is the row above.
 #: Its behaviour is tested in tests/test_freshness.py, where the session table
 #: that answers "was that a missed run or a holiday?" is under test too.
 
-#: The two data commands stage 3a delivers, each refusing for its own reason
-#: rather than for its stage. They are exercised here so the deferred list above
-#: cannot quietly regrow them.
+#: The two data commands the command line runs, each refusing for its own
+#: reason rather than as unavailable. They are exercised here so the deferred
+#: list above cannot quietly regrow them.
 DELIVERED_DATA_COMMANDS = [
     ["data", "ingest", "--format", "csv", "--mapping", "m.toml", "bars.csv"],
     ["data", "import-legacy", "--cache-dir", "no_such_cache"],
 ]
 
 DEFERRED_EVALUATE_FLAGS = [
-    ([], 2),  # no --smoke at all
-    (["--smoke", "--engine", "canonical"], 3),
-    (["--smoke", "--registration", "r"], 2),
-    (["--smoke", "--arm", "decile_control"], 2),
-    (["--smoke", "--visibility", "replay_recorded"], 3),
-    (["--smoke", "--vintage", "v1"], 3),
-    (["--smoke", "--freeze-scores", "panel.parquet"], 4),
+    ([], "prism.evaluate.walk_forward_evaluate"),  # no --smoke at all
+    (["--smoke", "--engine", "canonical"], "CanonicalSettings"),
+    (["--smoke", "--registration", "r"], "walk_forward_evaluate(registration="),
+    (["--smoke", "--arm", "decile_control"], "walk_forward_evaluate(registration="),
+    (["--smoke", "--visibility", "replay_recorded"], "visibility_mode='replay_recorded'"),
+    (["--smoke", "--vintage", "v1"], "--workspace"),
+    (["--smoke", "--freeze-scores", "panel.parquet"], "check_freeze_record"),
 ]
 
 DEFERRED_RUN_FLAGS = [
@@ -144,41 +153,48 @@ def test_every_declared_command_parses() -> None:
     assert declared == set(actions[0].choices)
 
 
-@pytest.mark.parametrize("argv,stage", DEFERRED_COMMANDS, ids=lambda v: " ".join(v) if isinstance(v, list) else v)
-def test_a_deferred_command_names_its_stage(argv: list[str], stage: int, capsys) -> None:
+def _ids(value: object) -> str:
+    return " ".join(value) if isinstance(value, list) else str(value)
+
+
+@pytest.mark.parametrize("argv,instead", DEFERRED_COMMANDS, ids=_ids)
+def test_a_deferred_command_names_what_works_instead(argv: list[str], instead: str, capsys) -> None:
     assert main(argv) == EXIT_LATER_STAGE
     message = capsys.readouterr().err
-    assert f"stage {stage}" in message, message
+    assert NOT_AVAILABLE in message, message
+    assert instead in message.split(NOT_AVAILABLE, 1)[1], message
+    assert not INTERNAL_REFERENCE.search(message), message
     assert "Traceback" not in message
 
 
 @pytest.mark.parametrize("argv", DELIVERED_DATA_COMMANDS, ids=lambda v: " ".join(v))
-def test_a_delivered_data_command_refuses_for_its_own_reason_not_for_its_stage(
+def test_a_delivered_data_command_refuses_for_its_own_reason_not_as_unavailable(
     argv: list[str], capsys, tmp_path, monkeypatch
 ) -> None:
-    """``data ingest`` and ``data import-legacy`` land at stage 3a (§3.2)."""
+    """``data ingest`` and ``data import-legacy`` run from the command line."""
     # Resolve the workspace (logs/, .env) to a scratch directory, never the checkout.
     monkeypatch.delenv("PRISM_WORKSPACE", raising=False)
     monkeypatch.chdir(tmp_path)
     assert main(argv) == EXIT_REFUSED
     message = capsys.readouterr().err
-    assert "is not delivered until stage" not in message, message
+    assert NOT_AVAILABLE not in message, message
     assert "Traceback" not in message
 
 
-@pytest.mark.parametrize(
-    "flags,stage", DEFERRED_EVALUATE_FLAGS, ids=lambda v: " ".join(v) if isinstance(v, list) else v
-)
-def test_evaluate_refuses_what_stage_1_cannot_record(flags: list[str], stage: int, capsys) -> None:
+@pytest.mark.parametrize("flags,instead", DEFERRED_EVALUATE_FLAGS, ids=_ids)
+def test_evaluate_refuses_what_the_smoke_run_cannot_record(flags: list[str], instead: str, capsys) -> None:
     assert main(["evaluate", "specs/book.toml", *flags]) == EXIT_LATER_STAGE
-    assert f"stage {stage}" in capsys.readouterr().err
+    message = capsys.readouterr().err
+    assert NOT_AVAILABLE in message and instead in message, message
+    assert not INTERNAL_REFERENCE.search(message), message
 
 
 @pytest.mark.parametrize("flags", DEFERRED_RUN_FLAGS, ids=lambda v: " ".join(v))
 def test_run_refuses_anything_but_one_synthetic_session(flags: list[str], capsys) -> None:
     assert main(["run", "--spec", "specs/book.toml", *flags]) == EXIT_LATER_STAGE
     message = capsys.readouterr().err
-    assert "stage 5" in message, message
+    assert NOT_AVAILABLE in message, message
+    assert not INTERNAL_REFERENCE.search(message), message
 
 
 def test_run_requires_an_account(capsys) -> None:
@@ -316,7 +332,8 @@ def test_run_refuses_a_rule_the_live_cycle_cannot_construct(project: Path, capsy
     ]
     assert main(argv) == EXIT_LATER_STAGE
     message = capsys.readouterr().err
-    assert "top_k_equal_weight" in message and "stage 5" in message
+    assert "top_k_equal_weight" in message and NOT_AVAILABLE in message and "--smoke" in message
+    assert not INTERNAL_REFERENCE.search(message), message
 
 
 def test_run_refuses_an_unloadable_specification(project: Path, tmp_path: Path, capsys) -> None:
@@ -380,11 +397,28 @@ def test_the_binding_cap_is_the_smaller_of_the_rule_and_the_profile(project: Pat
 def test_refusal_messages_never_end_in_a_traceback(capsys) -> None:
     # Every message this file asserts on is printed, not raised: a refusal is a
     # sentence, and only a defect is a traceback.
-    for argv, _stage in DEFERRED_COMMANDS:
+    for argv, _instead in DEFERRED_COMMANDS:
         main(argv)
     captured = capsys.readouterr().err
     assert "Traceback" not in captured
-    assert len(re.findall(r"is not delivered until stage \d", captured)) == len(DEFERRED_COMMANDS)
+    assert captured.count(NOT_AVAILABLE) == len(DEFERRED_COMMANDS)
+
+
+def _every_parser(parser: argparse.ArgumentParser):
+    """The parser and every subcommand parser beneath it, depth first."""
+    yield parser
+    for action in parser._actions:
+        if isinstance(action, argparse._SubParsersAction):
+            for child in action.choices.values():
+                yield from _every_parser(child)
+
+
+def test_help_text_cites_no_internal_reference() -> None:
+    # `--help` is user-visible output: it may not send a reader to a stage of
+    # the engine overhaul or to a section of a specification that is not published.
+    for parser in _every_parser(build_parser()):
+        text = parser.format_help()
+        assert not INTERNAL_REFERENCE.search(text), (parser.prog, INTERNAL_REFERENCE.search(text))
 
 
 # --------------------------------------------------------------------------
@@ -519,6 +553,7 @@ def test_a_live_session_with_no_record_is_refused_at_the_entry_point(project: Pa
     assert code == EXIT_REFUSED
     message = capsys.readouterr().err
     assert "no authorization record" in message and "S4b" in message
+    assert not INTERNAL_REFERENCE.search(message), message
     # The double was never built and never called: the refusal precedes the client.
     assert venue.built == [] and venue.calls == []
 
@@ -727,7 +762,7 @@ def test_replay_without_the_diff_flag_names_the_tool_that_drives_a_cycle(capsys)
     assert main(["replay", "runs/paper"]) == EXIT_REFUSED
     err = capsys.readouterr().err
     assert "prism.scripts.replay_loop" in err
-    assert "stage 5" not in err
+    assert not INTERNAL_REFERENCE.search(err), err
 
 
 def test_a_capture_without_a_manifest_is_a_refusal_not_a_traceback(tmp_path: Path, capsys) -> None:

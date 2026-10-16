@@ -920,12 +920,14 @@ def test_check_refuses_a_path_that_is_not_a_run_directory(tmp_path, monkeypatch,
     assert "is not a run directory" in capsys.readouterr().err
 
 
-def test_check_monitor_names_the_stage_it_waits_on(tmp_path, monkeypatch, capsys) -> None:
+def test_check_monitor_names_the_tool_that_runs_it_today(tmp_path, monkeypatch, capsys) -> None:
     from prism.cli import main
 
     run_dir = prepare_cli(tmp_path, monkeypatch)
     assert main(["check", str(run_dir), "--monitor"]) == 2
-    assert "stage 5" in capsys.readouterr().err
+    err = capsys.readouterr().err
+    assert "is not available from the command line in this release" in err
+    assert "prism.scripts.paper_monitor" in err
 
 
 # ---------------------------------------------------------------------------
