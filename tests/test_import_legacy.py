@@ -394,6 +394,24 @@ def test_the_stage_two_slice_still_writes_its_own_ticker_keyed_dataset(tmp_path:
     assert stage_three.manifest.id != stage_two.manifest.id
 
 
+def test_both_import_paths_record_the_earliest_session_table_release_covering_them(
+    tmp_path: Path, cache: Path, imported
+) -> None:
+    """A 2024 sample ends long before 2028 was added to the table, so neither path's id moved with it."""
+    stage_two = build_legacy_dataset(
+        tmp_path / "stage2",
+        symbols=["AAA"],
+        cache_dir=cache,
+        start=SAMPLE_START,
+        end=SAMPLE_END,
+        vintage="stage2",
+        index_id="sp500",
+    )
+    for manifest in (stage_two.manifest, imported.manifest):
+        assert manifest.assumptions["session_table_version"] == "2006.2027-1"
+        assert "session_table=2006.2027-1" in manifest.transformations
+
+
 def test_extra_indexes_share_one_dataset_and_each_answers_its_own_membership(tmp_path: Path, cache: Path) -> None:
     """One set of bars, several index ids: arms that differ only in universe read identical bars."""
     from prism.io.dataset import Dataset

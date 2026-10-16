@@ -51,6 +51,8 @@ from prism.io.sessions import (
     EARLY_CLOSE,
     JUNETEENTH_FIRST_OBSERVED,
     REGULAR_CLOSE,
+    TABLE_RELEASES,
+    TABLE_VERSION,
     NotASessionError,
     SessionTableRangeError,
     coverage,
@@ -63,6 +65,7 @@ from prism.io.sessions import (
     session_row,
     sessions_between,
     status,
+    table_version_for,
 )
 
 
@@ -373,6 +376,25 @@ def test_extending_to_2028_left_every_2006_2027_row_unchanged() -> None:
     assert (listed[0], listed[-1]) == ("2006-01-03", "2027-12-31")
     assert hashlib.sha256("\n".join(rows).encode("utf-8")).hexdigest() == PRE_2028_ROWS_SHA256
     assert hashlib.sha256("\n".join(listed).encode("utf-8")).hexdigest() == PRE_2028_SESSIONS_SHA256
+
+
+def test_a_dataset_records_the_earliest_release_that_covers_its_last_date() -> None:
+    """Adding 2028 moved no earlier row, so a dataset ending in 2027 keeps the version and the id it had.
+
+    The 2006.2027-1 entry ends where the digest above stops, which is what
+    makes it a release of this same table rather than an older one.
+    """
+    ends = [through for _, through in TABLE_RELEASES]
+    assert ends == sorted(set(ends)), "releases are listed oldest first and each ends later"
+    assert TABLE_RELEASES[-1] == (TABLE_VERSION, COVERAGE_END)
+    assert dict(TABLE_RELEASES)["2006.2027-1"] == _d("2027-12-31")
+
+    assert table_version_for(_d("2005-12-30")) == "2006.2027-1"
+    assert table_version_for(_d("2026-06-15")) == "2006.2027-1"
+    assert table_version_for(_d("2027-12-31")) == "2006.2027-1"
+    assert table_version_for(_d("2028-01-03")) == "2006.2028-1"
+    assert table_version_for(COVERAGE_END) == TABLE_VERSION
+    assert table_version_for(COVERAGE_END + dt.timedelta(days=1)) == TABLE_VERSION
 
 
 # ---------------------------------------------------------------------------

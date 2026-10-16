@@ -304,6 +304,10 @@ def build_legacy_dataset(
         )
     index, dropped = session_index(frames)
     labels = tuple(_day(ts).isoformat() for ts in index)
+    # The table answered for every cached date, the dropped non-sessions too.
+    table_version = sessions.table_version_for(
+        max(_day(frame.index.max()) for frame in frames.values() if not frame.empty)
+    )
     ingested_at = _mtime_instant(cache_dir)
 
     (root / "bars").mkdir(parents=True, exist_ok=True)
@@ -398,7 +402,7 @@ def build_legacy_dataset(
             "legacy_import_v1",
             f"cache_dir={Path(cache_dir).name}",
             f"span={start}..{end}",
-            f"session_table={sessions.TABLE_VERSION}",
+            f"session_table={table_version}",
         ],
         assumptions={
             "reader": (
@@ -407,7 +411,7 @@ def build_legacy_dataset(
             ),
             "ingestion_time_quality": "file_mtime",
             "availability": "available_at is empty on every row; availability derives from the session table",
-            "session_table_version": sessions.TABLE_VERSION,
+            "session_table_version": table_version,
             "session_filter": (
                 "union dates that are not sessions on the bundled table are dropped before any estimator sees "
                 "them; on the recorded momentum panel this reproduces "
@@ -1051,6 +1055,7 @@ def import_legacy(
     duplicates = 0
     outcome = RevisionOutcome()
     written: list[Path] = []
+    last_bar: dt.date | None = None
     (root / "bars").mkdir(parents=True, exist_ok=True)
     coverage_start, coverage_end = sessions.coverage()
     for symbol, paths in selected.items():
@@ -1134,7 +1139,8 @@ def import_legacy(
         _write_bar_table(frame, path)
         outcome = outcome + one
         written.append(path)
-    if not symbol_to_sid:
+        last_bar = max(days) if last_bar is None else max(last_bar, max(days))
+    if not symbol_to_sid or last_bar is None:
         raise LegacyImportError(
             f"every one of the {len(selected)} selected series was skipped; nothing was imported (N7)"
         )
@@ -1221,6 +1227,21 @@ def import_legacy(
     written.extend(master.write(root))
 
     # -- manifest ---------------------------------------------------------
+    # Bars and events outside the table were not written, so the latest date
+    # written is the last one the table answered for.
+    table_version = sessions.table_version_for(
+        max(
+            [
+                last_bar,
+                *(
+                    dt.date.fromisoformat(day)
+                    for event in events
+                    for day in (event.effective_date, event.announce_date)
+                    if day is not None
+                ),
+            ]
+        )
+    )
     report = master.report()
     sources: dict[str, dict[str, object]] = {
         LEGACY_VENDOR: {
@@ -1256,7 +1277,7 @@ def import_legacy(
         },
         assumptions=_LEGACY_ASSUMPTIONS
         | {
-            "session_table_version": sessions.TABLE_VERSION,
+            "session_table_version": table_version,
             "gap_flag_sessions": int(gap_flag_sessions),
             "membership_floor": first_session.isoformat(),
         },
@@ -1264,7 +1285,7 @@ def import_legacy(
             "import_legacy_v1",
             f"cache_dir={inputs.cache_dir.name}",
             f"interval={interval}",
-            f"session_table={sessions.TABLE_VERSION}",
+            f"session_table={table_version}",
         ],
         universe=sha256_bytes(canonical_json(sorted(set(symbol_to_sid.values()))).encode("utf-8")),
     )

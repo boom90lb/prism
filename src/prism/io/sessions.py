@@ -48,7 +48,10 @@ built from that year's rules alone. ``tests/test_sessions.py`` checks this
 anyway by comparing every 2006-2027 row with a digest taken from the table
 before the extension. Do not extend the table past the last year the exchange
 has published. The weekly CI job fails once the table covers fewer than 180
-days ahead; that is the signal to add the next year.
+days ahead; that is the signal to add the next year. Each extension appends an
+entry to ``TABLE_RELEASES``. A dataset's manifest records the earliest release
+that covers its last date, so adding a year leaves the ``data_id`` of every
+dataset that ends before it unchanged.
 
 The extension is checked two-directionally against market data rather than
 against a transcription. ``tests/test_sessions.py`` compares the table's
@@ -76,7 +79,21 @@ COVERAGE_START = dt.date(2006, 1, 1)
 COVERAGE_END = dt.date(2028, 12, 31)
 
 TABLE_SOURCE = "NYSE/Nasdaq published holiday and early-close rules for US equities (rule-derived; 2006-2028)"
-TABLE_VERSION = "2006.2028-1"
+
+#: Every release of this table that a dataset may record, oldest first, as
+#: (version, last covered date). A release only appends years the exchange has
+#: published, so the rows an earlier release covers are identical in every
+#: later one (``tests/test_sessions.py`` checks 2006-2027 against a digest
+#: taken before 2028 was added). A dataset therefore records the earliest
+#: release that covers its last date (``table_version_for``), and its
+#: ``data_id`` survives an extension that changed nothing it depends on.
+#: Releases before 2006.2027-1 started later and were not compared row by row
+#: with this chain, so a dataset built under one keeps the version it recorded.
+TABLE_RELEASES: tuple[tuple[str, dt.date], ...] = (
+    ("2006.2027-1", dt.date(2027, 12, 31)),
+    ("2006.2028-1", COVERAGE_END),
+)
+TABLE_VERSION = TABLE_RELEASES[-1][0]
 
 # The exchange first closed for Juneteenth on 2022-06-20: the federal holiday
 # was signed on 2021-06-17 and June 19, 2021 fell on a Saturday, which the
@@ -265,6 +282,20 @@ def coverage() -> tuple[dt.date, dt.date]:
 def coverage_end() -> dt.date:
     """The last date the table covers — what the health check compares against its ninety-day warning."""
     return COVERAGE_END
+
+
+def table_version_for(last: dt.date) -> str:
+    """The table version a dataset whose dates end on ``last`` records in its manifest.
+
+    That is the earliest entry of ``TABLE_RELEASES`` covering ``last``: every row
+    such a dataset could have read is the same in that release and in every
+    later one. A date past all of them gets ``TABLE_VERSION``, the release that
+    answered for every date it could.
+    """
+    for version, through in TABLE_RELEASES:
+        if last <= through:
+            return version
+    return TABLE_VERSION
 
 
 def _require_covered(date: dt.date) -> None:

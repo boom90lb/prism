@@ -438,6 +438,24 @@ def test_a_series_outside_the_bundled_session_table_is_ingested_without_a_gap_sc
     assert report.manifest.coverage["gap_scan_skipped"], "the skipped scan is recorded, never silent"
 
 
+def test_the_manifest_records_the_earliest_session_table_release_covering_every_bar(tmp_path: Path) -> None:
+    """The workspace's latest bar decides, so a later 2024 ingest does not undo a 2028 one."""
+    root = tmp_path / "data"
+    mapping = _mapping(tmp_path)
+    early = tmp_path / "early.csv"
+    _frame(_sessions("2024-01-03", 8)).to_csv(early, index=False)
+    first = ingest_local_files(root, [early], mapping=mapping, fmt="csv", vintage="v1", ingested_at=INGESTED_AT)
+    assert first.manifest.assumptions["session_table_version"] == "2006.2027-1"
+
+    late = tmp_path / "late.csv"
+    _frame(_sessions("2028-03-01", 8), symbol="BBB").to_csv(late, index=False)
+    second = ingest_local_files(root, [late], mapping=mapping, fmt="csv", vintage="v1", ingested_at=LATER_INGEST)
+    assert second.manifest.assumptions["session_table_version"] == "2006.2028-1"
+
+    third = ingest_local_files(root, [early], mapping=mapping, fmt="csv", vintage="v1", ingested_at=LATER_INGEST)
+    assert third.manifest.assumptions["session_table_version"] == "2006.2028-1"
+
+
 def test_the_ingest_writes_the_event_tables_a_total_return_view_needs(tmp_path: Path) -> None:
     days = _sessions("2024-01-03", 4)
     path = tmp_path / "vendor.csv"

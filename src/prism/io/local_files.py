@@ -627,6 +627,9 @@ def ingest_local_files(
     written.extend(master.write(root))
     written.extend(ensure_event_tables(root))
     report = master.report()
+    # The latest bar the workspace holds, from this ingest or an earlier one, is
+    # the last date the table answered for.
+    last_bar = pd.Timestamp(_latest_bar_ts(root, sorted((root / "bars").glob("*.parquet")))).date()
     manifest = rebuild_manifest(
         root,
         vintage=vintage,
@@ -644,7 +647,7 @@ def ingest_local_files(
                 "available_at is empty on every ingested row; availability derives from the session close of the "
                 f"bar's own session plus the source's declared lag_bars ({mapping.source.lag_bars})"
             ),
-            "session_table_version": sessions.TABLE_VERSION,
+            "session_table_version": sessions.table_version_for(last_bar),
             "gap_flag_sessions": int(mapping.source.gap_flag_sessions),
             "revision_policy": mapping.source.revision_policy,
             "mapping": None if mapping.path is None else Path(mapping.path).name,
