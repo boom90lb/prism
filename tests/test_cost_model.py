@@ -921,3 +921,34 @@ def test_retail_v3_is_retail_v2_with_no_cash_income_and_a_square_root_impact_ter
     sources = tomllib.loads((REFERENCE_COSTS / "retail_v3.toml").read_text(encoding="utf-8"))["source"]
     assert sources["impact"]["class"] == "assumption"
     assert "Almgren" in sources["impact"]["reference"] and "Toth" in sources["impact"]["reference"]
+
+
+def test_the_canonical_engine_prices_an_active_participation_term_against_each_fill_sessions_volume() -> None:
+    """``prism.evaluate._impact_dollar_volume``: what the engine binds as ``CostInputs.adv_impact``.
+
+    Nothing for a stack whose term is inert, so retail_v1 and retail_v2 runs bind exactly the
+    inputs they always did; close times volume keyed by bar for retail_v3, which the cost model
+    reads at each fill's own bar; and a refusal for an estimator the engine does not implement.
+    """
+    from prism.evaluate import EvaluationError, _impact_dollar_volume  # noqa: PLC0415 - the engine's helper
+
+    index = pd.DatetimeIndex(["2026-05-01", "2026-05-04"]).tz_localize("America/New_York")
+    closes = pd.DataFrame({"AAA": [10.0, 11.0], "BBB": [20.0, np.nan]}, index=index)
+    volumes = pd.DataFrame({"AAA": [1_000.0, 2_000.0], "BBB": [500.0, 700.0]}, index=index)
+    for name in ("retail_v1", "retail_v2"):
+        assert _impact_dollar_volume(_reference_stack(name), closes, volumes) is None
+    v3 = _reference_stack("retail_v3")
+    panel = _impact_dollar_volume(v3, closes, volumes)
+    assert list(panel.index) == ["2026-05-01", "2026-05-04"]
+    assert panel.loc["2026-05-04", "AAA"] == 22_000.0 and np.isnan(panel.loc["2026-05-04", "BBB"])
+    model = CostModel(v3, CostInputs(as_of="2026-05-04", adv_impact=panel), equity=100_000.0)
+    # Below the $100k floor the floor prices it; a fill on a bar with no statistic is refused.
+    assert model._adv_impact("AAA", "2026-05-04") == 100_000.0
+    with pytest.raises(CostStackError, match="dollar_volume.impact"):
+        model._adv_impact("BBB", "2026-05-04")
+
+    declared = v3.declaration()
+    declared["dollar_volume"]["impact"] = dict(declared["dollar_volume"]["impact"], estimator="median",
+                                               window_bars=20, refresh="decision")
+    with pytest.raises(EvaluationError, match="same_bar"):
+        _impact_dollar_volume(CostStack.from_mapping(declared), closes, volumes)

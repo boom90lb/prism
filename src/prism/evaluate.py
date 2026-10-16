@@ -104,6 +104,8 @@ from prism.io.dataset import (
     StageNotAvailableError,
 )
 from prism.io.events import (
+    Event,
+    applied_share_factor,
     distribution_amounts,
     require_price_basis,
     series_price_basis,
@@ -148,6 +150,7 @@ from prism.validation.trials import (
     classify_claim_tier,
     compute_trial_metrics,
     empty_repair_counts,
+    executable_return,
     reconcile_trial_log,
     utc_now,
 )
@@ -365,12 +368,19 @@ def smoke_evaluate(
         last = grid[-1].isoformat()
         smoke_events = final_view.events(list(universe), span_start, last)
         decisions, _ = _canonical_decisions(targets)
+        smoke_closes = final_view.panel(list(universe), last, "close").reindex(index=opens.index)
+        smoke_volumes = final_view.panel(list(universe), last, "volume").reindex(index=opens.index)
+        smoke_inputs = CostInputs(
+            as_of=last,
+            scope="run",
+            adv_impact=_impact_dollar_volume(canonical.cost_stack, smoke_closes, smoke_volumes),
+        )
         simulation = simulate(
             _by_bar(opens),
-            _by_bar(final_view.panel(list(universe), last, "close").reindex(index=opens.index)),
+            _by_bar(smoke_closes),
             _by_bar(decisions),
-            cost_model=CostModel(canonical.cost_stack, CostInputs(as_of=last, scope="run"), equity=float(capital)),
-            volumes=_by_bar(final_view.panel(list(universe), last, "volume").reindex(index=opens.index)),
+            cost_model=CostModel(canonical.cost_stack, smoke_inputs, equity=float(capital)),
+            volumes=_by_bar(smoke_volumes),
             events=smoke_events,
             price_basis=_smoke_price_basis(ds, final_view, canonical.price_basis, smoke_events, last),
             initial_cash=float(capital),
@@ -1716,7 +1726,7 @@ def _resolve(
         "fold_portfolio": fold_portfolio,
         "accounting_engine": engine,
         "holding_process": ENGINE_HOLDING_PROCESS[engine],
-        "executable_return": ENGINE_EXECUTABLE_RETURN[engine],
+        "executable_return": executable_return(engine, None if canonical is None else canonical.fills.model),
         "capital": float(capital),
         "cost_refresh": cost_refresh,
         "price_basis": basis,
@@ -2643,7 +2653,10 @@ def _evaluate_stateful(
     closes = resolved.view.panel(universe, end, "close").reindex(index=resolved.session_index)
     volumes = resolved.view.panel(universe, end, "volume").reindex(index=resolved.session_index)
     events = resolved.view.events(universe, labels[0], end)
-    charged = _canonical_cost_model(resolved, canonical, spread_bps_per_name, capital=capital)
+    basis = _price_basis_for(resolved, [] if events.empty else events["sid"].astype(str).tolist())
+    charged = _canonical_cost_model(
+        resolved, canonical, spread_bps_per_name, capital=capital, closes=closes, volumes=volumes
+    )
 
     fold_at: dict[int, _FoldPlan] = {}
     for plan in plans_by_fold:
@@ -2669,6 +2682,13 @@ def _evaluate_stateful(
             session_index=resolved.session_index,
             universe=universe,
         )
+    # A tranched book holds each tranche in shares between its refreshes; a single-phase
+    # book decides only on its refresh bars and needs nothing beyond the simulator.
+    holdings: _TrancheHoldings | None = None
+    if any(
+        loaded.spec.grid_schedule is not None and int(loaded.spec.grid_schedule[0]) > 1 for loaded in spec.components
+    ):
+        holdings = _TrancheHoldings(split_factors=_split_share_factors(events, basis, index_of))
 
     def hook(call: DecisionCall) -> pd.Series | None:
         nonlocal states
@@ -2687,6 +2707,8 @@ def _evaluate_stateful(
             states = {}
             if sizing is not None:
                 sizing.reset(position)
+            if holdings is not None:
+                holdings.reset(position)
             held = {sid: 0.0 for sid, held_position in call.state.positions.items() if held_position.shares}
             if not held:
                 return None
@@ -2711,7 +2733,32 @@ def _evaluate_stateful(
             return None
         states = dict(scored.composition.states)
         if sizing is not None:
-            scored = sizing.size(scored, plan.plans, position=position, day=call.bar)
+            scored = sizing.size(
+                scored,
+                plan.plans,
+                position=position,
+                day=call.bar,
+                holdings=holdings,
+                equity=float(call.equity),
+                held=_held_shares(call),
+                increment=float(canonical.share_increment),
+            )
+        elif holdings is not None:
+            decided = holdings.target(
+                scored,
+                plan.plans,
+                factors={tranche.component_id: float(tranche.weight) for tranche in plan.plans},
+                equity=float(call.equity),
+                position=position,
+                held=_held_shares(call),
+                increment=float(canonical.share_increment),
+            )
+            scored = dataclasses.replace(scored, row=decided.row)
+        if holdings is not None and holdings.deferred:
+            warnings.append(
+                f"{call.bar}: entries into {holdings.deferred} deferred; a refreshing tranche targets them and they "
+                "have no price on this bar, so that tranche does not hold them until its next refresh"
+            )
         outcome = _construct_at_bar(
             call,
             spec=spec,
@@ -2735,6 +2782,14 @@ def _evaluate_stateful(
         decisions_by_fold[plan.fold.fold].append(call.bar)
         if outcome.construction is not None:
             row = pd.Series(outcome.construction.w_target, dtype=float).reindex(pd.Index(universe))
+            if holdings is not None and holdings.last is not None:
+                # A tranched book decides only what a refresh moves, and the constructor holds
+                # the rest at its held weight. The recorded target for those names is the one
+                # the tranches' holdings make, before whole-share rounding, so the target panel
+                # is the account's continuous target on every session.
+                full = holdings.last.full.reindex(row.index)
+                undecided = holdings.last.row.reindex(row.index).isna() & full.notna()
+                row = row.where(~undecided, full)
             targets.iloc[position] = row.to_numpy(dtype=float)
         return outcome.row
 
@@ -2744,7 +2799,7 @@ def _evaluate_stateful(
         cost_model=charged,
         volumes=_by_bar(volumes),
         events=events,
-        price_basis=_price_basis_for(resolved, [] if events.empty else events["sid"].astype(str).tolist()),
+        price_basis=basis,
         initial_cash=float(capital),
         fills=canonical.fills,
         increment=float(canonical.share_increment),
@@ -2842,7 +2897,13 @@ def _construct_at_bar(
         window=int(participation.window_bars) if participation is not None else 20,
         statistic=str(participation.estimator) if participation is not None else "median",
     )
-    costs = _constructor_costs(charged, bar=call.bar, equity=equity, horizon_bars=int(horizon_bars))
+    costs = _constructor_costs(
+        charged,
+        bar=call.bar,
+        equity=equity,
+        horizon_bars=int(horizon_bars),
+        sids=list(dict.fromkeys([*universe, *held])),
+    )
 
     forecasts: list[object] = []
     heuristic_target: pd.Series | None = None
@@ -2939,11 +3000,12 @@ def _defer_unpriced_entries(
 ) -> tuple[pd.Series, list[str]]:
     """Withhold the target of a name the account does not hold and cannot price on this bar.
 
-    Only a book on the session grid reaches this. Its tranches carry their sub-targets
-    between their own refreshes, and the account decides on every session one of them
-    refreshes, so the account target can name a stock no tranche is refreshing that has
-    no price on this bar: typically an entry ordered on the previous bar that did not
-    fill because the stock stopped trading. Rounding refuses to size a non-flat target
+    Applied to a book on the session grid, whose components carry their sub-targets
+    between their own refreshes: the account target can then name a stock the account
+    does not hold and that has no price on this bar, typically an entry ordered on the
+    previous bar that did not fill because the stock stopped trading. (A tranched book's
+    holdings already give a held name without a price no decision, and never enter an
+    unpriced one: :class:`_TrancheHoldings`.) Rounding refuses to size a non-flat target
     without a price (N7), and with nothing held there is nothing to keep or exit, so the
     name carries no decision on this bar -- the heuristic construction reads that as the
     held weight, zero -- and the entry waits for a priced bar. The deferred names are
@@ -3090,7 +3152,12 @@ class _VolSizing:
     held until the plan is next due; the target it sizes fills from the next
     open (N2). The account target is ``sum over plans of weight * scale *
     sub_target``, then capped at the rule's ``max_gross``. With every scale at
-    1.0 and the ceiling slack it is composition's own target, bit for bit.
+    1.0 and the ceiling slack it is composition's own target, bit for bit. A
+    tranched book is sized through :class:`_TrancheHoldings` instead: a plan's
+    ``weight * scale * sub_target`` becomes shares when the plan refreshes and is
+    held until it next does, and the ceiling caps the account target those
+    holdings make. Its base book is still the constant-weight mean of the
+    sub-targets described above.
 
     The base book is built from this run's decisions, so its returns start at
     the first test bar and every plan's first ``lookback_bars`` sessions are
@@ -3129,9 +3196,25 @@ class _VolSizing:
         self._snapshots[position] = self._snapshot(math.nan, target_gross=0.0, ceiling=1.0)
 
     def size(
-        self, scored: "_BarScores", plans: Sequence[ComponentPlan], *, position: int, day: str
+        self,
+        scored: "_BarScores",
+        plans: Sequence[ComponentPlan],
+        *,
+        position: int,
+        day: str,
+        holdings: "_TrancheHoldings | None" = None,
+        equity: float | None = None,
+        held: Mapping[str, float] | None = None,
+        increment: float | None = None,
     ) -> "_BarScores":
-        """``scored`` with its account target scaled: decide every due plan's scale, then size."""
+        """``scored`` with its account target scaled: decide every due plan's scale, then size.
+
+        Without ``holdings`` the target is ``sum_plan weight * scale * sub_target``, capped
+        at the ceiling. With them (a tranched book) each plan's scale is applied when the
+        plan refreshes and held in its shares until it next does, and the ceiling bounds
+        the account target those holdings make at ``equity``; ``held`` and ``increment``
+        are the account's shares and quantity grid (:meth:`_TrancheHoldings.target`).
+        """
         result = scored.composition
         by_id = {plan.component_id: plan for plan in plans}
         unknown = sorted(set(by_id) - set(self.group_of))
@@ -3164,9 +3247,33 @@ class _VolSizing:
         for cid, pids in self.groups.items():
             self._record_base(cid, position, self._base_weights(cid, pids, by_id, result.states))
 
-        target, ceiling = cap_gross(self._scaled_target(plans, result), float(self.rule.max_gross))
-        sized = pd.Series(0.0, index=scored.row.index, dtype=float)
-        sized.loc[target.index] = target.to_numpy(dtype=float)
+        if holdings is None:
+            target, ceiling = cap_gross(self._scaled_target(plans, result), float(self.rule.max_gross))
+            sized = pd.Series(0.0, index=scored.row.index, dtype=float)
+            sized.loc[target.index] = target.to_numpy(dtype=float)
+            target_gross = float(np.nansum(np.abs(target.to_numpy(dtype=float))))
+        else:
+            if equity is None or increment is None:
+                raise EvaluationError(
+                    f"{day}: a tranched book is sized against the marked equity and the account's quantity grid, "
+                    "and one of them was not given"
+                )
+            factors = {
+                plan.component_id: float(plan.weight) * self._scales[plan.component_id]
+                for plan in plans
+                if plan.component_id in self._scales
+            }
+            decided = holdings.target(
+                scored,
+                plans,
+                factors=factors,
+                equity=float(equity),
+                position=position,
+                held=held if held is not None else {},
+                increment=float(increment),
+                max_gross=float(self.rule.max_gross),
+            )
+            sized, ceiling, target_gross = decided.row, decided.ceiling, decided.gross
         holding = [
             (abs(float(plan.weight)), self._scales[plan.component_id])
             for plan in plans
@@ -3174,9 +3281,7 @@ class _VolSizing:
         ]
         weight = sum(entry[0] for entry in holding)
         account_scale = sum(entry[0] * entry[1] for entry in holding) / weight if weight > 0.0 else math.nan
-        self._snapshots[position] = self._snapshot(
-            account_scale, target_gross=float(np.nansum(np.abs(target.to_numpy(dtype=float)))), ceiling=ceiling
-        )
+        self._snapshots[position] = self._snapshot(account_scale, target_gross=target_gross, ceiling=ceiling)
         return dataclasses.replace(scored, row=sized)
 
     def finish(self, result: PortfolioBacktestResult) -> _SizingOutput:
@@ -3299,6 +3404,231 @@ class _VolSizing:
         return pd.Series(total, index=index, dtype=float)
 
 
+def _split_share_factors(
+    events: pd.DataFrame, price_basis: str | Mapping[str, str], positions: Mapping[str, int]
+) -> dict[int, dict[str, float]]:
+    """Per session position, the factor each split multiplies a held position's shares by on it.
+
+    The factor is the simulator's own (:func:`prism.io.events.applied_share_factor`): the
+    declared ratio on a ``raw`` series, 1.0 on a ``split_adjusted_at_ingest`` one, whose
+    prices already carry it. A split effective on a date that is not a session of the run
+    is applied by no one, here or in the simulator.
+    """
+    factors: dict[int, dict[str, float]] = {}
+    if events.empty:
+        return factors
+    for row in events.loc[events["event_type"].astype(str) == "split"].to_dict("records"):
+        event = Event.from_row({str(key): value for key, value in row.items()})
+        sid = str(event.sid)
+        if isinstance(price_basis, Mapping):
+            if sid not in price_basis:
+                raise EvaluationError(
+                    f"{sid}: a split on {event.effective_date} names a series with no declared price basis, and the "
+                    "basis decides whether the split moves shares at all (D3)"
+                )
+            basis = str(price_basis[sid])
+        else:
+            basis = str(price_basis)
+        factor = applied_share_factor("split", basis, float(event.payload["factor"]))
+        position = positions.get(str(event.effective_date))
+        if factor == 1.0 or position is None:
+            continue
+        on_bar = factors.setdefault(int(position), {})
+        on_bar[sid] = on_bar.get(sid, 1.0) * factor
+    return factors
+
+
+def _held_shares(call: DecisionCall) -> dict[str, float]:
+    """The account's non-zero share counts at the decision close."""
+    return {str(sid): float(position.shares) for sid, position in call.state.positions.items() if position.shares}
+
+
+def _positive_price(value: object) -> float | None:
+    try:
+        number = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+    return number if math.isfinite(number) and number > 0.0 else None
+
+
+class _TrancheHoldings:
+    """Each plan's holding, in shares, between its own refreshes: the account side of a tranched book.
+
+    Composition carries each plan's sub-target as a weight and its account target is
+    ``sum_p weight_p * sub_target_p``. A tranched book decides on every session one of its
+    tranches refreshes, so re-targeting that sum would trade the whole held book back to
+    constant weights every session, which no single-phase book does. This class gives each
+    plan what a single-phase book has between its refreshes: shares.
+
+    * At a plan's refresh (it is due, or its output expired) its holding is reset to
+      ``factor_p * sub_target_p * E_t / P_t`` shares per name, where ``factor_p`` is its
+      weight (times its volatility scale under ``[sizing]``), ``E_t`` the marked equity
+      and ``P_t`` the decision close. A name with a sub-target and no price on the bar
+      keeps the plan's previous holding in it, or, if it had none, is not entered and is
+      reported as deferred.
+    * Between refreshes the shares are held, so the holding drifts with prices, as an
+      overlapping Jegadeesh-Titman cohort does. A split on a raw-basis series restates the
+      shares by the factor the simulator applies to the account
+      (:func:`_split_share_factors`), so a holding is continuous across it.
+    * The account target at close *t* is ``sum_p shares_p * P_t / E_t``; a name no plan
+      holds is flat where composition has a value for it, and a held name with no price on
+      the bar has no target. The decision row carries the target only for the names a
+      refreshing plan held or now holds and for names whose held shares have come apart
+      from the plans' holdings by more than half an increment (an unfilled order, or a
+      position no plan holds); every other name carries no decision, which the
+      constructor reads as the held position. So the orders are the refreshing plan's
+      change and those catch-ups, and nothing else.
+    * With ``max_gross`` the account target is capped at it (:func:`cap_gross`). When the
+      cap binds, every plan's holding is scaled by the same factor and every name is
+      decided, which trades the whole book on that session; the factor is returned so the
+      session is recorded.
+
+    The single-phase rows of a book need none of this: they decide only on their own refresh
+    bars and hold shares in between. :meth:`reset` forgets every holding when an excluded
+    fold flattens the account.
+    """
+
+    def __init__(self, *, split_factors: Mapping[int, Mapping[str, float]] | None = None) -> None:
+        self.split_factors = {int(at): dict(by_sid) for at, by_sid in (split_factors or {}).items()}
+        self.shares: dict[str, dict[str, float]] = {}
+        self.deferred: list[str] = []
+        self.last: _HeldTarget | None = None
+        self._through = -1
+
+    def reset(self, position: int) -> None:
+        """Forget every plan's holding: the account was flattened and starts again."""
+        self.shares = {}
+        self.deferred = []
+        self.last = None
+        self._through = int(position)
+
+    def _restate(self, position: int) -> None:
+        """Apply every split effective after the last bar seen, through ``position``."""
+        for at in sorted(at for at in self.split_factors if self._through < at <= position):
+            for sid, factor in self.split_factors[at].items():
+                for held in self.shares.values():
+                    if sid in held:
+                        held[sid] *= factor
+        self._through = max(self._through, int(position))
+
+    def target(
+        self,
+        scored: "_BarScores",
+        plans: Sequence[ComponentPlan],
+        *,
+        factors: Mapping[str, float],
+        equity: float,
+        position: int,
+        held: Mapping[str, float],
+        increment: float,
+        max_gross: float | None = None,
+    ) -> "_HeldTarget":
+        """This close's decision row over ``scored.row``'s index, with the account target's gross and ceiling.
+
+        ``held`` is the account's shares at this close and ``increment`` its quantity grid
+        (0.0 continuous). The row carries a value only for a name a refreshing plan held
+        or holds, a name whose held shares have come apart from the plans' holdings by more
+        than half an increment (an unfilled or rounded order being caught up), and every
+        name when the ceiling binds; every other name carries no decision, which the
+        constructor reads as the held position. ``gross`` is the gross of the whole account
+        target, the held drift included.
+        """
+        day = scored.day
+        if not (math.isfinite(float(equity)) and float(equity) > 0.0):
+            raise EvaluationError(f"{day}: a tranched book needs a positive marked equity, got {equity!r} (N7)")
+        self._restate(position)
+        result = scored.composition
+        prices = scored.close.iloc[-1] if len(scored.close) else pd.Series(dtype=float)
+        refreshed = {str(output.component_id) for output in result.component_outputs if output.due or output.expired}
+        deferred: list[str] = []
+        touched: set[str] = set()
+        for plan in plans:
+            pid = str(plan.component_id)
+            if pid not in refreshed:
+                continue
+            previous = self.shares.get(pid, {})
+            touched.update(previous)
+            fresh: dict[str, float] = {}
+            for sid, value in result.states[pid].sub_targets.items():
+                weight = float(value)
+                if weight == 0.0:
+                    continue
+                if pid not in factors:
+                    raise EvaluationError(
+                        f"{day}: plan {pid!r} holds sub-targets and has no sizing factor; the tranched book saw a "
+                        "state it did not produce (N7)"
+                    )
+                key = str(sid)
+                price = _positive_price(prices.get(key))
+                if price is not None:
+                    fresh[key] = float(factors[pid]) * weight * float(equity) / price
+                elif key in previous:
+                    fresh[key] = previous[key]
+                else:
+                    deferred.append(key)
+            self.shares[pid] = fresh
+            touched.update(fresh)
+
+        totals: dict[str, float] = {}
+        for plan in plans:
+            for sid, count in self.shares.get(str(plan.component_id), {}).items():
+                totals[sid] = totals.get(sid, 0.0) + count
+        row = pd.Series(scored.row, dtype=float)
+        unknown = sorted(sid for sid in totals if sid not in row.index)
+        if unknown:
+            raise EvaluationError(f"{day}: tranches hold {unknown[:5]}, which are not in the run's universe")
+        values = np.where(row.isna().to_numpy(), np.nan, 0.0)
+        slot = {str(sid): number for number, sid in enumerate(row.index)}
+        for sid in deferred:
+            if sid not in totals:
+                values[slot[sid]] = np.nan
+        for sid, count in totals.items():
+            price = _positive_price(prices.get(sid))
+            values[slot[sid]] = np.nan if price is None else count * price / float(equity)
+        target = pd.Series(values, index=row.index, dtype=float)
+        ceiling = 1.0
+        if max_gross is not None:
+            target, ceiling = cap_gross(target, float(max_gross))
+            if ceiling != 1.0:
+                for holding in self.shares.values():
+                    for sid in holding:
+                        holding[sid] *= ceiling
+        gross = float(np.nansum(np.abs(target.to_numpy(dtype=float))))
+        self.deferred = sorted(set(deferred))
+        if ceiling != 1.0:
+            self.last = _HeldTarget(row=target, full=target, gross=gross, ceiling=ceiling)
+            return self.last
+        step = float(increment)
+        for sid in set(totals) | {str(sid) for sid, shares in held.items() if float(shares) != 0.0}:
+            if sid in touched or sid not in slot:
+                continue
+            planned, account = totals.get(sid, 0.0), float(held.get(sid, 0.0))
+            gap = abs(planned - account)
+            if (step > 0.0 and gap > 0.5 * step) or (step <= 0.0 and gap > 1e-9 * max(1.0, abs(planned))):
+                touched.add(sid)
+        decided = np.full(len(row.index), np.nan)
+        places = np.fromiter((slot[sid] for sid in touched if sid in slot), dtype=np.intp)
+        decided[places] = target.to_numpy(dtype=float)[places]
+        self.last = _HeldTarget(
+            row=pd.Series(decided, index=row.index, dtype=float), full=target, gross=gross, ceiling=ceiling
+        )
+        return self.last
+
+
+@dataclass(frozen=True)
+class _HeldTarget:
+    """One close's decision row for a tranched book, the whole account target, its gross, and the ceiling factor.
+
+    ``row`` is what is decided (NaN where nothing is); ``full`` is the account target the
+    tranches' holdings make at this close, every held name included.
+    """
+
+    row: pd.Series
+    full: pd.Series
+    gross: float
+    ceiling: float
+
+
 def _decision_marks(prices: pd.Series, index: pd.Index, *, state: object, bar: str) -> pd.Series:
     """The price every name in the constructor universe is marked at, or a refusal.
 
@@ -3343,7 +3673,9 @@ def _decision_marks(prices: pd.Series, index: pd.Index, *, state: object, bar: s
     return marks.where(~still, 0.0)
 
 
-def _constructor_costs(charged: CostModel, *, bar: str, equity: float, horizon_bars: int) -> CostModel:
+def _constructor_costs(
+    charged: CostModel, *, bar: str, equity: float, horizon_bars: int, sids: Sequence[str]
+) -> CostModel:
     """The charged policy as the constructor's cost functions, on this bar's spread.
 
     The accounting model carries a bar-by-name spread frame under ``cost_refresh = "fold"``
@@ -3351,13 +3683,27 @@ def _constructor_costs(charged: CostModel, *, bar: str, equity: float, horizon_b
     this bar is bound here. The stack, the schedule and the fallback are the charged
     model's own: the constructor optimizes against the policy the account is charged
     under, which is the only way the modeled and charged costs are the same policy (§3.6).
+
+    The charged model's ``dollar_volume.impact`` panel is the fill session's own volume,
+    which no decision may read, so it is not bound here. ``convex_terms`` prices the
+    participation term against the trailing participation statistic it is given; a name
+    without one falls back to ``adv_impact``, which is bound to the stack's
+    ``floor_dollars`` for every name in ``sids`` when the term is active. That is the most
+    expensive price the stack allows (unknown liquidity is never cheap), and it is never
+    a charge: the participation bound holds a name with no trailing statistic, so the
+    constructor's trade on it is zero.
     """
     spread = None if charged.inputs is None else charged.inputs.spread_bps
     if isinstance(spread, pd.DataFrame):
         spread = spread.loc[bar] if bar in spread.index else None
+    adv_impact = None
+    stack = charged.stack
+    if stack is not None and stack.impact.participation_coeff > 0.0 and stack.impact.participation_model != "none":
+        floor = float(stack.dollar_volume["impact"].floor_dollars)
+        adv_impact = pd.Series(floor, index=pd.Index([str(sid) for sid in sids]), dtype=float)
     return CostModel(
         charged.stack,
-        CostInputs(as_of=bar, scope="run", spread_bps=spread),
+        CostInputs(as_of=bar, scope="run", spread_bps=spread, adv_impact=adv_impact),
         spread=charged.spread,
         equity=float(equity),
         horizon_bars=int(horizon_bars),
@@ -3948,12 +4294,45 @@ def _by_bar(frame: pd.DataFrame | None) -> pd.DataFrame | None:
     return out
 
 
+def _impact_dollar_volume(stack: CostStack, closes: pd.DataFrame, volumes: pd.DataFrame) -> pd.DataFrame | None:
+    """The ``dollar_volume.impact`` statistic the charged participation term divides by (§3.6).
+
+    None when the term is inert (``participation_coeff = 0`` or ``participation_model =
+    "none"``), so a stack that charges nothing for it binds exactly the inputs it always
+    did, and its ``cost_inputs_id`` is unchanged. Otherwise a bar-by-name panel keyed by
+    bar, which ``CostModel._adv_impact`` reads at each fill's own bar.
+
+    ``estimator = "same_bar"`` is the fill session's close times its volume: the full-day
+    dollar volume of the session the order fills in. That makes it a cost-side input
+    known only after the session closes; the simulator reads it when it charges a fill,
+    and no decision reads it (the constructor's cost functions price against the trailing
+    participation statistic, :func:`_constructor_costs`). The stack's ``floor_dollars``
+    is applied by the cost model. No other estimator is implemented for this use, so one
+    is refused rather than approximated (N7).
+    """
+    impact = stack.impact
+    if impact.participation_coeff <= 0.0 or impact.participation_model == "none":
+        return None
+    declared = stack.dollar_volume["impact"]
+    if declared.estimator != "same_bar":
+        raise EvaluationError(
+            f"cost stack {stack.stack_id}: dollar_volume.impact.estimator={declared.estimator!r} prices a non-zero "
+            f"participation term (participation_coeff={impact.participation_coeff}), and the canonical engine "
+            "implements only 'same_bar' for that statistic. Declare 'same_bar' or add the estimator; a "
+            "statistic nobody implemented is never approximated (N7)"
+        )
+    dollar = closes * volumes.reindex(index=closes.index, columns=closes.columns)
+    return _by_bar(dollar)
+
+
 def _canonical_cost_model(
     resolved: _Resolved,
     canonical: CanonicalSettings,
     spread_bps_per_name: pd.Series | pd.DataFrame | None,
     *,
     capital: float,
+    closes: pd.DataFrame | None = None,
+    volumes: pd.DataFrame | None = None,
 ) -> CostModel:
     """The declared stack, bound to the spread the reproduction engine would have charged.
 
@@ -3962,9 +4341,21 @@ def _canonical_cost_model(
     *same* spread on the same name-day. A difference between the engines is then
     a difference in the holding process and in nothing else, which is the only
     way the comparison this stage owes means anything.
+
+    ``closes`` and ``volumes`` are the panels the simulator marks and fills on; a
+    stack with a non-zero participation term is priced against their product at
+    each fill's bar (:func:`_impact_dollar_volume`), and is refused without them.
     """
     stack = canonical.cost_stack
-    inputs = CostInputs(as_of=resolved.session_labels[-1], scope="run")
+    adv_impact = None
+    if stack.impact.participation_coeff > 0.0 and stack.impact.participation_model != "none":
+        if closes is None or volumes is None:
+            raise EvaluationError(
+                f"cost stack {stack.stack_id} charges a participation term against dollar_volume.impact, and the "
+                "close and volume panels it is priced on were not given (N7)"
+            )
+        adv_impact = _impact_dollar_volume(stack, closes, volumes)
+    inputs = CostInputs(as_of=resolved.session_labels[-1], scope="run", adv_impact=adv_impact)
     if spread_bps_per_name is not None:
         # Only the *mode* changes: the schedule and flat_bps the stack declared
         # stay, and stay in that order, so a name the vector does not price
@@ -3989,6 +4380,7 @@ def _canonical_cost_model(
             as_of=resolved.session_labels[-1],
             scope="fold" if per_bar else "run",
             spread_bps=_by_bar(spread_bps_per_name) if per_bar else spread_bps_per_name,
+            adv_impact=adv_impact,
         )
     return CostModel(stack, inputs, equity=float(capital))
 
@@ -4019,7 +4411,9 @@ def _simulate_canonical(
         _by_bar(resolved.opens),
         _by_bar(closes),
         _by_bar(decisions),
-        cost_model=_canonical_cost_model(resolved, canonical, spread_bps_per_name, capital=capital),
+        cost_model=_canonical_cost_model(
+            resolved, canonical, spread_bps_per_name, capital=capital, closes=closes, volumes=volumes
+        ),
         volumes=_by_bar(volumes),
         events=events,
         price_basis=_price_basis_for(resolved, [] if events.empty else events["sid"].astype(str).tolist()),
@@ -4334,7 +4728,9 @@ def _write_record(
                 loaded.component_id: str(loaded.declarations["scoring_basis"]) for loaded in spec.components
             },
             "price_basis": "as_traded_close",
-            "executable_return": ENGINE_EXECUTABLE_RETURN[engine],
+            "executable_return": executable_return(
+                engine, None if canonical is None else canonical.fills.model
+            ),
             "excess_return_definition": UNAVAILABLE,
             "hurdle_series_id": UNAVAILABLE,
             "hurdle_conversion": UNAVAILABLE,

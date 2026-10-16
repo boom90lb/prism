@@ -8,9 +8,13 @@
 #    dollar = Y * sigma * sqrt(q / V), with Y = 0.7 and a daily volatility sigma = 1.8%
 #    assumed for every name, so Y * sigma = 0.0126 = 126 bp. q is the account's own decided
 #    order notional and V the same-bar dollar volume, floored at $100,000
-#    (`[dollar_volume.impact]`, unchanged). The term prices the account's own trade only;
-#    prism.validation.capacity re-prices recorded trades with other deployments' flow
-#    added and with each name's own trailing volatility.
+#    (`[dollar_volume.impact]`, unchanged). "Same bar" is the session the order fills in:
+#    V is that session's close times its full-day volume. It is a cost-side input, known
+#    only after the fill session closes, that the canonical engine reads when it charges a
+#    fill (prism.evaluate._impact_dollar_volume); no decision reads it, and the constructor's
+#    cost functions use the trailing participation statistic below. The term prices the
+#    account's own trade only; prism.validation.capacity re-prices recorded trades with other
+#    deployments' flow added and with each name's own trailing volatility.
 #
 # Everything else is retail_v2's: bucket half spreads, 1 bp commission, 50 bp/yr borrow on
 # short market value, the quadratic impact term, 6.5% financing on debit cash and

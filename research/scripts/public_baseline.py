@@ -94,11 +94,25 @@ section 2b leaves open are fixed here:
 
 Interpretations, stated so a reader can disagree with them
 ----------------------------------------------------------
+* A tranched row holds each tranche in shares between its own refreshes
+  (``prism.evaluate._TrancheHoldings``), as overlapping Jegadeesh-Titman
+  cohorts are held. A session's orders are the refreshing tranche's change and
+  the catch-up of a position that came apart from the tranches' holdings (an
+  unfilled order, the second half of a sign flip the zero-crossing clamp
+  split); the rest of the book is not traded back to constant weights.
 * Criterion 5's "no session's gross exceeds 2.0" is read on the decided
-  target: the rule's ceiling binds each decision's target, and between one
-  tranche's refreshes the held book drifts with prices and can close above it.
-  The held maximum and the number of sessions above the ceiling are reported
-  beside the criterion.
+  target: the rule's ceiling binds each decision's target, which for a
+  tranched row is the whole account target, the drifted holdings of the
+  tranches that did not refresh included; on a session where it binds every
+  tranche is scaled alike and the whole book trades (``ceiling_sessions``).
+  Between decisions the held book drifts with prices and fills and can close
+  above the ceiling. The held maximum and the number of sessions above the
+  ceiling are reported beside the criterion.
+* Wash-sale pairs are counted from the fills, not from the recorded targets: a
+  tranched row's target moves with prices between refreshes without a trade.
+* ``--retry <id>`` re-runs only a row whose last attempt failed, never ended,
+  or finished with a mechanics failure (for P00, a failed parity gate). Every
+  attempt is listed in ``summary.json`` under ``attempts``.
 * Criterion 6's bound is ``tranching_paired_lower_bound``: the criterion fails
   when the whole paired interval lies below it.
 * The N4 check rebuilds every session's change in equity from held shares,
@@ -1270,6 +1284,8 @@ def evaluate_row(
         trial_log=str(result.log_path),
         seconds=time.time() - started,
         memory_after=_rss(),
+        executable_return=result.record.conventions["executable_return"],
+        fill_model=result.record.evaluation["engine"]["settings"]["fills"]["model"],
         engine={key: result.record.evaluation["engine"].get(key) for key in
                 ("n_decision_bars", "n_fills", "n_orders", "n_events_applied", "max_stale_marks",
                  "pending_orders_at_end", "final_cash")},
@@ -1487,16 +1503,16 @@ def held_book_ic(decisions: pd.DataFrame, closes: pd.DataFrame, horizon: int) ->
             "se_non_overlapping": se, "n_non_overlapping": int(len(spaced))}
 
 
-def wash_sale_pairs(targets: pd.DataFrame, first: pd.Timestamp | None = None, last: pd.Timestamp | None = None,
+def wash_sale_pairs(trades: pd.DataFrame, first: pd.Timestamp | None = None, last: pd.Timestamp | None = None,
                     days: int = WASH_SALE_DAYS) -> dict[str, Any]:
-    """Opposite-direction target changes of one name within ``days`` calendar days, from the decision rows.
+    """A buy and a sell of one name within ``days`` calendar days, consecutive in that name's trades.
 
-    Changes are taken along the whole target path (the first row is the book's
-    first build); a pair counts when both of its changes fall in ``[first, last]``.
+    ``trades`` is the row's signed traded notional by fill session and name (both legs of a
+    split order summed), built from its fills: under tranching the recorded targets move with
+    prices between refreshes without any trade, so they cannot say when the account bought or
+    sold. A pair counts when both of its trades fall in ``[first, last]``.
     """
-    full = targets.fillna(0.0)
-    change = full.diff()
-    change.iloc[0] = full.iloc[0]
+    change = trades.fillna(0.0).sort_index()
     lo = change.index[0] if first is None else first
     hi = change.index[-1] if last is None else last
     change = change.loc[(change.index >= lo) & (change.index <= hi)]
@@ -1688,12 +1704,14 @@ def summarize(ctx: Context, *, parity: Mapping[str, Any]) -> dict[str, Any]:
                    "dataset": dict(impl["dataset"]), "cost_stack": str(impl["cost_stack"]),
                    "rows": {row_id: {k: records[row_id].get(k) for k in ("run_id", "config_id", "data_id", "kind",
                                                                          "code_commit", "specification_sha256",
-                                                                         "record_sha256", "fold_table_sha256")}
+                                                                         "record_sha256", "fold_table_sha256",
+                                                                         "fill_model", "executable_return")}
                             for row_id in ids}},
         "conventions": {"in_house": "price return (no cash distributions in the frozen dataset)",
                         "reference": "total return (French daily momentum factor, scaled by the rule, gross)",
                         "note": "the in-house and public series differ in return convention; the dividend wedge is "
-                                "not charged"},
+                                "not charged",
+                        "executable_return": {row_id: records[row_id].get("executable_return") for row_id in ids}},
         "window": {"first": str(first.date()), "last": str(last.date()), "n": int(len(t21))},
         "criteria": criteria_block,
         "approved": bool(approved),
@@ -1709,6 +1727,7 @@ def summarize(ctx: Context, *, parity: Mapping[str, Any]) -> dict[str, Any]:
     summary["rounding"] = rounding_block(ctx, series, first, last)
     summary["diagnostics"] = diagnostics_block(ctx, series, reference, bar, rf)
     summary["flow"] = flow_block(ctx, series, phases, candidate)
+    summary["attempts"] = attempts_block(ctx) if ctx.dataset is not None else {"skipped": "no dataset was opened"}
     return summary
 
 
@@ -1773,13 +1792,13 @@ def tranching_mechanics(ctx: Context, series: Mapping[str, pd.DataFrame], phases
         fills = _fills_with_equity(out, row_id, load_series(out, row_id))
         fills = fills.loc[(fills["date"] >= first) & (fills["date"] <= last)]
         orders = fills.groupby(["date", "sid"])["notional"].sum().abs()
-        targets = _parquet(out, row_id, "targets")
+        trades = fills.pivot_table(index="date", columns="sid", values="notional", aggfunc="sum")
         return {"turnover_annual": float(frame["turnover"].mean() * per_year),
                 "cost_drag_sharpe": float(frame["cost"].mean() * per_year /
                                           (frame["net"].std(ddof=1) * math.sqrt(per_year))),
                 "orders_per_session": float(len(orders) / len(frame)),
                 "median_order_notional": float(orders.median()) if len(orders) else None,
-                "wash_sale": wash_sale_pairs(targets, first, last),
+                "wash_sale": wash_sale_pairs(trades, first, last),
                 "scale": {"mean": float(frame["scale"].mean()), "min": float(frame["scale"].min()),
                           "max": float(frame["scale"].max()),
                           "at_cap_fraction": float((frame["scale"] >= float(ctx.baseline.table("source")["max_scale"])
@@ -1876,7 +1895,9 @@ def diagnostics_block(ctx: Context, series: Mapping[str, pd.DataFrame], referenc
     for row in diagnostic_rows(baseline):
         frame = series[row.id]
         fid = fidelity(frame["net"], reference, floor)
-        entry = {"tracking": fid, "economics": economics_of(frame["net"], frame["cost"], frame, rho=fid["daily_corr"],
+        record = load_row_record(out, row.id)
+        entry = {"fill_model": record.get("fill_model"), "executable_return": record.get("executable_return"),
+                 "tracking": fid, "economics": economics_of(frame["net"], frame["cost"], frame, rho=fid["daily_corr"],
                                                            prior=prior, rf=rf, baseline=baseline),
                  "paired_vs_candidate": paired(frame["net"], series[candidate]["net"], baseline,
                                                f"{row.id}_minus_{candidate}"),
@@ -2080,7 +2101,10 @@ def capacity(ctx: Context) -> dict[str, Any]:
         frame = _window(full, first, last)
         fills = _fills_with_equity(out, row_id, full)
         fills = fills.loc[fills["date"].isin(frame.index)]
-        trades = fills.assign(abs_notional=fills["notional"].abs()).pivot_table(
+        # Each order's decided notional (quantity at the decision close's reference price), which is what the
+        # engine charges the participation term on; a D-split order's two legs sum to it.
+        decided = (fills["qty"].astype(float) * fills["reference_price"].astype(float)).abs()
+        trades = fills.assign(abs_notional=decided).pivot_table(
             index="date", columns="sid", values="abs_notional", aggfunc="sum").reindex(frame.index).fillna(0.0)
         close, volume = _price_panels(ctx.dataset, list(trades.columns), str(last.date()))
         dollar = close * volume
@@ -2229,12 +2253,15 @@ def run_rows(root: Path, args: argparse.Namespace, *, fetch: Fetcher | None) -> 
     for row_id in retry:
         baseline.row(row_id)
     wanted = None if not args.rows else set(args.rows.split(","))
+    p00 = baseline.phase_ids[0]
     plan: list[tuple[Row, str]] = []
     for row in baseline.run_order():
         status = row_status(ledger, row.id)
         if row.id in retry or (args.retry == "failed" and status in (FAILED, INCOMPLETE, STARTED)):
             if status is None:
                 raise BaselineError(f"row {row.id} has no first attempt to retry")
+            if status == FINISHED:
+                refuse_finished_retry(out, row.id, parity_row=p00)
             plan.append((row, "retry"))
         elif status is None:
             plan.append((row, "new"))
@@ -2246,7 +2273,10 @@ def run_rows(root: Path, args: argparse.Namespace, *, fetch: Fetcher | None) -> 
             raise BaselineError(f"row {row.id}'s last attempt is {status!r}; re-run it with --retry failed")
     if wanted is not None:
         plan = [(row, kind) for row, kind in plan if row.id in wanted]
-    p00 = baseline.phase_ids[0]
+    if (row_status(ledger, p00) == FINISHED and p00 not in {row.id for row, _ in plan}
+            and not (out / "parity.json").is_file() and (out / "rows" / p00 / "row.json").is_file()):
+        # P00 finished and its gate was never read (the driver stopped in between): read it from the record.
+        read_parity_gate(ctx, out, baseline)
     for row, kind in plan:
         if row.id != p00:
             parity_path = out / "parity.json"
@@ -2258,20 +2288,7 @@ def run_rows(root: Path, args: argparse.Namespace, *, fetch: Fetcher | None) -> 
         evaluate_row(root=root, out=out, baseline=baseline, row=row, dataset=dataset, folds=folds, kind=kind,
                      code_commit=code_commit)
         if row.id == p00:
-            gate = parity_gate(ctx)
-            _write_json(out / "parity.json", gate)
-            record = load_row_record(out, p00)
-            record["mechanics"]["parity"] = gate
-            record["mechanics"]["pass"] = bool(record["mechanics"]["pass"] and gate["pass"])
-            _write_json(out / "rows" / p00 / "row.json", record)
-            if not gate["pass"]:
-                _write_json(out / "summary.json", {
-                    "registration": {"id": baseline.id, "sha256": baseline.sha256},
-                    "verdict": "mechanics_failure", "approved": False, "parity": gate,
-                    "note": "P00 failed the parity gate: the run stopped, the row is recorded as a mechanics failure "
-                            "and no verdict is read. A re-run after a fix is a retry and spends nothing."})
-                raise ParityFailure(f"P00 failed the parity gate (corr {gate['daily_corr']:.4f}, "
-                                    f"|dSharpe| {gate['abs_sharpe_diff']:.4f}); the run stops")
+            read_parity_gate(ctx, out, baseline)
     ledger = _ledger_rows(log_path)
     unfinished = [row.id for row in baseline.rows if row_status(ledger, row.id) != FINISHED]
     if unfinished:
@@ -2279,6 +2296,86 @@ def run_rows(root: Path, args: argparse.Namespace, *, fetch: Fetcher | None) -> 
         return 0
     write_full_summary(ctx)
     return 0
+
+
+def read_parity_gate(ctx: Context, out: Path, baseline: Baseline) -> dict[str, Any]:
+    """Apply the parity gate to P00's recorded row, write ``parity.json``, and stop the run if it fails."""
+    p00 = baseline.phase_ids[0]
+    gate = parity_gate(ctx)
+    _write_json(out / "parity.json", gate)
+    record = load_row_record(out, p00)
+    record["mechanics"]["parity"] = gate
+    record["mechanics"]["pass"] = bool(record["mechanics"]["pass"] and gate["pass"])
+    _write_json(out / "rows" / p00 / "row.json", record)
+    if not gate["pass"]:
+        _write_json(out / "summary.json", {
+            "registration": {"id": baseline.id, "sha256": baseline.sha256},
+            "verdict": "mechanics_failure", "approved": False, "parity": gate,
+            "note": "P00 failed the parity gate: the run stopped, the row is recorded as a mechanics failure "
+                    "and no verdict is read. A re-run after a fix is a retry and spends nothing."})
+        raise ParityFailure(f"P00 failed the parity gate (corr {gate['daily_corr']:.4f}, "
+                            f"|dSharpe| {gate['abs_sharpe_diff']:.4f}); the run stops")
+    return gate
+
+
+def refuse_finished_retry(out: Path, row_id: str, *, parity_row: str) -> None:
+    """Refuse to re-run a row whose last attempt finished cleanly (design section 4: only failed rows are retried).
+
+    A retry spends nothing, so it is open only to an attempt that failed, never ended, or
+    finished with a mechanics failure, which for the parity row includes a failed parity
+    gate. A finished row whose outputs are missing may be re-run to restore them; every
+    attempt stays in the ledger and in the summary's ``attempts`` block either way.
+    """
+    path = out / "rows" / row_id / "row.json"
+    if not path.is_file():
+        return
+    mechanics = json.loads(path.read_text()).get("mechanics", {})
+    if row_id == parity_row:
+        gate_path = out / "parity.json"
+        if gate_path.is_file() and not json.loads(gate_path.read_text()).get("pass"):
+            return
+    if mechanics.get("pass") is not True:
+        return
+    raise BaselineError(
+        f"row {row_id}'s last attempt finished and passed its mechanics checks; a finished counted row is never "
+        "re-run as a retry. A retry spends nothing only for an attempt that failed, never ended, or failed its "
+        "mechanics (for the parity row, its gate)")
+
+
+def attempts_block(ctx: Context) -> dict[str, list[dict[str, Any]]]:
+    """Every attempt at every row, in ledger order, with the record each finished attempt wrote.
+
+    The summary reads each row's latest attempt; this lists the attempts it superseded beside
+    it, so a re-run is visible next to the verdict.
+    """
+    if ctx.dataset is None:
+        raise BaselineError("the attempts block reads the row ledger, which is named by the dataset's channel")
+    ledger = _ledger_rows(_log_path(Workspace(ctx.root), ctx.dataset))
+    written: dict[str, dict[str, Any]] = {}
+    rows_dir = ctx.out / "rows"
+    for path in sorted(rows_dir.glob("*/row.json")) if rows_dir.is_dir() else []:
+        record = json.loads(path.read_text())
+        if record.get("run_id"):
+            written[str(record["run_id"])] = {"path": str(path.parent.relative_to(ctx.out)),
+                                              "record_sha256": record.get("record_sha256"),
+                                              "code_commit": record.get("code_commit"),
+                                              "mechanics_pass": record.get("mechanics", {}).get("pass")}
+    out: dict[str, list[dict[str, Any]]] = {}
+    for row in ctx.baseline.rows:
+        runs: dict[str, dict[str, Any]] = {}
+        for entry in ledger:
+            if entry.get("arm_id") != row.id:
+                continue
+            run = runs.setdefault(str(entry["run_id"]), {"run_id": entry["run_id"], "kind": entry.get("kind"),
+                                                         "config_id": entry.get("config_id"), "event": None})
+            if entry["event"] != STARTED or run["event"] is None:
+                run["event"] = entry["event"]
+            if entry.get("reason"):
+                run["reason"] = entry["reason"]
+        latest = load_row_record(ctx.out, row.id).get("run_id") if (rows_dir / row.id / "row.json").is_file() else None
+        out[row.id] = [dict(run, current=run["run_id"] == latest, **written.get(str(run["run_id"]), {}))
+                       for run in runs.values()]
+    return out
 
 
 def write_full_summary(ctx: Context) -> dict[str, Any]:
@@ -2317,7 +2414,8 @@ def main(argv: Sequence[str] | None = None, *, fetch: Fetcher | None = fetch_url
     parser.add_argument("--rows", default=None, help="comma-separated row ids to run this invocation (default: all "
                                                      "not yet finished)")
     parser.add_argument("--retry", default=None, help="'failed' or comma-separated row ids to re-run as retries, "
-                                                      "which spend nothing")
+                                                      "which spend nothing; a row whose last attempt finished with "
+                                                      "its mechanics passed is refused")
     parser.add_argument("--cache-dir", default="data/public/vintages", help="vintage cache for --part pin")
     args = parser.parse_args(argv)
     root = Path(args.workspace or Path.cwd()).resolve()

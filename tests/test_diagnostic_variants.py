@@ -25,6 +25,7 @@ import dataclasses
 import datetime as dt
 import hashlib
 import hmac
+import json
 import sys
 import textwrap
 from pathlib import Path
@@ -55,6 +56,7 @@ from prism.spec import (
     resolve_to_weights_params,
     rule_dollar_volume,
 )
+from prism.validation.trials import RecordSchemaError, validate_result_record
 from prism.validation.walk_forward import RollingWalkForward
 from prism.workspace import Workspace
 from research.scripts.universe_partition import MAX_SEED, draw, partition
@@ -640,6 +642,16 @@ def test_an_engine_run_under_split_fills_trades_both_auctions_and_says_so(engine
     assert engine["n_fills"] > plain.record.evaluation["engine"]["n_fills"], "most orders now fill in two legs"
     assert not split.scored.returns.equals(plain.scored.returns)
     assert evaluate_module.SPLIT_FILLS_NOTE.strip() not in " ".join(plain.record.warnings)
+
+    # The record's return convention names the split model, and the validator holds the label to the model.
+    assert split.record.conventions["executable_return"] == "split_open_close_fill_marked_close_to_close"
+    assert plain.record.conventions["executable_return"] == "next_open_fill_marked_close_to_close"
+    for result, other in ((split, plain), (plain, split)):
+        payload = json.loads(result.record_path.read_text(encoding="utf-8"))
+        validate_result_record(payload)
+        payload["conventions"]["executable_return"] = other.record.conventions["executable_return"]
+        with pytest.raises(RecordSchemaError, match="conventions.executable_return"):
+            validate_result_record(payload)
 
 
 def test_an_engine_run_under_the_liquidity_weighted_rule_reweights_the_book(engine_root, plain, tmp_path) -> None:

@@ -257,11 +257,19 @@ def tranche_plans(plan: ComponentPlan, k: int, base_offset: int) -> tuple[Compon
     Tranche ``j`` holds ``plan.weight / k`` and refreshes every
     ``update_every_bars`` sessions at grid offset ``(base_offset + j *
     (update_every_bars // k)) % update_every_bars``, so with ``k ==
-    update_every_bars`` exactly one tranche refreshes on every session. The
-    account target is the sum of the tranches' sub-targets in position space,
-    which is how Jegadeesh and Titman (1993) built overlapping momentum
-    portfolios: the book holds the same names, and its trades are spread over
-    the cycle instead of landing on one session.
+    update_every_bars`` exactly one tranche refreshes on every session.
+    Jegadeesh and Titman (1993) built overlapping momentum portfolios this way:
+    each tranche is formed on its own date and held until its next one, so the
+    book is the average of the tranches and its trades are spread over the
+    cycle instead of landing on one session.
+
+    :func:`compose`'s account target is the sum of the tranches' sub-targets as
+    weights. Traded as it stands on every session, that would rebalance every
+    drifted tranche back to constant weights whenever any one refreshes. The
+    evaluator therefore holds each tranche in shares between its refreshes and
+    orders only what the refreshing tranche changes
+    (``prism.evaluate._TrancheHoldings``); a live tranched book has to do the
+    same to trade the book that was evaluated.
 
     Ids are ``"<component_id>/tNN"``; one tranche keeps the plan's own id, so a
     single-phase book on the grid reads exactly like the plan it came from. The

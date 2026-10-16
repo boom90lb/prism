@@ -14,7 +14,6 @@ import hashlib
 import io
 import json
 import os
-import re
 import subprocess
 import tomllib
 import zipfile
@@ -25,11 +24,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from prism.execution.cost_model import CostStackError
 from prism.io import sessions
 from prism.io.dataset import Dataset
 from prism.io.synthetic import EQUITY_INDEX, write_synthetic_dataset
 from prism.spec import load_spec
+from prism.validation.capacity import CrowdScenario, crowd_impact_cost
 from prism.validation.hurdle import tbill_hurdle
 from prism.validation.metrics import expected_max_sharpe_with_n
 from prism.validation.trials import TrialLog
@@ -341,10 +340,11 @@ def test_the_effective_count_benchmark_matches_the_library_at_whole_counts() -> 
     assert np.isnan(pb.expected_max_sharpe(sharpes, 1.0))
 
 
-def test_wash_sale_pairs_count_opposite_moves_within_thirty_days() -> None:
+def test_wash_sale_pairs_count_opposite_trades_within_thirty_days() -> None:
     index = pd.to_datetime(["2024-01-02", "2024-01-10", "2024-01-25", "2024-03-15", "2024-03-20"])
-    targets = pd.DataFrame({"A": [0.01, 0.0, 0.01, 0.01, 0.0], "B": [0.0, -0.01, -0.01, 0.0, 0.0]}, index=index)
-    out = pb.wash_sale_pairs(targets)
+    trades = pd.DataFrame({"A": [1000.0, -1000.0, 1000.0, 0.0, -1000.0], "B": [np.nan, -500.0, np.nan, 500.0, 0.0]},
+                          index=index)
+    out = pb.wash_sale_pairs(trades)
     # A: buy 01-02, sell 01-10 (8 days), buy 01-25 (15 days), sell 03-20 (55 days): two pairs, one sell-then-buy.
     # B: sell 01-10, buy 03-15 (65 days): none.
     assert out["pairs"] == 2 and out["sell_then_buy"] == 1
@@ -478,24 +478,14 @@ def world(tmp_path_factory):
     return SimpleNamespace(base=base, store=store, manifest=manifest, payloads=payloads, registration=registration)
 
 
-#: The registered stack is retail_v3. Its square-root participation term cannot be priced by the canonical
-#: engine yet (see test_the_registered_cost_stack_runs_through_the_engine), so the end-to-end run uses
-#: retail_v3 with that one term at zero, a stack the engine can charge.
-RUNNABLE_STACK = "costs/retail_v3_without_participation.toml"
-
-
-def _runnable_stack() -> str:
-    text = (LANE / "examples" / "reference" / "costs" / "retail_v3.toml").read_text(encoding="utf-8")
-    runnable, count = re.subn(r"(?m)^participation_coeff = 126\.0$", "participation_coeff = 0.0", text)
-    assert count == 1
-    return runnable
-
+#: The registered stack, which every synthetic run here is charged under, square-root term included.
+REGISTERED_STACK = "examples/reference/costs/retail_v3.toml"
 
 #: The tracked files a row specification and its charged policy read, copied into each test checkout.
-INPUTS = ("examples/reference/costs/retail_v3.toml", *pb.DEFAULT_POLICY.values())
+INPUTS = (REGISTERED_STACK, *pb.DEFAULT_POLICY.values())
 
 
-def _repo(world, name: str, *, runnable: bool = True) -> Path:
+def _repo(world, name: str) -> Path:
     root = world.base / name
     (root / "registrations").mkdir(parents=True)
     (root / "docs").mkdir()
@@ -506,13 +496,7 @@ def _repo(world, name: str, *, runnable: bool = True) -> Path:
     rng = np.random.default_rng(5)
     pd.DataFrame({"in_house|net": rng.normal(0.0, 0.01, len(window))},
                  index=pd.Index([day.isoformat() for day in window])).to_csv(root / "parity.csv")
-    registration = world.registration
-    if runnable:
-        (root / "costs").mkdir()
-        (root / RUNNABLE_STACK).write_text(_runnable_stack(), encoding="utf-8")
-        registration = registration.replace("cost_stack = \"examples/reference/costs/retail_v3.toml\"",
-                                            f"cost_stack = \"{RUNNABLE_STACK}\"")
-    (root / pb.REGISTRATION).write_text(registration, encoding="utf-8")
+    (root / pb.REGISTRATION).write_text(world.registration, encoding="utf-8")
     (root / pb.DESIGN_DOC).write_text("# synthetic design\n", encoding="utf-8")
     _git(root, "init", "-q", "-b", "main")
     _git(root, "add", "-A")
@@ -546,10 +530,10 @@ def test_the_driver_refuses_a_french_file_that_is_not_the_pinned_vintage(world, 
 
 def test_the_driver_refuses_an_input_file_edited_after_the_registration(world, capsys) -> None:
     root = _repo(world, "edited_stack")
-    stack = root / RUNNABLE_STACK
+    stack = root / REGISTERED_STACK
     stack.write_text(stack.read_text() + "\n# edited\n", encoding="utf-8")
     assert _main(root, "--part", "rows", fetch=FakeFetch(world.payloads)) == 2
-    assert f"{RUNNABLE_STACK} differs from HEAD" in capsys.readouterr().err
+    assert f"{REGISTERED_STACK} differs from HEAD" in capsys.readouterr().err
     assert not (root / "trials").exists()
 
 
@@ -663,7 +647,24 @@ def test_end_to_end_one_row_per_row_failures_recorded_parity_gate_and_declared_w
             pb.stable_json_dumps(pb.row_specification(baseline, row)).encode()).hexdigest()
     fills = pd.read_parquet(out / "rows" / "D-split" / "fills.parquet")
     assert set(fills["leg"]) == {"open", "close"}
+    assert summary["diagnostics"]["D-split"]["executable_return"] == "split_open_close_fill_marked_close_to_close"
+    assert {summary["conventions"]["executable_return"][row.id] for row in baseline.rows if row.id != "D-split"} == {
+        "next_open_fill_marked_close_to_close"}
     assert all((out / name).is_file() for name in ("series.csv", "phase_dispersion.json", "flow.json"))
+
+    # Every attempt is listed beside the verdict, and a finished row is never re-run as a retry.
+    attempts = summary["attempts"]
+    assert [(a["kind"], a["event"], a["current"]) for a in attempts["P00"]] == [("new", "finished", False),
+                                                                                ("retry", "finished", True)]
+    first_p00 = attempts["P00"][0]
+    assert first_p00["mechanics_pass"] is False and first_p00["path"].startswith("rows/P00.superseded-")
+    assert [(a["kind"], a["event"]) for a in attempts["D-liq"]] == [("new", "failed"), ("retry", "failed"),
+                                                                   ("retry", "finished")]
+    assert all(a["record_sha256"] for row_attempts in attempts.values() for a in row_attempts if a["current"])
+    count = len(_ledger(root))
+    assert _main(root, "--part", "rows", "--retry", "T21", fetch=fetch) == 2
+    assert _main(root, "--part", "rows", "--retry", "P00", fetch=fetch) == 2, "P00's gate passed"
+    assert len(_ledger(root)) == count
 
     # 5. Capacity re-prices the recorded trades and appends no ledger row.
     count = len(_ledger(root))
@@ -687,17 +688,57 @@ def test_end_to_end_one_row_per_row_failures_recorded_parity_gate_and_declared_w
         assert in_results_run or any(place in candidate.parents for place in declared) or path == str(parity), path
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=CostStackError,
-    reason="prism.evaluate._canonical_cost_model never supplies CostInputs.adv_impact, so the canonical engine "
-    "refuses every fill under a stack with a non-zero participation_coeff (retail_v3's 126 bp square-root term): "
-    "CostModel._adv_impact raises CostStackError on the first fill. Remove this marker once the engine prices it.",
-)
-def test_the_registered_cost_stack_runs_through_the_engine(world) -> None:
-    root = _repo(world, "retail_v3", runnable=False)
+@pytest.mark.parametrize("row_id", ["P00", "D-split"])
+def test_the_registered_cost_stack_charges_its_participation_term_as_the_capacity_repricing_does(
+    world, row_id
+) -> None:
+    """retail_v3's square-root term, charged by the engine on each decided order at its fill session's volume.
+
+    The participation dollars the simulation charged on a bar equal
+    ``prism.validation.capacity.crowd_impact_cost`` with no other deployment trading (F = 0), at
+    Y * sigma = participation_coeff / 1e4, one full-day window and the stack's floor, on each order's
+    decided notional against close times volume of the session it filled in. That is the identity design
+    section 9's re-pricing of recorded trades rests on. D-split's two legs together are one order's charge.
+    """
+    root = _repo(world, f"retail_v3_{row_id}")
     baseline = pb.load_baseline(root)
-    assert baseline.table("implementation")["cost_stack"] == "examples/reference/costs/retail_v3.toml"
-    pb.evaluate_row(root=root, out=root / pb.OUT_DIR, baseline=baseline, row=baseline.row("P00"),
-                    dataset=pb.open_dataset(world.store, baseline), folds=pb.build_fold_table(baseline), kind="new",
-                    code_commit="test")
+    stack_path = baseline.table("implementation")["cost_stack"]
+    assert stack_path == "examples/reference/costs/retail_v3.toml"
+    stack = tomllib.loads((root / stack_path).read_text(encoding="utf-8"))
+    coeff, floor = stack["impact"]["participation_coeff"], stack["dollar_volume"]["impact"]["floor_dollars"]
+    assert coeff == 126.0 and stack["dollar_volume"]["impact"]["estimator"] == "same_bar"
+    dataset = pb.open_dataset(world.store, baseline)
+    with pb.observe_simulation() as seen:
+        record = pb.evaluate_row(root=root, out=root / pb.OUT_DIR, baseline=baseline, row=baseline.row(row_id),
+                                 dataset=dataset, folds=pb.build_fold_table(baseline), kind="new",
+                                 code_commit="test")
+    assert record["mechanics"]["n4"]["pass"], record["mechanics"]["n4"]
+    (simulation,) = seen
+
+    # One cell per completely filled order, at the session it filled in (both legs of a D-split order share it).
+    orders = {order.client_order_id: order for order in simulation.orders}
+    complete = {cid for cid, order in orders.items() if order.status == "filled"}
+    fills = simulation.fills
+    clean = [bar for bar, ids in fills.groupby("bar")["client_order_id"].agg(set).items() if ids <= complete]
+    assert len(clean) >= 10, "too few bars on which every fill belongs to a completed order"
+    close, volume = pb._price_panels(dataset, sorted(set(fills["sid"].astype(str))), str(max(fills["bar"])))
+    dollar = close * volume
+    notional, liquidity = {}, {}
+    for cid in sorted(complete):
+        order = orders[cid]
+        (bar,) = {fill.bar for fill in order.fills}
+        if bar not in clean:
+            continue
+        notional[(bar, cid)] = abs(order.intent.qty * order.intent.reference_price)
+        liquidity[(bar, cid)] = float(dollar.at[pd.Timestamp(bar), order.sid])
+    trades = pd.Series(notional).unstack().fillna(0.0)
+    volumes = pd.Series(liquidity).unstack().reindex(index=trades.index, columns=trades.columns)
+    priced = crowd_impact_cost(trades, volumes.fillna(1.0), 1.0, 1.0,
+                               CrowdScenario(impact_y=coeff / 1e4, windows=((1.0, 1.0),)), floor_dollars=floor)
+    expected = priced.sum(axis=1)
+    charged = simulation.costs["impact_participation"].reindex(expected.index)
+    assert float(expected.sum()) > 0.0
+    np.testing.assert_allclose(charged.to_numpy(), expected.to_numpy(), rtol=1e-10, atol=1e-12)
+    if row_id == "D-split":
+        legs = fills.loc[fills["client_order_id"].isin(complete) & fills["bar"].isin(clean)]
+        assert set(legs["execution_id"].astype(str).str.endswith(":close")) == {True, False}
