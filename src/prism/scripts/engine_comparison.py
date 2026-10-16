@@ -254,7 +254,7 @@ def run_comparison(
     return arms
 
 
-def report(arms: Mapping[str, EngineArm]) -> dict[str, Any]:
+def report(arms: Mapping[str, EngineArm], *, workspace: Workspace) -> dict[str, Any]:
     """The side-by-side table: every headline figure, both engines, and the difference."""
     reproduction = arms[REPRODUCTION_ENGINE].metrics()
     canonical = arms[CANONICAL_ENGINE].metrics()
@@ -284,8 +284,8 @@ def report(arms: Mapping[str, EngineArm]) -> dict[str, Any]:
                 "config_id": arm.result.config_id,
                 "holding_process": arm.result.record.evaluation["holding_process"],
                 "executable_return": arm.result.record.conventions["executable_return"],
-                "record": str(arm.result.record_path),
-                "trial_log": str(arm.result.log_path),
+                "record": workspace.relative(arm.result.record_path),
+                "trial_log": workspace.relative(arm.result.log_path),
                 "n_obs": int(len(arm.result.scored.returns)),
                 "seconds": round(arm.seconds, 1),
                 "engine_detail": arm.result.record.evaluation["engine"],
@@ -332,7 +332,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         case=args.case,
         arm=args.arm,
     )
-    payload = report(arms)
+    payload = report(arms, workspace=workspace)
     text = json.dumps(payload, indent=2, sort_keys=True)
     if args.out:
         out = Path(args.out).expanduser()

@@ -233,6 +233,30 @@ def test_run_dir_fits_and_trial_log_stay_inside_the_workspace(tmp_path):
             workspace.trial_log(escape)
 
 
+def test_relative_names_a_file_inside_the_workspace_without_the_machine_path(tmp_path, monkeypatch):
+    root = tmp_path / "project"
+    workspace = Workspace(root).ensure()
+    record = workspace.results / "run-1" / "record.json"
+    assert workspace.relative(record) == "results/run-1/record.json"
+    assert workspace.relative(str(record)) == "results/run-1/record.json"
+    assert workspace.relative(root) == "."
+
+    # A relative path is read from the current directory.
+    monkeypatch.chdir(root)
+    assert workspace.relative(Path("specs") / "book.toml") == "specs/book.toml"
+    assert Workspace(Path(".")).relative(record) == "results/run-1/record.json"
+
+    # A path that reaches the workspace through a symlink or ``..`` still resolves into it.
+    (tmp_path / "alias").symlink_to(root, target_is_directory=True)
+    assert workspace.relative(tmp_path / "alias" / "trials" / "x.jsonl") == "trials/x.jsonl"
+    assert workspace.relative(root / "results" / ".." / "trials" / "x.jsonl") == "trials/x.jsonl"
+
+    # A file outside the workspace keeps the path it was given: it is the only way to find it.
+    outside = tmp_path / "elsewhere" / "spec.toml"
+    assert workspace.relative(outside) == str(outside)
+    assert workspace.relative(root / ".." / "elsewhere" / "spec.toml") == str(root / ".." / "elsewhere" / "spec.toml")
+
+
 def test_config_serves_the_deprecated_directories(tmp_path, monkeypatch):
     """The research drivers still bind PROJECT_DIR/DATA_DIR/RESULTS_DIR (spec §3.1)."""
     import prism.config as config

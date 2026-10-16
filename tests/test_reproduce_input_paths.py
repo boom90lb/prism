@@ -6,10 +6,16 @@ directory rejected by the file-only resolver.
 """
 
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
-from prism.scripts.reproduce import ReproductionError, _recorded_input, open_dataset
+from prism.scripts.reproduce import (
+    ReproductionError,
+    _recorded_input,
+    open_dataset,
+    report,
+)
 from prism.workspace import Workspace
 
 
@@ -100,3 +106,32 @@ def test_fresh_trend_import_receives_the_recorded_distribution_directory(
             cache_dir=cache,
             recorded_dir=recorded,
         )
+
+
+def test_the_report_names_its_files_relative_to_the_workspace(tmp_path: Path) -> None:
+    """The report is written under ``results/`` and published, so it names no machine path."""
+    workspace = Workspace(tmp_path / "project").ensure()
+    arm = SimpleNamespace(
+        spec_path=workspace.root / "examples" / "momentum" / "demotion_b1.toml",
+        result=SimpleNamespace(
+            run_id="run-1",
+            config_id="config",
+            data_id="data",
+            record_path=workspace.results / "run-1" / "record.json",
+            log_path=workspace.trial_log("momentum_v1"),
+            fold_table=SimpleNamespace(content_hash="geometry"),
+            folds=(),
+            scored=SimpleNamespace(returns=()),
+        ),
+        seconds=1.0,
+        metrics=lambda: {},
+        differences=lambda headline: {},
+    )
+
+    entry = report({"bucket": arm}, workspace=workspace, case="demotion_b1")["arms"]["bucket"]
+
+    assert (entry["spec"], entry["record"], entry["trial_log"]) == (
+        "examples/momentum/demotion_b1.toml",
+        "results/run-1/record.json",
+        "trials/momentum_v1.jsonl",
+    )

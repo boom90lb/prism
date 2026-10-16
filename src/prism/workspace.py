@@ -103,6 +103,29 @@ class Workspace:
         """``trials / f"{selection_set_id}.jsonl"``."""
         return self.trials / f"{_segment(selection_set_id, kind='selection_set_id')}.jsonl"
 
+    def relative(self, path: Path | str) -> str:
+        """``path`` as a POSIX path relative to ``root`` when it lies inside it, else as given.
+
+        Result records, trial logs and script reports name files this way, so a
+        published one carries no machine path. A relative ``path`` is read from
+        the current directory. A file outside the workspace keeps the path it
+        was given, which is the only way to find it again.
+        """
+        target = Path(path)
+        target = target if target.is_absolute() else Path.cwd() / target
+        root = self.root if self.root.is_absolute() else Path.cwd() / self.root
+        # Lexically first, so a file reached through a symlink inside the
+        # workspace keeps its workspace name; then resolved, for a path that
+        # reaches the workspace through ``..`` or a symlink outside it.
+        for candidate, base in ((target, root), (target.resolve(), root.resolve())):
+            try:
+                relative = candidate.relative_to(base)
+            except ValueError:
+                continue
+            if ".." not in relative.parts:
+                return relative.as_posix()
+        return str(path)
+
 
 def _pyproject_workspace(directory: Path) -> Path | None:
     """``[tool.prism].workspace`` from ``directory/pyproject.toml``, resolved

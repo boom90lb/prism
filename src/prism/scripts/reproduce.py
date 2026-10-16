@@ -412,7 +412,7 @@ def run_case(
             reproduces=(
                 {
                     "run_id": f"legacy:{Path(recorded_dir).name}",
-                    "reason": registered.reproduces_reason.format(recorded=recorded_dir),
+                    "reason": registered.reproduces_reason.format(recorded=workspace.relative(recorded_dir)),
                 },
             ),
             untested_conclusions=registered.untested_conclusions,
@@ -431,10 +431,14 @@ def run_case(
 def report(
     results: Mapping[str, ArmResult],
     *,
+    workspace: Workspace,
     case: str = "demotion_b1",
     reference: Mapping[str, float] | None = None,
 ) -> dict[str, Any]:
     """The difference report: every headline figure, reproduced against recorded.
+
+    File paths are relative to ``workspace``'s root where the file lies inside it,
+    so a published report names no machine path.
 
     Only the case's ``compared_arm`` carries a difference column. Another arm
     is a different cost stack with no recorded counterpart, and quoting the
@@ -452,12 +456,12 @@ def report(
         "arms": {
             arm: {
                 "arm_id": f"{arm}_spread",
-                "spec": str(result.spec_path),
+                "spec": workspace.relative(result.spec_path),
                 "run_id": result.result.run_id,
                 "config_id": result.result.config_id,
                 "data_id": result.result.data_id,
-                "record": str(result.result.record_path),
-                "trial_log": str(result.result.log_path),
+                "record": workspace.relative(result.result.record_path),
+                "trial_log": workspace.relative(result.result.log_path),
                 "fold_table_sha256": result.result.fold_table.content_hash,
                 "n_folds": len(result.result.folds),
                 "n_obs": int(len(result.result.scored.returns)),
@@ -510,7 +514,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         cache_dir=Path(args.cache_dir).expanduser(),
         arms=declared if args.arms is None else [a.strip() for a in str(args.arms).split(",") if a.strip()],
     )
-    payload = report(results, case=args.case)
+    payload = report(results, workspace=workspace, case=args.case)
     text = json.dumps(payload, indent=2, sort_keys=True)
     if args.out:
         out = Path(args.out).expanduser()

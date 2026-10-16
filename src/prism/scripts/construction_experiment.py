@@ -508,7 +508,7 @@ def build_comparison(
     for capital, block in sorted(by_capital.items(), key=lambda item: float(item[0])):
         index, outside = common_decision_index(block)
         shared[capital] = int(len(index))
-        dropped.update(outside)
+        dropped.update({workspace.relative(name): count for name, count in outside.items()})
         arms.extend(comparison_arm(path, weight_index=index) for path in block)
     control = registration.arm_specification(registration.arm_ids[0], workspace=workspace)
     cadence = max(int(loaded.spec.update_every_bars) for loaded in control.components)
@@ -544,9 +544,9 @@ def build_comparison(
     payload["exit_conditions"] = exit_conditions([_record_of(path) for path in records])
     payload["runs"] = trial_log_runs(workspace, registration, records)
     payload["charged_cost_conventions"] = {
-        "cost_stack": str(registration.frozen.cost_stack),
+        "cost_stack": workspace.relative(registration.frozen.cost_stack),
         "cost_stack_sha256": hashlib.sha256(registration.frozen.cost_stack.read_bytes()).hexdigest(),
-        "execution_profile": str(registration.frozen.execution_profile),
+        "execution_profile": workspace.relative(registration.frozen.execution_profile),
         "cost_refresh": registration.frozen.cost_refresh,
         "held_identical": (
             "the frozen cost stack and the rules that apply it, at every capital level and for every arm"
@@ -579,7 +579,7 @@ def trial_log_runs(
     used = {str(_record_of(record)["ids"]["run_id"]) for record in records}
     finished = [row for row in rows if str(row.get("event")) == "finished"]
     return {
-        "trial_log": str(path),
+        "trial_log": workspace.relative(path),
         "n_rows": len(rows),
         "attempts": sorted({str(row.get("arm_id")) for row in rows if row.get("arm_id")}),
         "read_by_this_comparison": sorted(used),
@@ -749,7 +749,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "capital": run.capital,
                 "run_id": run.result.run_id,
                 "config_id": run.result.config_id,
-                "record": str(run.result.record_path),
+                "record": workspace.relative(run.result.record_path),
                 "seconds": round(run.seconds, 1),
                 "metrics": {key: float(value) for key, value in run.result.metrics.items()},
             },
