@@ -16,12 +16,14 @@ import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 
-# Deprecated package-relative directories. They survive stage 1 only because
-# the research drivers still binding them at import (research/config.py,
-# research/scripts/{sweep,rl_seed_eval,trend_wfo}.py, and
-# tests/test_trend_walk_forward.py) must keep running for stage 2
-# reproduction; they are deleted with those drivers. Unlike the originals
-# they create nothing and read nothing. New code takes a ``Workspace``.
+# Deprecated package-relative directories. They survive only because research
+# code still binds them at import: research/config.py, research/trading.py and
+# research/scripts/{backtest,sweep,rl_seed_eval}.py. They are deleted with
+# that code. Two earlier binders are already gone:
+# research/scripts/trend_wfo.py (removed; last present at commit 5fcac33869e9) and
+# tests/test_trend_walk_forward.py (removed; last present at commit 5fcac33869e9).
+# Unlike the originals they create nothing and read nothing. New code takes
+# a ``Workspace``.
 _DEPRECATED_DIRS = {
     # This file lives at src/prism/config.py under src-layout, so the repo
     # root is three levels up -- the meaning these names have always had.

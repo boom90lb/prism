@@ -36,8 +36,8 @@ Two more things live here, added at engine stage 2 (spec §3.8, §3.13):
 
 Why the geometry is what it is. The rolling loop is a duplication (not an
 import — ``prism`` never imports ``research``) of
-``research/arbitrage/walk_forward.py::iter_walk_forward_slices``, the only
-implementation that produced the recorded folds. Three details there are
+``research/arbitrage/walk_forward.py::iter_walk_forward_slices`` (removed; last present at commit 5fcac33869e9),
+the only implementation that produced the recorded folds. Three details there are
 load-bearing and are reproduced exactly:
 
   * the last usable test bar is ``n_obs - 1``, not ``n_obs``: one bar is

@@ -482,12 +482,14 @@ def after_cost_hurdle_periodic(
     Sharpe with its studentized interval
     (:func:`prism.validation.compare.excess_sharpe_interval`, §3.12 **[Q21]**).
 
-    Kept because recorded evidence and the reproduced research drivers call it
-    (``research/scripts/trend_wfo.py``), and because a stated hurdle beats an
-    implicit nominal zero (SPEC.md §10). ``annual_hurdle_return`` is a fraction
-    (0.053 for a 5.3% bill yield — nominal or real per the recorded basis);
-    ``periodic_vol`` is the strategy's realized periodic return std. Returns NaN
-    for non-finite inputs or a non-positive vol.
+    Kept because recorded evidence was computed with it: the recorded drivers
+    ``research/scripts/stat_arb_residual_wfo.py`` (removed; last present at commit 5fcac33869e9) and
+    ``research/scripts/trend_wfo.py`` (removed; last present at commit 5fcac33869e9)
+    wrote the ``periodic_sharpe_hurdle`` their summaries carry. It is also kept
+    because a stated hurdle beats an implicit nominal zero (SPEC.md §10).
+    ``annual_hurdle_return`` is a fraction (0.053 for a 5.3% bill yield — nominal
+    or real per the recorded basis); ``periodic_vol`` is the strategy's realized
+    periodic return std. Returns NaN for non-finite inputs or a non-positive vol.
 
     This is the zero-cash-yield, fully-invested special case of
     :func:`prism.validation.hurdle.tbill_hurdle` stated at the realized periodic

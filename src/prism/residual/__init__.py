@@ -6,8 +6,12 @@ holds the eigenportfolio/ETF factor construction and batched factor OLS;
 book builder whose output rows feed
 ``prism.execution.target_weights.backtest_target_weights``.
 
-SPEC §5 scopes this package to grow RMT cleaning and neutralization (R4);
-the WFO harnesses that consume it live in ``research/arbitrage``.
+SPEC §5 scopes this package to grow RMT cleaning and neutralization (R4).
+The research walk-forward harnesses that consumed it are gone:
+``research/arbitrage/residual_walk_forward.py`` (removed; last present at commit 5fcac33869e9) and
+``research/scripts/stat_arb_residual_wfo.py`` (removed; last present at commit 5fcac33869e9).
+``research/arbitrage/pairs.py`` still imports it, as do the engine's signal
+nodes and ``prism.risk_model``.
 """
 
 __all__: list[str] = []

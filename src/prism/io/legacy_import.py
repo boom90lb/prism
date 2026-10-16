@@ -199,10 +199,11 @@ def read_legacy_panels(
     """Per-symbol OHLCV frames from the range-encoded caches, through the existing loader.
 
     The loader's own file selection is used unchanged — the first covering
-    file in sorted-name order — so the panel is the one the recorded driver
-    read (`research/scripts/stat_arb_residual_wfo.py:228-243`, duplicated here
-    with this citation because ``prism`` imports no research module). A symbol
-    the cache cannot answer for is reported, never silently skipped.
+    file in sorted-name order — so the panel is the one the recorded driver read,
+    `research/scripts/stat_arb_residual_wfo.py:228-243` (removed; last present at commit 5fcac33869e9),
+    duplicated here with this citation because ``prism`` imports no research
+    module. A symbol the cache cannot answer for is reported, never silently
+    skipped.
     """
     from prism.io.loader import (
         DataLoader,  # local: constructing one reads the environment
@@ -231,11 +232,11 @@ def read_legacy_panels(
 def panel_matrices(frames: dict[str, pd.DataFrame]) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """``(closes, opens, volumes)`` on the union calendar, with no session filter.
 
-    The recorded driver's own panel construction
-    (`research/scripts/stat_arb_residual_wfo.py::_panel_matrices`, retired at
-    stage 2), duplicated here with that citation because ``prism`` imports no
-    research module: the close panel drops rows where every name is absent and
-    the other two are reindexed onto it, so all three share one index.
+    The recorded driver's own panel construction,
+    `research/scripts/stat_arb_residual_wfo.py::_panel_matrices` (removed; last present at commit 5fcac33869e9),
+    duplicated here with that citation because ``prism`` imports no research
+    module: the close panel drops rows where every name is absent and the other
+    two are reindexed onto it, so all three share one index.
 
     No trading-day filter is applied. That is deliberate — this is the union
     calendar a recorded run consumed, and a diagnostic recomputing something
@@ -857,11 +858,11 @@ def _pinned_legacy_inputs(
 ) -> LegacyInputs:
     """The inputs a caller pinned by name, in the order it pinned them.
 
-    A recorded configuration that names its cache files
-    (``results/trend_t0/config.json`` ``cache_files``, from
-    ``research/arbitrage/trend_walk_forward.py``'s "Explicit file lists only;
-    never glob") is reproduced from those files and from nothing else. The glob
-    would be wrong here in a way no number would show: the live cache holds a
+    A recorded configuration that names its cache files is reproduced from
+    those files and from nothing else: ``results/trend_t0/config.json``
+    ``cache_files``, under the "Explicit file lists only; never glob" rule of
+    ``research/arbitrage/trend_walk_forward.py`` (removed; last present at commit 5fcac33869e9).
+    The glob would be wrong here in a way no number would show: the live cache holds a
     dozen later ``SPY_1d_min_*.parquet`` files the recorded run never read, and
     a discovery that swept them in would build a different panel under the
     recorded name. Every named file must exist and must parse as that symbol at

@@ -51,7 +51,8 @@ Provenance of the two duplicated pieces (production never imports ``research``):
 
 * :func:`charge_weights` is the body of ``src/prism/execution/target_weights.py::_cost_values``
   at commit 29a6c67, moved verbatim.
-* :func:`bucket_spread_bps` reproduces ``research/arbitrage/residual_walk_forward.py:77-87``
+* :func:`bucket_spread_bps` reproduces
+  ``research/arbitrage/residual_walk_forward.py:77-87`` (removed; last present at commit 5fcac33869e9)
   by value, including its fail-safe: unknown liquidity takes the widest step, never the
   cheapest.
 """
@@ -150,7 +151,8 @@ def bucket_spread_bps(
     coerced to NaN and priced as unknown liquidity: a mis-typed liquidity column is a
     defect in the input, not a statement about a name's liquidity.
 
-    Reproduces ``research/arbitrage/residual_walk_forward.py:77-87`` by value.
+    Reproduces by value
+    ``research/arbitrage/residual_walk_forward.py:77-87`` (removed; last present at commit 5fcac33869e9).
     """
     steps = _validated_schedule(schedule)
     raw = pd.Series(dollar_volume)
@@ -1097,7 +1099,9 @@ class CostModel:
         simulated fill prices at the raw bar price and its modeled cost is a separate cash
         line, that comparison is not circular.
         """
-        from prism.execution.portfolio_state import Fill  # local: portfolio_state imports nothing from here
+        from prism.execution.portfolio_state import (
+            Fill,  # local: portfolio_state imports nothing from here
+        )
 
         pseudo: list[Fill] = []
         decided: dict[str, float] = {}

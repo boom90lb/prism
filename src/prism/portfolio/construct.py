@@ -231,8 +231,8 @@ def _decile_row(scores_t: np.ndarray, decile: float) -> np.ndarray:
     ``n_dec = floor(n_finite * decile)`` names per side; each winner gets
     ``+0.5 / n_dec`` and each loser ``-0.5 / n_dec`` (stable sort, so ties are
     deterministic). A cross-section too thin for one name per side emits a zero
-    row. Parity with the research reference ``_momentum_row``
-    (``research/arbitrage/residual_walk_forward.py``).
+    row. Parity with the research reference ``_momentum_row`` in
+    ``research/arbitrage/residual_walk_forward.py`` (removed; last present at commit 5fcac33869e9).
     """
     row = np.zeros(scores_t.shape[0])
     finite = np.flatnonzero(np.isfinite(scores_t))

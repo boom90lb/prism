@@ -177,7 +177,9 @@ python -m prism.scripts.reproduce --case trend_t0 \
 These commands use `historical_constant_weight` accounting, which holds weights constant
 between decisions without charging the implicit rebalance. They reproduce a historical
 convention; a forward claim uses the canonical fixed-share simulator. The
-[engine comparison](../results/engine_comparison_demotion_b1.json) records the distinction.
+[engine comparison script](../src/prism/scripts/engine_comparison.py) measures the distinction;
+its module docstring records the 2026-09-08 run on `results/demotion_b1`. That run's JSON
+output was never committed.
 Outputs and new reproduction rows go to the isolated workspace, not the certified
 record. Existing output directories are not a license to overwrite historical evidence.
 
