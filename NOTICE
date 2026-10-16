@@ -118,8 +118,16 @@ Paths (series or statistics computed from French files):
   results/2026-09-vol-momentum/*                     (reference|* columns)
   results/2026-09-fundamentals/replication/*         (public|* columns)
   results/2026-09-earnings/replication/*             (public|* columns)
-The risk-free rate in the replication records (results/2026-09-*) is the
-French RF series.
+  results/2026-10-public-baseline/series.csv         (reference|* columns: the
+                                                      scaled French momentum
+                                                      series from 1931 and its
+                                                      daily scale, from which
+                                                      the French Mom series
+                                                      can be recovered)
+  results/2026-10-public-baseline/summary.json       (publication-bar, prior
+                                                      and rf statistics)
+The risk-free rate in the replication records (results/2026-09-*,
+results/2026-10-public-baseline/) is the French RF series.
 
 Source: https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html
 

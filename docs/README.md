@@ -10,6 +10,7 @@ Terms the records use without explanation are in the [glossary](glossary.md).
 | [Quickstart](quickstart.md) | From a clone to the momentum book trading a free Alpaca paper account, scheduled nightly. |
 | [Onboarding](onboarding.md) | Four walkthroughs with an installed wheel: a synthetic evaluation, a private signal, reading a comparison, and an offline operating review. |
 | [Limitations](limitations.md) | What the published results do and do not establish. Read it before the numbers. |
+| [The public baseline](baseline.md) | For anyone running the baseline strategy: what it is, the expected return over T-bills and its uncertainty, what it depends on, how many users it holds before they compete, and when approval is withdrawn. |
 | [Glossary](glossary.md) | In-house terms mapped to standard ones. |
 | [Erratum, 2026-10-14](erratum_2026-10-14.md) | Corrections to how recorded results are described. |
 | [Architecture](../ARCHITECTURE.md) | What calls what in the code. |
@@ -30,6 +31,10 @@ Terms the records use without explanation are in the [glossary](glossary.md).
 | [Research from an installed release](owner_migration.md) | Reproducing a recorded result from a private project that pins the wheel ([receipt](owner_migration.json)). |
 | [Research tree](research_tree.md) | Every module under `research/`, with its status, records, tests and dependencies. |
 | [Research archive](research_archive.md) | Where the implementations retired by the engine overhaul can be found and reproduced. |
+| [Statistics toolkit](statistics.md) | Sharpe-ratio inference you can use on your own returns: studentized Sharpe differences, probabilistic and deflated Sharpe, backtest-overfitting probability, anytime-valid monitors. |
+| [Look-ahead checker](causality.md) | Checking that a signal function uses no data after the bar it scores. |
+| [EDGAR point-in-time fundamentals](edgar_point_in_time.md) | Fundamentals from SEC XBRL filings keyed to the filing acceptance time. |
+| [Earnings dates from 8-K item 2.02](earnings_dates.md) | Point-in-time earnings-announcement timestamps from SEC filings. |
 
 ## Results reports
 
@@ -37,6 +42,7 @@ Each report is the record of one pre-registered experiment, written whatever the
 
 | Report | Experiment and result |
 |---|---|
+| [Public baseline, 2026-10-16](public_baseline_read_2026-10-16.md) | `public_baseline_v1`: volatility-scaled momentum as 21 tranches with a T-bill holding. Approved on all six replication criteria; about +1.95%/yr expected over bills, +0.30%/yr if idle cash earns nothing. |
 | [Momentum robustness, 2026-09-03](momentum_m_series_read_2026-09-03.md) | Five changes to the 12−1 momentum book (M1–M5). No sign flip; median net Sharpe 0.477 against 0.465. |
 | [ETF trend following, 2026-09-03](trend_t_series_read_2026-09-03.md) | Trend tests T0–T4. Net Sharpe 0.04 with no return above cash, and the diversification test failed. |
 | [Portfolio construction, 2026-09-08](construction_experiment_read_2026-09-08.md) | Three construction methods at six account sizes. All eighteen comparisons were inconclusive. |
@@ -61,6 +67,8 @@ Each design was committed before its experiment ran and fixes what was tried and
 
 | Design | What it registers |
 |---|---|
+| [Public baseline](public_baseline_design.md) | `public_baseline_v1`: 30 configurations around the tranched, volatility-scaled momentum book, on the replication route. |
+| [Public-factor reproduction](public_reproduction_design.md) | An uncounted check that a clone can recompute the published-factor evidence. |
 | [Momentum](momentum_design.md) | `momentum_v1`: robustness tests M1–M5 and the later re-run M6. |
 | [Trend](trend_design.md) | ETF trend following, T0–T5. |
 | [July 2026 budget](demotion_design.md) | The seven trials D1–D5, B1 and B2 that followed the stop of the residual-reversion program. |

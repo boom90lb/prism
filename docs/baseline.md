@@ -9,7 +9,9 @@ It is a research result, not investment advice. Every figure comes from the
 registered evaluation of 2026-10-16 ([results report](public_baseline_read_2026-10-16.md),
 [design](public_baseline_design.md)) and its outputs under
 `results/2026-10-public-baseline/`. Figures marked *derived* are plain arithmetic on
-those outputs; the report shows the arithmetic.
+those outputs. Most appear with their arithmetic in the report; the 5- and 10-year
+probabilities of being ahead of bills and the rf-5% cases are worked on this page only, under
+the normal approximation stated where they appear.
 
 ## What it is
 
@@ -171,7 +173,7 @@ model. At $1,000,000 per user, divide by ten.
 ## When approval is withdrawn
 
 The project re-runs the strategy on data that arrives after 2026-10-16. The first
-check is after 126 new trading days, about **2027-04-20**, and then every 63 trading
+check is after 126 new trading days, on **2027-04-21**, and then every 63 trading
 days. Approval is withdrawn, and only a new registration can restore it, if:
 
 - the new data's Sharpe ratio is below zero with 95% confidence;

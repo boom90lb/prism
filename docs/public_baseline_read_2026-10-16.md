@@ -395,13 +395,14 @@ scale 1 (T21: 0.633 annualized there). The criteria use the common window.
   decision to switch them on, preferably on a separate paper account so that
   `forward_v1`'s stream is not disturbed.
 - **The forward stop rule runs from the registration commit** (design §10). The
-  first read is at 126 forward sessions counted from 2026-10-19, about
-  **2027-04-20**, then every 63 sessions (next about 2027-07-21). Eligibility is
+  first read is at the as-of after 126 forward sessions counted from 2026-10-19,
+  **2027-04-21**, then every 63 sessions (next 2027-07-22), as
+  `research/scripts/public_baseline_forward.py` schedules them. Eligibility is
   withdrawn if the forward net Sharpe's 95% interval lies entirely below zero, the
   forward drawdown exceeds 25%, the daily correlation with the scaled reference on
   the latest French vintage falls below 0.5, or, on two consecutive reads, forward
   tracking × the latest post-publication Sharpe − forward cost drag falls below the
-  governing hurdle. The reader must be committed before the first read.
+  governing hurdle. The reader is committed (`research/scripts/public_baseline_forward.py`).
 - **Unchanged:** `vol_momentum_v1`'s verdict and stop rule, `forward_v1`, M6 and T5.
   This set is closed: all 30 rows ran.
 - **For users**, [baseline.md](baseline.md) states the forward expectation, the
@@ -460,5 +461,17 @@ The per-row `targets.parquet`, `holdings.parquet` and `fills.parquet` files (abo
 are not in the public repository: they hold per-name prices and holdings derived from
 vendor bars whose redistribution terms are unconfirmed (`NOTICE`), and they would roughly
 triple the size of a clone. They are kept by the operator and regenerate exactly from the
-driver at the registration commit with the registered dataset. Every other figure in this
-record recomputes from tracked files.
+driver at the registration commit with the registered dataset. The same holds for the 30 run
+records the rows wrote (`results/run-<id>/record.json`, which the ledger's `summary.record`
+names). Figures that come from those files rather than from tracked ones: the wash-sale counts,
+orders per session and median order notional, names held against names targeted and the
+rounding tracking error, the D-liq order percentiles, the held-name overlap, `flow.json`, and the
+lumpiness ratios of §9. The criteria, cash cases, phase dispersion, deflation, breadth and the
+capacity tables recompute from tracked files.
+
+**Run conditions not decided by the owner.** The design left open, until the first row ran,
+whether to register instead on a later French vintage nobody had read. The first row started
+5 minutes 42 seconds after the registration commit, so that choice was not put to the owner; the
+disclosed exposure (design, prior exposure) stands. The run predates the change that names files
+relative to the workspace, so the tracked ledger rows and records carry the operator's host name
+and absolute paths; the ledger is append-only and they stay as written.

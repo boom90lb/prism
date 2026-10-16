@@ -7,18 +7,19 @@ after. Corrections to how recorded results are described are in
 [glossary](glossary.md).
 
 **The short version.** No configuration in this repository has met the project's conditions for
-real money. One configuration, volatility-scaled momentum, was approved under the project's rules
-on 2026-09-24. It cleared its T-bill benchmark by 0.018 Sharpe, a margin that rests on January
-to July 2026, and it is not traded (section 10). Every published number comes from a simulation
-with modeled fills, not from realized trading. The momentum reference record has a measured
-coverage gap of nine percent of its universe, and it excludes dividends. No record charges a
-cost that grows with assets, so none says anything about capacity (section 13). The
-trend-following strategy was refused. The construction experiment was inconclusive on all
-eighteen of its comparisons. The uncertainty method that experiment used is measured to
-undercover. The public baseline is designed, and its registration and evaluation are pending.
-Arithmetic on the recorded figures puts its mid-case edge over T-bills at about +1.26% a year
-with idle equity in a T-bill ETF, and at −0.55% a year if idle cash earns nothing (section 12).
-Each of these points is stated below with its artifact.
+real money, and none is traded in the form it was approved in. Two configurations are approved
+under the project's rules, both on the replication route (public long-sample evidence plus
+in-house tracking and cost tests): volatility-scaled momentum on 2026-09-24, which cleared its
+T-bill benchmark by 0.018 Sharpe (section 10), and the public baseline on 2026-10-16, the same
+book run as 21 overlapping tranches with idle equity in a T-bill ETF, at an expected +1.95% a
+year over bills, or +0.30% a year if idle cash earns nothing (section 12). Both expectations
+carry a standard error larger than the edge. Every published number comes from a simulation with
+modeled fills, not from realized trading. The momentum reference record has a measured coverage
+gap of nine percent of its universe, and it excludes dividends. Only the public baseline's record
+charges a cost that grows with assets, at an assumed coefficient, and its capacity figures are
+scenarios (section 13). The trend-following strategy was refused. The construction experiment was
+inconclusive on all eighteen of its comparisons. The uncertainty method that experiment used is
+measured to undercover. Each of these points is stated below with its artifact.
 
 ---
 
@@ -35,12 +36,15 @@ comparison record carries this on its face: all eighteen of its runs are flagged
 `fill_source=simulated; fills are not actual fills` in the record's own `warnings` list
 (`results/2026-09-construction/comparison.json`). A modeled fill is not a fill.
 
-**No configuration has reached the top evidence tier.** The tiers are `no_claim`,
-`mechanics_clean` (the pipeline ran), `gross_edge` (profitable before costs), `net_edge`
-(profitable after modeled costs) and `robust_edge` (also significant after the multiple-testing
-adjustment), and `robust_edge` requires a deflated Sharpe ratio at or above 0.95
-(`results/demotion_b1/claim_packet.json`, `claim_rules`). The best result here is at `net_edge`
-with a deflated Sharpe ratio of 0.19.
+**No configuration has passed the deflation test for the top evidence tier.** The tiers are
+`no_claim`, `mechanics_clean` (the pipeline ran), `gross_edge` (profitable before costs),
+`net_edge` (profitable after modeled costs) and `robust_edge`. `SPEC.md` section 3 gives
+`robust_edge` two routes: a deflated Sharpe ratio at or above 0.95 against the selection set
+(`results/demotion_b1/claim_packet.json`, `claim_rules`), or the replication tests of section 4.
+No record meets the first: the momentum reference is at `net_edge` with a deflated Sharpe ratio
+of 0.19, and the public baseline's is 0.79 against its 30 configurations. The two approved
+configurations reach `robust_edge` only through the replication tests, which rest on public
+long-sample series, not on this repository's own returns.
 
 **One published negative result already exists.** Daily residual reversion on the S&P
 cross-section was found uneconomic at retail cost over a completed experiment of 17 trials, and
@@ -416,7 +420,7 @@ The assumptions are:
 | Probability the true expected excess is positive, idle cash earning nothing | 0.31 | 0.43 | 0.52 |
 | Years of a deployment's own returns needed to reject a zero Sharpe (one-sided 95%) | 55 | 29 | 20 |
 
-How to read it:
+How to read the pre-run table (the recorded figures above supersede it):
 
 - **The account's edge, not the book's Sharpe.** In the mid case the long–short book earns 3.66%,
   and the T-bill holding earns 0.441 × 4.11% = 1.81%. The account earns 5.47% against bills at
@@ -456,18 +460,20 @@ How to read it:
   account would show its price falling at each distribution and no income. A forward evaluation
   of the paper stream must add them back.
 
-**What cannot be promised.**
+**What cannot be promised** (recorded figures; read record section 3).
 
-1. *A high Sharpe.* Nothing on record supports a forward net Sharpe above about 0.36 for the
-   long–short book, or above about 0.16 for the account's excess over bills. A forward 0.5 would
-   need a post-publication Sharpe of at least 0.63 at the recorded tracking and cost, and no
-   recorded momentum series shows one.
-2. *Beating T-bills with confidence.* The mid case is positive only if idle equity earns close to
-   the bill rate, through a T-bill ETF or a verified broker yield of about 3.3% or more in a margin
-   account that holds shorts. Even then the probability is about 0.65.
+1. *A high Sharpe.* The recorded expectation for the long–short book is 0.358, and about 0.16 for
+   the account's excess over bills. Nothing on record supports more. A forward 0.5 would need a
+   post-publication Sharpe of about 0.60 at the recorded tracking and cost (derived:
+   (0.5 + 0.044) / 0.903), and no recorded momentum series shows one after publication.
+2. *Beating T-bills with confidence.* The probability that the true expected excess over bills is
+   positive is about 0.73 with the T-bill ETF and about 0.54 if idle cash earns nothing, counting
+   only the error in the post-publication Sharpe. With idle cash earning nothing the pass rests on
+   January–August 2026.
 3. *Confirmed low decay.* A deployment's own returns cannot confirm it on any useful horizon: about
-   29 years against zero, and about 250 years against bills. Decay can only be argued in advance
-   from long public series and checked again on each new release of the public data.
+   21 years to reject a zero Sharpe, and about 100 years to tell the margin over bills from zero.
+   Decay can only be argued in advance from long public series and checked again on each new
+   release of the public data.
 4. *Deployments that do not compete.* See section 13.
 
 ---
@@ -504,10 +510,23 @@ Users who start on the same day therefore send the same orders into the same ope
 Spreading users over different days spreads their order flow, but their holdings still overlap
 almost completely. A momentum unwind hits every deployment on the same day.
 
-**Timing luck is unmeasured.** Every record uses a single rebalance phase. How much the outcome
-depends on which sessions a monthly book happens to rebalance on has not been measured here.
+The live loop can now spread a deployment's dates (`--rebalance-phase seeded`) and run the
+tranched book (`--tranches 21`); both are off by default, and the owner's paper account uses
+neither.
 
-**An illustration, not a measurement.** The table assumes square-root impact. The annual
+**Timing luck, measured once.** Before `public_baseline_v1` every record used a single rebalance
+date. Across the 21 possible dates its single-date books' annual returns ranged from 4.7% to 8.2%
+(standard deviation 0.97% a year) over 2022-10-27 to 2026-06-12; the tranched book sat at the
+middle (`results/2026-10-public-baseline/summary.json`, `phase_dispersion`). That is 3.6 years
+of data, so the spread is itself noisy.
+
+**The recorded scenarios supersede the illustration below.** The read record re-prices the
+recorded trades of the tranched and single-date books (its section 9): other users' trades use up
+the whole expected excess over bills at about 65 users of $100k when everyone rebalances one
+single-date book on the same day in a 1% opening auction, about 548 for the tranched book, and
+about 4,400 for the tranched book in the closing auction, all under assumed impact parameters.
+
+**An illustration made before the run, not a measurement.** The table assumes square-root impact. The annual
 crowding cost, as a fraction of capital, is
 
     8.5 × Y × σ × √(0.011 × F × φ / (a × V))
