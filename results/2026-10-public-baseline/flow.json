@@ -1,0 +1,38 @@
+{
+  "same_trade_fraction": {
+    "note": "two deployments on one phase, or two tranched deployments on the one grid at one size, make the same trades by construction; distinct phases are measured from the recorded fills",
+    "single_phase_distinct_phases": {
+      "max": 0.0,
+      "mean": 0.0,
+      "pairs": 420
+    },
+    "single_phase_same_day": 1.0,
+    "tranched_same_grid": 1.0
+  },
+  "single_phase_same_day": {
+    "busiest_cycle_share": 0.9890122057701929,
+    "hhi_ratio": 21.627877206481052,
+    "max": 1.025136803241813,
+    "mean": 0.033588868013342446,
+    "peak_to_mean": 30.52013550544781
+  },
+  "single_phase_uniform_random": {
+    "busiest_cycle_share": 0.06867123057418678,
+    "hhi_ratio": 1.0430218542595582,
+    "max": 0.05435939923723816,
+    "mean": 0.03344956489546995,
+    "peak_to_mean": 1.6251152864652065
+  },
+  "tranched": {
+    "busiest_cycle_share": 0.07517942908572513,
+    "hhi_ratio": 1.0721580137474904,
+    "max": 0.0684785370164165,
+    "mean": 0.033717735790229776,
+    "peak_to_mean": 2.0309352158889387
+  },
+  "tranched_burst_staged_entry": {
+    "first_sessions": 21,
+    "max": 0.0666262791888396,
+    "max_over_steady_mean": 1.9760009866423345
+  }
+}

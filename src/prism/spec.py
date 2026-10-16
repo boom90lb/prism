@@ -2,8 +2,10 @@
 
 A specification is the whole statement of what a strategy *is*: the universe it
 trades, the components it runs with their constructor arguments and schedules,
-the eligibility screen, the construction path, and the policy files that price
-and constrain it. This module turns that file into a resolved object, imports
+the eligibility screen, the construction path, the policy files that price
+and constrain it, and, optionally, a ``[sizing]`` rule that scales its book to a
+volatility target (``prism.portfolio.vol_scale``; it enters ``config_id`` only
+when declared). This module turns that file into a resolved object, imports
 and instantiates the components it names, and computes the identity every
 recorded result is filed under.
 
@@ -31,7 +33,7 @@ cannot be imported, does not name a ``Signal``, or will not accept its declared
 parameters is refused with a message naming the path — never an ImportError
 traceback from inside somebody else's module.
 
-The four rank-to-weight rules live here too, because a rule name and its
+The rank-to-weight rules live here too, because a rule name and its
 ``to_weights_params`` are configuration: they are declared in the specification,
 they enter ``config_id``, and the engine may not run a rule it cannot name.
 ``decile_long_short`` and ``sign_inverse_vol`` delegate to
@@ -61,7 +63,9 @@ from prism.portfolio.construct import (
     cap_book,
     construct_decile_neutral,
     construct_inverse_vol_targets,
+    liquidity_weighted_decile_row,
 )
+from prism.portfolio.vol_scale import VolScaleError, VolScaleRule
 from prism.signal.base import Signal, check_declarations
 from prism.validation.trials import UNAVAILABLE as RECORD_UNAVAILABLE
 from prism.validation.trials import current_git_commit, stable_json_dumps
@@ -80,14 +84,31 @@ KIND_FOR_COMBINATION: dict[str, str] = {"position_space": "heuristic", "calibrat
 #: against one, and a missing policy is a silent default (§4).
 POLICY_KEYS: tuple[str, ...] = ("profile", "costs", "execution", "monitoring", "recovery")
 
-#: The rank-to-weight vocabulary of §3.3. Four names, no extension point: a rule
+#: The rank-to-weight vocabulary of §3.3. A closed list, no extension point: a rule
 #: the engine cannot name is a rule nothing can reproduce.
 TO_WEIGHTS_RULES: tuple[str, ...] = (
-    "decile_long_short", "decile_long_short_buffered", "sign_inverse_vol", "top_k_equal_weight", "none",
+    "decile_long_short",
+    "decile_long_short_buffered",
+    "decile_neutral_sqrt_dv",
+    "sign_inverse_vol",
+    "top_k_equal_weight",
+    "none",
 )
+
+#: The rules that weight names by their trailing dollar volume, and so need the
+#: price and volume panels at the decision bar (:func:`rule_dollar_volume`).
+DOLLAR_VOLUME_RULES: frozenset[str] = frozenset({"decile_neutral_sqrt_dv"})
 
 #: The three schedule fields the component table carries (§3.3), all required.
 SCHEDULE_FIELDS: tuple[str, ...] = ("horizon_bars", "update_every_bars", "valid_for_bars")
+
+#: The optional session-grid fields of a component table. ``tranches`` splits the
+#: component into that many overlapping tranches, each refreshing every
+#: ``update_every_bars`` sessions on its own grid offset; ``phase_offset_bars`` is
+#: the first tranche's offset on the grid of ``prism.io.sessions.grid_position``.
+#: They enter ``config_id`` only when declared; ``prism.composition.tranche_plans``
+#: builds the tranches.
+GRID_FIELDS: tuple[str, ...] = ("tranches", "phase_offset_bars")
 
 #: ``[strategy.eligibility]`` with the defaults §3.3 declares. Resolved into the
 #: specification before hashing so a field left implicit still enters ``config_id``.
@@ -114,6 +135,12 @@ TO_WEIGHTS_PARAMS: dict[str, dict[str, Any]] = {
         "max_gross": 1.0,
         "max_symbol_abs_weight": 1.0,
     },
+    "decile_neutral_sqrt_dv": {
+        "decile": _REQUIRED,
+        "dollar_volume_window": 20,
+        "max_gross": 1.0,
+        "max_symbol_abs_weight": 1.0,
+    },
     "sign_inverse_vol": {
         "vol_ewma_bars": 63,
         "annualization_bars": 252,
@@ -123,7 +150,9 @@ TO_WEIGHTS_PARAMS: dict[str, dict[str, Any]] = {
     "top_k_equal_weight": {"k": _REQUIRED, "max_gross": 1.0, "max_symbol_abs_weight": 1.0},
     "none": {},
 }
-_INT_PARAMS: frozenset[str] = frozenset({"k", "vol_ewma_bars", "annualization_bars"})
+_INT_PARAMS: frozenset[str] = frozenset({"k", "vol_ewma_bars", "annualization_bars", "dollar_volume_window"})
+#: The smallest value each integer parameter takes; a median over one bar is a median.
+_INT_MINIMUM: dict[str, int] = {"k": 1, "dollar_volume_window": 1}
 
 #: The distribution the engine version is read from (§3.12). ``prism`` is the
 #: pre-rename name and is consulted second so the loader works in a checkout
@@ -199,10 +228,31 @@ class ComponentSpec:
     valid_for_bars: int
     params: Mapping[str, Any]
     to_weights_params: Mapping[str, Any]
+    #: The session-grid schedule (``GRID_FIELDS``). Both None means the
+    #: elapsed-count cadence every specification had before the grid existed;
+    #: declaring either one puts the component on the grid and resolves the
+    #: other (``tranches = 1``, ``phase_offset_bars = 0``).
+    tranches: int | None = None
+    phase_offset_bars: int | None = None
+
+    @property
+    def grid_schedule(self) -> tuple[int, int] | None:
+        """``(tranches, phase_offset_bars)`` resolved, or None for an elapsed-count component."""
+        if self.tranches is None and self.phase_offset_bars is None:
+            return None
+        return (
+            1 if self.tranches is None else int(self.tranches),
+            0 if self.phase_offset_bars is None else int(self.phase_offset_bars),
+        )
 
     def to_dict(self) -> dict[str, Any]:
-        """The component table as plain JSON values, defaults resolved."""
-        return {
+        """The component table as plain JSON values, defaults resolved.
+
+        The grid fields appear only for a component on the grid, so a
+        specification that declares neither keeps the identity it had before
+        the fields existed.
+        """
+        payload: dict[str, Any] = {
             "id": self.id,
             "path": self.path,
             "weight": self.weight,
@@ -213,6 +263,10 @@ class ComponentSpec:
             "params": dict(self.params),
             "to_weights_params": dict(self.to_weights_params),
         }
+        grid = self.grid_schedule
+        if grid is not None:
+            payload["tranches"], payload["phase_offset_bars"] = grid
+        return payload
 
 
 @dataclass(frozen=True)
@@ -309,14 +363,23 @@ class Specification:
     policy: PolicyRefs
     components: tuple[LoadedComponent, ...]
     instantiated: bool
+    #: The ``[sizing]`` block, or None when the file declares none. Only
+    #: ``constant_vol`` exists (``prism.portfolio.vol_scale``); the evaluator's
+    #: account_state path applies it to each component's sub-targets.
+    sizing: VolScaleRule | None = None
 
     def resolved(self) -> dict[str, Any]:
         """The specification after defaults, as the plain dict ``config_id`` hashes.
 
         Policy paths, the calibration path, and the risk-model path are absent
         by construction: those files enter the identity as content (§3.12).
+        ``sizing`` appears only when declared, so a specification without a
+        ``[sizing]`` block keeps the identity it had before the block existed.
         """
-        return {"strategy": self.strategy.to_dict(), "construction": self.construction.to_dict()}
+        payload: dict[str, Any] = {"strategy": self.strategy.to_dict(), "construction": self.construction.to_dict()}
+        if self.sizing is not None:
+            payload["sizing"] = self.sizing.to_dict()
+        return payload
 
     def identity_payload(
         self,
@@ -424,12 +487,13 @@ def load_spec_table(
     ws = workspace if workspace is not None else resolve_workspace()
     spec_path = Path(path).expanduser()
 
-    _reject_unknown(table, ("strategy", "construction", "policy"), where=str(spec_path))
+    _reject_unknown(table, ("strategy", "construction", "policy", "sizing"), where=str(spec_path))
     strategy = _parse_strategy(_require_table(table, "strategy", where=str(spec_path)), where=str(spec_path))
     construction = _parse_construction(
         _require_table(table, "construction", where=str(spec_path)), root=ws.root, where=str(spec_path)
     )
     policy = _parse_policy(_require_table(table, "policy", where=str(spec_path)), root=ws.root, where=str(spec_path))
+    sizing = _parse_sizing(table["sizing"], strategy=strategy, where=str(spec_path)) if "sizing" in table else None
 
     expected_kind = KIND_FOR_COMBINATION[strategy.combination]
     if construction.kind != expected_kind:
@@ -461,6 +525,7 @@ def load_spec_table(
         policy=policy,
         components=components,
         instantiated=instantiate,
+        sizing=sizing,
     )
 
 
@@ -648,6 +713,19 @@ def _parse_strategy(table: Mapping[str, Any], *, where: str) -> StrategySpec:
             f"{where} declares component id(s) {duplicates} more than once; component state is "
             "keyed by id, so two components cannot share one"
         )
+    tranched = [component.id for component in components if (component.grid_schedule or (1, 0))[0] > 1]
+    if tranched and combination != "position_space":
+        raise SpecError(
+            f"{where} [strategy] combination={combination!r} with tranched component(s) {tranched}; a tranche is "
+            "a position-space sub-target, and the calibrated flow fits and forecasts per declared component, so "
+            "tranches > 1 needs combination = 'position_space'"
+        )
+    if tranched and renormalize:
+        raise SpecError(
+            f"{where} [strategy] renormalize = true with tranched component(s) {tranched}; renormalization "
+            "scales the tranches that hold a sub-target up to the declared gross, so a new book would trade its "
+            "whole size on its first session instead of entering one tranche per session"
+        )
     eligibility = _parse_eligibility(table.get("eligibility", {}), where=where)
     return StrategySpec(
         name=name,
@@ -666,7 +744,7 @@ def _parse_component(entry: Any, *, index: int, where: str) -> ComponentSpec:
     label = f"{where} [[strategy.components]] #{index}"
     if not isinstance(entry, Mapping):
         raise SpecError(f"{label} is {entry!r}, not a table")
-    permitted = ("id", "path", "weight", "to_weights", *SCHEDULE_FIELDS, "params", "to_weights_params")
+    permitted = ("id", "path", "weight", "to_weights", *SCHEDULE_FIELDS, *GRID_FIELDS, "params", "to_weights_params")
     _reject_unknown(entry, permitted, where=label)
     component_id = _require_str(entry, "id", where=label)
     path = _require_str(entry, "path", where=label)
@@ -679,6 +757,7 @@ def _parse_component(entry: Any, *, index: int, where: str) -> ComponentSpec:
             f"update_every_bars={schedule['update_every_bars']}; an output that expires before "
             "its own next refresh has no reachable valid state (§3.3)"
         )
+    grid = _parse_grid(entry, update_every_bars=schedule["update_every_bars"], where=label)
     params = entry.get("params", {})
     if not isinstance(params, Mapping):
         raise SpecError(f"{label} declares params={params!r}, which is not a table")
@@ -691,7 +770,62 @@ def _parse_component(entry: Any, *, index: int, where: str) -> ComponentSpec:
         params=dict(params),
         to_weights_params=to_weights_params,
         **schedule,
+        **grid,
     )
+
+
+def _parse_grid(entry: Mapping[str, Any], *, update_every_bars: int, where: str) -> dict[str, int | None]:
+    """The component's session-grid fields, both resolved when either is declared.
+
+    ``tranches`` may not exceed ``update_every_bars``, or two tranches would
+    share a grid offset; ``phase_offset_bars`` is a residue of the refresh cycle,
+    ``0 <= offset < update_every_bars``, so one schedule has one spelling and one
+    identity.
+    """
+    if not any(key in entry for key in GRID_FIELDS):
+        return {"tranches": None, "phase_offset_bars": None}
+    tranches = _optional_int(entry, "tranches", default=1, minimum=1, where=where)
+    offset = _optional_int(entry, "phase_offset_bars", default=0, minimum=0, where=where)
+    if tranches > update_every_bars:
+        raise SpecError(
+            f"{where} declares tranches={tranches} above update_every_bars={update_every_bars}; each tranche "
+            "refreshes on its own session of the cycle, and the cycle has only that many sessions"
+        )
+    if offset >= update_every_bars:
+        raise SpecError(
+            f"{where} declares phase_offset_bars={offset}; it is a position in the {update_every_bars}-session "
+            f"refresh cycle, so it must lie in [0, {update_every_bars})"
+        )
+    return {"tranches": tranches, "phase_offset_bars": offset}
+
+
+def _parse_sizing(table: Any, *, strategy: StrategySpec, where: str) -> VolScaleRule:
+    """The ``[sizing]`` block: the constant-volatility rule, every default resolved.
+
+    It scales each component's attributed sub-targets, so it needs the
+    position-space flow, whose account target is their sum; the calibrated flow
+    sizes from forecasts and has no sub-target to scale. Renormalization is
+    refused beside it: it would rescale the scaled book a second time to the
+    declared gross, undoing the volatility target whenever a component dropped
+    out.
+    """
+    label = f"{where} [sizing]"
+    try:
+        rule = VolScaleRule.from_mapping(table)
+    except VolScaleError as exc:
+        raise SpecError(f"{label}: {exc}") from None
+    if strategy.combination != "position_space":
+        raise SpecError(
+            f"{label} declares rule={rule.rule!r} under [strategy] combination={strategy.combination!r}; the rule "
+            "scales each component's sub-targets, which only combination = 'position_space' sums into the "
+            "account target"
+        )
+    if strategy.renormalize:
+        raise SpecError(
+            f"{label} declares rule={rule.rule!r} with [strategy] renormalize = true; renormalization would scale "
+            "the volatility-scaled book back to the declared gross whenever a component drops out"
+        )
+    return rule
 
 
 def _parse_eligibility(table: Any, *, where: str) -> Eligibility:
@@ -791,10 +925,10 @@ def resolve_to_weights_params(
             continue
         value = given[key]
         if key in _INT_PARAMS:
-            resolved[key] = _coerce_int(value, key=key, where=where, minimum=1 if key == "k" else 2)
+            resolved[key] = _coerce_int(value, key=key, where=where, minimum=_INT_MINIMUM.get(key, 2))
         else:
             resolved[key] = _coerce_float(value, key=key, where=where)
-    if rule == "decile_long_short" and not 0.0 < float(resolved["decile"]) <= 0.5:
+    if rule in ("decile_long_short", "decile_neutral_sqrt_dv") and not 0.0 < float(resolved["decile"]) <= 0.5:
         raise SpecError(f"{where}: decile must be in (0, 0.5], got {resolved['decile']!r}")
     if rule == "decile_long_short_buffered" and not (
         0.0 < float(resolved["decile"]) <= float(resolved["hold_quantile"]) <= 0.5
@@ -819,6 +953,7 @@ def apply_to_weights(
     close: pd.DataFrame | None = None,
     no_decision: Iterable[str] | None = None,
     previous: Mapping[str, float] | None = None,
+    dollar_volume: pd.DataFrame | None = None,
 ) -> pd.Series:
     """Turn one decision bar's cross-section of scores into target weights.
 
@@ -837,6 +972,16 @@ def apply_to_weights(
     component's own sub-targets from its last decision (sid -> weight), whose signs say
     which leg each name was in. It never sees fills or held shares, only the rule's own
     last output.
+
+    ``decile_neutral_sqrt_dv`` holds the names ``decile_long_short`` holds and weights each
+    leg by the square root of the name's median dollar volume over the last
+    ``dollar_volume_window`` bars of ``dollar_volume`` (bar x sid, ending at the decision
+    bar; :func:`rule_dollar_volume` builds it). Each leg sums to ``0.5 * min(1, max_gross)``
+    with no name above ``max_symbol_abs_weight``
+    (``prism.portfolio.construct.liquidity_weighted_decile_row``). Like the eligibility
+    screen's, the median does not skip gaps, so under a declared screen on the same window
+    every rankable name has one; a rankable name without a finite, positive median is
+    refused.
     """
     if not isinstance(scores, pd.Series):
         raise SpecError(f"scores must be a pandas Series indexed by sid, got {type(scores).__name__}")
@@ -869,6 +1014,8 @@ def apply_to_weights(
             float(resolved["max_symbol_abs_weight"]),
         )
         weights = capped.iloc[0]
+    elif rule == "decile_neutral_sqrt_dv":
+        weights = _decile_neutral_sqrt_dv(values, dollar_volume=dollar_volume, params=resolved, label=scores.name)
     elif rule == "sign_inverse_vol":
         weights = _sign_inverse_vol(values, close=close, params=resolved)
     else:
@@ -887,6 +1034,93 @@ def apply_to_weights(
 def _numeric_scores(scores: pd.Series) -> pd.Series:
     """Coerce a score cross-section to float, non-finite values becoming NaN."""
     return pd.to_numeric(scores, errors="coerce").replace([np.inf, -np.inf], np.nan).astype(float)
+
+
+def rule_dollar_volume(
+    rule: str,
+    params: Mapping[str, Any] | None,
+    price: pd.DataFrame | None,
+    volume: pd.DataFrame | None,
+) -> pd.DataFrame | None:
+    """The trailing dollar-volume panel ``rule`` weights by, or None for a rule that reads none.
+
+    ``price`` is the as-traded close panel the eligibility screen reads and ``volume`` its
+    volume panel, both ending at the decision bar. The result is their product over the
+    rule's last ``dollar_volume_window`` bars, on ``price``'s bars and columns, so it is the
+    same dollar volume the screen's median is taken of. Every rule outside
+    :data:`DOLLAR_VOLUME_RULES` returns None without reading either panel.
+    """
+    if rule not in DOLLAR_VOLUME_RULES:
+        return None
+    if price is None or volume is None:
+        raise SpecError(
+            f"to_weights={rule!r} weights names by their trailing dollar volume, so it needs the price and "
+            "volume panels at the decision bar; one of them was not supplied"
+        )
+    window = int(resolve_to_weights_params(rule, params)["dollar_volume_window"])
+    tail = price.tail(window)
+    numeric = tail.apply(pd.to_numeric, errors="coerce")
+    shares = volume.reindex(index=tail.index, columns=tail.columns).apply(pd.to_numeric, errors="coerce")
+    return numeric * shares
+
+
+def _decile_neutral_sqrt_dv(
+    scores: pd.Series,
+    *,
+    dollar_volume: pd.DataFrame | None,
+    params: Mapping[str, Any],
+    label: object,
+) -> pd.Series:
+    """One decision bar of ``liquidity_weighted_decile_row`` (see :func:`apply_to_weights`)."""
+    if dollar_volume is None:
+        raise SpecError(
+            "to_weights='decile_neutral_sqrt_dv' needs the trailing dollar-volume panel "
+            "(prism.spec.rule_dollar_volume); it weights each leg by the square root of median dollar volume"
+        )
+    window = int(params["dollar_volume_window"])
+    if len(dollar_volume) < window:
+        raise SpecError(
+            f"to_weights='decile_neutral_sqrt_dv' at {label}: the dollar-volume panel has {len(dollar_volume)} "
+            f"bar(s), fewer than dollar_volume_window={window}"
+        )
+    median = (
+        dollar_volume.tail(window)
+        .apply(pd.to_numeric, errors="coerce")
+        .median(axis=0, skipna=False)
+        .reindex(scores.index)
+    )
+    liquid = median.to_numpy(dtype=float)
+    rankable = np.isfinite(scores.to_numpy(dtype=float))
+    missing = [str(sid) for sid in scores.index[rankable & ~(np.isfinite(liquid) & (liquid > 0.0))]]
+    if missing:
+        shown = ", ".join(missing[:10]) + (f" and {len(missing) - 10} more" if len(missing) > 10 else "")
+        raise SpecError(
+            f"to_weights='decile_neutral_sqrt_dv' at {label}: {len(missing)} rankable name(s) have no finite, "
+            f"positive median dollar volume over the last {window} bar(s) ({shown}). Declare "
+            "[strategy.eligibility] min_median_dollar_volume > 0 on the same window, so a name without one is "
+            "not ranked (N7)"
+        )
+    leg_gross = 0.5 * min(1.0, float(params["max_gross"]))
+    cap = float(params["max_symbol_abs_weight"])
+    row = liquidity_weighted_decile_row(
+        scores.to_numpy(dtype=float),
+        liquid,
+        float(params["decile"]),
+        leg_gross=leg_gross,
+        max_symbol_abs_weight=cap,
+    )
+    for side, leg in (("long", row[row > 0.0]), ("short", -row[row < 0.0])):
+        if leg.size and leg.size * cap < leg_gross:
+            logger.warning(
+                "decile_neutral_sqrt_dv at %s: the %s leg's %d name(s) cannot reach %.6g under "
+                "max_symbol_abs_weight=%.6g; every one sits at the cap",
+                label,
+                side,
+                leg.size,
+                leg_gross,
+                cap,
+            )
+    return pd.Series(row, index=scores.index, dtype=float)
 
 
 def _sign_inverse_vol(scores: pd.Series, *, close: pd.DataFrame | None, params: Mapping[str, Any]) -> pd.Series:

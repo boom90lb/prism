@@ -1,0 +1,1241 @@
+{
+  "labels": {
+    "assumptions": "every coefficient and window share is an assumption: the auction shares come from 2015-17 industry notes and are not checked for 2026; paper fills cannot measure impact",
+    "selection": "uncounted; may not choose a configuration"
+  },
+  "rows": {
+    "D-liq": {
+      "binding_names": {
+        "below_thin": [
+          "ACT",
+          "AIZ",
+          "ALK",
+          "AMCR",
+          "AOS",
+          "BEN",
+          "BIO",
+          "BWA",
+          "BXP",
+          "CPT",
+          "DVA",
+          "DXC",
+          "EMN",
+          "ERIE",
+          "FBHS",
+          "FFIV",
+          "FMC",
+          "FOX",
+          "GEN",
+          "GL",
+          "HAS",
+          "HRL",
+          "IEX",
+          "IVZ",
+          "JKHY",
+          "LKQ",
+          "LNC",
+          "MHK",
+          "MKTX",
+          "NDSN",
+          "NTRS",
+          "NWL",
+          "NWS",
+          "NWSA",
+          "OGN",
+          "PNR",
+          "PTC",
+          "RHI",
+          "ROL",
+          "RVTY",
+          "SNA",
+          "SOLV",
+          "STE",
+          "TECH",
+          "TFX",
+          "TRMB",
+          "UDR",
+          "VNO",
+          "WRB",
+          "XRAY"
+        ],
+        "median_dollar_volume_p05": 77957275.56114063,
+        "median_dollar_volume_p10": 97289799.75,
+        "n_below_thin": 50,
+        "n_traded": 476
+      },
+      "charged_participation_annual_recomputed": 5.351141930640503e-05,
+      "economics": {
+        "cases": {
+          "cash_yield_0": {
+            "bases": {
+              "realized_annualized": {
+                "cash_yield": 0.0,
+                "cash_yield_source": "[criteria] reported_cash_yields, no ETF holding",
+                "idle_fraction": 0.5175073754177262,
+                "long_over_equity": 0.48249262458227377,
+                "periods_per_year": 252,
+                "return_hurdle_annual": 0.04,
+                "rf_annual": 0.04,
+                "rf_source": "French RF, mean of the last 252 sessions of the pinned file",
+                "sharpe_annual": 0.30717933579713147,
+                "sharpe_periodic": 0.019350479295647875,
+                "vol_annual": 0.1302170925534423,
+                "vol_basis": "realized_annualized"
+              },
+              "target": {
+                "cash_yield": 0.0,
+                "cash_yield_source": "[criteria] reported_cash_yields, no ETF holding",
+                "idle_fraction": 0.5175073754177262,
+                "long_over_equity": 0.48249262458227377,
+                "periods_per_year": 252,
+                "return_hurdle_annual": 0.04,
+                "rf_annual": 0.04,
+                "rf_source": "French RF, mean of the last 252 sessions of the pinned file",
+                "sharpe_annual": 0.33333333333333337,
+                "sharpe_periodic": 0.020998026278290404,
+                "vol_annual": 0.12,
+                "vol_basis": "target"
+              }
+            },
+            "excess_over_bills_annual": 0.0032867988145048113,
+            "governing_basis": "target",
+            "margin_annual": 0.0032867988145048074,
+            "pass": true,
+            "return_hurdle_annual": 0.04,
+            "sharpe_annual": 0.33333333333333337,
+            "vol_annual": 0.12
+          },
+          "cash_yield_0.033": {
+            "bases": {
+              "realized_annualized": {
+                "cash_yield": 0.033,
+                "cash_yield_source": "[criteria] reported_cash_yields, no ETF holding",
+                "idle_fraction": 0.5175073754177262,
+                "long_over_equity": 0.48249262458227377,
+                "periods_per_year": 252,
+                "return_hurdle_annual": 0.022922256611215035,
+                "rf_annual": 0.04,
+                "rf_source": "French RF, mean of the last 252 sessions of the pinned file",
+                "sharpe_annual": 0.176031089020111,
+                "sharpe_periodic": 0.011088916299121102,
+                "vol_annual": 0.1302170925534423,
+                "vol_basis": "realized_annualized"
+              },
+              "target": {
+                "cash_yield": 0.033,
+                "cash_yield_source": "[criteria] reported_cash_yields, no ETF holding",
+                "idle_fraction": 0.5175073754177262,
+                "long_over_equity": 0.48249262458227377,
+                "periods_per_year": 252,
+                "return_hurdle_annual": 0.022922256611215035,
+                "rf_annual": 0.04,
+                "rf_source": "French RF, mean of the last 252 sessions of the pinned file",
+                "sharpe_annual": 0.19101880509345864,
+                "sharpe_periodic": 0.012033053667000231,
+                "vol_annual": 0.12,
+                "vol_basis": "target"
+              }
+            },
+            "excess_over_bills_annual": 0.020364542203289777,
+            "governing_basis": "target",
+            "margin_annual": 0.020364542203289773,
+            "pass": true,
+            "return_hurdle_annual": 0.022922256611215035,
+            "sharpe_annual": 0.19101880509345864,
+            "vol_annual": 0.12
+          },
+          "governing": {
+            "bases": {
+              "realized_annualized": {
+                "cash_yield": 0.0,
+                "cash_yield_source": "[criteria] buffer_cash_yield",
+                "idle_fraction": 0.019999999999999962,
+                "long_over_equity": 0.48249262458227377,
+                "periods_per_year": 252,
+                "return_hurdle_annual": 0.020597212358708678,
+                "rf_annual": 0.04,
+                "rf_source": "French RF, mean of the last 252 sessions of the pinned file",
+                "sharpe_annual": 0.15817595029051498,
+                "sharpe_periodic": 0.009964148282381369,
+                "sleeve_fraction": 0.4975073754177262,
+                "sleeve_yield": 0.039,
+                "sleeve_yield_source": "T-bill ETF at rf less [criteria] sleeve_fee_annual (0.001)",
+                "vol_annual": 0.1302170925534423,
+                "vol_basis": "realized_annualized"
+              },
+              "target": {
+                "cash_yield": 0.0,
+                "cash_yield_source": "[criteria] buffer_cash_yield",
+                "idle_fraction": 0.019999999999999962,
+                "long_over_equity": 0.48249262458227377,
+                "periods_per_year": 252,
+                "return_hurdle_annual": 0.020597212358708678,
+                "rf_annual": 0.04,
+                "rf_source": "French RF, mean of the last 252 sessions of the pinned file",
+                "sharpe_annual": 0.1716434363225723,
+                "sharpe_periodic": 0.010812520159192315,
+                "sleeve_fraction": 0.4975073754177262,
+                "sleeve_yield": 0.039,
+                "sleeve_yield_source": "T-bill ETF at rf less [criteria] sleeve_fee_annual (0.001)",
+                "vol_annual": 0.12,
+                "vol_basis": "target"
+              }
+            },
+            "excess_over_bills_annual": 0.022689586455796135,
+            "governing_basis": "target",
+            "margin_annual": 0.022689586455796135,
+            "pass": true,
+            "return_hurdle_annual": 0.020597212358708678,
+            "sharpe_annual": 0.1716434363225723,
+            "vol_annual": 0.12
+          }
+        },
+        "charged_cost_annual": 0.004617307651076774,
+        "cost_drag_sharpe": 0.03545853743571942,
+        "figure_f3": 0.36072332345420677,
+        "long_over_equity_mean": 0.48249262458227377,
+        "pass": true,
+        "prior_sharpe": 0.44457513592934145,
+        "realized_vol_annual": 0.1302170925534423,
+        "rf_annual": 0.04,
+        "rho": 0.8911471399806159,
+        "rho_times_prior": 0.3961818608899262,
+        "sleeve_fraction_mean": 0.4975073754177262
+      },
+      "margin_annual": 0.022689586455796135,
+      "n_scenarios": 72,
+      "own_capacity": [
+        {
+          "impact_y": 0.5,
+          "own_capacity_initial_equity": 270190544.2661529,
+          "own_capacity_multiple": 2532.1466721204742,
+          "synchronized_fraction": 1.0,
+          "windows": "1@0.01"
+        },
+        {
+          "impact_y": 0.7,
+          "own_capacity_initial_equity": 137852318.50313926,
+          "own_capacity_multiple": 1291.9115674084053,
+          "synchronized_fraction": 1.0,
+          "windows": "1@0.01"
+        },
+        {
+          "impact_y": 1.0,
+          "own_capacity_initial_equity": 67547636.06653823,
+          "own_capacity_multiple": 633.0366680301186,
+          "synchronized_fraction": 1.0,
+          "windows": "1@0.01"
+        },
+        {
+          "impact_y": 0.5,
+          "own_capacity_initial_equity": 810571632.7984583,
+          "own_capacity_multiple": 7596.440016361419,
+          "synchronized_fraction": 1.0,
+          "windows": "1@0.03"
+        },
+        {
+          "impact_y": 0.7,
+          "own_capacity_initial_equity": 413556955.5094178,
+          "own_capacity_multiple": 3875.734702225216,
+          "synchronized_fraction": 1.0,
+          "windows": "1@0.03"
+        },
+        {
+          "impact_y": 1.0,
+          "own_capacity_initial_equity": 202642908.19961458,
+          "own_capacity_multiple": 1899.1100040903548,
+          "synchronized_fraction": 1.0,
+          "windows": "1@0.03"
+        },
+        {
+          "impact_y": 0.5,
+          "own_capacity_initial_equity": 2161524354.129222,
+          "own_capacity_multiple": 20257.173376963783,
+          "synchronized_fraction": 1.0,
+          "windows": "1@0.08"
+        },
+        {
+          "impact_y": 0.7,
+          "own_capacity_initial_equity": 1102818548.025114,
+          "own_capacity_multiple": 10335.292539267244,
+          "synchronized_fraction": 1.0,
+          "windows": "1@0.08"
+        },
+        {
+          "impact_y": 1.0,
+          "own_capacity_initial_equity": 540381088.5323055,
+          "own_capacity_multiple": 5064.293344240946,
+          "synchronized_fraction": 1.0,
+          "windows": "1@0.08"
+        },
+        {
+          "impact_y": 0.5,
+          "own_capacity_initial_equity": 27019054426.615288,
+          "own_capacity_multiple": 253214.66721204738,
+          "synchronized_fraction": 1.0,
+          "windows": "1@1"
+        },
+        {
+          "impact_y": 0.7,
+          "own_capacity_initial_equity": 13785231850.313927,
+          "own_capacity_multiple": 129191.15674084054,
+          "synchronized_fraction": 1.0,
+          "windows": "1@1"
+        },
+        {
+          "impact_y": 1.0,
+          "own_capacity_initial_equity": 6754763606.653822,
+          "own_capacity_multiple": 63303.666803011845,
+          "synchronized_fraction": 1.0,
+          "windows": "1@1"
+        }
+      ],
+      "statistics": {
+        "carried_forward": {
+          "dollar_volume": 0,
+          "sigma": 0
+        },
+        "min_valid_sessions": 10,
+        "traded_cells": 29590,
+        "window_sessions": 20
+      },
+      "table": "capacity/D-liq.csv"
+    },
+    "D-split": {
+      "binding_names": {
+        "below_thin": [
+          "ACT",
+          "AIZ",
+          "ALK",
+          "AMCR",
+          "AOS",
+          "BEN",
+          "BIO",
+          "BWA",
+          "BXP",
+          "CPT",
+          "DOC",
+          "DVA",
+          "DXC",
+          "EMN",
+          "ERIE",
+          "ESS",
+          "FBHS",
+          "FFIV",
+          "FMC",
+          "FOX",
+          "GEN",
+          "GL",
+          "HAS",
+          "HRL",
+          "IEX",
+          "JKHY",
+          "LKQ",
+          "LNC",
+          "MAA",
+          "MHK",
+          "MKTX",
+          "NDSN",
+          "NTRS",
+          "NWL",
+          "NWS",
+          "NWSA",
+          "OGN",
+          "PNR",
+          "PTC",
+          "RHI",
+          "ROL",
+          "RVTY",
+          "SNA",
+          "SOLV",
+          "STE",
+          "TECH",
+          "TFX",
+          "TRMB",
+          "UDR",
+          "VNO",
+          "WRB",
+          "XRAY"
+        ],
+        "median_dollar_volume_p05": 74929159.225,
+        "median_dollar_volume_p10": 96782088.33698,
+        "n_below_thin": 52,
+        "n_traded": 479
+      },
+      "charged_participation_annual_recomputed": 7.710361483102828e-05,
+      "economics": {
+        "cases": {
+          "cash_yield_0": {
+            "bases": {
+              "realized_annualized": {
+                "cash_yield": 0.0,
+                "cash_yield_source": "[criteria] reported_cash_yields, no ETF holding",
+                "idle_fraction": 0.4442214182543933,
+                "long_over_equity": 0.5557785817456067,
+                "periods_per_year": 252,
+                "return_hurdle_annual": 0.04,
+                "rf_annual": 0.04,
+                "rf_source": "French RF, mean of the last 252 sessions of the pinned file",
+                "sharpe_annual": 0.3112717047060989,
+                "sharpe_periodic": 0.019608274305320743,
+                "vol_annual": 0.12850509505117977,
+                "vol_basis": "realized_annualized"
+              },
+              "target": {
+                "cash_yield": 0.0,
+                "cash_yield_source": "[criteria] reported_cash_yields, no ETF holding",
+                "idle_fraction": 0.4442214182543933,
+                "long_over_equity": 0.5557785817456067,
+                "periods_per_year": 252,
+                "return_hurdle_annual": 0.04,
+                "rf_annual": 0.04,
+                "rf_source": "French RF, mean of the last 252 sessions of the pinned file",
+                "sharpe_annual": 0.33333333333333337,
+                "sharpe_periodic": 0.020998026278290404,
+                "vol_annual": 0.12,
+                "vol_basis": "target"
+              }
+            },
+            "excess_over_bills_annual": 0.0028600557312329147,
+            "governing_basis": "target",
+            "margin_annual": 0.0028600557312329134,
+            "pass": true,
+            "return_hurdle_annual": 0.04,
+            "sharpe_annual": 0.33333333333333337,
+            "vol_annual": 0.12
+          },
+          "cash_yield_0.033": {
+            "bases": {
+              "realized_annualized": {
+                "cash_yield": 0.033,
+                "cash_yield_source": "[criteria] reported_cash_yields, no ETF holding",
+                "idle_fraction": 0.4442214182543933,
+                "long_over_equity": 0.5557785817456067,
+                "periods_per_year": 252,
+                "return_hurdle_annual": 0.02534069319760502,
+                "rf_annual": 0.04,
+                "rf_source": "French RF, mean of the last 252 sessions of the pinned file",
+                "sharpe_annual": 0.19719601925131897,
+                "sharpe_periodic": 0.012422181582640366,
+                "vol_annual": 0.12850509505117977,
+                "vol_basis": "realized_annualized"
+              },
+              "target": {
+                "cash_yield": 0.033,
+                "cash_yield_source": "[criteria] reported_cash_yields, no ETF holding",
+                "idle_fraction": 0.4442214182543933,
+                "long_over_equity": 0.5557785817456067,
+                "periods_per_year": 252,
+                "return_hurdle_annual": 0.02534069319760502,
+                "rf_annual": 0.04,
+                "rf_source": "French RF, mean of the last 252 sessions of the pinned file",
+                "sharpe_annual": 0.21117244331337517,
+                "sharpe_periodic": 0.013302613541835125,
+                "vol_annual": 0.12,
+                "vol_basis": "target"
+              }
+            },
+            "excess_over_bills_annual": 0.017519362533627895,
+            "governing_basis": "target",
+            "margin_annual": 0.017519362533627895,
+            "pass": true,
+            "return_hurdle_annual": 0.02534069319760502,
+            "sharpe_annual": 0.21117244331337517,
+            "vol_annual": 0.12
+          },
+          "governing": {
+            "bases": {
+              "realized_annualized": {
+                "cash_yield": 0.0,
+                "cash_yield_source": "[criteria] buffer_cash_yield",
+                "idle_fraction": 0.019999999999999962,
+                "long_over_equity": 0.5557785817456067,
+                "periods_per_year": 252,
+                "return_hurdle_annual": 0.02345536468807866,
+                "rf_annual": 0.04,
+                "rf_source": "French RF, mean of the last 252 sessions of the pinned file",
+                "sharpe_annual": 0.182524783774037,
+                "sharpe_periodic": 0.011497980618379507,
+                "sleeve_fraction": 0.42422141825439336,
+                "sleeve_yield": 0.039,
+                "sleeve_yield_source": "T-bill ETF at rf less [criteria] sleeve_fee_annual (0.001)",
+                "vol_annual": 0.12850509505117977,
+                "vol_basis": "realized_annualized"
+              },
+              "target": {
+                "cash_yield": 0.0,
+                "cash_yield_source": "[criteria] buffer_cash_yield",
+                "idle_fraction": 0.019999999999999962,
+                "long_over_equity": 0.5557785817456067,
+                "periods_per_year": 252,
+                "return_hurdle_annual": 0.02345536468807866,
+                "rf_annual": 0.04,
+                "rf_source": "French RF, mean of the last 252 sessions of the pinned file",
+                "sharpe_annual": 0.1954613724006555,
+                "sharpe_periodic": 0.01231290910217901,
+                "sleeve_fraction": 0.42422141825439336,
+                "sleeve_yield": 0.039,
+                "sleeve_yield_source": "T-bill ETF at rf less [criteria] sleeve_fee_annual (0.001)",
+                "vol_annual": 0.12,
+                "vol_basis": "target"
+              }
+            },
+            "excess_over_bills_annual": 0.019404691043154256,
+            "governing_basis": "target",
+            "margin_annual": 0.019404691043154256,
+            "pass": true,
+            "return_hurdle_annual": 0.02345536468807866,
+            "sharpe_annual": 0.1954613724006555,
+            "vol_annual": 0.12
+          }
+        },
+        "charged_cost_annual": 0.005600078470905022,
+        "cost_drag_sharpe": 0.04357864930316325,
+        "figure_f3": 0.35716713109360765,
+        "long_over_equity_mean": 0.5557785817456067,
+        "pass": true,
+        "prior_sharpe": 0.44457513592934145,
+        "realized_vol_annual": 0.12850509505117977,
+        "rf_annual": 0.04,
+        "rho": 0.9014129401525132,
+        "rho_times_prior": 0.4007457803967709,
+        "sleeve_fraction_mean": 0.42422141825439336
+      },
+      "margin_annual": 0.019404691043154256,
+      "n_scenarios": 36,
+      "own_capacity": [
+        {
+          "impact_y": 0.5,
+          "own_capacity_initial_equity": 461924895.2065177,
+          "own_capacity_multiple": 4287.650393700494,
+          "synchronized_fraction": 1.0,
+          "windows": "0.5@0.01+0.5@0.08"
+        },
+        {
+          "impact_y": 0.7,
+          "own_capacity_initial_equity": 235675966.9421009,
+          "own_capacity_multiple": 2187.576731479844,
+          "synchronized_fraction": 1.0,
+          "windows": "0.5@0.01+0.5@0.08"
+        },
+        {
+          "impact_y": 1.0,
+          "own_capacity_initial_equity": 115481223.80162942,
+          "own_capacity_multiple": 1071.9125984251234,
+          "synchronized_fraction": 1.0,
+          "windows": "0.5@0.01+0.5@0.08"
+        },
+        {
+          "impact_y": 0.5,
+          "own_capacity_initial_equity": 976590905.7688518,
+          "own_capacity_multiple": 9064.851072233478,
+          "synchronized_fraction": 1.0,
+          "windows": "0.5@0.03+0.5@0.08"
+        },
+        {
+          "impact_y": 0.7,
+          "own_capacity_initial_equity": 498260666.2085981,
+          "own_capacity_multiple": 4624.924016445654,
+          "synchronized_fraction": 1.0,
+          "windows": "0.5@0.03+0.5@0.08"
+        },
+        {
+          "impact_y": 1.0,
+          "own_capacity_initial_equity": 244147726.44221294,
+          "own_capacity_multiple": 2266.2127680583694,
+          "synchronized_fraction": 1.0,
+          "windows": "0.5@0.03+0.5@0.08"
+        }
+      ],
+      "statistics": {
+        "carried_forward": {
+          "dollar_volume": 0,
+          "sigma": 0
+        },
+        "min_valid_sessions": 10,
+        "traded_cells": 35068,
+        "window_sessions": 20
+      },
+      "table": "capacity/D-split.csv"
+    },
+    "P00": {
+      "binding_names": {
+        "below_thin": [
+          "AIZ",
+          "AMCR",
+          "AOS",
+          "BALL",
+          "BEN",
+          "BF.B",
+          "BIO",
+          "BWA",
+          "BXP",
+          "CPT",
+          "DOC",
+          "DVA",
+          "DXC",
+          "EMN",
+          "ERIE",
+          "ESS",
+          "FBHS",
+          "FMC",
+          "FOX",
+          "GEN",
+          "GL",
+          "HAS",
+          "HRL",
+          "IEX",
+          "JKHY",
+          "LKQ",
+          "LNC",
+          "MAA",
+          "MHK",
+          "MKTX",
+          "NDSN",
+          "NWL",
+          "NWS",
+          "NWSA",
+          "OGN",
+          "PNR",
+          "RHI",
+          "ROL",
+          "RVTY",
+          "SNA",
+          "SOLV",
+          "TECH",
+          "TFX",
+          "TRMB",
+          "VNO",
+          "WRB",
+          "XRAY",
+          "ZION"
+        ],
+        "median_dollar_volume_p05": 73750474.65875,
+        "median_dollar_volume_p10": 98350686.5,
+        "n_below_thin": 48,
+        "n_traded": 455
+      },
+      "charged_participation_annual_recomputed": 0.00021750113820094916,
+      "economics": {
+        "cases": {
+          "cash_yield_0": {
+            "bases": {
+              "realized_annualized": {
+                "cash_yield": 0.0,
+                "cash_yield_source": "[criteria] reported_cash_yields, no ETF holding",
+                "idle_fraction": 0.44800077311734376,
+                "long_over_equity": 0.5519992268826562,
+                "periods_per_year": 252,
+                "return_hurdle_annual": 0.04,
+                "rf_annual": 0.04,
+                "rf_source": "French RF, mean of the last 252 sessions of the pinned file",
+                "sharpe_annual": 0.30981253029875183,
+                "sharpe_periodic": 0.019516354957670495,
+                "vol_annual": 0.12911033637480077,
+                "vol_basis": "realized_annualized"
+              },
+              "target": {
+                "cash_yield": 0.0,
+                "cash_yield_source": "[criteria] reported_cash_yields, no ETF holding",
+                "idle_fraction": 0.44800077311734376,
+                "long_over_equity": 0.5519992268826562,
+                "periods_per_year": 252,
+                "return_hurdle_annual": 0.04,
+                "rf_annual": 0.04,
+                "rf_source": "French RF, mean of the last 252 sessions of the pinned file",
+                "sharpe_annual": 0.33333333333333337,
+                "sharpe_periodic": 0.020998026278290404,
+                "vol_annual": 0.12,
+                "vol_basis": "target"
+              }
+            },
+            "excess_over_bills_annual": 0.0025561051656511485,
+            "governing_basis": "target",
+            "margin_annual": 0.0025561051656511455,
+            "pass": true,
+            "return_hurdle_annual": 0.04,
+            "sharpe_annual": 0.33333333333333337,
+            "vol_annual": 0.12
+          },
+          "cash_yield_0.033": {
+            "bases": {
+              "realized_annualized": {
+                "cash_yield": 0.033,
+                "cash_yield_source": "[criteria] reported_cash_yields, no ETF holding",
+                "idle_fraction": 0.44800077311734376,
+                "long_over_equity": 0.5519992268826562,
+                "periods_per_year": 252,
+                "return_hurdle_annual": 0.025215974487127656,
+                "rf_annual": 0.04,
+                "rf_source": "French RF, mean of the last 252 sessions of the pinned file",
+                "sharpe_annual": 0.19530562149514474,
+                "sharpe_periodic": 0.012303097717358663,
+                "vol_annual": 0.12911033637480077,
+                "vol_basis": "realized_annualized"
+              },
+              "target": {
+                "cash_yield": 0.033,
+                "cash_yield_source": "[criteria] reported_cash_yields, no ETF holding",
+                "idle_fraction": 0.44800077311734376,
+                "long_over_equity": 0.5519992268826562,
+                "periods_per_year": 252,
+                "return_hurdle_annual": 0.025215974487127656,
+                "rf_annual": 0.04,
+                "rf_source": "French RF, mean of the last 252 sessions of the pinned file",
+                "sharpe_annual": 0.2101331207260638,
+                "sharpe_periodic": 0.013237142372835171,
+                "vol_annual": 0.12,
+                "vol_basis": "target"
+              }
+            },
+            "excess_over_bills_annual": 0.017340130678523493,
+            "governing_basis": "target",
+            "margin_annual": 0.017340130678523493,
+            "pass": true,
+            "return_hurdle_annual": 0.025215974487127656,
+            "sharpe_annual": 0.2101331207260638,
+            "vol_annual": 0.12
+          },
+          "governing": {
+            "bases": {
+              "realized_annualized": {
+                "cash_yield": 0.0,
+                "cash_yield_source": "[criteria] buffer_cash_yield",
+                "idle_fraction": 0.020000000000000018,
+                "long_over_equity": 0.5519992268826562,
+                "periods_per_year": 252,
+                "return_hurdle_annual": 0.023307969848423593,
+                "rf_annual": 0.04,
+                "rf_source": "French RF, mean of the last 252 sessions of the pinned file",
+                "sharpe_annual": 0.1805275278716782,
+                "sharpe_periodic": 0.011372165322612903,
+                "sleeve_fraction": 0.42800077311734375,
+                "sleeve_yield": 0.039,
+                "sleeve_yield_source": "T-bill ETF at rf less [criteria] sleeve_fee_annual (0.001)",
+                "vol_annual": 0.12911033637480077,
+                "vol_basis": "realized_annualized"
+              },
+              "target": {
+                "cash_yield": 0.0,
+                "cash_yield_source": "[criteria] buffer_cash_yield",
+                "idle_fraction": 0.020000000000000018,
+                "long_over_equity": 0.5519992268826562,
+                "periods_per_year": 252,
+                "return_hurdle_annual": 0.023307969848423593,
+                "rf_annual": 0.04,
+                "rf_source": "French RF, mean of the last 252 sessions of the pinned file",
+                "sharpe_annual": 0.19423308207019663,
+                "sharpe_periodic": 0.012235534084269974,
+                "sleeve_fraction": 0.42800077311734375,
+                "sleeve_yield": 0.039,
+                "sleeve_yield_source": "T-bill ETF at rf less [criteria] sleeve_fee_annual (0.001)",
+                "vol_annual": 0.12,
+                "vol_basis": "target"
+              }
+            },
+            "excess_over_bills_annual": 0.019248135317227556,
+            "governing_basis": "target",
+            "margin_annual": 0.019248135317227553,
+            "pass": true,
+            "return_hurdle_annual": 0.023307969848423593,
+            "sharpe_annual": 0.19423308207019663,
+            "vol_annual": 0.12
+          }
+        },
+        "charged_cost_annual": 0.005754309961275781,
+        "cost_drag_sharpe": 0.044568933230654056,
+        "figure_f3": 0.3546342097137596,
+        "long_over_equity_mean": 0.5519992268826562,
+        "pass": true,
+        "prior_sharpe": 0.44457513592934145,
+        "realized_vol_annual": 0.12911033637480077,
+        "rf_annual": 0.04,
+        "rho": 0.8979430262331652,
+        "rho_times_prior": 0.39920314294441367,
+        "sleeve_fraction_mean": 0.42800077311734375
+      },
+      "margin_annual": 0.019248135317227553,
+      "n_scenarios": 144,
+      "own_capacity": [
+        {
+          "impact_y": 0.5,
+          "own_capacity_initial_equity": 13108494.314288434,
+          "own_capacity_multiple": 122.34116117305955,
+          "synchronized_fraction": 1.0,
+          "windows": "1@0.01"
+        },
+        {
+          "impact_y": 0.7,
+          "own_capacity_initial_equity": 6688007.303208384,
+          "own_capacity_multiple": 62.41895978217323,
+          "synchronized_fraction": 1.0,
+          "windows": "1@0.01"
+        },
+        {
+          "impact_y": 1.0,
+          "own_capacity_initial_equity": 3277123.5785721084,
+          "own_capacity_multiple": 30.585290293264887,
+          "synchronized_fraction": 1.0,
+          "windows": "1@0.01"
+        },
+        {
+          "impact_y": 0.5,
+          "own_capacity_initial_equity": 13108494.314288434,
+          "own_capacity_multiple": 122.34116117305955,
+          "synchronized_fraction": 0.047619047619047616,
+          "windows": "1@0.01"
+        },
+        {
+          "impact_y": 0.7,
+          "own_capacity_initial_equity": 6688007.303208384,
+          "own_capacity_multiple": 62.41895978217323,
+          "synchronized_fraction": 0.047619047619047616,
+          "windows": "1@0.01"
+        },
+        {
+          "impact_y": 1.0,
+          "own_capacity_initial_equity": 3277123.5785721084,
+          "own_capacity_multiple": 30.585290293264887,
+          "synchronized_fraction": 0.047619047619047616,
+          "windows": "1@0.01"
+        },
+        {
+          "impact_y": 0.5,
+          "own_capacity_initial_equity": 39325482.94286532,
+          "own_capacity_multiple": 367.02348351917885,
+          "synchronized_fraction": 1.0,
+          "windows": "1@0.03"
+        },
+        {
+          "impact_y": 0.7,
+          "own_capacity_initial_equity": 20064021.909625165,
+          "own_capacity_multiple": 187.25687934651984,
+          "synchronized_fraction": 1.0,
+          "windows": "1@0.03"
+        },
+        {
+          "impact_y": 1.0,
+          "own_capacity_initial_equity": 9831370.73571633,
+          "own_capacity_multiple": 91.75587087979471,
+          "synchronized_fraction": 1.0,
+          "windows": "1@0.03"
+        },
+        {
+          "impact_y": 0.5,
+          "own_capacity_initial_equity": 39325482.94286532,
+          "own_capacity_multiple": 367.02348351917885,
+          "synchronized_fraction": 0.047619047619047616,
+          "windows": "1@0.03"
+        },
+        {
+          "impact_y": 0.7,
+          "own_capacity_initial_equity": 20064021.909625165,
+          "own_capacity_multiple": 187.25687934651984,
+          "synchronized_fraction": 0.047619047619047616,
+          "windows": "1@0.03"
+        },
+        {
+          "impact_y": 1.0,
+          "own_capacity_initial_equity": 9831370.73571633,
+          "own_capacity_multiple": 91.75587087979471,
+          "synchronized_fraction": 0.047619047619047616,
+          "windows": "1@0.03"
+        },
+        {
+          "impact_y": 0.5,
+          "own_capacity_initial_equity": 104867954.51430742,
+          "own_capacity_multiple": 978.729289384476,
+          "synchronized_fraction": 1.0,
+          "windows": "1@0.08"
+        },
+        {
+          "impact_y": 0.7,
+          "own_capacity_initial_equity": 53504058.42566707,
+          "own_capacity_multiple": 499.35167825738586,
+          "synchronized_fraction": 1.0,
+          "windows": "1@0.08"
+        },
+        {
+          "impact_y": 1.0,
+          "own_capacity_initial_equity": 26216988.628576856,
+          "own_capacity_multiple": 244.682322346119,
+          "synchronized_fraction": 1.0,
+          "windows": "1@0.08"
+        },
+        {
+          "impact_y": 0.5,
+          "own_capacity_initial_equity": 104867954.51430742,
+          "own_capacity_multiple": 978.729289384476,
+          "synchronized_fraction": 0.047619047619047616,
+          "windows": "1@0.08"
+        },
+        {
+          "impact_y": 0.7,
+          "own_capacity_initial_equity": 53504058.42566707,
+          "own_capacity_multiple": 499.35167825738586,
+          "synchronized_fraction": 0.047619047619047616,
+          "windows": "1@0.08"
+        },
+        {
+          "impact_y": 1.0,
+          "own_capacity_initial_equity": 26216988.628576856,
+          "own_capacity_multiple": 244.682322346119,
+          "synchronized_fraction": 0.047619047619047616,
+          "windows": "1@0.08"
+        },
+        {
+          "impact_y": 0.5,
+          "own_capacity_initial_equity": 1310849431.428844,
+          "own_capacity_multiple": 12234.11611730596,
+          "synchronized_fraction": 1.0,
+          "windows": "1@1"
+        },
+        {
+          "impact_y": 0.7,
+          "own_capacity_initial_equity": 668800730.3208385,
+          "own_capacity_multiple": 6241.895978217324,
+          "synchronized_fraction": 1.0,
+          "windows": "1@1"
+        },
+        {
+          "impact_y": 1.0,
+          "own_capacity_initial_equity": 327712357.857211,
+          "own_capacity_multiple": 3058.52902932649,
+          "synchronized_fraction": 1.0,
+          "windows": "1@1"
+        },
+        {
+          "impact_y": 0.5,
+          "own_capacity_initial_equity": 1310849431.428844,
+          "own_capacity_multiple": 12234.11611730596,
+          "synchronized_fraction": 0.047619047619047616,
+          "windows": "1@1"
+        },
+        {
+          "impact_y": 0.7,
+          "own_capacity_initial_equity": 668800730.3208385,
+          "own_capacity_multiple": 6241.895978217324,
+          "synchronized_fraction": 0.047619047619047616,
+          "windows": "1@1"
+        },
+        {
+          "impact_y": 1.0,
+          "own_capacity_initial_equity": 327712357.857211,
+          "own_capacity_multiple": 3058.52902932649,
+          "synchronized_fraction": 0.047619047619047616,
+          "windows": "1@1"
+        }
+      ],
+      "statistics": {
+        "carried_forward": {
+          "dollar_volume": 0,
+          "sigma": 0
+        },
+        "min_valid_sessions": 10,
+        "traded_cells": 4439,
+        "window_sessions": 20
+      },
+      "table": "capacity/P00.csv"
+    },
+    "T21": {
+      "binding_names": {
+        "below_thin": [
+          "ACT",
+          "AIZ",
+          "ALK",
+          "AMCR",
+          "AOS",
+          "BALL",
+          "BEN",
+          "BIO",
+          "BWA",
+          "BXP",
+          "CPT",
+          "DOC",
+          "DVA",
+          "DXC",
+          "EMN",
+          "ERIE",
+          "ESS",
+          "FBHS",
+          "FFIV",
+          "FMC",
+          "FOX",
+          "GEN",
+          "GL",
+          "HAS",
+          "HRL",
+          "IEX",
+          "JKHY",
+          "LKQ",
+          "LNC",
+          "MAA",
+          "MHK",
+          "MKTX",
+          "NDSN",
+          "NTRS",
+          "NWL",
+          "NWS",
+          "NWSA",
+          "OGN",
+          "PNR",
+          "PTC",
+          "RHI",
+          "ROL",
+          "RVTY",
+          "SNA",
+          "SOLV",
+          "STE",
+          "TECH",
+          "TFX",
+          "TRMB",
+          "UDR",
+          "VNO",
+          "WRB",
+          "XRAY"
+        ],
+        "median_dollar_volume_p05": 75283333.525,
+        "median_dollar_volume_p10": 96782088.33698,
+        "n_below_thin": 53,
+        "n_traded": 479
+      },
+      "charged_participation_annual_recomputed": 7.716724105246285e-05,
+      "economics": {
+        "cases": {
+          "cash_yield_0": {
+            "bases": {
+              "realized_annualized": {
+                "cash_yield": 0.0,
+                "cash_yield_source": "[criteria] reported_cash_yields, no ETF holding",
+                "idle_fraction": 0.44421838602020913,
+                "long_over_equity": 0.5557816139797909,
+                "periods_per_year": 252,
+                "return_hurdle_annual": 0.04,
+                "rf_annual": 0.04,
+                "rf_source": "French RF, mean of the last 252 sessions of the pinned file",
+                "sharpe_annual": 0.31110111929561257,
+                "sharpe_periodic": 0.01959752843452449,
+                "vol_annual": 0.1285755579747415,
+                "vol_basis": "realized_annualized"
+              },
+              "target": {
+                "cash_yield": 0.0,
+                "cash_yield_source": "[criteria] reported_cash_yields, no ETF holding",
+                "idle_fraction": 0.44421838602020913,
+                "long_over_equity": 0.5557816139797909,
+                "periods_per_year": 252,
+                "return_hurdle_annual": 0.04,
+                "rf_annual": 0.04,
+                "rf_source": "French RF, mean of the last 252 sessions of the pinned file",
+                "sharpe_annual": 0.33333333333333337,
+                "sharpe_periodic": 0.020998026278290404,
+                "vol_annual": 0.12,
+                "vol_basis": "target"
+              }
+            },
+            "excess_over_bills_annual": 0.0029631091483114658,
+            "governing_basis": "target",
+            "margin_annual": 0.0029631091483114623,
+            "pass": true,
+            "return_hurdle_annual": 0.04,
+            "sharpe_annual": 0.33333333333333337,
+            "vol_annual": 0.12
+          },
+          "cash_yield_0.033": {
+            "bases": {
+              "realized_annualized": {
+                "cash_yield": 0.033,
+                "cash_yield_source": "[criteria] reported_cash_yields, no ETF holding",
+                "idle_fraction": 0.44421838602020913,
+                "long_over_equity": 0.5557816139797909,
+                "periods_per_year": 252,
+                "return_hurdle_annual": 0.0253407932613331,
+                "rf_annual": 0.04,
+                "rf_source": "French RF, mean of the last 252 sessions of the pinned file",
+                "sharpe_annual": 0.1970887286859861,
+                "sharpe_periodic": 0.01241542291230955,
+                "vol_annual": 0.1285755579747415,
+                "vol_basis": "realized_annualized"
+              },
+              "target": {
+                "cash_yield": 0.033,
+                "cash_yield_source": "[criteria] reported_cash_yields, no ETF holding",
+                "idle_fraction": 0.44421838602020913,
+                "long_over_equity": 0.5557816139797909,
+                "periods_per_year": 252,
+                "return_hurdle_annual": 0.0253407932613331,
+                "rf_annual": 0.04,
+                "rf_source": "French RF, mean of the last 252 sessions of the pinned file",
+                "sharpe_annual": 0.21117327717777584,
+                "sharpe_periodic": 0.01330266607035492,
+                "vol_annual": 0.12,
+                "vol_basis": "target"
+              }
+            },
+            "excess_over_bills_annual": 0.017622315886978365,
+            "governing_basis": "target",
+            "margin_annual": 0.017622315886978365,
+            "pass": true,
+            "return_hurdle_annual": 0.0253407932613331,
+            "sharpe_annual": 0.21117327717777584,
+            "vol_annual": 0.12
+          },
+          "governing": {
+            "bases": {
+              "realized_annualized": {
+                "cash_yield": 0.0,
+                "cash_yield_source": "[criteria] buffer_cash_yield",
+                "idle_fraction": 0.019999999999999962,
+                "long_over_equity": 0.5557816139797909,
+                "periods_per_year": 252,
+                "return_hurdle_annual": 0.023455482945211843,
+                "rf_annual": 0.04,
+                "rf_source": "French RF, mean of the last 252 sessions of the pinned file",
+                "sharpe_annual": 0.18242567494686387,
+                "sharpe_periodic": 0.011491737349107332,
+                "sleeve_fraction": 0.42421838602020917,
+                "sleeve_yield": 0.039,
+                "sleeve_yield_source": "T-bill ETF at rf less [criteria] sleeve_fee_annual (0.001)",
+                "vol_annual": 0.1285755579747415,
+                "vol_basis": "realized_annualized"
+              },
+              "target": {
+                "cash_yield": 0.0,
+                "cash_yield_source": "[criteria] buffer_cash_yield",
+                "idle_fraction": 0.019999999999999962,
+                "long_over_equity": 0.5557816139797909,
+                "periods_per_year": 252,
+                "return_hurdle_annual": 0.023455482945211843,
+                "rf_annual": 0.04,
+                "rf_source": "French RF, mean of the last 252 sessions of the pinned file",
+                "sharpe_annual": 0.19546235787676536,
+                "sharpe_periodic": 0.012312971181338764,
+                "sleeve_fraction": 0.42421838602020917,
+                "sleeve_yield": 0.039,
+                "sleeve_yield_source": "T-bill ETF at rf less [criteria] sleeve_fee_annual (0.001)",
+                "vol_annual": 0.12,
+                "vol_basis": "target"
+              }
+            },
+            "excess_over_bills_annual": 0.019507626203099624,
+            "governing_basis": "target",
+            "margin_annual": 0.019507626203099624,
+            "pass": true,
+            "return_hurdle_annual": 0.023455482945211843,
+            "sharpe_annual": 0.19546235787676536,
+            "vol_annual": 0.12
+          }
+        },
+        "charged_cost_annual": 0.005601077933611096,
+        "cost_drag_sharpe": 0.04356254036020921,
+        "figure_f3": 0.3580259095692622,
+        "long_over_equity_mean": 0.5557816139797909,
+        "pass": true,
+        "prior_sharpe": 0.44457513592934145,
+        "realized_vol_annual": 0.1285755579747415,
+        "rf_annual": 0.04,
+        "rho": 0.903308389233216,
+        "rho_times_prior": 0.40158844992947146,
+        "sleeve_fraction_mean": 0.42421838602020917
+      },
+      "margin_annual": 0.019507626203099624,
+      "n_scenarios": 72,
+      "own_capacity": [
+        {
+          "impact_y": 0.5,
+          "own_capacity_initial_equity": 106666361.22201352,
+          "own_capacity_multiple": 990.9992800364928,
+          "synchronized_fraction": 1.0,
+          "windows": "1@0.01"
+        },
+        {
+          "impact_y": 0.7,
+          "own_capacity_initial_equity": 54421612.86837428,
+          "own_capacity_multiple": 505.61187756963955,
+          "synchronized_fraction": 1.0,
+          "windows": "1@0.01"
+        },
+        {
+          "impact_y": 1.0,
+          "own_capacity_initial_equity": 26666590.30550338,
+          "own_capacity_multiple": 247.7498200091232,
+          "synchronized_fraction": 1.0,
+          "windows": "1@0.01"
+        },
+        {
+          "impact_y": 0.5,
+          "own_capacity_initial_equity": 319999083.6660407,
+          "own_capacity_multiple": 2972.99784010948,
+          "synchronized_fraction": 1.0,
+          "windows": "1@0.03"
+        },
+        {
+          "impact_y": 0.7,
+          "own_capacity_initial_equity": 163264838.60512295,
+          "own_capacity_multiple": 1516.8356327089198,
+          "synchronized_fraction": 1.0,
+          "windows": "1@0.03"
+        },
+        {
+          "impact_y": 1.0,
+          "own_capacity_initial_equity": 79999770.91651018,
+          "own_capacity_multiple": 743.24946002737,
+          "synchronized_fraction": 1.0,
+          "windows": "1@0.03"
+        },
+        {
+          "impact_y": 0.5,
+          "own_capacity_initial_equity": 853330889.7761084,
+          "own_capacity_multiple": 7927.994240291945,
+          "synchronized_fraction": 1.0,
+          "windows": "1@0.08"
+        },
+        {
+          "impact_y": 0.7,
+          "own_capacity_initial_equity": 435372902.9469941,
+          "own_capacity_multiple": 4044.8950205571155,
+          "synchronized_fraction": 1.0,
+          "windows": "1@0.08"
+        },
+        {
+          "impact_y": 1.0,
+          "own_capacity_initial_equity": 213332722.4440271,
+          "own_capacity_multiple": 1981.9985600729863,
+          "synchronized_fraction": 1.0,
+          "windows": "1@0.08"
+        },
+        {
+          "impact_y": 0.5,
+          "own_capacity_initial_equity": 10666636122.20136,
+          "own_capacity_multiple": 99099.92800364936,
+          "synchronized_fraction": 1.0,
+          "windows": "1@1"
+        },
+        {
+          "impact_y": 0.7,
+          "own_capacity_initial_equity": 5442161286.837429,
+          "own_capacity_multiple": 50561.18775696396,
+          "synchronized_fraction": 1.0,
+          "windows": "1@1"
+        },
+        {
+          "impact_y": 1.0,
+          "own_capacity_initial_equity": 2666659030.55034,
+          "own_capacity_multiple": 24774.98200091234,
+          "synchronized_fraction": 1.0,
+          "windows": "1@1"
+        }
+      ],
+      "statistics": {
+        "carried_forward": {
+          "dollar_volume": 0,
+          "sigma": 0
+        },
+        "min_valid_sessions": 10,
+        "traded_cells": 35021,
+        "window_sessions": 20
+      },
+      "table": "capacity/T21.csv"
+    }
+  }
+}

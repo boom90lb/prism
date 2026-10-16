@@ -26,8 +26,10 @@ from prism.validation.compare import (
     sharpe_interval,
 )
 from prism.validation.hurdle import (
+    CashToll,
     HurdleInputs,
     HurdleResult,
+    cash_toll,
     tbill_hurdle,
 )
 from prism.validation.metrics import (
@@ -101,6 +103,7 @@ __all__ = [
     "BlockBootstrapSpec",
     "BootstrapExcluded",
     "BootstrapResult",
+    "CashToll",
     "ComparisonArm",
     "ComparisonRefused",
     "DEFAULT_MIN_TEST_BARS",
@@ -139,6 +142,7 @@ __all__ = [
     "breadth_diagnostic",
     "build_research_claim_packet",
     "calmar_ratio",
+    "cash_toll",
     "chain_hash",
     "classify_claim_tier",
     "compare_reevaluation",

@@ -29,6 +29,11 @@ false`` (the default) a component that drops out reduces the account's target
 gross by its own contribution: cash absorbs the difference, no surviving
 component is scaled up to replace it.
 
+One predicate, :func:`due_on_grid`, decides when a component is due, here and
+in the evaluator: by elapsed sessions, unless the plan declares a phase offset,
+which puts it on the session grid of ``prism.io.sessions``.
+:func:`tranche_plans` builds overlapping tranches on that grid.
+
 What this module does **not** do: it never fetches the unrankable mask (the
 caller supplies it, §3.8), it never fits (``assemble``'s caller does, §3.8),
 and it never caps or bands — the constructor of §3.7 does that to the account
@@ -41,6 +46,7 @@ the live book runs on — would change what a running loop reads back.
 
 from __future__ import annotations
 
+import datetime as dt
 import logging
 import math
 from dataclasses import dataclass, field, replace
@@ -51,7 +57,12 @@ import numpy as np
 import pandas as pd
 
 from prism.signal.base import Signal
-from prism.spec import TO_WEIGHTS_RULES, apply_to_weights, resolve_to_weights_params
+from prism.spec import (
+    TO_WEIGHTS_RULES,
+    apply_to_weights,
+    resolve_to_weights_params,
+    rule_dollar_volume,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -142,6 +153,11 @@ class ComponentPlan:
     #: cadence, the expiry, the mask handling, the state machine -- is the same in both
     #: flows, which is why one plan type serves both.
     combination: str = COMBINATION
+    #: ``None`` (the default) schedules the plan by elapsed sessions, so its first
+    #: output sets its phase. An integer in ``[0, update_every_bars)`` puts it on the
+    #: session grid instead: it refreshes where ``(grid_position - phase_offset_bars)
+    #: % update_every_bars == 0`` (:func:`due_on_grid`, :func:`tranche_plans`).
+    phase_offset_bars: int | None = None
 
     def __post_init__(self) -> None:
         if not str(self.component_id):
@@ -159,6 +175,18 @@ class ComponentPlan:
                 f"{self.update_every_bars}; an output that expires before its own next refresh "
                 "has no reachable valid state"
             )
+        if self.phase_offset_bars is not None:
+            offset = self.phase_offset_bars
+            if (
+                isinstance(offset, bool)
+                or not isinstance(offset, (int, np.integer))
+                or not 0 <= int(offset) < int(self.update_every_bars)
+            ):
+                raise CompositionError(
+                    f"{where}: phase_offset_bars must be an integer in [0, update_every_bars="
+                    f"{self.update_every_bars}), got {offset!r}; an offset is a residue of the refresh "
+                    "cycle, so one schedule has one spelling"
+                )
         if self.output_kind not in SUPPORTED_OUTPUT_KINDS:
             raise CompositionError(
                 f"{where}: flow F1 supports output_kind {SUPPORTED_OUTPUT_KINDS}, not "
@@ -199,9 +227,14 @@ class ComponentPlan:
         weights_fn: Callable[[pd.Series], pd.Series] | None = None,
         combination: str = COMBINATION,
     ) -> "ComponentPlan":
-        """Build a plan from a ``prism.spec.LoadedComponent``."""
+        """Build a plan from a ``prism.spec.LoadedComponent``.
+
+        A component declaring ``tranches`` or ``phase_offset_bars`` gets its
+        resolved base offset here; :func:`tranche_plans` splits it into tranches.
+        """
         spec = loaded.spec
         declarations = loaded.declarations
+        grid = spec.grid_schedule
         return cls(
             component=loaded.component,
             component_id=loaded.component_id,
@@ -214,7 +247,124 @@ class ComponentPlan:
             scoring_basis=str(declarations["scoring_basis"]),
             combination=str(combination),
             weights_fn=weights_fn,
+            phase_offset_bars=None if grid is None else int(grid[1]),
         )
+
+
+def tranche_plans(plan: ComponentPlan, k: int, base_offset: int) -> tuple[ComponentPlan, ...]:
+    """Split ``plan`` into ``k`` overlapping tranches on the session grid.
+
+    Tranche ``j`` holds ``plan.weight / k`` and refreshes every
+    ``update_every_bars`` sessions at grid offset ``(base_offset + j *
+    (update_every_bars // k)) % update_every_bars``, so with ``k ==
+    update_every_bars`` exactly one tranche refreshes on every session.
+    Jegadeesh and Titman (1993) built overlapping momentum portfolios this way:
+    each tranche is formed on its own date and held until its next one, so the
+    book is the average of the tranches and its trades are spread over the
+    cycle instead of landing on one session.
+
+    :func:`compose`'s account target is the sum of the tranches' sub-targets as
+    weights. Traded as it stands on every session, that would rebalance every
+    drifted tranche back to constant weights whenever any one refreshes. The
+    evaluator therefore holds each tranche in shares between its refreshes and
+    orders only what the refreshing tranche changes
+    (``prism.evaluate._TrancheHoldings``); a live tranched book has to do the
+    same to trade the book that was evaluated.
+
+    Ids are ``"<component_id>/tNN"``; one tranche keeps the plan's own id, so a
+    single-phase book on the grid reads exactly like the plan it came from. The
+    cadence and validity are the plan's own. A validity equal to the cycle makes
+    a catch-up refresh after a missed grid date an expiry as well, because the
+    catch-up comes one session after the output's last valid one; a tranched
+    book that wants a missed date to be only late declares ``valid_for_bars``
+    of twice the cycle.
+    """
+    every = int(plan.update_every_bars)
+    if isinstance(k, bool) or not isinstance(k, (int, np.integer)) or not 1 <= int(k) <= every:
+        raise CompositionError(
+            f"component {plan.component_id!r}: tranches must be an integer in [1, update_every_bars={every}], "
+            f"got {k!r}; more tranches than sessions in the cycle would put two tranches on one grid offset"
+        )
+    if (
+        isinstance(base_offset, bool)
+        or not isinstance(base_offset, (int, np.integer))
+        or not 0 <= int(base_offset) < every
+    ):
+        raise CompositionError(
+            f"component {plan.component_id!r}: the base offset must be an integer in [0, {every}), got {base_offset!r}"
+        )
+    count, base = int(k), int(base_offset)
+    if count == 1:
+        return (replace(plan, phase_offset_bars=base),)
+    spacing = every // count
+    return tuple(
+        replace(
+            plan,
+            component_id=f"{plan.component_id}/t{j:02d}",
+            weight=float(plan.weight) / count,
+            phase_offset_bars=(base + j * spacing) % every,
+        )
+        for j in range(count)
+    )
+
+
+def due_on_grid(
+    plan: ComponentPlan,
+    state: ComponentState | None,
+    decision_bar: str,
+    *,
+    elapsed: int,
+) -> bool:
+    """Whether ``plan`` refreshes at ``decision_bar``: the one cadence predicate (§3.3).
+
+    Composition (:func:`compose`) and the evaluator's panel-read filter
+    (``prism.evaluate._due``) both call this, so the two cannot disagree about
+    which bars refresh. ``elapsed`` is the number of sessions after
+    ``state.last_output_bar`` through ``decision_bar``, counted by the caller on
+    its own decision calendar; it is ignored when there is no prior output.
+
+    With ``phase_offset_bars = None`` this is the elapsed-count rule: due when
+    the plan has never produced an output, or once ``update_every_bars``
+    sessions have elapsed. The first output sets the phase.
+
+    With an offset the plan sits on the session grid
+    (:func:`prism.io.sessions.grid_position`):
+
+    * it is due on its grid dates, ``(grid_position - offset) % update_every_bars == 0``;
+    * a plan with no output yet waits for its first grid date, so a tranched
+      book is built one tranche per session (staged entry), not on day one;
+    * a plan that missed a grid date (an outage, a bar the data lacks) catches
+      up once, on the first session after more than ``update_every_bars`` have
+      elapsed, and is back on its grid at its next grid date;
+    * a plan that already produced an output on this bar is not due again.
+    """
+    last = None if state is None else state.last_output_bar
+    every = int(plan.update_every_bars)
+    if plan.phase_offset_bars is None:
+        return last is None or elapsed >= every
+    on_grid = (_grid_position(plan, decision_bar) - int(plan.phase_offset_bars)) % every == 0
+    if last is None:
+        return on_grid
+    if elapsed < 1:
+        return False
+    return on_grid or elapsed > every
+
+
+def _grid_position(plan: ComponentPlan, decision_bar: str) -> int:
+    """The decision bar's session-grid position, or a refusal naming the plan (N7).
+
+    The session table is imported here, so a book with no plan on the grid never
+    loads it through this module.
+    """
+    from prism.io.sessions import grid_position  # noqa: PLC0415
+
+    try:
+        return grid_position(dt.date.fromisoformat(str(decision_bar)[:10]))
+    except (TypeError, ValueError) as exc:
+        raise CompositionError(
+            f"component {plan.component_id!r} is scheduled on the session grid (phase_offset_bars="
+            f"{plan.phase_offset_bars}), and decision bar {decision_bar!r} has no grid position: {exc}"
+        ) from exc
 
 
 @dataclass(frozen=True)
@@ -365,7 +515,7 @@ def _compose_one(
 ) -> tuple[ComponentOutput, ComponentState, set[str]]:
     """One component's sub-target vector at ``decision_bar``, and its new state."""
     elapsed = _bars_elapsed(calendar, state.last_output_bar, decision_bar)
-    due = state.last_output_bar is None or elapsed >= int(plan.update_every_bars)
+    due = due_on_grid(plan, state, decision_bar, elapsed=elapsed)
     expired = state.last_output_bar is not None and elapsed > int(plan.valid_for_bars)
 
     sub_targets = dict(state.sub_targets)
@@ -425,7 +575,14 @@ def _compose_one(
             elif mark == "liquidate":
                 flat.add(str(sid))
 
-    values = _rule_values(plan, raw, close, no_decision=no_decision, previous=state.sub_targets)
+    dollar_volume = (
+        None
+        if plan.weights_fn is not None
+        else rule_dollar_volume(plan.to_weights, plan.to_weights_params, scoring_panels.get("price"), volume)
+    )
+    values = _rule_values(
+        plan, raw, close, no_decision=no_decision, previous=state.sub_targets, dollar_volume=dollar_volume
+    )
     if flat:
         values = values.copy()
     for sid in flat:
@@ -560,8 +717,13 @@ def _rule_values(
     *,
     no_decision: Collection[str],
     previous: Mapping[str, float] | None = None,
+    dollar_volume: pd.DataFrame | None = None,
 ) -> pd.Series:
     """The rank-to-weight rule's output for this cross-section.
+
+    ``dollar_volume`` is the trailing dollar-volume panel a liquidity-weighted rule reads,
+    built from the ``price`` scoring panel and ``volume`` (``prism.spec.rule_dollar_volume``);
+    it is None for every other rule.
 
     The rule runs over the whole cross-section before any state rule, so a name
     the rule declines gets an explicit 0.0 (a full exit) and only a no-decision
@@ -587,6 +749,7 @@ def _rule_values(
         close=close,
         no_decision=no_decision,
         previous=previous,
+        dollar_volume=dollar_volume,
     )
 
 

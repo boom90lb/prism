@@ -1,0 +1,14 @@
+{
+  "abs_sharpe_diff": 0.038353232062773523,
+  "daily_corr": 0.9992799944912657,
+  "first": "2022-09-29",
+  "last": "2026-06-12",
+  "max_abs_sharpe_diff": 0.05,
+  "min_daily_corr": 0.99,
+  "n": 929,
+  "pass": true,
+  "series": "results/2026-09-vol-momentum/series.csv",
+  "series_sha256": "ded96a7226e7ae70c71422741a46a3ec1620442dbbb0c2e38aae64f49db37395",
+  "sharpe_p00": 0.6242876762771921,
+  "sharpe_recorded": 0.6626409083399656
+}

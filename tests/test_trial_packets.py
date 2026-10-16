@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict
 import hashlib
 import json
 import subprocess
+from dataclasses import asdict
 
 import numpy as np
 import pandas as pd
@@ -18,8 +18,8 @@ from prism.validation.trials import (
     CLAIM_NO_CLAIM,
     CLAIM_ROBUST_EDGE,
     REQUIRED_PACKET_KEYS,
-    GitCodeState,
     TRIAL_PACKET_SCHEMA_VERSION,
+    GitCodeState,
     build_research_claim_packet,
     classify_claim_tier,
     current_git_commit,
@@ -301,3 +301,43 @@ def test_validate_rejects_incomplete_hurdle_block(tmp_path) -> None:
     (tmp_path / "claim_packet.json").write_text(json.dumps(written, indent=2, sort_keys=True))
     with pytest.raises(ValueError, match="hurdle is not an object"):
         validate_claim_packet_dir(tmp_path)
+
+
+def test_packet_records_and_validates_the_optional_sleeve_sub_block(tmp_path) -> None:
+    from prism.validation.hurdle import (
+        PACKET_BLOCK_KEYS,
+        SLEEVE_BLOCK_KEYS,
+        tbill_hurdle,
+    )
+
+    found = tbill_hurdle(0.0421, 0.0, 0.53931, 0.12, vol_basis="target", sleeve_fraction=0.44069,
+                         sleeve_yield=0.0411, sleeve_yield_source="SGOV: rf - 10 bp (assumption)")
+    emit_research_claim_packet(
+        tmp_path, strategy="unit", config={}, data={}, returns=[0.0] * 30,
+        artifacts={"claim_packet": "claim_packet.json"}, hurdle=found,
+    )
+    loaded = validate_claim_packet_dir(tmp_path)
+    assert set(loaded["hurdle"]) == {*PACKET_BLOCK_KEYS, "sleeve"}
+    assert set(loaded["hurdle"]["sleeve"]) == set(SLEEVE_BLOCK_KEYS)
+    assert loaded["hurdle"]["sleeve"]["sleeve_fraction"] == pytest.approx(0.44069)
+
+    written = json.loads((tmp_path / "claim_packet.json").read_text())
+    del written["hurdle"]["sleeve"]["sleeve_yield"]
+    (tmp_path / "claim_packet.json").write_text(json.dumps(written, indent=2, sort_keys=True))
+    with pytest.raises(ValueError, match=r"sleeve\.sleeve_yield"):
+        validate_claim_packet_dir(tmp_path)
+    written["hurdle"]["sleeve"] = 0.44
+    (tmp_path / "claim_packet.json").write_text(json.dumps(written, indent=2, sort_keys=True))
+    with pytest.raises(ValueError, match="sleeve is not an object"):
+        validate_claim_packet_dir(tmp_path)
+
+
+def test_packet_refuses_a_mapping_with_a_short_sleeve_sub_block() -> None:
+    from prism.validation.hurdle import tbill_hurdle
+
+    block = tbill_hurdle(0.04, 0.0, 0.5, 0.1, sleeve_fraction=0.48, sleeve_yield=0.039).packet_block()
+    packet = build_research_claim_packet(strategy="unit", config={}, data={}, returns=[0.0] * 30, hurdle=block)
+    assert packet.hurdle == block
+    short = {**block, "sleeve": {"sleeve_fraction": 0.48}}
+    with pytest.raises(ValueError, match="sleeve.sleeve_yield"):
+        build_research_claim_packet(strategy="unit", config={}, data={}, returns=[0.0] * 30, hurdle=short)

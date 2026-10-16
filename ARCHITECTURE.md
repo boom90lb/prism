@@ -103,7 +103,8 @@ unconditionally; modeling over captured data needs its own registration
 `RollingWalkForward`) and the frozen `FoldTable`. `metrics.py` implements the deflated statistics and the breadth
 diagnostics; `hurdle.py` the T-bill benchmark; `compare.py` the paired
 comparison of recorded evaluations; `anytime.py` the anytime-valid monitor
-statistics; `capacity.py` the capacity curve and cost lens; `trials.py` the
+statistics; `capacity.py` the capacity curve, the cost lens and the crowding re-pricing of
+recorded trades; `trials.py` the
 result record, the claim packet and the trial log; `joint_crash.py` the
 uncounted stress diagnostic of the momentum book with the trend book.
 

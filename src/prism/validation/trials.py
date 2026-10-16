@@ -33,6 +33,7 @@ except ImportError:  # pragma: no cover - non-POSIX platform
     fcntl = None  # type: ignore[assignment]
 
 from prism.validation.hurdle import PACKET_BLOCK_KEYS as HURDLE_PACKET_KEYS
+from prism.validation.hurdle import SLEEVE_BLOCK_KEYS as HURDLE_SLEEVE_KEYS
 from prism.validation.hurdle import HurdleResult
 from prism.validation.metrics import periodic_sharpe
 
@@ -409,10 +410,11 @@ def build_research_claim_packet(
 def _coerce_hurdle_block(value: HurdleResult | Mapping[str, Any] | None) -> dict[str, Any] | None:
     """The packet's ``hurdle`` block from a result or a mapping, or None when absent.
 
-    A mapping must carry every key of ``HURDLE_PACKET_KEYS``; a block with a
-    key missing is refused rather than written short, because a hurdle whose
-    volatility basis or rate source is unrecorded is the ambiguity the block
-    exists to remove.
+    A mapping must carry every key of ``HURDLE_PACKET_KEYS``, and every key of
+    ``HURDLE_SLEEVE_KEYS`` in its optional ``sleeve`` sub-block when it has
+    one; a block with a key missing is refused rather than written short,
+    because a hurdle whose volatility basis or rate source is unrecorded is the
+    ambiguity the block exists to remove.
     """
     if value is None:
         return None
@@ -420,10 +422,27 @@ def _coerce_hurdle_block(value: HurdleResult | Mapping[str, Any] | None) -> dict
         return value.packet_block()
     if not isinstance(value, Mapping):
         raise ValueError(f"hurdle must be a HurdleResult or a mapping, got {type(value).__name__}")
-    missing = [key for key in HURDLE_PACKET_KEYS if key not in value]
+    missing = _missing_hurdle_keys(value)
     if missing:
         raise ValueError(f"hurdle block missing keys {missing}; required keys are {list(HURDLE_PACKET_KEYS)}")
     return {str(k): v for k, v in value.items()}
+
+
+def _missing_hurdle_keys(block: Mapping[str, Any]) -> list[str]:
+    """Required keys absent from a hurdle block, ``sleeve.<key>`` for its optional ETF sub-block.
+
+    The ``sleeve`` sub-block is present only for a hurdle stated with idle
+    equity held in a T-bill ETF (:data:`prism.validation.hurdle.SLEEVE_BLOCK_KEYS`);
+    a block without it is complete, so every packet written before it existed
+    still validates.
+    """
+    missing = [key for key in HURDLE_PACKET_KEYS if key not in block]
+    if "sleeve" in block:
+        sleeve = block["sleeve"]
+        if not isinstance(sleeve, Mapping):
+            raise ValueError(f"hurdle block sleeve is not an object, got {type(sleeve).__name__}")
+        missing.extend(f"sleeve.{key}" for key in HURDLE_SLEEVE_KEYS if key not in sleeve)
+    return missing
 
 
 def write_research_claim_packet(packet: ResearchClaimPacket, path: Path | str) -> None:
@@ -533,7 +552,7 @@ def validate_claim_packet_dir(
     if hurdle is not None:
         if not isinstance(hurdle, Mapping):
             raise ValueError(f"claim packet hurdle is not an object: {packet_path}")
-        missing_hurdle = [key for key in HURDLE_PACKET_KEYS if key not in hurdle]
+        missing_hurdle = _missing_hurdle_keys(hurdle)
         if missing_hurdle:
             raise ValueError(f"claim packet hurdle block missing keys {missing_hurdle}: {packet_path}")
 
@@ -605,6 +624,35 @@ ENGINE_EXECUTABLE_RETURN: Mapping[str, str] = {
     REPRODUCTION_ENGINE: "next_open_to_open",
     CANONICAL_ENGINE: "next_open_fill_marked_close_to_close",
 }
+
+#: ``conventions.executable_return`` of a canonical run whose declared fill model does not
+#: fill every order at the next open. ``split_open_close`` fills half of each order at the
+#: next open and the rest at that session's close, so its return is a different
+#: measurement from the engine's default and is labelled as one. A fill model not listed
+#: here keeps the engine's label: ``participation_capped`` still fills at the next open.
+FILL_MODEL_EXECUTABLE_RETURN: Mapping[str, str] = {
+    "split_open_close": "split_open_close_fill_marked_close_to_close",
+}
+
+
+def executable_return(engine: str, fill_model: str | None = None) -> str:
+    """The ``conventions.executable_return`` label of a run on ``engine`` under ``fill_model``.
+
+    The engine's own label (:data:`ENGINE_EXECUTABLE_RETURN`), except a canonical run
+    under a fill model listed in :data:`FILL_MODEL_EXECUTABLE_RETURN`.
+    """
+    if engine == CANONICAL_ENGINE and fill_model in FILL_MODEL_EXECUTABLE_RETURN:
+        return FILL_MODEL_EXECUTABLE_RETURN[str(fill_model)]
+    return ENGINE_EXECUTABLE_RETURN[engine]
+
+
+def _recorded_fill_model(evaluation: Mapping[str, Any]) -> str | None:
+    """``evaluation.engine.settings.fills.model`` where the record carries it, else None."""
+    detail = evaluation.get("engine")
+    settings = detail.get("settings") if isinstance(detail, Mapping) else None
+    fills = settings.get("fills") if isinstance(settings, Mapping) else None
+    model = fills.get("model") if isinstance(fills, Mapping) else None
+    return None if model is None else str(model)
 
 FOLD_PORTFOLIOS = ("reset", "carry")
 BIAS_STATUSES = ("unquantified", "estimated")
@@ -894,10 +942,12 @@ def _engine_label_problems(payload: Mapping[str, Any], evaluation: Mapping[str, 
 
     conventions = payload.get("conventions") if isinstance(payload.get("conventions"), Mapping) else {}
     executable = conventions.get("executable_return")
-    expected_return = ENGINE_EXECUTABLE_RETURN[str(engine)]
+    fill_model = _recorded_fill_model(evaluation)
+    expected_return = executable_return(str(engine), fill_model)
     if executable is not None and executable != UNAVAILABLE and executable != expected_return:
+        under = "" if fill_model is None else f" under fills.model {fill_model!r}"
         problems.append(
-            f"conventions.executable_return: {executable!r} on a record naming accounting_engine {engine!r}, "
+            f"conventions.executable_return: {executable!r} on a record naming accounting_engine {engine!r}{under}, "
             f"which measures {expected_return!r} (§3.8)"
         )
 

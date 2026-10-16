@@ -65,7 +65,14 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from prism.composition import ComponentPlan, ComponentState, CompositionResult, compose
+from prism.composition import (
+    ComponentPlan,
+    ComponentState,
+    CompositionResult,
+    compose,
+    due_on_grid,
+    tranche_plans,
+)
 from prism.config import ExecutionConfig
 from prism.execution.cost_model import (
     SPREAD_BUCKET_SCHEDULE_V1,
@@ -96,17 +103,30 @@ from prism.io.dataset import (
     StageNotAvailableError,
 )
 from prism.io.events import (
+    Event,
+    applied_share_factor,
     distribution_amounts,
     require_price_basis,
     series_price_basis,
 )
 from prism.portfolio.construct import cap_book, closed_form_band, step_no_trade_band
+from prism.portfolio.vol_scale import (
+    FALLBACK_REASONS,
+    SLEEVE_BUFFER,
+    STATUSES,
+    VolScaleRule,
+    base_book_returns,
+    cap_gross,
+    decide_scale,
+    session_exposure,
+)
 from prism.spec import (
     Eligibility,
     LoadedComponent,
     Specification,
     apply_to_weights,
     engine_version,
+    rule_dollar_volume,
 )
 from prism.validation.trials import (
     CANONICAL_ENGINE,
@@ -129,6 +149,7 @@ from prism.validation.trials import (
     classify_claim_tier,
     compute_trial_metrics,
     empty_repair_counts,
+    executable_return,
     host_label,
     reconcile_trial_log,
     utc_now,
@@ -258,6 +279,19 @@ def smoke_evaluate(
             "the canonical engine charges dollars, so the smoke path needs CanonicalSettings carrying a declared "
             "CostStack (§3.6); there is deliberately no 'no costs' default"
         )
+    gridded = [loaded.component_id for loaded in spec.components if loaded.spec.grid_schedule is not None]
+    if gridded:
+        raise EvaluationError(
+            f"component(s) {gridded} declare tranches or phase_offset_bars, and the smoke path decides every "
+            "update_every_bars sessions from the first decidable bar with no component state, so it would run a "
+            "different schedule from the one declared; evaluate them with walk_forward_evaluate"
+        )
+    if spec.sizing is not None:
+        raise EvaluationError(
+            f"{spec.path} declares [sizing] rule={spec.sizing.rule!r}, and the smoke path decides on the "
+            "unscaled composition target; it would run a book the specification does not declare. Evaluate it "
+            "with walk_forward_evaluate(decision_coupling='account_state')"
+        )
     if engine == REPRODUCTION_ENGINE and canonical is not None:
         raise EvaluationError(
             "CanonicalSettings were declared for a historical_constant_weight run, which would ignore them (§3.8)"
@@ -336,12 +370,19 @@ def smoke_evaluate(
         last = grid[-1].isoformat()
         smoke_events = final_view.events(list(universe), span_start, last)
         decisions, _ = _canonical_decisions(targets)
+        smoke_closes = final_view.panel(list(universe), last, "close").reindex(index=opens.index)
+        smoke_volumes = final_view.panel(list(universe), last, "volume").reindex(index=opens.index)
+        smoke_inputs = CostInputs(
+            as_of=last,
+            scope="run",
+            adv_impact=_impact_dollar_volume(canonical.cost_stack, smoke_closes, smoke_volumes),
+        )
         simulation = simulate(
             _by_bar(opens),
-            _by_bar(final_view.panel(list(universe), last, "close").reindex(index=opens.index)),
+            _by_bar(smoke_closes),
             _by_bar(decisions),
-            cost_model=CostModel(canonical.cost_stack, CostInputs(as_of=last, scope="run"), equity=float(capital)),
-            volumes=_by_bar(final_view.panel(list(universe), last, "volume").reindex(index=opens.index)),
+            cost_model=CostModel(canonical.cost_stack, smoke_inputs, equity=float(capital)),
+            volumes=_by_bar(smoke_volumes),
             events=smoke_events,
             price_basis=_smoke_price_basis(ds, final_view, canonical.price_basis, smoke_events, last),
             initial_cash=float(capital),
@@ -424,7 +465,12 @@ def _decide(spec: Specification, view: DatasetView, day: str, universe: Sequence
         marks = loaded.component.instructions(basis, volume)
         no_decision = _marked(marks, "no_decision")
         sub = apply_to_weights(
-            loaded.spec.to_weights, scores, loaded.spec.to_weights_params, close=basis, no_decision=no_decision
+            loaded.spec.to_weights,
+            scores,
+            loaded.spec.to_weights_params,
+            close=basis,
+            no_decision=no_decision,
+            dollar_volume=rule_dollar_volume(loaded.spec.to_weights, loaded.spec.to_weights_params, close, volume),
         )
         liquidate = [sid for sid in _marked(marks, "liquidate") if sid in sub.index]
         if liquidate:
@@ -718,6 +764,20 @@ COUPLED_NOTE = (
 )
 
 
+#: Appended to the engine note when the run declared ``fills.model = "split_open_close"``,
+#: whose fills are not all at the next open as the notes above say. Every other model leaves
+#: the note exactly as it was.
+SPLIT_FILLS_NOTE = (
+    " fills.model = split_open_close: each order filled half at the next open and the rest at that "
+    "session's close, both legs charged under the declared stack (a diagnostic model, N2)."
+)
+
+
+def _fills_note(note: str, fills: FillPolicy) -> str:
+    """``note`` with the split fill model stated when it was declared, and unchanged otherwise."""
+    return note + SPLIT_FILLS_NOTE if fills.model == "split_open_close" else note
+
+
 @dataclass(frozen=True)
 class _Visibility:
     """The declared visibility mode, and how a decision bar is cut under it (§3.2).
@@ -833,6 +893,19 @@ class FittedComponent:
         return dataclasses.replace(
             ComponentPlan.from_loaded(self.loaded, combination=combination), component=self.component
         )
+
+    def plans(self, *, combination: str = "position_space") -> tuple[ComponentPlan, ...]:
+        """The plans composition runs for this component: one, or one per declared tranche.
+
+        Every tranche carries the same fitted object, so a tranched component is
+        fitted once per fold and scored by whichever tranche is due.
+        """
+        plan = self.plan(combination=combination)
+        grid = self.loaded.spec.grid_schedule
+        if grid is None:
+            return (plan,)
+        tranches, offset = grid
+        return tranche_plans(plan, tranches, offset)
 
     def to_record(self) -> dict[str, object]:
         return {
@@ -1285,6 +1358,7 @@ def walk_forward_evaluate(
     )
     started = recorder.started()
     construction_record: dict[str, object] | None = None
+    sizing_output: _SizingOutput | None = None
     stateful: tuple[PortfolioBacktestResult, dict[str, object]] | None = None
     try:
         if decision_coupling == "account_state":
@@ -1297,6 +1371,7 @@ def walk_forward_evaluate(
                 stateful_result,
                 stateful_detail,
                 construction_record,
+                sizing_output,
             ) = _evaluate_stateful(
                 spec,
                 resolved,
@@ -1386,6 +1461,7 @@ def walk_forward_evaluate(
             untested_conclusions=untested_conclusions,
             calibration_hook=calibration_hook,
             construction_record=construction_record,
+            sizing=sizing_output,
         )
         # Relative to the workspace root, so a published log names no machine path.
         record_reference = workspace.relative(record_path)
@@ -1556,6 +1632,12 @@ def _refuse(
             f"fold_portfolio={fold_portfolio!r} asks for a forced liquidation at each fold boundary, which the "
             "state-coupled loop does not impose. Declare fold_portfolio='carry' (§3.8)"
         )
+    if spec.sizing is not None and decision_coupling != "account_state":
+        raise RunRefused(
+            f"{spec.path} declares [sizing] rule={spec.sizing.rule!r}; the volatility scale is applied inside "
+            "the account_state loop, at each component's due bar, and decision_coupling="
+            f"{decision_coupling!r} would ignore it. Declare decision_coupling='account_state' (N7)"
+        )
     if decision_coupling == "account_state" and engine != CANONICAL_ENGINE:
         raise RunRefused(
             "decision_coupling='account_state' decides against marked equity and a marked position book, "
@@ -1651,7 +1733,7 @@ def _resolve(
         "fold_portfolio": fold_portfolio,
         "accounting_engine": engine,
         "holding_process": ENGINE_HOLDING_PROCESS[engine],
-        "executable_return": ENGINE_EXECUTABLE_RETURN[engine],
+        "executable_return": executable_return(engine, None if canonical is None else canonical.fills.model),
         "capital": float(capital),
         "cost_refresh": cost_refresh,
         "price_basis": basis,
@@ -2136,7 +2218,7 @@ def _evaluate_folds(
         if fold_portfolio == "reset" or excluded:
             states = {}
             held = pd.Series(0.0, index=pd.Index(universe), dtype=float)
-        plans = tuple(component.plan() for component in fitted)
+        plans = tuple(plan for component in fitted for plan in component.plans())
         inputs = _fold_cost_inputs(
             spec,
             resolved,
@@ -2163,7 +2245,7 @@ def _evaluate_folds(
         else:
             for position in range(fold.test_start, fold.test_stop):
                 day = labels[position]
-                if not _due(plans, states, index_of, position):
+                if not _due(plans, states, index_of, position, decision_bar=day):
                     # Nothing is due and nothing expires: composition would
                     # return the carried sub-targets and the constructor would
                     # step the held book toward itself. The emitted row is the
@@ -2378,6 +2460,7 @@ def _evaluate_stateful(
     PortfolioBacktestResult,
     dict[str, object],
     dict[str, object],
+    "_SizingOutput | None",
 ]:
     """Fit each fold, then decide every bar inside one continuous simulation (§3.7, §3.8).
 
@@ -2393,6 +2476,10 @@ def _evaluate_stateful(
     different charged dollars at different account sizes, because participation is trade
     dollars over dollar volume from current equity and rounding at the per-sid increment
     changes filled notional (§5, stage 4 exit).
+
+    A specification with a ``[sizing]`` block has its composition target scaled here, at
+    every scored bar, before construction (:class:`_VolSizing`); the last element of the
+    return is that run's sizing record, None without the block.
     """
     from prism.decisions import (  # local: the constructor stack is the construction extra's
         ArmPolicies,
@@ -2449,7 +2536,12 @@ def _evaluate_stateful(
             elapsed_bars=elapsed,
         )
         previous, previous_cutoff = fitted, cutoff_position
-        plans = tuple(component.plan(combination=spec.strategy.combination) for component in fitted)
+        # Fold admission calibrates each declared component once; composition
+        # runs its tranches, which share the component's fitted object.
+        declared_plans = tuple(component.plan(combination=spec.strategy.combination) for component in fitted)
+        plans = tuple(
+            plan for component in fitted for plan in component.plans(combination=spec.strategy.combination)
+        )
 
         close = fit_view.panel(list(members), train_end, "close").reindex(
             index=resolved.session_index[: fold.formation_stop]
@@ -2466,7 +2558,7 @@ def _evaluate_stateful(
         if family is not None:
             fits: dict[str, object] = {}
             records: dict[str, object] = {}
-            for plan in plans:
+            for plan in declared_plans:
                 declared = declarations[plan.component_id]
                 positions = _training_positions(
                     fold,
@@ -2570,7 +2662,10 @@ def _evaluate_stateful(
     closes = resolved.view.panel(universe, end, "close").reindex(index=resolved.session_index)
     volumes = resolved.view.panel(universe, end, "volume").reindex(index=resolved.session_index)
     events = resolved.view.events(universe, labels[0], end)
-    charged = _canonical_cost_model(resolved, canonical, spread_bps_per_name, capital=capital)
+    basis = _price_basis_for(resolved, [] if events.empty else events["sid"].astype(str).tolist())
+    charged = _canonical_cost_model(
+        resolved, canonical, spread_bps_per_name, capital=capital, closes=closes, volumes=volumes
+    )
 
     fold_at: dict[int, _FoldPlan] = {}
     for plan in plans_by_fold:
@@ -2583,6 +2678,26 @@ def _evaluate_stateful(
     bar_records: list[dict[str, object]] = []
     flattened: set[int] = set()
     horizon = max(int(l.declarations["horizon_bars"]) for l in spec.components)
+    sizing: _VolSizing | None = None
+    if spec.sizing is not None:
+        sizing = _VolSizing(
+            spec.sizing,
+            groups={
+                component.component_id: [
+                    tranche.component_id for tranche in component.plans(combination=spec.strategy.combination)
+                ]
+                for component in plans_by_fold[0].fitted
+            },
+            session_index=resolved.session_index,
+            universe=universe,
+        )
+    # A tranched book holds each tranche in shares between its refreshes; a single-phase
+    # book decides only on its refresh bars and needs nothing beyond the simulator.
+    holdings: _TrancheHoldings | None = None
+    if any(
+        loaded.spec.grid_schedule is not None and int(loaded.spec.grid_schedule[0]) > 1 for loaded in spec.components
+    ):
+        holdings = _TrancheHoldings(split_factors=_split_share_factors(events, basis, index_of))
 
     def hook(call: DecisionCall) -> pd.Series | None:
         nonlocal states
@@ -2599,12 +2714,16 @@ def _evaluate_stateful(
                 return None
             flattened.add(plan.fold.fold)
             states = {}
+            if sizing is not None:
+                sizing.reset(position)
+            if holdings is not None:
+                holdings.reset(position)
             held = {sid: 0.0 for sid, held_position in call.state.positions.items() if held_position.shares}
             if not held:
                 return None
             targets.iloc[position] = 0.0
             return pd.Series(held, dtype=float)
-        if not _due(plan.plans, states, index_of, position):
+        if not _due(plan.plans, states, index_of, position, decision_bar=call.bar):
             return None
         scored = _score_bar(
             spec,
@@ -2622,6 +2741,33 @@ def _evaluate_stateful(
         if scored is None:
             return None
         states = dict(scored.composition.states)
+        if sizing is not None:
+            scored = sizing.size(
+                scored,
+                plan.plans,
+                position=position,
+                day=call.bar,
+                holdings=holdings,
+                equity=float(call.equity),
+                held=_held_shares(call),
+                increment=float(canonical.share_increment),
+            )
+        elif holdings is not None:
+            decided = holdings.target(
+                scored,
+                plan.plans,
+                factors={tranche.component_id: float(tranche.weight) for tranche in plan.plans},
+                equity=float(call.equity),
+                position=position,
+                held=_held_shares(call),
+                increment=float(canonical.share_increment),
+            )
+            scored = dataclasses.replace(scored, row=decided.row)
+        if holdings is not None and holdings.deferred:
+            warnings.append(
+                f"{call.bar}: entries into {holdings.deferred} deferred; a refreshing tranche targets them and they "
+                "have no price on this bar, so that tranche does not hold them until its next refresh"
+            )
         outcome = _construct_at_bar(
             call,
             spec=spec,
@@ -2637,9 +2783,22 @@ def _evaluate_stateful(
             decide_bar=decide_bar,
         )
         bar_records.append(outcome.record)
+        if outcome.record.get("deferred_unpriced_entries"):
+            warnings.append(
+                f"{call.bar}: entries into {outcome.record['deferred_unpriced_entries']} deferred; a tranche carries "
+                "a target for them, the account does not hold them, and they have no price on this bar"
+            )
         decisions_by_fold[plan.fold.fold].append(call.bar)
         if outcome.construction is not None:
             row = pd.Series(outcome.construction.w_target, dtype=float).reindex(pd.Index(universe))
+            if holdings is not None and holdings.last is not None:
+                # A tranched book decides only what a refresh moves, and the constructor holds
+                # the rest at its held weight. The recorded target for those names is the one
+                # the tranches' holdings make, before whole-share rounding, so the target panel
+                # is the account's continuous target on every session.
+                full = holdings.last.full.reindex(row.index)
+                undecided = holdings.last.row.reindex(row.index).isna() & full.notna()
+                row = row.where(~undecided, full)
             targets.iloc[position] = row.to_numpy(dtype=float)
         return outcome.row
 
@@ -2649,7 +2808,7 @@ def _evaluate_stateful(
         cost_model=charged,
         volumes=_by_bar(volumes),
         events=events,
-        price_basis=_price_basis_for(resolved, [] if events.empty else events["sid"].astype(str).tolist()),
+        price_basis=basis,
         initial_cash=float(capital),
         fills=canonical.fills,
         increment=float(canonical.share_increment),
@@ -2691,7 +2850,7 @@ def _evaluate_stateful(
     )
     stale = int(simulation.ledger["stale"].max()) if len(simulation.ledger) else 0
     detail: dict[str, object] = {
-        "note": COUPLED_NOTE,
+        "note": _fills_note(COUPLED_NOTE, canonical.fills),
         "decision_coupling": "account_state",
         "n_decision_bars": sum(len(rows) for rows in decisions_by_fold.values()),
         "n_target_rows": int(targets.notna().any(axis=1).sum()),
@@ -2707,7 +2866,11 @@ def _evaluate_stateful(
         simulation, index=resolved.session_index, universe=resolved.universe, targets=targets
     )
     construction_record = _construction_record(bar_records, policies=policies, plans=plans_by_fold)
-    return targets, folds, warnings, cost_inputs, result, detail, construction_record
+    sizing_output = None
+    if sizing is not None:
+        sizing_output = sizing.finish(result)
+        warnings.extend(sizing_output.warnings())
+    return targets, folds, warnings, cost_inputs, result, detail, construction_record, sizing_output
 
 
 def _construct_at_bar(
@@ -2743,7 +2906,13 @@ def _construct_at_bar(
         window=int(participation.window_bars) if participation is not None else 20,
         statistic=str(participation.estimator) if participation is not None else "median",
     )
-    costs = _constructor_costs(charged, bar=call.bar, equity=equity, horizon_bars=int(horizon_bars))
+    costs = _constructor_costs(
+        charged,
+        bar=call.bar,
+        equity=equity,
+        horizon_bars=int(horizon_bars),
+        sids=list(dict.fromkeys([*universe, *held])),
+    )
 
     forecasts: list[object] = []
     heuristic_target: pd.Series | None = None
@@ -2809,7 +2978,11 @@ def _construct_at_bar(
             halted=[sid for sid in sids if sid not in call.traded],
         )
 
-    return decide_bar(
+    target = None if heuristic_target is None else heuristic_target.reindex(index)
+    deferred: list[str] = []
+    if target is not None and any(component.phase_offset_bars is not None for component in plan.plans):
+        target, deferred = _defer_unpriced_entries(target, marks=marks, shares=shares)
+    outcome = decide_bar(
         decision_bar=call.bar,
         policies=policies,
         state=call.state,
@@ -2820,12 +2993,649 @@ def _construct_at_bar(
         positions=shares,
         adv_dollars=adv.reindex(index),
         costs=costs,
-        heuristic_target=None if heuristic_target is None else heuristic_target.reindex(index),
+        heuristic_target=target,
         forecasts=tuple(forecasts),
         risk=risk,
         component_outputs=component_outputs,
         fold=int(plan.fold.fold),
     )
+    if deferred:
+        outcome.record["deferred_unpriced_entries"] = deferred
+    return outcome
+
+
+def _defer_unpriced_entries(
+    target: pd.Series, *, marks: pd.Series, shares: pd.Series
+) -> tuple[pd.Series, list[str]]:
+    """Withhold the target of a name the account does not hold and cannot price on this bar.
+
+    Applied to a book on the session grid, whose components carry their sub-targets
+    between their own refreshes: the account target can then name a stock the account
+    does not hold and that has no price on this bar, typically an entry ordered on the
+    previous bar that did not fill because the stock stopped trading. (A tranched book's
+    holdings already give a held name without a price no decision, and never enter an
+    unpriced one: :class:`_TrancheHoldings`.) Rounding refuses to size a non-flat target
+    without a price (N7), and with nothing held there is nothing to keep or exit, so the
+    name carries no decision on this bar -- the heuristic construction reads that as the
+    held weight, zero -- and the entry waits for a priced bar. The deferred names are
+    returned so the bar record and the run's warnings carry them.
+    """
+    values = target.to_numpy(dtype=float)
+    unpriced = marks.reindex(target.index).to_numpy(dtype=float) <= 0.0
+    unheld = shares.reindex(target.index).to_numpy(dtype=float) == 0.0
+    mask = unpriced & unheld & np.isfinite(values) & (values != 0.0)
+    if not mask.any():
+        return target, []
+    deferred = [str(sid) for sid in target.index[mask]]
+    return target.where(~mask), deferred
+
+
+#: The columns of ``sizing_decisions.csv``, one row per scale decision.
+SIZING_DECISION_COLUMNS: tuple[str, ...] = (
+    "bar",
+    "component_id",
+    "plan_id",
+    "scale",
+    "sigma",
+    "status",
+    "reason",
+    "n_valid",
+    "zero_fraction",
+    "last_good",
+)
+
+#: What ``evaluation.sizing.base_book`` says the volatility was estimated on.
+SIZING_BASE_BOOK_NOTE = (
+    "per declared component: the mean of its holding tranches' unscaled sub-targets (an untranched component's "
+    "own sub-target), held at constant weights close to close, gross of costs, weights at the prior close only "
+    "(prism.portfolio.vol_scale.base_book_returns); built from this run's own decisions, so it has no returns "
+    "before the first test bar"
+)
+
+
+@dataclass(frozen=True)
+class _SizingOutput:
+    """A sized run's record: one row per session, one row per scale decision.
+
+    ``sessions`` is indexed like the accounted result (every session after the
+    first). Its realized columns (``gross``, ``long_over_equity``,
+    ``sleeve_fraction``) are the held book at that close
+    (:func:`prism.portfolio.vol_scale.session_exposure`); the decided columns
+    (``scale``, ``target_gross``, ``ceiling_factor``, ``scale:<plan>``) are as
+    of the latest decision at or before that close and fill from the next open.
+    ``scale`` is the account's scale, the plan scales weighted by the plans
+    holding a sub-target; it is NaN before the first decision and after a
+    reset.
+
+    The rule's ``max_gross`` bounds ``target_gross``, the target at each
+    decision. It does not bound ``gross``: between one plan's refreshes the
+    held book drifts with prices and whole-share rounding, so a book sized at
+    the ceiling can hold more than it at a later close. The column records
+    that rather than hiding it.
+    """
+
+    rule: VolScaleRule
+    sessions: pd.DataFrame
+    decisions: pd.DataFrame
+    plan_ids: tuple[str, ...]
+
+    def fallbacks(self) -> dict[str, int]:
+        """Fallback decisions by reason, every reason listed."""
+        if self.decisions.empty:
+            return {reason: 0 for reason in FALLBACK_REASONS}
+        counts = self.decisions.loc[self.decisions["status"] == "fallback", "reason"].value_counts()
+        return {reason: int(counts.get(reason, 0)) for reason in FALLBACK_REASONS}
+
+    def warnings(self) -> list[str]:
+        """What the run's warnings say about the rule: its failures and its ceiling."""
+        notes: list[str] = []
+        fallbacks = {reason: count for reason, count in self.fallbacks().items() if count}
+        if fallbacks:
+            notes.append(
+                f"[sizing] fell back to min(1, last good scale) on {sum(fallbacks.values())} of "
+                f"{len(self.decisions)} scale decisions ({fallbacks}); see sizing_decisions.csv"
+            )
+        ceiling = self.sessions["ceiling_factor"] if "ceiling_factor" in self.sessions else pd.Series(dtype=float)
+        if bool((ceiling < 1.0).any()):
+            notes.append(
+                f"[sizing] the account gross ceiling max_gross={self.rule.max_gross} bound on "
+                f"{int((ceiling < 1.0).sum())} session(s); see sizing.csv"
+            )
+        return notes
+
+    def summary(self, scored_index: pd.Index, *, sessions_path: Path, decisions_path: Path) -> dict[str, object]:
+        """``evaluation.sizing``: the rule, the decision counts, and the scale path on the scored sessions."""
+        statuses = self.decisions["status"].value_counts() if not self.decisions.empty else pd.Series(dtype=int)
+        scored = self.sessions.reindex(scored_index)
+        scale = scored["scale"].dropna()
+
+        def stat(values: pd.Series, how: str) -> float | None:
+            values = values.dropna()
+            return None if values.empty else float(getattr(values, how)())
+
+        return {
+            "rule": self.rule.to_dict(),
+            "base_book": SIZING_BASE_BOOK_NOTE,
+            "plans": list(self.plan_ids),
+            "n_decisions": int(len(self.decisions)),
+            "status_counts": {status: int(statuses.get(status, 0)) for status in STATUSES},
+            "fallback_reasons": self.fallbacks(),
+            "scored_sessions": {
+                "n": int(len(scored)),
+                "n_scaled": int(len(scale)),
+                "scale_mean": stat(scale, "mean"),
+                "scale_min": stat(scale, "min"),
+                "scale_max": stat(scale, "max"),
+                "at_cap_fraction": (
+                    None if scale.empty else float((scale >= self.rule.max_scale - 1e-12).mean())
+                ),
+                "target_gross_max": stat(scored["target_gross"], "max"),
+                "ceiling_sessions": int((scored["ceiling_factor"] < 1.0).sum()),
+                "gross_max": stat(scored["gross"], "max"),
+                "long_over_equity_mean": stat(scored["long_over_equity"], "mean"),
+                "sleeve_fraction_mean": stat(scored["sleeve_fraction"], "mean"),
+            },
+            "sleeve_buffer": SLEEVE_BUFFER,
+            "sessions_path": str(sessions_path),
+            "decisions_path": str(decisions_path),
+        }
+
+
+class _VolSizing:
+    """The ``[sizing]`` rule applied per component inside the account_state loop.
+
+    Each declared component has a *base book*: the mean of its holding plans'
+    unscaled sub-targets, weighted by plan weight (a tranche's weight is the
+    component's divided by the tranche count, so the mean is plain); for an
+    untranched component it is its sub-target. That is the book the component's
+    rank-to-weight rule produces at its own raw gross whatever share of its
+    tranches has been built, so a book entering one tranche a session is not
+    read as a quieter one. Its weights are recorded at every scored bar and
+    carried between scored bars, and its return at bar *t* is close to close
+    at the weights held at the close of *t - 1*, gross of costs
+    (:func:`prism.portfolio.vol_scale.base_book_returns`).
+
+    At a bar where a plan is due, its scale is decided from its component's
+    base-book returns through that bar -- before the bar's own weights are
+    recorded, so nothing decided at the bar enters its own estimate (N1) -- and
+    held until the plan is next due; the target it sizes fills from the next
+    open (N2). The account target is ``sum over plans of weight * scale *
+    sub_target``, then capped at the rule's ``max_gross``. With every scale at
+    1.0 and the ceiling slack it is composition's own target, bit for bit. A
+    tranched book is sized through :class:`_TrancheHoldings` instead: a plan's
+    ``weight * scale * sub_target`` becomes shares when the plan refreshes and is
+    held until it next does, and the ceiling caps the account target those
+    holdings make. Its base book is still the constant-weight mean of the
+    sub-targets described above.
+
+    The base book is built from this run's decisions, so its returns start at
+    the first test bar and every plan's first ``lookback_bars`` sessions are
+    warm-up at scale 1. :meth:`reset` forgets everything when an excluded fold
+    flattens the book.
+    """
+
+    def __init__(
+        self,
+        rule: VolScaleRule,
+        *,
+        groups: Mapping[str, Sequence[str]],
+        session_index: pd.DatetimeIndex,
+        universe: Sequence[str],
+    ) -> None:
+        self.rule = rule
+        self.groups = {str(cid): tuple(str(pid) for pid in pids) for cid, pids in groups.items()}
+        self.group_of = {pid: cid for cid, pids in self.groups.items() for pid in pids}
+        self.plan_ids = tuple(pid for pids in self.groups.values() for pid in pids)
+        self.session_index = session_index
+        self.universe = pd.Index([str(sid) for sid in universe])
+        self._column = {sid: number for number, sid in enumerate(self.universe)}
+        self.decisions: list[dict[str, object]] = []
+        self._snapshots: dict[int, dict[str, float]] = {}
+        self._clear()
+
+    def _clear(self) -> None:
+        self._history: dict[str, list[tuple[int, np.ndarray | None]]] = {cid: [] for cid in self.groups}
+        self._scales: dict[str, float] = {}
+        self._last_good: dict[str, float] = {}
+        self._started: set[str] = set()
+
+    def reset(self, position: int) -> None:
+        """Forget the base books and every scale: the account was flattened and starts again."""
+        self._clear()
+        self._snapshots[position] = self._snapshot(math.nan, target_gross=0.0, ceiling=1.0)
+
+    def size(
+        self,
+        scored: "_BarScores",
+        plans: Sequence[ComponentPlan],
+        *,
+        position: int,
+        day: str,
+        holdings: "_TrancheHoldings | None" = None,
+        equity: float | None = None,
+        held: Mapping[str, float] | None = None,
+        increment: float | None = None,
+    ) -> "_BarScores":
+        """``scored`` with its account target scaled: decide every due plan's scale, then size.
+
+        Without ``holdings`` the target is ``sum_plan weight * scale * sub_target``, capped
+        at the ceiling. With them (a tranched book) each plan's scale is applied when the
+        plan refreshes and held in its shares until it next does, and the ceiling bounds
+        the account target those holdings make at ``equity``; ``held`` and ``increment``
+        are the account's shares and quantity grid (:meth:`_TrancheHoldings.target`).
+        """
+        result = scored.composition
+        by_id = {plan.component_id: plan for plan in plans}
+        unknown = sorted(set(by_id) - set(self.group_of))
+        if unknown:
+            raise EvaluationError(f"{day}: plan(s) {unknown} belong to no declared component the sizing rule knows")
+        if not len(scored.close.index):
+            raise EvaluationError(f"{day}: the sizing rule was given an empty close panel (N7)")
+        panel_last = scored.close.index[-1]
+        returns: dict[str, np.ndarray] = {}
+        for output in result.component_outputs:
+            if not output.due:
+                continue
+            pid = str(output.component_id)
+            cid = self.group_of[pid]
+            if cid not in returns:
+                returns[cid] = self._base_returns(cid, scored.close, position)
+            decision = decide_scale(
+                returns[cid],
+                self.rule,
+                last_good=self._last_good.get(pid),
+                decision_bar=day,
+                panel_last_bar=panel_last,
+            )
+            self._scales[pid] = decision.scale
+            if decision.status == "ok":
+                self._last_good[pid] = decision.scale
+            row = decision.to_dict()
+            row.pop("decision_bar")
+            self.decisions.append({"bar": day, "component_id": cid, "plan_id": pid, **row})
+        for cid, pids in self.groups.items():
+            self._record_base(cid, position, self._base_weights(cid, pids, by_id, result.states))
+
+        if holdings is None:
+            target, ceiling = cap_gross(self._scaled_target(plans, result), float(self.rule.max_gross))
+            sized = pd.Series(0.0, index=scored.row.index, dtype=float)
+            sized.loc[target.index] = target.to_numpy(dtype=float)
+            target_gross = float(np.nansum(np.abs(target.to_numpy(dtype=float))))
+        else:
+            if equity is None or increment is None:
+                raise EvaluationError(
+                    f"{day}: a tranched book is sized against the marked equity and the account's quantity grid, "
+                    "and one of them was not given"
+                )
+            factors = {
+                plan.component_id: float(plan.weight) * self._scales[plan.component_id]
+                for plan in plans
+                if plan.component_id in self._scales
+            }
+            decided = holdings.target(
+                scored,
+                plans,
+                factors=factors,
+                equity=float(equity),
+                position=position,
+                held=held if held is not None else {},
+                increment=float(increment),
+                max_gross=float(self.rule.max_gross),
+            )
+            sized, ceiling, target_gross = decided.row, decided.ceiling, decided.gross
+        holding = [
+            (abs(float(plan.weight)), self._scales[plan.component_id])
+            for plan in plans
+            if any(float(value) != 0.0 for value in result.states[plan.component_id].sub_targets.values())
+        ]
+        weight = sum(entry[0] for entry in holding)
+        account_scale = sum(entry[0] * entry[1] for entry in holding) / weight if weight > 0.0 else math.nan
+        self._snapshots[position] = self._snapshot(account_scale, target_gross=target_gross, ceiling=ceiling)
+        return dataclasses.replace(scored, row=sized)
+
+    def finish(self, result: PortfolioBacktestResult) -> _SizingOutput:
+        """The per-session and per-decision records, once the simulation has run."""
+        columns = ["scale", "target_gross", "ceiling_factor", *[f"scale:{pid}" for pid in self.plan_ids]]
+        snapshots = pd.DataFrame.from_dict(self._snapshots, orient="index", dtype=float)
+        snapshots = snapshots.reindex(columns=columns).sort_index()
+        # Each session carries the whole row of the latest decision at or before it,
+        # NaN included, so a reset's NaN scales are carried rather than filled over.
+        carried = snapshots.reindex(np.arange(len(self.session_index)), method="ffill")
+        carried.index = self.session_index
+        exposure = session_exposure(result.fill_weights)
+        sessions = pd.concat([exposure, carried.reindex(exposure.index)], axis=1)
+        sessions.index.name = "ts"
+        decisions = pd.DataFrame(self.decisions, columns=list(SIZING_DECISION_COLUMNS))
+        return _SizingOutput(rule=self.rule, sessions=sessions, decisions=decisions, plan_ids=self.plan_ids)
+
+    def _snapshot(self, scale: float, *, target_gross: float, ceiling: float) -> dict[str, float]:
+        return {
+            "scale": float(scale),
+            "target_gross": float(target_gross),
+            "ceiling_factor": float(ceiling),
+            **{f"scale:{pid}": float(self._scales.get(pid, math.nan)) for pid in self.plan_ids},
+        }
+
+    def _base_weights(
+        self,
+        cid: str,
+        pids: Sequence[str],
+        by_id: Mapping[str, ComponentPlan],
+        states: Mapping[str, ComponentState],
+    ) -> np.ndarray | None:
+        """The component's base book at this close over the universe.
+
+        None until some plan of the component first holds a non-zero
+        sub-target: before that there is no book, and its returns are NaN
+        rather than zero (warm-up). After it, a component with no holding plan
+        is a flat book, whose returns are zero.
+        """
+        holding = [
+            pid
+            for pid in pids
+            if states.get(pid) is not None and any(float(value) != 0.0 for value in states[pid].sub_targets.values())
+        ]
+        if holding:
+            self._started.add(cid)
+        elif cid not in self._started:
+            return None
+        vector = np.zeros(len(self.universe), dtype=float)
+        total = 0.0
+        for pid in holding:
+            held = states[pid].sub_targets
+            weight = float(by_id[pid].weight)
+            total += abs(weight)
+            try:
+                columns = np.fromiter((self._column[str(sid)] for sid in held), dtype=np.intp, count=len(held))
+            except KeyError as exc:
+                raise EvaluationError(
+                    f"plan {pid!r} holds a sub-target for {exc.args[0]!r}, which is not in the run's universe"
+                ) from None
+            values = np.fromiter((float(value) for value in held.values()), dtype=float, count=len(held))
+            np.add.at(vector, columns, weight * values)
+        if total > 0.0:
+            vector /= total
+        return vector
+
+    def _record_base(self, cid: str, position: int, vector: np.ndarray | None) -> None:
+        """Append this close's base weights; drop entries no later window can reach."""
+        history = self._history[cid]
+        history.append((position, vector))
+        floor = position - self.rule.lookback_bars
+        keep = 0
+        for number, (recorded, _) in enumerate(history):
+            if recorded <= floor:
+                keep = number
+        if keep:
+            del history[:keep]
+
+    def _base_returns(self, cid: str, close: pd.DataFrame, position: int) -> np.ndarray:
+        """The component's base-book returns over the window ending at ``position``."""
+        start = max(0, position - self.rule.lookback_bars)
+        stamps = self.session_index[start : position + 1]
+        weights = np.full((len(stamps), len(self.universe)), np.nan)
+        history = self._history[cid]
+        for number, (recorded, vector) in enumerate(history):
+            if vector is None:
+                continue
+            until = history[number + 1][0] if number + 1 < len(history) else position + 1
+            low, high = max(recorded, start), min(until, position + 1)
+            if low < high:
+                weights[low - start : high - start] = vector
+        frame = pd.DataFrame(weights, index=stamps, columns=self.universe)
+        prices = close.reindex(index=stamps, columns=self.universe)
+        return base_book_returns(prices, frame).to_numpy(dtype=float)[1:]
+
+    def _scaled_target(self, plans: Sequence[ComponentPlan], result: CompositionResult) -> pd.Series:
+        """``sum_plan weight * scale * sub_target`` on composition's index; NaN where no plan holds one.
+
+        The arithmetic and the order of the sum are ``prism.composition._account_target``'s,
+        so at scale 1.0 every entry is the same float.
+        """
+        index = result.targets.index
+        slot = {str(sid): number for number, sid in enumerate(index)}
+        total = np.full(len(index), np.nan)
+        for plan in plans:
+            held = result.states[plan.component_id].sub_targets
+            if not held:
+                continue
+            if plan.component_id not in self._scales:
+                raise EvaluationError(
+                    f"plan {plan.component_id!r} holds sub-targets and no scale was ever decided for it; the "
+                    "sizing rule saw a state it did not produce (N7)"
+                )
+            factor = float(plan.weight) * self._scales[plan.component_id]
+            places = np.fromiter((slot[str(sid)] for sid in held), dtype=np.intp, count=len(held))
+            values = np.fromiter((float(value) for value in held.values()), dtype=float, count=len(held))
+            contribution = factor * values
+            current = total[places]
+            total[places] = np.where(np.isnan(current), contribution, current + contribution)
+        return pd.Series(total, index=index, dtype=float)
+
+
+def _split_share_factors(
+    events: pd.DataFrame, price_basis: str | Mapping[str, str], positions: Mapping[str, int]
+) -> dict[int, dict[str, float]]:
+    """Per session position, the factor each split multiplies a held position's shares by on it.
+
+    The factor is the simulator's own (:func:`prism.io.events.applied_share_factor`): the
+    declared ratio on a ``raw`` series, 1.0 on a ``split_adjusted_at_ingest`` one, whose
+    prices already carry it. A split effective on a date that is not a session of the run
+    is applied by no one, here or in the simulator.
+    """
+    factors: dict[int, dict[str, float]] = {}
+    if events.empty:
+        return factors
+    for row in events.loc[events["event_type"].astype(str) == "split"].to_dict("records"):
+        event = Event.from_row({str(key): value for key, value in row.items()})
+        sid = str(event.sid)
+        if isinstance(price_basis, Mapping):
+            if sid not in price_basis:
+                raise EvaluationError(
+                    f"{sid}: a split on {event.effective_date} names a series with no declared price basis, and the "
+                    "basis decides whether the split moves shares at all (D3)"
+                )
+            basis = str(price_basis[sid])
+        else:
+            basis = str(price_basis)
+        factor = applied_share_factor("split", basis, float(event.payload["factor"]))
+        position = positions.get(str(event.effective_date))
+        if factor == 1.0 or position is None:
+            continue
+        on_bar = factors.setdefault(int(position), {})
+        on_bar[sid] = on_bar.get(sid, 1.0) * factor
+    return factors
+
+
+def _held_shares(call: DecisionCall) -> dict[str, float]:
+    """The account's non-zero share counts at the decision close."""
+    return {str(sid): float(position.shares) for sid, position in call.state.positions.items() if position.shares}
+
+
+def _positive_price(value: object) -> float | None:
+    try:
+        number = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+    return number if math.isfinite(number) and number > 0.0 else None
+
+
+class _TrancheHoldings:
+    """Each plan's holding, in shares, between its own refreshes: the account side of a tranched book.
+
+    Composition carries each plan's sub-target as a weight and its account target is
+    ``sum_p weight_p * sub_target_p``. A tranched book decides on every session one of its
+    tranches refreshes, so re-targeting that sum would trade the whole held book back to
+    constant weights every session, which no single-phase book does. This class gives each
+    plan what a single-phase book has between its refreshes: shares.
+
+    * At a plan's refresh (it is due, or its output expired) its holding is reset to
+      ``factor_p * sub_target_p * E_t / P_t`` shares per name, where ``factor_p`` is its
+      weight (times its volatility scale under ``[sizing]``), ``E_t`` the marked equity
+      and ``P_t`` the decision close. A name with a sub-target and no price on the bar
+      keeps the plan's previous holding in it, or, if it had none, is not entered and is
+      reported as deferred.
+    * Between refreshes the shares are held, so the holding drifts with prices, as an
+      overlapping Jegadeesh-Titman cohort does. A split on a raw-basis series restates the
+      shares by the factor the simulator applies to the account
+      (:func:`_split_share_factors`), so a holding is continuous across it.
+    * The account target at close *t* is ``sum_p shares_p * P_t / E_t``; a name no plan
+      holds is flat where composition has a value for it, and a held name with no price on
+      the bar has no target. The decision row carries the target only for the names a
+      refreshing plan held or now holds and for names whose held shares have come apart
+      from the plans' holdings by more than half an increment (an unfilled order, or a
+      position no plan holds); every other name carries no decision, which the
+      constructor reads as the held position. So the orders are the refreshing plan's
+      change and those catch-ups, and nothing else.
+    * With ``max_gross`` the account target is capped at it (:func:`cap_gross`). When the
+      cap binds, every plan's holding is scaled by the same factor and every name is
+      decided, which trades the whole book on that session; the factor is returned so the
+      session is recorded.
+
+    The single-phase rows of a book need none of this: they decide only on their own refresh
+    bars and hold shares in between. :meth:`reset` forgets every holding when an excluded
+    fold flattens the account.
+    """
+
+    def __init__(self, *, split_factors: Mapping[int, Mapping[str, float]] | None = None) -> None:
+        self.split_factors = {int(at): dict(by_sid) for at, by_sid in (split_factors or {}).items()}
+        self.shares: dict[str, dict[str, float]] = {}
+        self.deferred: list[str] = []
+        self.last: _HeldTarget | None = None
+        self._through = -1
+
+    def reset(self, position: int) -> None:
+        """Forget every plan's holding: the account was flattened and starts again."""
+        self.shares = {}
+        self.deferred = []
+        self.last = None
+        self._through = int(position)
+
+    def _restate(self, position: int) -> None:
+        """Apply every split effective after the last bar seen, through ``position``."""
+        for at in sorted(at for at in self.split_factors if self._through < at <= position):
+            for sid, factor in self.split_factors[at].items():
+                for held in self.shares.values():
+                    if sid in held:
+                        held[sid] *= factor
+        self._through = max(self._through, int(position))
+
+    def target(
+        self,
+        scored: "_BarScores",
+        plans: Sequence[ComponentPlan],
+        *,
+        factors: Mapping[str, float],
+        equity: float,
+        position: int,
+        held: Mapping[str, float],
+        increment: float,
+        max_gross: float | None = None,
+    ) -> "_HeldTarget":
+        """This close's decision row over ``scored.row``'s index, with the account target's gross and ceiling.
+
+        ``held`` is the account's shares at this close and ``increment`` its quantity grid
+        (0.0 continuous). The row carries a value only for a name a refreshing plan held
+        or holds, a name whose held shares have come apart from the plans' holdings by more
+        than half an increment (an unfilled or rounded order being caught up), and every
+        name when the ceiling binds; every other name carries no decision, which the
+        constructor reads as the held position. ``gross`` is the gross of the whole account
+        target, the held drift included.
+        """
+        day = scored.day
+        if not (math.isfinite(float(equity)) and float(equity) > 0.0):
+            raise EvaluationError(f"{day}: a tranched book needs a positive marked equity, got {equity!r} (N7)")
+        self._restate(position)
+        result = scored.composition
+        prices = scored.close.iloc[-1] if len(scored.close) else pd.Series(dtype=float)
+        refreshed = {str(output.component_id) for output in result.component_outputs if output.due or output.expired}
+        deferred: list[str] = []
+        touched: set[str] = set()
+        for plan in plans:
+            pid = str(plan.component_id)
+            if pid not in refreshed:
+                continue
+            previous = self.shares.get(pid, {})
+            touched.update(previous)
+            fresh: dict[str, float] = {}
+            for sid, value in result.states[pid].sub_targets.items():
+                weight = float(value)
+                if weight == 0.0:
+                    continue
+                if pid not in factors:
+                    raise EvaluationError(
+                        f"{day}: plan {pid!r} holds sub-targets and has no sizing factor; the tranched book saw a "
+                        "state it did not produce (N7)"
+                    )
+                key = str(sid)
+                price = _positive_price(prices.get(key))
+                if price is not None:
+                    fresh[key] = float(factors[pid]) * weight * float(equity) / price
+                elif key in previous:
+                    fresh[key] = previous[key]
+                else:
+                    deferred.append(key)
+            self.shares[pid] = fresh
+            touched.update(fresh)
+
+        totals: dict[str, float] = {}
+        for plan in plans:
+            for sid, count in self.shares.get(str(plan.component_id), {}).items():
+                totals[sid] = totals.get(sid, 0.0) + count
+        row = pd.Series(scored.row, dtype=float)
+        unknown = sorted(sid for sid in totals if sid not in row.index)
+        if unknown:
+            raise EvaluationError(f"{day}: tranches hold {unknown[:5]}, which are not in the run's universe")
+        values = np.where(row.isna().to_numpy(), np.nan, 0.0)
+        slot = {str(sid): number for number, sid in enumerate(row.index)}
+        for sid in deferred:
+            if sid not in totals:
+                values[slot[sid]] = np.nan
+        for sid, count in totals.items():
+            price = _positive_price(prices.get(sid))
+            values[slot[sid]] = np.nan if price is None else count * price / float(equity)
+        target = pd.Series(values, index=row.index, dtype=float)
+        ceiling = 1.0
+        if max_gross is not None:
+            target, ceiling = cap_gross(target, float(max_gross))
+            if ceiling != 1.0:
+                for holding in self.shares.values():
+                    for sid in holding:
+                        holding[sid] *= ceiling
+        gross = float(np.nansum(np.abs(target.to_numpy(dtype=float))))
+        self.deferred = sorted(set(deferred))
+        if ceiling != 1.0:
+            self.last = _HeldTarget(row=target, full=target, gross=gross, ceiling=ceiling)
+            return self.last
+        step = float(increment)
+        for sid in set(totals) | {str(sid) for sid, shares in held.items() if float(shares) != 0.0}:
+            if sid in touched or sid not in slot:
+                continue
+            planned, account = totals.get(sid, 0.0), float(held.get(sid, 0.0))
+            gap = abs(planned - account)
+            if (step > 0.0 and gap > 0.5 * step) or (step <= 0.0 and gap > 1e-9 * max(1.0, abs(planned))):
+                touched.add(sid)
+        decided = np.full(len(row.index), np.nan)
+        places = np.fromiter((slot[sid] for sid in touched if sid in slot), dtype=np.intp)
+        decided[places] = target.to_numpy(dtype=float)[places]
+        self.last = _HeldTarget(
+            row=pd.Series(decided, index=row.index, dtype=float), full=target, gross=gross, ceiling=ceiling
+        )
+        return self.last
+
+
+@dataclass(frozen=True)
+class _HeldTarget:
+    """One close's decision row for a tranched book, the whole account target, its gross, and the ceiling factor.
+
+    ``row`` is what is decided (NaN where nothing is); ``full`` is the account target the
+    tranches' holdings make at this close, every held name included.
+    """
+
+    row: pd.Series
+    full: pd.Series
+    gross: float
+    ceiling: float
 
 
 def _decision_marks(prices: pd.Series, index: pd.Index, *, state: object, bar: str) -> pd.Series:
@@ -2872,7 +3682,9 @@ def _decision_marks(prices: pd.Series, index: pd.Index, *, state: object, bar: s
     return marks.where(~still, 0.0)
 
 
-def _constructor_costs(charged: CostModel, *, bar: str, equity: float, horizon_bars: int) -> CostModel:
+def _constructor_costs(
+    charged: CostModel, *, bar: str, equity: float, horizon_bars: int, sids: Sequence[str]
+) -> CostModel:
     """The charged policy as the constructor's cost functions, on this bar's spread.
 
     The accounting model carries a bar-by-name spread frame under ``cost_refresh = "fold"``
@@ -2880,13 +3692,27 @@ def _constructor_costs(charged: CostModel, *, bar: str, equity: float, horizon_b
     this bar is bound here. The stack, the schedule and the fallback are the charged
     model's own: the constructor optimizes against the policy the account is charged
     under, which is the only way the modeled and charged costs are the same policy (§3.6).
+
+    The charged model's ``dollar_volume.impact`` panel is the fill session's own volume,
+    which no decision may read, so it is not bound here. ``convex_terms`` prices the
+    participation term against the trailing participation statistic it is given; a name
+    without one falls back to ``adv_impact``, which is bound to the stack's
+    ``floor_dollars`` for every name in ``sids`` when the term is active. That is the most
+    expensive price the stack allows (unknown liquidity is never cheap), and it is never
+    a charge: the participation bound holds a name with no trailing statistic, so the
+    constructor's trade on it is zero.
     """
     spread = None if charged.inputs is None else charged.inputs.spread_bps
     if isinstance(spread, pd.DataFrame):
         spread = spread.loc[bar] if bar in spread.index else None
+    adv_impact = None
+    stack = charged.stack
+    if stack is not None and stack.impact.participation_coeff > 0.0 and stack.impact.participation_model != "none":
+        floor = float(stack.dollar_volume["impact"].floor_dollars)
+        adv_impact = pd.Series(floor, index=pd.Index([str(sid) for sid in sids]), dtype=float)
     return CostModel(
         charged.stack,
-        CostInputs(as_of=bar, scope="run", spread_bps=spread),
+        CostInputs(as_of=bar, scope="run", spread_bps=spread, adv_impact=adv_impact),
         spread=charged.spread,
         equity=float(equity),
         horizon_bars=int(horizon_bars),
@@ -3013,24 +3839,37 @@ def _due(
     states: Mapping[str, ComponentState],
     positions: Mapping[str, int],
     position: int,
+    *,
+    decision_bar: str | None = None,
 ) -> bool:
     """Whether any component is due for a refresh, or expires, at this bar (§3.3).
 
-    The same two predicates ``_compose_one`` evaluates, read here so a bar on
-    which neither fires can skip the panel read entirely. When this is False,
-    composition returns the carried sub-targets unchanged and the constructor
-    steps the held book toward itself, so the emitted row is the held book —
-    which is what the caller writes instead.
+    The same two predicates ``_compose_one`` evaluates — due-ness is
+    :func:`prism.composition.due_on_grid` in both places — read here so a bar
+    on which neither fires can skip the panel read entirely. When this is
+    False, composition returns the carried sub-targets unchanged and the
+    constructor steps the held book toward itself, so the emitted row is the
+    held book — which is what the caller writes instead. ``decision_bar`` is
+    the label at ``position``; a plan on the session grid needs it, and an
+    elapsed-count plan never reads it.
     """
     for plan in plans:
         state = states.get(plan.component_id)
-        if state is None or state.last_output_bar is None:
+        last = None if state is None else state.last_output_bar
+        elapsed = 0
+        if last is not None:
+            anchor = positions.get(last)
+            if anchor is None:
+                return True
+            elapsed = position - anchor
+        if plan.phase_offset_bars is not None and decision_bar is None:
+            raise EvaluationError(
+                f"component {plan.component_id!r} is scheduled on the session grid and the due-ness check was "
+                "given no decision bar label to place on it"
+            )
+        if due_on_grid(plan, state, str(decision_bar), elapsed=elapsed):
             return True
-        anchor = positions.get(state.last_output_bar)
-        if anchor is None:
-            return True
-        elapsed = position - anchor
-        if elapsed >= int(plan.update_every_bars) or elapsed > int(plan.valid_for_bars):
+        if last is not None and elapsed > int(plan.valid_for_bars):
             return True
     return False
 
@@ -3274,7 +4113,7 @@ def _replay_targets(
             # it can score, not before.
             rows.append(np.zeros(len(universe), dtype=float))
             continue
-        if not _due(plans, states, index, position):
+        if not _due(plans, states, index, position, decision_bar=day):
             rows.append(last)
             continue
         row, states, _ = _decide_bar(
@@ -3464,12 +4303,45 @@ def _by_bar(frame: pd.DataFrame | None) -> pd.DataFrame | None:
     return out
 
 
+def _impact_dollar_volume(stack: CostStack, closes: pd.DataFrame, volumes: pd.DataFrame) -> pd.DataFrame | None:
+    """The ``dollar_volume.impact`` statistic the charged participation term divides by (§3.6).
+
+    None when the term is inert (``participation_coeff = 0`` or ``participation_model =
+    "none"``), so a stack that charges nothing for it binds exactly the inputs it always
+    did, and its ``cost_inputs_id`` is unchanged. Otherwise a bar-by-name panel keyed by
+    bar, which ``CostModel._adv_impact`` reads at each fill's own bar.
+
+    ``estimator = "same_bar"`` is the fill session's close times its volume: the full-day
+    dollar volume of the session the order fills in. That makes it a cost-side input
+    known only after the session closes; the simulator reads it when it charges a fill,
+    and no decision reads it (the constructor's cost functions price against the trailing
+    participation statistic, :func:`_constructor_costs`). The stack's ``floor_dollars``
+    is applied by the cost model. No other estimator is implemented for this use, so one
+    is refused rather than approximated (N7).
+    """
+    impact = stack.impact
+    if impact.participation_coeff <= 0.0 or impact.participation_model == "none":
+        return None
+    declared = stack.dollar_volume["impact"]
+    if declared.estimator != "same_bar":
+        raise EvaluationError(
+            f"cost stack {stack.stack_id}: dollar_volume.impact.estimator={declared.estimator!r} prices a non-zero "
+            f"participation term (participation_coeff={impact.participation_coeff}), and the canonical engine "
+            "implements only 'same_bar' for that statistic. Declare 'same_bar' or add the estimator; a "
+            "statistic nobody implemented is never approximated (N7)"
+        )
+    dollar = closes * volumes.reindex(index=closes.index, columns=closes.columns)
+    return _by_bar(dollar)
+
+
 def _canonical_cost_model(
     resolved: _Resolved,
     canonical: CanonicalSettings,
     spread_bps_per_name: pd.Series | pd.DataFrame | None,
     *,
     capital: float,
+    closes: pd.DataFrame | None = None,
+    volumes: pd.DataFrame | None = None,
 ) -> CostModel:
     """The declared stack, bound to the spread the reproduction engine would have charged.
 
@@ -3478,9 +4350,21 @@ def _canonical_cost_model(
     *same* spread on the same name-day. A difference between the engines is then
     a difference in the holding process and in nothing else, which is the only
     way the comparison this stage owes means anything.
+
+    ``closes`` and ``volumes`` are the panels the simulator marks and fills on; a
+    stack with a non-zero participation term is priced against their product at
+    each fill's bar (:func:`_impact_dollar_volume`), and is refused without them.
     """
     stack = canonical.cost_stack
-    inputs = CostInputs(as_of=resolved.session_labels[-1], scope="run")
+    adv_impact = None
+    if stack.impact.participation_coeff > 0.0 and stack.impact.participation_model != "none":
+        if closes is None or volumes is None:
+            raise EvaluationError(
+                f"cost stack {stack.stack_id} charges a participation term against dollar_volume.impact, and the "
+                "close and volume panels it is priced on were not given (N7)"
+            )
+        adv_impact = _impact_dollar_volume(stack, closes, volumes)
+    inputs = CostInputs(as_of=resolved.session_labels[-1], scope="run", adv_impact=adv_impact)
     if spread_bps_per_name is not None:
         # Only the *mode* changes: the schedule and flat_bps the stack declared
         # stay, and stay in that order, so a name the vector does not price
@@ -3505,6 +4389,7 @@ def _canonical_cost_model(
             as_of=resolved.session_labels[-1],
             scope="fold" if per_bar else "run",
             spread_bps=_by_bar(spread_bps_per_name) if per_bar else spread_bps_per_name,
+            adv_impact=adv_impact,
         )
     return CostModel(stack, inputs, equity=float(capital))
 
@@ -3535,7 +4420,9 @@ def _simulate_canonical(
         _by_bar(resolved.opens),
         _by_bar(closes),
         _by_bar(decisions),
-        cost_model=_canonical_cost_model(resolved, canonical, spread_bps_per_name, capital=capital),
+        cost_model=_canonical_cost_model(
+            resolved, canonical, spread_bps_per_name, capital=capital, closes=closes, volumes=volumes
+        ),
         volumes=_by_bar(volumes),
         events=events,
         price_basis=_price_basis_for(resolved, [] if events.empty else events["sid"].astype(str).tolist()),
@@ -3554,7 +4441,7 @@ def _simulate_canonical(
         )
     stale = int(simulation.ledger["stale"].max()) if len(simulation.ledger) else 0
     detail: dict[str, object] = {
-        "note": CANONICAL_NOTE,
+        "note": _fills_note(CANONICAL_NOTE, canonical.fills),
         "n_decision_bars": len(decision_bars),
         "n_target_rows": int(targets.notna().any(axis=1).sum()),
         "n_fills": int(len(simulation.fills)),
@@ -3771,8 +4658,15 @@ def _write_record(
     untested_conclusions: Sequence[str],
     calibration_hook: object | None,
     construction_record: Mapping[str, object] | None = None,
+    sizing: "_SizingOutput | None" = None,
 ) -> tuple[ResultRecord, Path]:
-    """Build, validate and write the ``ResultRecord`` and its artifacts (§3.12)."""
+    """Build, validate and write the ``ResultRecord`` and its artifacts (§3.12).
+
+    A sized run also writes ``sizing.csv`` (one row per session) and
+    ``sizing_decisions.csv`` (one row per scale decision) and carries
+    ``evaluation.sizing``; a run without ``[sizing]`` writes neither and its
+    record has no such key.
+    """
     construction = _Construction.from_spec(spec)
     run_dir = workspace.results / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -3786,6 +4680,15 @@ def _write_record(
         path = run_dir / name
         frame.to_csv(path)
         written.append(path)
+    sizing_block: dict[str, object] = {}
+    if sizing is not None:
+        sessions_path, decisions_path = run_dir / "sizing.csv", run_dir / "sizing_decisions.csv"
+        sizing.sessions.to_csv(sessions_path)
+        sizing.decisions.to_csv(decisions_path, index=False)
+        written.extend([sessions_path, decisions_path])
+        sizing_block["sizing"] = sizing.summary(
+            scored.returns.index, sessions_path=sessions_path, decisions_path=decisions_path
+        )
     folds_path = run_dir / "folds.json"
     folds_path.write_text(json.dumps(resolved.fold_table.to_records(), indent=2) + "\n", encoding="utf-8")
     written.append(folds_path)
@@ -3836,7 +4739,9 @@ def _write_record(
                 loaded.component_id: str(loaded.declarations["scoring_basis"]) for loaded in spec.components
             },
             "price_basis": "as_traded_close",
-            "executable_return": ENGINE_EXECUTABLE_RETURN[engine],
+            "executable_return": executable_return(
+                engine, None if canonical is None else canonical.fills.model
+            ),
             "excess_return_definition": UNAVAILABLE,
             "hurdle_series_id": UNAVAILABLE,
             "hurdle_conversion": UNAVAILABLE,
@@ -3943,6 +4848,7 @@ def _write_record(
                 for loaded in spec.components
             ],
             "folds": [fold.to_record() for fold in folds],
+            **sizing_block,
         },
         performance={
             "periodic_returns_path": workspace.relative(run_dir / "returns.csv"),
@@ -4060,9 +4966,12 @@ def _engine_note(engine: str, engine_detail: Mapping[str, object]) -> str:
     """
     if engine == REPRODUCTION_ENGINE:
         return REPRODUCTION_CAVEAT
-    if str(engine_detail.get("decision_coupling")) == "account_state":
-        return COUPLED_NOTE
-    return CANONICAL_NOTE
+    note = COUPLED_NOTE if str(engine_detail.get("decision_coupling")) == "account_state" else CANONICAL_NOTE
+    settings = engine_detail.get("settings")
+    fills = settings.get("fills") if isinstance(settings, Mapping) else None
+    if isinstance(fills, Mapping) and fills.get("model") == "split_open_close":
+        return note + SPLIT_FILLS_NOTE
+    return note
 
 
 def _repair_counts(construction: Mapping[str, object]) -> dict[str, object]:

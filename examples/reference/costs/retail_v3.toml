@@ -1,0 +1,98 @@
+# retail_v2 with two changes, written for the public_baseline_v1 set:
+#
+# 1. `cash_income_bps_annual = 0.0`. Idle own cash enters that set's evaluation only
+#    through the hurdle (prism.validation.hurdle.tbill_hurdle), which credits it at the
+#    broker's cash yield or at a T-bill ETF's yield. Crediting it here as well would count
+#    it twice.
+# 2. `participation_coeff = 126.0` (bp). A square-root market-impact term: cost per traded
+#    dollar = Y * sigma * sqrt(q / V), with Y = 0.7 and a daily volatility sigma = 1.8%
+#    assumed for every name, so Y * sigma = 0.0126 = 126 bp. q is the account's own decided
+#    order notional and V the same-bar dollar volume, floored at $100,000
+#    (`[dollar_volume.impact]`, unchanged). "Same bar" is the session the order fills in:
+#    V is that session's close times its full-day volume. It is a cost-side input, known
+#    only after the fill session closes, that the canonical engine reads when it charges a
+#    fill (prism.evaluate._impact_dollar_volume); no decision reads it, and the constructor's
+#    cost functions use the trailing participation statistic below. The term prices the
+#    account's own trade only; prism.validation.capacity re-prices recorded trades with other
+#    deployments' flow added and with each name's own trailing volatility.
+#
+# Everything else is retail_v2's: bucket half spreads, 1 bp commission, 50 bp/yr borrow on
+# short market value, the quadratic impact term, 6.5% financing on debit cash and
+# `short_proceeds = "collateral_no_rebate"`. Income 0 <= financing 650 satisfies the
+# convexity rule of CostStack.
+commission_bps = 1.0
+borrow_bps_annual = 50.0
+cash_income_bps_annual = 0.0
+financing_bps_annual = 650.0
+short_proceeds = "collateral_no_rebate"
+holding_cost_settlement = "per_bar"
+trading_days_per_year = 252
+
+# `bound = "inclusive_lower"`: each step is an inclusive lower bound on the
+# declared liquidity statistic, steps descending. `unknown_liquidity =
+# "widest_step"`: a missing, NaN, or non-positive statistic takes the last
+# step, never the cheapest.
+[spread]
+mode = "bucket"
+statistic = "dollar_volume.spread_bucket"
+bound = "inclusive_lower"
+unknown_liquidity = "widest_step"
+schedule = [[500000000.0, 1.0], [100000000.0, 2.0], [25000000.0, 5.0], [0.0, 10.0]]
+
+[impact]
+quadratic_notional_coeff = 10.0
+participation_model = "sqrt"
+participation_coeff = 126.0
+statistic = "dollar_volume.impact"
+
+# The three uses of a dollar-volume statistic each name their own estimator,
+# window, refresh cadence, and floor. `window = "formation"` is legal only with
+# `refresh = "fold"` under an evaluation that declares a fold table.
+[dollar_volume.spread_bucket]
+estimator = "median"
+window = "trailing"
+window_bars = 20
+refresh = "decision"
+floor_dollars = 0.0
+source = "close_times_volume"
+
+[dollar_volume.participation]
+estimator = "median"
+window = "trailing"
+window_bars = 20
+refresh = "decision"
+floor_dollars = 0.0
+base = "current_equity"
+source = "close_times_volume"
+
+[dollar_volume.impact]
+estimator = "same_bar"
+window = "trailing"
+window_bars = 1
+refresh = "bar"
+floor_dollars = 100000.0
+source = "close_times_volume"
+
+[source.commission]
+class = "assumption"
+reference = "src/prism/config.py::ExecutionConfig.commission_bps"
+
+[source.spread]
+class = "assumption"
+reference = "docs/r2_design.md section 3"
+
+[source.impact]
+class = "assumption"
+reference = "Quadratic term: src/prism/config.py::ExecutionConfig.slippage_coeff. Participation term: square-root impact, cost per traded dollar Y * sigma * sqrt(q / V) (Toth et al. 2011, 'Anomalous price impact and the critical nature of liquidity in financial markets', Physical Review X 1, 021006; Almgren, Thum, Hauptmann and Li 2005, 'Direct estimation of equity market impact', Risk 18(7), who estimate an exponent of about 0.6 rather than 0.5), with Y = 0.7 and sigma = 1.8% a day assumed for every name. Not estimated from this account's fills"
+
+[source.borrow]
+class = "assumption"
+reference = "src/prism/config.py::ExecutionConfig.borrow_rate_bps_annual"
+
+[source.financing]
+class = "assumption"
+reference = "Alpaca non-elite margin rate 6.50%, as listed by BrokerChooser (retrieved 2026-09-25); replace with the account agreement's rate"
+
+[source.cash_income]
+class = "assumption"
+reference = "Set to 0 so that idle own cash is credited only through the hurdle (prism.validation.hurdle.tbill_hurdle), at the broker's cash yield or a T-bill ETF's yield; retail_v2 carries the listed broker yield of 3.3% APY"
