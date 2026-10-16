@@ -1,4 +1,4 @@
-"""Anytime-valid monitoring for the live paper loop (SPEC.md §10, I-9).
+"""Anytime-valid confidence sequences for the mean per-period return of a live or paper stream.
 
 The deflated-Sharpe machinery in :mod:`prism.validation.metrics` corrects for
 *cross-sectional* multiplicity — the many trials searched in a sweep. It does
@@ -14,7 +14,10 @@ sizes at once*, so you may inspect it after every new day and stop at any
 data-dependent time without breaking the 1 − α guarantee. This module gives the
 two-sided normal-mixture confidence sequence (Robbins 1970; Howard, Ramdas,
 McAuliffe & Sekhon 2021, *Time-uniform, nonparametric, nonasymptotic confidence
-sequences*), specialised to a bounded (winsorised) per-period net return.
+sequences*) and the variance-adaptive empirical-Bernstein sequence (Waudby-Smith
+and Ramdas, *Estimating means of bounded random variables by betting*), both
+specialised to a bounded (winsorised) per-period net return. Usage, assumptions and
+limits: ``docs/statistics.md``.
 
 **Governance.** This is *additive telemetry* run beside the ratified rolling-PSR
 promotion read of ``docs/momentum_design.md``. It changes no ratified statistic
@@ -150,9 +153,9 @@ def anytime_monitor_read(
 
     Runs :func:`anytime_confidence_sequence` and reads it against ``hurdle``, which is
     a *per-period net return* in the units of ``returns`` — 0.0 tests "does the book
-    make money net", and the declared cash series' per-period accrual tests it against
-    its opportunity cost (§3.13 ``[benchmark].cash_series``). Returns are compared with
-    returns here, as in :mod:`prism.validation.compare` (§3.12 **[Q21]**);
+    make money net", and the per-period accrual of a cash rate (for example the T-bill
+    yield divided by 252) tests it against its opportunity cost. Returns are compared
+    with returns here, as in :mod:`prism.validation.compare`;
     ``after_cost_hurdle_periodic`` in :mod:`prism.validation.metrics` restates a yield
     in *Sharpe* units and is therefore not what this argument takes:
 
