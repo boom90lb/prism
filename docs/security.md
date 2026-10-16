@@ -50,6 +50,14 @@ is wrong by construction.
    files carry no credentials. `logs/` is untracked but treated as sensitive
    anyway: it is included in off-box backups (operator concern), so invariant
    4 must hold *before* lines reach disk, not be cleaned after.
+8. **Trial logs name no machine.** A new trial-log row records `host` as a
+   label: `PRISM_HOST_LABEL` when it is set, else a random `host-<hex>` id
+   created once in `$XDG_CONFIG_HOME/prism/host_id`
+   (`prism.validation.trials.host_label`). A finished row's record path is
+   relative to the workspace. Reconciliation treats both the label and the
+   machine's hostname as this host, so rows written before the label existed,
+   which carry the hostname and absolute paths, still reconcile. Those rows
+   stay as written, because ledgers are append-only (`SPEC.md` section 4).
 
 ## 3. Incident record
 

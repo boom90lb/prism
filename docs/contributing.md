@@ -49,9 +49,10 @@ solver tests need that extra even though importing the engine does not.
 `.venv/bin/python -m pytest -q -m "not research"` is the core suite. Run it from a separate
 clone or worktree, never from a checkout that holds a deployment's `.env`: `tests/conftest.py`
 sets `PRISM_DISABLE_DOTENV=1`, so no test process discovers a `.env`, but a separate checkout
-keeps logs and caches out of the deployment too. A change to a
-refusal path needs a test that the refusal happens, and a test that it happens *before* the side
-effect it is protecting against, which is a different assertion.
+keeps logs and caches out of the deployment too. It also sets `PRISM_HOST_LABEL=pytest`, so no
+test creates the host label file under `~/.config/prism/` (`docs/security.md`, invariant 8).
+A change to a refusal path needs a test that the refusal happens, and a test that it happens
+*before* the side effect it is protecting against, which is a different assertion.
 
 ---
 

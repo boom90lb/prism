@@ -57,7 +57,6 @@ import json
 import math
 import os
 import platform
-import socket
 import uuid
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
@@ -130,6 +129,7 @@ from prism.validation.trials import (
     classify_claim_tier,
     compute_trial_metrics,
     empty_repair_counts,
+    host_label,
     reconcile_trial_log,
     utc_now,
 )
@@ -1185,6 +1185,8 @@ def walk_forward_evaluate(
     workspace.ensure()
     declared_log = TrialLog(resolve_log_path(workspace, selection_set_id=selection_set_id, run_channel=run_channel))
     identity = run_id or mint_run_id()
+    # Resolved before any row, so a host that cannot be labelled writes none.
+    host = host_label()
     executed = execution or ExecutionConfig()
     try:
         resolved = _resolve(
@@ -1224,7 +1226,7 @@ def walk_forward_evaluate(
                 "summary": None,
                 "reason": f"identity resolution failed: {type(exc).__name__}: {exc}",
                 "pid": os.getpid(),
-                "host": socket.gethostname(),
+                "host": host,
                 "heartbeat_at": None,
             }
         )
@@ -1277,6 +1279,7 @@ def walk_forward_evaluate(
         capital=float(capital),
         synthetic=resolved.synthetic,
         run_channel=channel,
+        host=host,
     )
     started = recorder.started()
     construction_record: dict[str, object] | None = None
@@ -1382,6 +1385,8 @@ def walk_forward_evaluate(
             calibration_hook=calibration_hook,
             construction_record=construction_record,
         )
+        # Relative to the workspace root, so a published log names no machine path.
+        record_reference = record_path.relative_to(workspace.root).as_posix()
     except Exception as exc:
         recorder.failed(f"{type(exc).__name__}: {exc}")
         raise
@@ -1392,7 +1397,7 @@ def walk_forward_evaluate(
             "n_obs": int(len(scored.returns)),
             "n_folds": len(folds),
             "periodic_sharpe": record.performance["sharpe"]["periodic"],
-            "record": str(record_path),
+            "record": record_reference,
         }
     )
     return EvaluationResult(
