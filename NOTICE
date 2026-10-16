@@ -157,7 +157,8 @@ Paths:
   data/frozen/fundamentals_v1/splits.parquet   (split events)
   results/spin_adjustment_sweep_*.json         (corporate-action records)
   results/dividend_wedge_*.json                (dividend records, summarized)
-  results/iex_eligibility_*.json               (volume statistics, IEX bars)
+  results/iex_eligibility_*.json               (IEX-feed volume statistics,
+                                                iex_* fields)
   data/distributions/verification_*.json       (dividend cross-check)
   tests/fixtures/paper_replay/*.jsonl          (a capture of this project's
   tests/fixtures/paper_replay/state_final.json  paper-account run: its fills,
@@ -258,6 +259,8 @@ Paths: no raw bars are stored. Records and return series computed from them:
   results/2026-09-fundamentals/returns/*.csv
   results/2026-09-earnings/returns/*.csv
   results/2026-09-vol-momentum/*  (in_house|* columns)
+  results/iex_eligibility_*.json  (consolidated dollar-volume medians,
+                                   cons_med_* fields)
   data/universe/sp*_pit_resolved_*.txt  (tickers resolved against Twelve Data)
 
 Terms: https://twelvedata.com/terms (last updated January 1, 2026), section

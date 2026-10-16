@@ -216,7 +216,7 @@ The code and the project's own documentation are under the MIT licence
 Third-party data in this repository, and series derived from it, stays under
 its providers' terms, listed source by source in [NOTICE](NOTICE). That
 material includes index membership lists, public factor returns, SEC filing
-data, FRED series, price bars and broker records. "S&P", "S&P 500" and
+data, series derived from price bars, and broker records. "S&P", "S&P 500" and
 "S&P MidCap 400" are trademarks of Standard & Poor's Financial Services LLC.
 This project is not affiliated with or endorsed by S&P Dow Jones Indices.
 Nothing in this repository is investment advice or a forecast of future
