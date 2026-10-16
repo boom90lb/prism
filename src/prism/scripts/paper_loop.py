@@ -69,6 +69,16 @@ any venue read. A new seeded book waits for its first grid date before it
 builds, and a grid date missed to an outage is caught up once
 (``prism.live.daily.run_daily_cycle``, ``phase_offset``).
 
+**The volatility scale.** ``--vol-scale bsc-12-126-2`` (default ``off``) sizes
+the momentum book by the Barroso and Santa-Clara rule: at each refresh the
+scale is ``min(2, 0.12 / sigma)``, sigma the annualized volatility of the last
+126 daily returns of the unscaled book rebuilt point in time from the panel
+(``prism.live.vol_sizing``). A window it cannot trust falls back to ``min(1,
+last good scale)``, and each refresh is recorded in ``{run-dir}/sizing.jsonl``.
+It needs ``--book momentum`` and ``--max-gross 2.0`` and is refused under any
+``--profile``; the regime de-gross hook, which has no flag, is refused beside
+it in ``run_daily_cycle``.
+
 Fit policy (explicit, §7.7 model staleness): the signal is refit every run
 on the full trailing panel up to the decision bar. Causal for live use —
 fitting on bars ≤ *t* to decide at *t* sees no future — and at paper-book
@@ -116,12 +126,15 @@ from prism.live.safety import (
 from prism.scripts import announce_alias
 from prism.scripts.paper_books import (
     BOOKS,
+    VOL_SCALE_OFF,
+    VOL_SCALE_PRESETS,
     BookParams,
     apply_certified_paper_pin,
     build_safety_config,
     default_panel_start,
     last_published_session,
     resolve_cli_universe,
+    resolve_vol_scale,
     scoped_order_id_prefix,
     valuation_masked_membership,
 )
@@ -196,6 +209,18 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "new book waits for its first grid date, and a missed grid date is caught up once. The seed is created "
         "only by the first session of a new run directory (--submit --allow-new-run-dir); without it a seeded "
         "run is refused. Refused with --profile research_paper and with a one-session cadence.",
+    )
+    parser.add_argument(
+        "--vol-scale",
+        choices=(VOL_SCALE_OFF, *sorted(VOL_SCALE_PRESETS)),
+        default=VOL_SCALE_OFF,
+        help="Size the momentum book by a constant-volatility rule. 'off' (default, unchanged behaviour): the "
+        "book trades at its unscaled gross 1.0. 'bsc-12-126-2': at each refresh the book is scaled to a 12%% "
+        "volatility target estimated over the last 126 daily returns of the unscaled book, rebuilt point in "
+        "time from the panel, with the scale capped at 2 (Barroso and Santa-Clara 2015; selection set "
+        "vol_momentum_v1). A window that cannot be trusted (stale or flat bars, too few returns) falls back "
+        "to min(1, last good scale). Each refresh is recorded in {run-dir}/sizing.jsonl. Requires --book "
+        "momentum and --max-gross 2.0; refused with any --profile. Not armed by the nightly wrapper.",
     )
     parser.add_argument(
         "--max-missing",
@@ -448,6 +473,9 @@ def main(argv: list[str] | None = None) -> int:
                 "--rebalance-phase seeded needs a cadence above one session (--decision-every > 1): a book "
                 "that refreshes every session has no phase to set"
             )
+    # The volatility scale's refusals (book, profile, gross ceiling) are made
+    # here, before the writer lock and any venue read.
+    vol_scale = resolve_vol_scale(args.vol_scale, book=args.book, max_gross=params.max_gross, profile=resolved_profile)
 
     # One writer per run directory: state.json and the ledgers are shared with
     # the morning sweep and any manual invocation, and the write-ahead protocol
@@ -547,6 +575,15 @@ def main(argv: list[str] | None = None) -> int:
 
         decision_every = spec.decision_every(params)
         phase_offset = None if deployment is None else deployment.phase_offset(decision_every)
+        if vol_scale is not None:
+            logger.info(
+                "volatility scale: %s (target %.2f, %d-return window, scale cap %.1f, gross ceiling %.1f)",
+                args.vol_scale,
+                vol_scale.target_vol,
+                vol_scale.lookback_bars,
+                vol_scale.max_scale,
+                vol_scale.max_gross,
+            )
         if deployment is not None:
             logger.info(
                 "rebalance phase: seeded, session-grid offset %d of %d (deployment created %s)",
@@ -639,6 +676,7 @@ def main(argv: list[str] | None = None) -> int:
             unrankable=unrankable,
             regime=regime_provider,
             phase_offset=phase_offset,
+            vol_scale=vol_scale,
         )
 
     held = result.target_weights[result.target_weights.abs() > 1e-9]

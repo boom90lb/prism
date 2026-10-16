@@ -56,12 +56,14 @@ import pandas as pd
 from prism.io import sessions
 from prism.live.daily import EXCHANGE_TZ, DailyBookConfig
 from prism.live.safety import SafetyConfig
+from prism.portfolio.vol_scale import VolScaleRule
 from prism.residual.factors import ResidualStatArbConfig
 from prism.signal.base import Signal
 from prism.signal.momentum_node import MomentumSignalNode
 from prism.signal.trend_node import TREND_V1_UNIVERSE, TrendSignalNode
 
 if TYPE_CHECKING:  # pragma: no cover - import cycle avoidance only
+    from prism.live.risk_profile import RiskProfile
     from prism.spec import Specification
     from prism.workspace import Workspace
 
@@ -508,3 +510,62 @@ def build_safety_config(
         max_order_fraction=resolved_fraction if resolved_fraction > 0 else None,
         max_orders=resolved_orders if resolved_orders > 0 else None,
     )
+
+
+# ------------------------------------------------------------ volatility scale
+
+#: The ``--vol-scale`` value that leaves the book unscaled, the default.
+VOL_SCALE_OFF = "off"
+
+#: The rules ``--vol-scale`` can name. ``bsc-12-126-2`` is the Barroso and
+#: Santa-Clara rule of selection set ``vol_momentum_v1``
+#: (``registrations/2026-09-vol-momentum.toml``): a 12% volatility target, a
+#: 126-session window and a scale cap of 2, so the book's gross ceiling is 2.0.
+VOL_SCALE_PRESETS: dict[str, VolScaleRule] = {
+    "bsc-12-126-2": VolScaleRule(target_vol=0.12, lookback_bars=126, max_scale=2.0),
+}
+
+
+def resolve_vol_scale(
+    choice: str,
+    *,
+    book: str,
+    max_gross: float,
+    profile: "RiskProfile | None" = None,
+) -> VolScaleRule | None:
+    """The volatility-scale rule ``--vol-scale`` names, or None for ``off``.
+
+    The rule sizes the momentum book only, and a book scaled up to 2x gross
+    needs ``--max-gross`` at the rule's ceiling: the flag is the account's gross
+    ceiling, and a lower one would cap the rule rather than run it. A risk
+    profile pins the book's gross at or below the certified 1.0 and profiles
+    only tighten, so the scale is refused under every profile, including the
+    certified ``research_paper`` path. Each refusal is a ``SystemExit`` raised
+    before any venue read.
+    """
+    if choice == VOL_SCALE_OFF:
+        return None
+    try:
+        rule = VOL_SCALE_PRESETS[choice]
+    except KeyError:
+        raise SystemExit(
+            f"--vol-scale {choice!r} is not a known rule; choose {VOL_SCALE_OFF!r} or one of "
+            f"{sorted(VOL_SCALE_PRESETS)}"
+        ) from None
+    if book != "momentum":
+        raise SystemExit(
+            f"--vol-scale applies to --book momentum only (got {book!r}): the rule scales the decile book, whose "
+            "unscaled gross is 1.0"
+        )
+    if profile is not None:
+        raise SystemExit(
+            f"--vol-scale is refused with --profile {profile.profile_id}: that profile pins the book's gross at "
+            f"{profile.book_config.max_gross}, profiles only tighten, and the scale sizes the book up to "
+            f"{rule.max_gross}"
+        )
+    if max_gross != rule.max_gross:
+        raise SystemExit(
+            f"--vol-scale {choice} requires --max-gross {rule.max_gross:g} (got {max_gross:g}): the flag is the "
+            "account's gross ceiling, and the rule sizes the book up to that ceiling"
+        )
+    return rule

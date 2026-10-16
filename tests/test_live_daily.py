@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import fields as dataclass_fields
+from dataclasses import replace
 
 import numpy as np
 import pandas as pd
@@ -880,6 +881,28 @@ def test_gross_scale_requires_the_regime_provider(ctx) -> None:
             _CONFIG,
             regime_gross_scale=RecordingScale(0.5),
         )
+
+
+@pytest.mark.parametrize("book", ["decile_neutral", "inverse_vol"])
+def test_gross_scale_hook_is_refused_above_one_times_gross_before_any_state_moves(tmp_path, book) -> None:
+    # The hook multiplies max_gross by a factor in [0, 1]; above 1x a "de-gross" could size a book above the
+    # unscaled one (the inverse-vol book is scaled to its ceiling outright), so it is refused outright.
+    ctx = _full_ctx(tmp_path)
+    hook = RecordingScale(1.0)
+    config = DailyBookConfig(book=book, decile=0.2, max_gross=1.5, max_symbol_abs_weight=1.0, min_order_notional=1.0)
+    with pytest.raises(ValueError, match=r"refused with max_gross=1\.5 > 1\.0"):
+        run_daily_cycle(
+            ctx, _ranked_signal(), *_decile_panels(), config, regime=RecordingRegime(), regime_gross_scale=hook
+        )
+    assert hook.calls == []
+    assert ctx.store.load() is None and not (tmp_path / "panels").exists()
+    assert ctx.broker.submitted_order_ids() == set()
+    # At 1x the hook stays available, unchanged.
+    at_one = replace(config, max_gross=1.0)
+    result = run_daily_cycle(
+        ctx, _ranked_signal(), *_decile_panels(), at_one, regime=RecordingRegime(), regime_gross_scale=hook
+    )
+    assert result.regime_scale == pytest.approx(1.0)
 
 
 def test_non_finite_gross_scale_raises(ctx) -> None:

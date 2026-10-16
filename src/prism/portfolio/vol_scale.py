@@ -32,7 +32,8 @@ scale is 1, recorded as warm-up rather than as a failure.
 
 This module is numpy and pandas only (N8). The evaluator applies it per
 component at each due bar (``prism.evaluate``, ``[sizing]`` in
-``prism.spec``); no live path calls it.
+``prism.spec``), and the paper loop applies it to the live decile book when
+``--vol-scale`` is given (``prism.live.vol_sizing``; off by default).
 """
 
 from __future__ import annotations

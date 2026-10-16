@@ -43,6 +43,11 @@ and nothing important may live only in memory:
   mode 0600) and the draws taken from it, such as the seeded rebalance phase
   that keeps deployments started on the same day from trading on the same
   days. Off unless a seeded mode is requested.
+* ``vol_sizing`` — the volatility scale of the decile book (Barroso and
+  Santa-Clara, ``prism.portfolio.vol_scale``): the base book rebuilt point in
+  time from the panel, the scale decided at each refresh with its failure
+  path, and the per-refresh record ``{run-dir}/sizing.jsonl``. Off unless
+  ``run_daily_cycle(vol_scale=...)`` is given.
 * ``regime_step`` — the SPEC §7.7 regime step: per-cycle §7.5 telemetry
   through the ``prism.regime.fetch`` adapters, read by ``daily`` every
   session into the regime ledger (docs/regime_step.md); the de-gross

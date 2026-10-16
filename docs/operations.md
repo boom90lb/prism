@@ -591,3 +591,61 @@ run directory.
   seeded run refuses to decide; and the replay harness (`prism.live.replay`)
   does not take an offset yet, so it replays a seeded run directory on the
   first-session schedule.
+
+## 2026-10-16: a volatility scale for the momentum paper book (off by default)
+
+`python -m prism.scripts.paper_loop --book momentum --vol-scale bsc-12-126-2
+--max-gross 2` sizes the decile momentum book by the Barroso and Santa-Clara
+constant-volatility rule that selection set `vol_momentum_v1` registered: at
+each refresh the scale is `min(2, 0.12 / sigma)`, where sigma is the annualized
+standard deviation of the last 126 daily returns of the unscaled book, and the
+account target is that scale times the unscaled book. The scale is held until
+the next refresh. Code: `prism.live.vol_sizing` (the live seam) on top of
+`prism.portfolio.vol_scale` (the rule).
+
+- **Which returns.** Not the paper account's own: those are scaled, rounded to
+  whole shares and charged costs. At every refresh the unscaled book is
+  rebuilt from the panel the cycle already holds: the signal is scored at each
+  past refresh date of the book's schedule on the panel truncated at that date,
+  the same decile construct turns each score into weights, and the weights are
+  held from one refresh date to the next, close to close, gross of costs. The
+  schedule is the book's own: the seeded grid dates under `--rebalance-phase
+  seeded`, otherwise every `decision_every`-th bar back from the refresh being
+  decided.
+- **History.** The rebuild needs the signal's history before the oldest
+  refresh date the window reaches: 253 + 126 + 21 − 1 = 399 bars for 12−1
+  momentum at the monthly cadence. A shorter panel is refused before any state
+  moves; the loop's default three-year fetch holds about 750.
+- **Failure path.** When the window cannot be trusted — the panel's last bar is
+  not the decision bar, fewer than 126 finite returns, more than 5% of them
+  exactly zero (stale or flat bars), or a degenerate estimate — the scale is
+  `min(1, last good scale)`, or 1 with none, and the cycle logs a `FALLBACK`
+  warning. A failure therefore never sizes the book above the unscaled book.
+  The last good scale is read from the refresh rows of `targets.jsonl`, each of
+  which carries the scale decision it was persisted with under `vol_scale`, so
+  a decision the order guard refused never bounds a later one.
+- **Record.** Each refresh appends one row to `{run-dir}/sizing.jsonl` before
+  the write-ahead save: the rule, the scale, sigma, the status and reason, the
+  base book's refresh dates, the unscaled and target gross, the long side over
+  equity and the cash-sleeve fraction `max(0, 0.98 − L/E)`. A same-bar re-run
+  that decides again finds its own row and writes nothing; a row that disagrees
+  raises before anything is persisted.
+- **Refusals.** Only `--book momentum`; `--max-gross` must be 2.0, the rule's
+  gross ceiling; refused under every `--profile`, since each pins gross at or
+  below 1.0 and profiles only tighten. In `run_daily_cycle` it also refuses a
+  regime gross-scale hook (which has no flag), a signal with fitted state, and a
+  context without a targets ledger. Regime telemetry (`--regime`) still reads
+  every session beside it.
+- **Regime hook guard.** Independently of the scale, `run_daily_cycle` now
+  refuses the regime gross-scale hook whenever `max_gross > 1`: the hook
+  multiplies the configured ceiling by a factor in [0, 1], so above 1 a
+  de-gross could size a book above the unscaled one. The hook has no CLI path,
+  so the live book is unaffected.
+- **Not armed.** `ops/paper_loop_nightly.sh` does not pass the flag, and the
+  live book is unchanged; off, the cycle decides exactly as before. Arming it,
+  and changing the live book, are owner acts (SPEC §6). Limits: the spin-off
+  mask applies to the decision being made but not to the rebuilt past books, so
+  a corporate action the bars do not adjust for enters sigma as a return (a
+  jump of that kind almost always raises sigma and lowers the scale); and the
+  replay harness (`prism.live.replay`) does not take a scale, so it replays a
+  scaled run directory unscaled.
