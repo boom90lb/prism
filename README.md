@@ -1,149 +1,223 @@
 # Prism
 
-Prism is a cross-sectional systematic trading engine for US equities at a
-daily-bar resolution: **score → residualize → construct → execute**,
-conditioned by a regime layer, and gated by an evaluation harness built to
-produce honest out-of-sample numbers. The harness — purged walk-forward
-validation, next-open fills with realistic costs, deflation-adjusted metrics,
-append-only trial ledgers, and a tiered claim vocabulary — is the point of the
-project. Capital is risked only on results that clear an explicit evidence
-bar, and no result has cleared it yet.
+Prism is an open-source system for researching and paper-trading daily-bar,
+cross-sectional US equity strategies. It ranks stocks on a signal, builds a
+long–short portfolio, simulates trading it with next-open fills and modeled
+costs, and evaluates the result with purged walk-forward testing and
+multiple-testing adjustments. The same code trades an Alpaca paper account.
 
-[`SPEC.md`](SPEC.md) is the single operating contract: current state,
-invariants, the trial-ledger rules, research direction, deployment gate, and
-working rules. Read it first. [`ARCHITECTURE.md`](ARCHITECTURE.md) is the
-call graph; [`MARKETS.md`](MARKETS.md) the market-structure analysis.
+The project exists to produce numbers that can be believed. Each experiment is
+written down and committed before it runs. Every configuration tried is kept in
+an append-only ledger, and negative results are published beside positive ones.
+Nothing here has been traded with real money, and nothing here is investment
+advice.
 
-## Status (2026-09-15)
+Terms the records use without explanation are defined in the
+[glossary](docs/glossary.md). Read the [limitations](docs/limitations.md)
+before the numbers.
 
-- **Live paper book:** monthly 12−1 cross-sectional momentum on the S&P 500
-  ([design](docs/momentum_design.md)), trading an Alpaca paper account
-  nightly since 2026-07-13. Last completed session 2026-08-14; the scheduler
-  has not fired since. Out-of-sample evidence: net annualized Sharpe 0.465,
-  DSR 0.19 against the 17-trial set it came from — a real but thin premium
-  that is signal-bound, not cost-bound, at monthly cadence.
-- **Certified negative:** daily residual reversion on the S&P cross-section
-  is uneconomic at retail cost
-  ([cert 001](docs/certifications/001-residual-reversion-daily-negative.md)).
-- **Completed registered reads:** momentum M1–M5 survived their kill rule
-  ([read](docs/momentum_m_series_read_2026-09-03.md)); trend T0–T4 did not
-  earn portfolio admission ([read](docs/trend_t_series_read_2026-09-03.md)).
-  M6 and T5 remain on their prospective clocks.
-- **Engine 0.4.0:** distribution `prism-trading`, import `prism`. Private
-  projects can use the installed engine, specification and dataset formats,
-  evaluation APIs, and replay reports without a fork. Publication and the
-  operating-contract migration remain pending. The
-  [24 operating changes](docs/engine_overhaul_operating_changes.md) require
-  owner review before operational adoption; recorded decision parity is
-  incomplete because the session bar panels are unavailable.
-- **Nothing is authorized for real money.** The gate is `SPEC.md` §6.
+## What the evidence says (as of 2026-10-16)
 
-## Method
+The table shows recorded results. Each figure can be read from the record
+cited beside it, except the few marked (derived), which are plain arithmetic on
+recorded figures.
 
-Every methodological choice exists because the naive alternative makes a
-backtest look better than the strategy is. The short version — details in
-`SPEC.md` §2–§4 and the cited modules:
+| Strategy | Recorded result | Status | Record |
+|---|---|---|---|
+| **12−1 momentum** on the S&P 500: buy the top decile and sell the bottom decile by trailing 12-month return, skipping the latest month, rebalanced every 21 sessions. This is the book the paper account trades. | Net Sharpe 0.465 out of sample, 2021-03-30 to 2026-06-12 (21 purged folds, 1,308 sessions). Deflated Sharpe 0.19 against the 17 configurations its experiments tried. Price returns, without dividends. | Profitable after modeled costs (`net_edge`). Not significant after the multiple-testing adjustment, which needs a deflated Sharpe of 0.95. | [`results/demotion_b1/summary.json`](results/demotion_b1/summary.json), [`claim_packet.json`](results/demotion_b1/claim_packet.json) |
+| **Volatility-scaled momentum** (`vol_momentum_v1`): the same book scaled to 12% volatility by the Barroso–Santa-Clara rule (126-session window, gross capped at 2×). | Expected net Sharpe 0.368 (tracking correlation 0.895 × post-publication Sharpe 0.465 − cost drag 0.047) against a T-bill benchmark of 0.351 if idle cash earns nothing. The margin is +0.018 Sharpe, about +0.5%/yr. At a provisional 3.3% cash yield the benchmark is 0.224, and the margin about +1.7%/yr (derived: 0.144 × 12%). The post-publication Sharpe has t = 1.56 over 11.3 years, a standard error of about 0.30, or about 0.27 after tracking (derived). If the public series is cut at 2025-12, the figure is 0.312, below the benchmark. | Approved under the project's rules; not deployed. | [`results/2026-09-vol-momentum/summary.json`](results/2026-09-vol-momentum/summary.json), [results report](docs/vol_momentum_read_2026-09-24.md) §3, [benchmark restatement](docs/hurdle_restatement_2026-09-30.md), [fundamentals report](docs/fundamentals_read_2026-09-24.md) |
+| **Daily residual reversion** on the S&P 500 | Uneconomic at retail cost over a completed experiment of 17 trials. | Published negative result. | [Certification 001](docs/certifications/001-residual-reversion-daily-negative.md) |
+| **ETF trend following** (T0–T4) | Net Sharpe 0.04, and it lost money in the momentum book's worst periods. | Not added. | [results report](docs/trend_t_series_read_2026-09-03.md) |
+| **Six accounting factors** and one combination | Tracking correlation × post-publication Sharpe of 0.08–0.24 per factor, against benchmarks of 0.35–0.48, before any cost. | None approved. | [results report](docs/fundamentals_read_2026-09-24.md) |
+| **Earnings-announcement return** | Monthly: 0.117 against 0.442. Combined with volatility-scaled momentum: 0.275 against 0.351. | None approved. Two daily variants wait for data from after their registration. | [results report](docs/earnings_read_2026-09-24.md) |
+| **Residual momentum, a wider universe, a learned ranking, a rank buffer** | Each was compared with an unchanged control on the same data. None was distinguishable from its control, and the learned ranking was explained by momentum. | None approved. Same-sample comparisons can reject a configuration and never approve one. | [characteristics](docs/characteristics_read_2026-09-23.md), [breadth](docs/breadth_read_2026-09-23.md), [learned ranking](docs/learned_xsection_read_2026-09-23.md), [buffer](docs/buffer_read_2026-09-25.md) |
 
-- **Purged, embargoed walk-forward validation**
-  (`src/prism/validation/walk_forward.py`). Training rows whose label windows
-  overlap a test slice are dropped; a buffer after each test slice is excluded
-  from later folds. Training and backtest iterate the same fold structure.
-  There is no 80/20 split anywhere.
-- **Decide at close, fill at next open**
-  (`src/prism/execution/target_weights.py`). Nothing fills same-bar, in
-  backtest or live. Reported PnL is net of half-spread, impact, commission,
-  and short borrow.
-- **Overfitting-adjusted metrics** (`src/prism/validation/metrics.py`).
-  Probabilistic and Deflated Sharpe Ratios, and the probability of backtest
-  overfitting across the real selection set. When a grid was searched, the
-  deflated number is the one to read — never the raw Sharpe.
-- **Claim packets** (`src/prism/validation/trials.py`). Every result artifact
-  records its config hash, code commit, data convention, trial count, and a
-  claim tier (`mechanics_clean` → `gross_edge` → `net_edge` → `robust_edge`).
-  No result is described above the tier its metrics support, and no capital
-  moves below `net_edge`.
-- **Dividends as cash, prices split-adjusted only.** The close is a faithful
-  tradeable price; dividend credits make positions total-return correct
-  without rewriting price history.
-- **Survivorship is counted, not hidden.** The point-in-time universe is
-  best-effort on included names and does not recover delisted tickers; every
-  claim carries that caveat. The forward fix is prospective in-house
-  accumulation ([evaluation](docs/data_purchase_evaluation.md)).
+In-house backtest Sharpes measured on the same data a configuration was chosen
+on are not quoted here. They are not expectations.
+[`erratum_2026-10-14.md`](docs/erratum_2026-10-14.md) corrects how several
+recorded results were described. It changes no verdict.
 
-## Running it
+### The public baseline: designed; registration and evaluation pending
 
-Start with the [four onboarding journeys](docs/onboarding.md): a first
-evaluation, a private signal, interpreting a comparison, and the operating
-workflow. They identify the commands and Python APIs available in this release,
-including the CLI commands that still refuse unsupported paths. Use Python
-≥ 3.12 and [uv](https://github.com/astral-sh/uv).
+The baseline this repository will offer, `public_baseline_v1`, is the
+volatility-scaled momentum book above. Its signal, universe and parameters are
+unchanged. It runs as 21 overlapping tranches, one of which rebalances each
+session, and holds idle equity above a 2% cash buffer in a T-bill ETF. **No
+version of it has been run on market data.** Its registration (a design
+document and parameter file committed before any run) is not yet in the
+repository. Until it is committed and the evaluation runs, no result exists
+for the baseline.
 
-- [Depending on a release](docs/depending_on_prism.md): exact pins,
-  lockfiles, fresh installation, artifact hashes, and dependency provenance.
-- [Versions and upgrades](docs/versioning.md): compatibility, deprecation,
-  and decision comparisons before adoption.
-- [Contributing](docs/contributing.md): engine and reference-policy changes,
-  tests, and the distinction between merging code and authorizing an account.
-- [Public limitations](docs/limitations.md): coverage, deflation, null results,
-  calibration shortfalls, rounding excesses, and missing decision parity.
-- [Research archive](docs/research_archive.md): preserved tags, reproduction
-  inputs, trial history, and retained legacy experiments.
-- [Owner migration demonstration](docs/owner_migration.md): a private project
-  pinned to a wheel, with the existing research history preserved.
+What can be expected is worked out below by arithmetic from the recorded
+figures above. This is not an evaluation. The low and high cases, the
+assumptions and the arithmetic are in [limitations §12](docs/limitations.md#12-the-public-baseline-designed-registration-and-evaluation-pending).
 
-For engine development:
+- **Mid case.** Post-publication Sharpe 0.41 × tracking 0.895 − cost drag
+  0.047 − a 0.015 allowance for fills that come later than the open gives an
+  expected net Sharpe of about 0.30 for the long–short book. That is about
+  3.7%/yr at 12% volatility.
+- **Against T-bills.** Holding the T-bill ETF, the account would earn about
+  **+1.26%/yr over bills**. The account's excess-over-bills Sharpe is about
+  **0.10**. That figure, not 0.30, is the one to compare with holding bills.
+  If idle cash earns nothing, the mid case is **−0.55%/yr** against bills.
+- **Uncertainty.** The standard error of the expected Sharpe, about 0.27, is
+  larger than the edge. The probability that the true expected excess return
+  is positive is about 0.65 with the T-bill holding and about 0.43 if idle
+  cash earns nothing. A deployment's own returns would take about 29 years to
+  reject a zero Sharpe for the long–short book at one-sided 95%.
+- **Crowding (illustration).** Every deployment computes the same portfolio.
+  Under assumed square-root impact, crowding cost uses up the mid-case
+  +1.26%/yr in a 10th-percentile-liquidity S&P 500 name at about $1.8M of
+  combined capital if every user trades in the same opening auction. That is
+  about 18 users at $100k. With 21 tranches the figure is about $37M (about 370
+  users), and with full-day execution about $3.7B. These are not measurements.
+  The assumptions are in [limitations §13](docs/limitations.md#13-capacity-and-crowding-no-record-measures-them).
 
-```bash
-git clone https://github.com/boom90lb/prism.git
-cd prism
-uv sync --extra construction   # core + dev and the optional solver tests
+## What the evidence does not cover
+
+- **Real money.** No result comes from a funded account. This repository
+  documents paper trading only, and no configuration has met the project's
+  own conditions for real money ([`SPEC.md` §6](SPEC.md#6-deployment-gate)).
+- **Actual fills.** Every performance figure is simulated: decided at the
+  close, filled at the next open, with modeled costs.
+- **Dividends.** The in-house backtests are price returns. Momentum's net
+  dividend flow was measured at −36 bp/yr (erratum E3), so the recorded books
+  are not total-return figures.
+- **Delisted stocks.** The momentum record covers 574 of the 633 stocks that
+  were ever in the index over its window (coverage 0.907). The missing names
+  are mostly ones that left the index, so the gap flatters the backtest.
+- **Size.** Modeled cost does not grow with assets. The impact term that
+  depends on traded volume relative to market volume is zero in every record,
+  so no recorded figure says anything about capacity
+  ([limitations §13](docs/limitations.md#13-capacity-and-crowding-no-record-measures-them)).
+- **The approved rule is not what trades.** The paper account trades unscaled
+  momentum. The volatility-scaled rule is approved but not deployed. Changing
+  the live book is the account owner's decision.
+- **Paper fills.** 74% of the paper account's fills (185 of 249 in the tracked
+  capture) are market orders sent at 09:50 ET by the morning completion sweep,
+  not opening-auction fills. Alpaca paper accounts credit no dividends and
+  charge no borrow fees.
+- **Small accounts.** Whole-share opening-auction orders need about $100k to
+  hold the roughly 100-name book faithfully. At $10k the account holds a
+  different portfolio ([account-size floor](docs/account_size_floor.md)).
+- **Taxes, timing luck and selection.** No figure is after tax. Every record
+  uses one rebalance phase, so timing luck is unmeasured. The volatility
+  scaling rule was chosen in a sizing experiment of 8 configurations, and no
+  figure is deflated for that choice.
+
+## Quickstart: no keys, about a minute
+
+This runs the engine on a synthetic dataset it generates itself. It needs no
+account, no API key and no network after installation. The output checks the
+machinery; it says nothing about markets.
+
+```sh
+git clone https://github.com/boom90lb/prism.git && cd prism
+uv sync --locked --no-dev            # core only: numpy, pandas, scipy, pyarrow, requests, python-dotenv
+export PRISM_DISABLE_DOTENV=1        # never read a .env file, even if one exists
+PRISM="$PWD/.venv/bin/prism"
+"$PRISM" init ../prism-demo && cd ../prism-demo
+"$PRISM" data synthetic --seed 7 --scenarios all --equities 12 --etfs 2
+"$PRISM" conform specs/book.toml
+"$PRISM" evaluate specs/book.toml --engine historical_constant_weight --smoke
+"$PRISM" run --spec specs/book.toml --account paper --once --broker synthetic
+```
+
+- `prism init` writes a private project: an example signal, two specifications
+  and their cost, fold and policy files. Everything the later commands write
+  stays inside it.
+- `prism data synthetic` writes a deterministic 22-year fixture of 12 stocks
+  and 2 ETFs, including splits, delistings, halts and ticker reuse.
+- `prism conform` checks the example signal against the component contract:
+  no look-ahead on sampled prefixes, determinism, short-history handling and
+  price-scale invariance.
+- `prism evaluate --smoke` runs the specification over the whole fixture,
+  reading each decision date through its own point-in-time view, and prints
+  the summary. It writes no result record and no ledger row, and its Sharpe is
+  an engineering diagnostic.
+- `prism run --broker synthetic` runs the paper loop's own daily cycle for the
+  fixture's last session against a simulated broker. It decides the target
+  book and the next-open orders and records the loop's state. Nothing reaches
+  a venue.
+
+Measured on 2026-10-16 on a WSL2 machine, in a fresh clone with no `.env`:
+`uv sync --locked --no-dev` took 3 s, downloading into an empty cache. The
+five `prism` commands then ran in an environment with no broker keys and no
+network access and took 70 s together, about 60 s of it in `evaluate`.
+
+The [onboarding guide](docs/onboarding.md) continues from here: adding your own
+signal, reading a comparison, and an offline operating review.
+
+## Paper trading
+
+[docs/quickstart.md](docs/quickstart.md) takes a clone to the momentum book
+trading a free Alpaca **paper** account on a nightly schedule. It needs paper
+API keys in a `.env` file ([security](docs/security.md)). Every command names
+its mode: `--no-submit` rehearses a full session and sends nothing, and
+`--submit` trades. Read [operations](docs/operations.md) and the
+[free-tier profile](docs/free_tier_profile.md) for what the free data and
+venue can and cannot do.
+
+## Components you can use on their own
+
+| Module | What it does |
+|---|---|
+| `prism.validation.metrics` | Probabilistic and deflated Sharpe ratios, probability of backtest overfitting, effective number of independent bets, information-coefficient ceiling. |
+| `prism.validation.walk_forward` | Purged, embargoed walk-forward splits (`PurgedWalkForward`) and content-hashed fold tables (`FoldTable`). |
+| `prism.validation.hurdle` | `tbill_hurdle`: the T-bill benchmark in Sharpe units, given the rate, the cash yield and the long side's share of equity. |
+| `prism.validation.uncertainty` | Block-bootstrap intervals for dependent returns. They undercover; the measured shortfall is in [limitations §5](docs/limitations.md#5-the-calibration-bootstrap-undercovers-and-this-was-measured-before-the-experiment-ran). |
+| `prism.execution.cost_model` | Declared cost stacks: half-spreads by liquidity bucket, impact, commission, borrow and cash income. |
+| `prism.conformance` (`prism conform`) | Contract checks for any signal component: look-ahead on sampled prefixes, determinism, history handling. |
+| [`formal/`](formal/README.md) | Lean 4 proofs that the ledger's rebalance and run algebra conserves capital, property-tested against the Python ledger. |
+
+[ARCHITECTURE.md](ARCHITECTURE.md) shows what calls what. The distribution is
+`prism-trading`, and the import name is `prism`. The unrelated PyPI project
+`prism` also installs a top-level `prism` package, so the two cannot share an
+environment. `prism-trading` is not on PyPI (checked 2026-10-16);
+[depending on a release](docs/depending_on_prism.md) covers installing from a
+built wheel.
+
+## Development
+
+Work in a separate clone that holds no `.env` and runs no paper loop. The test
+suite sets `PRISM_DISABLE_DOTENV=1` itself, but a checkout that holds broker
+keys is still the wrong place to develop.
+
+```sh
+git clone https://github.com/boom90lb/prism.git prism-dev && cd prism-dev
+uv sync --locked --extra construction          # core, dev tools and the optional solver
 uv run --extra construction pytest -q -m "not research"
 ```
 
-The optional `research` extra contains the archived heavy model stack and is
-Linux-only. It is unnecessary for the onboarding examples. Existing registered
-cases reproduce through the installed engine's evaluator; start with
-`python -m prism.scripts.reproduce --help` and the archive's data notes.
+The `research` extra installs the heavy, Linux-only stack that the archived
+experiments under `research/` use. Nothing above needs it.
+[Contributing](docs/contributing.md) covers how engine and strategy changes
+are reviewed. [Versioning](docs/versioning.md) covers what a version
+promises and how to compare decisions before upgrading.
 
-The [paper quickstart](docs/quickstart.md) documents the earlier operating path.
-Read the onboarding operating journey and [security rules](docs/security.md)
-before using it: evaluation directories must be outside live credential
-ancestry, and an existing account needs its owner's operating decisions.
-[Operations](docs/operations.md) and the [free-tier profile](docs/free_tier_profile.md)
-describe vendor and data constraints.
+## Documents
 
-## Layout
+- [Documents index](docs/README.md): every document, grouped by purpose.
+- [Limitations](docs/limitations.md): what the published results do and do not
+  establish.
+- [Glossary](docs/glossary.md): in-house terms mapped to standard ones.
+- [Operating contract](SPEC.md): the project's rules for maintainers.
+  It covers invariants, evaluation standards, how experiments are registered
+  and approved, and the conditions for real money.
+- [Markets](MARKETS.md): which markets a retail trader can work in at no data
+  cost.
+- [Research tree](docs/research_tree.md): every module under `research/`, with
+  its status.
 
-```
-src/prism/     the shipped package — production import path (JAX/torch-free, SPEC N8)
-  io/          causal datasets, bars, events, sessions, security master, PIT universe
-  signal/      the Signal contract and its nodes (momentum, trend, residual)
-  residual/    factor model, causal s-scores, hedged book construction
-  portfolio/   heuristic/convex construction, limits, obligations, rounding, recovery
-  execution/   canonical portfolio accounting, simulation, costs, participation
-  regime/      curve / vol / liquidity regime state from free sources
-  live/        nightly loop: durable order state, broker adapter, safety rails
-  validation/  purged WFO, metrics, capacity, claim packets, joint-crash diagnostic
-  composition.py   component updates, score combination, position blending
-  evaluate.py      purged walk-forward evaluation and result recording
-  scripts/     prism-doctor, paper_loop / paper_sweep / paper_monitor, replay
-ops/           scheduled paper-session wrappers + alerting (docs/operations.md)
-research/      quarantined research tree (imports prism; never the reverse — SPEC N8)
-packages/      optional strategy distributions, including prism-ensemble
-examples/      reference specifications, profiles, policies, and cost stacks
-trials/        append-only selection-set ledgers and imported history
-formal/        Lean 4 machine-checked kernel invariants (see formal/README.md)
-tests/         offline suite; the slim subset runs without the [research] extra
-```
+## Licence and data
 
-Configuration is split at the production/research boundary:
-`src/prism/config.py` (cost dataclasses) and `research/config.py` (ensemble
-members, training, MLflow). Both fail fast on invalid values at construction.
-Writable directories come from `prism.workspace.resolve_workspace()`, not from
-either config module: importing `prism` creates nothing and reads no `.env`.
-
-## License
-
-MIT License, Copyright (c) 2025 Brendon Reperttang. Nothing in this
-repository is investment advice, and the project's own evidence bar has never
-been cleared by any configuration.
+The code and the project's own documentation are under the MIT licence
+([LICENSE](LICENSE)), Copyright (c) 2025 Brendon Reperttang, with no warranty.
+Third-party data in this repository, and series derived from it, stays under
+its providers' terms, listed source by source in [NOTICE](NOTICE). That
+material includes index membership lists, public factor returns, SEC filing
+data, FRED series, price bars and broker records. "S&P", "S&P 500" and
+"S&P MidCap 400" are trademarks of Standard & Poor's Financial Services LLC.
+This project is not affiliated with or endorsed by S&P Dow Jones Indices.
+Nothing in this repository is investment advice or a forecast of future
+returns.

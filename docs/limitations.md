@@ -1,20 +1,24 @@
 # Public limitations of every result this project has published
 
-Updated: 2026-10-15. What the published reference results do and do not establish, drawn only
-from evidence recorded in this repository. It is written to be read before the numbers, not
+Updated: 2026-10-16. This page sets out what the published reference results do and do not
+establish, using only evidence recorded in this repository. Read it before the numbers, not
 after. Corrections to how recorded results are described are in
-[`erratum_2026-10-14.md`](erratum_2026-10-14.md); in-house terms are explained in the
+[`erratum_2026-10-14.md`](erratum_2026-10-14.md). In-house terms are explained in the
 [glossary](glossary.md).
 
 **The short version.** No configuration in this repository has met the project's conditions for
 real money. One configuration, volatility-scaled momentum, was approved under the project's rules
-on 2026-09-24 by a margin of 0.018 Sharpe over its T-bill benchmark, a margin that rests on
-January to July 2026; it is not traded (section 10). Every published number comes from a
-simulation with modeled fills, not from realized trading. The momentum reference record has a
-measured coverage gap of nine percent of its universe and excludes dividends. The trend-following
-strategy was refused. The construction experiment was inconclusive on every one of its eighteen
-comparisons. The uncertainty method used in that experiment is measured to undercover. Each of
-those is stated with its artifact below.
+on 2026-09-24. It cleared its T-bill benchmark by 0.018 Sharpe, a margin that rests on January
+to July 2026, and it is not traded (section 10). Every published number comes from a simulation
+with modeled fills, not from realized trading. The momentum reference record has a measured
+coverage gap of nine percent of its universe, and it excludes dividends. No record charges a
+cost that grows with assets, so none says anything about capacity (section 13). The
+trend-following strategy was refused. The construction experiment was inconclusive on all
+eighteen of its comparisons. The uncertainty method that experiment used is measured to
+undercover. The public baseline is designed, and its registration and evaluation are pending.
+Arithmetic on the recorded figures puts its mid-case edge over T-bills at about +1.26% a year
+with idle equity in a T-bill ETF, and at −0.55% a year if idle cash earns nothing (section 12).
+Each of these points is stated below with its artifact.
 
 ---
 
@@ -313,3 +317,184 @@ None of these produced an approved configuration. Each results report states its
   on data the project had already studied, which can reject a configuration and can never approve
   one. The two residual-momentum candidates carry to a forward evaluation
   (`docs/forward_design.md`).
+
+---
+
+## 12. The public baseline: designed, registration and evaluation pending
+
+**What it is.** `public_baseline_v1` is the configuration this repository intends to offer as its
+public baseline. It is the volatility-scaled momentum book of section 10, with its signal,
+universe and parameters unchanged, split into 21 overlapping tranches. Each tranche holds 1/21 of
+capital and rebalances every 21 sessions on its own date, so exactly one tranche rebalances
+each session. A new deployment starts with empty tranches and reaches full size over 21 sessions.
+Idle own equity above a 2% cash buffer is held in a T-bill ETF. Short-sale proceeds earn nothing.
+
+**Status.** No version of it has been run on market data. Its registration, a design document
+and parameter file committed before any evaluation (`SPEC.md` section 4), is not yet in the
+repository. Until it is committed and the evaluation runs, nothing in this section is a result.
+
+**What to expect, by arithmetic.** The table uses a normal approximation. Every input is a recorded
+figure or a stated assumption, and every output is derived from them; no market data was read to
+make it. The recorded inputs are:
+
+- the volatility-scaled momentum record, `results/2026-09-vol-momentum/summary.json`:
+  - post-publication Sharpe 0.4646, 2015-04 to 2026-07, t 1.562 (`publication_bar.post_publication`);
+  - full-sample Sharpe 0.9013 (`publication_bar.full`);
+  - daily tracking correlation 0.8951 (`fidelity.daily_corr`);
+  - cost drag 0.0474 Sharpe (`economics.cost_drag_sharpe`);
+  - rf 4.21% (`economics.rf_annual`);
+  - mean scale 1.0786 (`in_house.mean_scale`), so the long side averages 0.539 of equity;
+- post-publication Sharpe 0.401 when the series is cut at 2025-12
+  (`docs/fundamentals_read_2026-09-24.md`);
+- the provisional broker cash yield of 3.3% (`examples/reference/costs/retail_v2.toml`,
+  `cash_income_bps_annual`).
+
+The assumptions are:
+
+- volatility of 12%;
+- a T-bill ETF return of rf less 10 bp. SGOV's expense ratio is about 0.09% according to secondary
+  sources, not yet checked with the issuer;
+- a 2% cash buffer earning nothing, so the T-bill holding is 1 − 0.539 − 0.02 = 0.441 of equity;
+- an allowance for fills that come later than the open, because 74% of paper fills are 09:50 ET
+  sweep orders (section 8);
+- in the low case, a tracking correlation and cost drag worse than recorded.
+
+| Derived | Low | Mid | High |
+|---|---|---|---|
+| Post-publication Sharpe used | 0.361 (0.4 × 0.901) | 0.41 (between 0.401 and 0.465) | 0.465 |
+| × tracking correlation | 0.85 (assumed) | 0.895 | 0.895 |
+| − cost drag | 0.055 (assumed) | 0.047 | 0.047 |
+| − late-fill allowance (assumed) | 0.03 | 0.015 | 0.005 |
+| **Expected net Sharpe of the long–short book** | **0.22** | **0.30** | **0.36** |
+| Long–short return at 12% volatility | 2.7%/yr | 3.7%/yr | 4.4%/yr |
+| Excess over bills, idle equity in the T-bill ETF (benchmark 0.200) | +0.26%/yr | **+1.26%/yr** | +1.96%/yr |
+| Excess over bills, idle cash at a 3.3% broker yield (benchmark 0.224) | −0.03%/yr | +0.97%/yr | +1.67%/yr |
+| Excess over bills, idle cash earning nothing (benchmark 0.351) | −1.55%/yr | **−0.55%/yr** | +0.15%/yr |
+| Probability the true expected excess is positive, T-bill ETF | 0.53 | 0.65 | 0.73 |
+| Probability the true expected excess is positive, idle cash earning nothing | 0.31 | 0.43 | 0.52 |
+| Years of a deployment's own returns needed to reject a zero Sharpe (one-sided 95%) | 55 | 29 | 20 |
+
+How to read it:
+
+- **The account's edge, not the book's Sharpe.** In the mid case the long–short book earns 3.66%,
+  and the T-bill holding earns 0.441 × 4.11% = 1.81%. The account earns 5.47% against bills at
+  4.21%, which is +1.26% a year. The holding adds almost no volatility, so the account's
+  excess-over-bills Sharpe is about 1.26% / 12% ≈ **0.10**. The 0.30 long–short Sharpe is not the
+  edge over bills.
+- **The benchmarks.** They follow the formula in `SPEC.md` section 3: (rf − y·max(0, 1 − L/E)) /
+  volatility. With the T-bill holding, the ETF counts as a long position earning rf less its fee,
+  and only the 2% buffer is idle: (4.21% − 4.11% × 0.441) / 12% = 0.200. The account owner has not
+  yet confirmed this reading of section 3, and the design calls for every verdict to be reported
+  under all three cash cases.
+- **Uncertainty.** The standard error of the post-publication Sharpe is 0.465 / 1.562 = 0.297.
+  After tracking it is 0.266 Sharpe, about ±3.2% a year at 12% volatility, which is larger than
+  the mid-case edge. Distinguishing the mid-case margin over the benchmark (0.105 Sharpe) from zero
+  would take about 250 years of the deployment's own returns.
+- **Break-even.** To break even, the post-publication Sharpe must be at least (benchmark + cost
+  drag + allowance) / tracking. That is 0.29 with the T-bill holding, 0.32 at a 3.3% cash yield,
+  and 0.46 if idle cash earns nothing. The recorded figures are 0.401 to 0.465. With idle cash
+  earning nothing, the requirement equals the approved figure, and the outcome is a coin flip.
+- **Rates.** With the T-bill holding, the benchmark is 0.143 at rf 3% and 0.237 at rf 5%.
+- **Decay.** Momentum was published in 1993. Kenneth French's momentum factor had a Sharpe of 0.629
+  before publication and 0.346 after it, a fall of 45% (`results/2026-09-factor-lab/priors.json`,
+  `priors.UMD`). The scaling rule, published in 2015, is the live decay risk. Its post-publication
+  Sharpe is 0.465 against 0.901 over the full sample, and the low case allows a further fall to
+  0.36. Tranching leaves the average age of the signal unchanged. Momentum's information
+  coefficient by horizon has never been computed on this engine (`docs/buffer_read_2026-09-25.md`).
+- **Not applied.**
+  - Taxes. A reference overlay at a 37% federal and 9.3% state rate puts the drag from tax
+    asymmetries, beyond ordinary tax on gains, at about −37 bp a year
+    (`results/tax_wedge_2026-07-19.json`, `outputs.steady_state_wedge_bps_per_year`).
+  - Survivorship. The in-house tracking and cost figures come from a universe with 0.907
+    membership coverage (section 2), which flatters both.
+  - Deflation for choosing the scaling rule. It was chosen in a sizing experiment of 8
+    configurations (`sizing_lab_v1`, `docs/public_factor_lab_read_2026-09-24.md`).
+  - In-house backtest Sharpes on the data the rule was chosen on are never used as expectations.
+- **Paper accounts.** The T-bill ETF's distributions do not appear on paper (section 8). A paper
+  account would show its price falling at each distribution and no income. A forward evaluation
+  of the paper stream must add them back.
+
+**What cannot be promised.**
+
+1. *A high Sharpe.* Nothing on record supports a forward net Sharpe above about 0.36 for the
+   long–short book, or above about 0.16 for the account's excess over bills. A forward 0.5 would
+   need a post-publication Sharpe of at least 0.63 at the recorded tracking and cost, and no
+   recorded momentum series shows one.
+2. *Beating T-bills with confidence.* The mid case is positive only if idle equity earns close to
+   the bill rate, through a T-bill ETF or a verified broker yield of about 3.3% or more in a margin
+   account that holds shorts. Even then the probability is about 0.65.
+3. *Confirmed low decay.* A deployment's own returns cannot confirm it on any useful horizon: about
+   29 years against zero, and about 250 years against bills. Decay can only be argued in advance
+   from long public series and checked again on each new release of the public data.
+4. *Deployments that do not compete.* See section 13.
+
+---
+
+## 13. Capacity and crowding: no record measures them
+
+**No recorded cost grows with assets.** Market impact that depends on an order's size relative to
+the market's traded volume is the term that would bring in capacity. It is
+`adv_impact_coeff` in the older records and `participation_coeff` in the engine's cost stacks.
+Its coefficient is 0.0 everywhere it is recorded. Checked on 2026-10-16 (Run): all 166 such
+fields across the 65 tracked JSON and JSONL files under `results/` and `trials/` that carry one
+are 0.0. So are both shipped cost stacks (`examples/reference/costs/retail_v1.toml` and
+`examples/reference/costs/retail_v2.toml`, `participation_coeff = 0.0`). The remaining impact
+term is `quadratic_notional_coeff` (`slippage_coeff` in the older records). It is quadratic in an
+order's size relative to the account's own equity (`prism.execution.cost_model`), so modeled cost
+per dollar traded is the same at every account size. The momentum record was simulated on an
+initial capital of 1.0 (`results/demotion_b1/summary.json`, `initial_capital`). No recorded figure
+therefore says how much capital the strategy can hold, or what other users' orders cost it.
+
+**Every deployment computes the same portfolio.** The universe file is tracked, the parameters are
+fixed and the decile rule is deterministic. The paper loop sets its rebalance date from each
+deployment's first session (`src/prism/live/daily.py`, `_is_refresh_session`). Its rebalance
+orders are market-on-open orders (`src/prism/live/alpaca.py`), and the engine knows only
+market-on-open and market-day orders (`src/prism/execution/portfolio_state.py`, `ORDER_TYPES`).
+Users who start on the same day therefore send the same orders into the same opening auction.
+Spreading users over different days spreads their order flow, but their holdings still overlap
+almost completely. A momentum unwind hits every deployment on the same day.
+
+**Timing luck is unmeasured.** Every record uses a single rebalance phase. How much the outcome
+depends on which sessions a monthly book happens to rebalance on has not been measured here.
+
+**An illustration, not a measurement.** The table assumes square-root impact. The annual
+crowding cost, as a fraction of capital, is
+
+    8.5 × Y × σ × √(0.011 × F × φ / (a × V))
+
+with these inputs:
+
+- 8.5: times capital traded a year (assumed);
+- Y = 0.7: impact coefficient (assumed);
+- σ = 1.8%: daily volatility (assumed);
+- 0.011: each order in a name is one decile-book position of 1.1% of capital (assumed);
+- F: the combined capital of users who trade together;
+- φ: 1 when every user rebalances on the same day, 1/21 with 21 tranches;
+- a: the share of the day's volume available at the execution time, all assumed: 1% or 3% in
+  the opening auction, 8% in the closing auction, 100% over the full day;
+- V: the name's 20-session median consolidated dollar volume as of 2026-06-15
+  (`results/iex_eligibility_2026-07-17.json`, `per_name.*.cons_med_asof`). Over the 501 names
+  with a value, the median is $356M and the 10th percentile is $142M.
+
+Each entry is the F at which that cost equals the mid-case +1.26% a year of section 12. In the
+split row each half of an order trades at its own share of volume.
+
+| Case | Median name ($356M/day) | 10th-percentile name ($142M/day) | Users at $100k (10th-percentile name) |
+|---|---|---|---|
+| Every user on the same day, opening auction at 1% of volume | $4.5M | $1.8M | 18 |
+| 21 tranches, opening auction at 1% | $94M | $37M | 370 |
+| 21 tranches, opening auction at 3% | $281M | $112M | 1,100 |
+| 21 tranches, half at the open (1%), half at the close (8%) | $409M | $163M | 1,600 |
+| 21 tranches, all at the close (8%) | $749M | $299M | 3,000 |
+| 21 tranches, full-day execution | about $9.4B | about $3.7B | about 37,000 |
+
+Above these levels users compete whatever the timing scheme. The engine has no closing-auction
+order and no way to spread an order over the day: its only orders are market-on-open and plain
+market orders. The last three rows therefore describe execution it cannot do today. Three things
+could raise the limits:
+
+- more liquidity per dollar traded: legs weighted by liquidity, full-day execution, or a larger
+  share in the closing auction;
+- a second strategy with a positive expected excess over bills at retail cash terms. None on
+  record has one (section 11);
+- broker terms that pay interest on short-sale proceeds.
