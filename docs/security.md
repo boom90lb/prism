@@ -23,7 +23,8 @@ is wrong by construction.
 
 1. **Env-only.** Credentials enter through the process environment or a
    gitignored `.env` (loaded by `prism.workspace.load_env`, called from each
-   command's `main` -- never at import). `PRISM_DISABLE_DOTENV=1` switches
+   command's `main` -- never at import of `prism`; the research stack's
+   `research/config.py` calls it at its own import). `PRISM_DISABLE_DOTENV=1` switches
    discovery off (the test suite sets it in `tests/conftest.py`; operators who
    export credentials themselves can too); an explicit path still loads. Never CLI arguments
    (shell history, `ps`), never tracked files, never code literals.

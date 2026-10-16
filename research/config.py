@@ -7,6 +7,15 @@ stay in ``prism.config``, which since the workspace correction (spec §3.1) read
 project-relative artifact directories and loads ``.env`` here, because every
 research driver is run from the checkout.
 
+The load goes through :func:`prism.workspace.load_env`, the engine's own
+discovery: it searches upward from the current directory, stops at the first
+checkout root, and does nothing under ``PRISM_DISABLE_DOTENV=1``
+(``tests/conftest.py`` sets it). A bare ``dotenv.load_dotenv()`` searched upward
+from this file with no checkout boundary and no switch, so a worktree nested in
+a deployment checkout, or a test process importing this module, would load that
+checkout's broker credentials
+(``docs/incident_2026-09-09_unauthorized_paper_orders.md``, root cause 2).
+
 Dropped in the split as dead public surface (zero importers anywhere):
 ``DEFAULT_MODELS``, ``DEFAULT_ENSEMBLE_CONFIG``, ``DEFAULT_TRADING_CONFIG``.
 """
@@ -15,11 +24,10 @@ import os
 from dataclasses import dataclass
 from typing import List, Optional
 
-import dotenv
-
 from prism.config import PROJECT_DIR
+from prism.workspace import load_env
 
-dotenv.load_dotenv()
+load_env()
 
 # Research artifact directories. runs/ fold artifacts reference MODELS_DIR
 # siblings; mlruns/ is the MLflow file-store default; LOGS_DIR is what the

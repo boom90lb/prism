@@ -28,7 +28,8 @@ decision, and the steps it would take are listed at the end.
 - *Packages needed at import time* were measured by importing each module in two
   environments. One has the core install plus the `construction` extra and the dev group
   (Python 3.12). The other has every extra (Python 3.14). In both, `PYTHON_DOTENV_DISABLED=1`
-  was set; see the `research/config.py` row for why. *Packages needed when called* come
+  was set, because `research/config.py` then ignored `PRISM_DISABLE_DOTENV` (item 4 under
+  "What archiving the candidates would take"). *Packages needed when called* come
   from imports inside function bodies.
 
 "Heavy" means a package that the core install does not provide. That is everything in
@@ -104,7 +105,7 @@ tests too (see the last section).
 
 | Module | What it does | Status | Tracked records it produced | Tests that import it | Heavy dependencies |
 |---|---|---|---|---|---|
-| `research/config.py` | Settings for the legacy stack: ensemble, member and training dataclasses, artifact directories, the MLflow URI, the Polygon key. On import it creates `<repo>/models/` and calls `dotenv.load_dotenv()`, which loads the first `.env` found walking up from `research/` and ignores `PRISM_DISABLE_DOTENV` | archive candidate | none | `test_conformal.py`, `test_wfo_pipeline.py`, `test_real_pipeline_regressions.py`, `test_rl_seed_eval.py`† | none |
+| `research/config.py` | Settings for the legacy stack: ensemble, member and training dataclasses, artifact directories, the MLflow URI, the Polygon key. On import it creates `<repo>/models/` and calls `prism.workspace.load_env()`, which loads the first `.env` found walking up from the current directory to the checkout root, and nothing under `PRISM_DISABLE_DOTENV=1` | archive candidate | none | `test_conformal.py`, `test_wfo_pipeline.py`, `test_real_pipeline_regressions.py`, `test_rl_seed_eval.py`† | none |
 | `research/features.py` | Per-symbol feature engineering, with scaling and outlier clipping fitted on training data only | archive candidate | none | `test_feature_engineer_leakage.py`, `test_wfo_pipeline.py`, `test_real_pipeline_regressions.py`, `test_sweep.py`†, `test_script_claim_packet_smokes.py`† | none |
 | `research/trading.py` | Per-symbol order-based backtester that trades the ensemble's or a baseline's positions | archive candidate | none | `test_baselines.py`, `test_dividends.py`, `test_execution.py`, `test_wfo_pipeline.py`, `test_real_pipeline_regressions.py`, `test_rl_seed_eval.py`† | when called: matplotlib |
 | `research/execution_model.py` | Order queue, next-bar fill timing and per-fill costs for `trading.py` (moved out of `src/prism/execution/` in the engine overhaul) | archive candidate | none | `test_execution.py`, `test_wfo_pipeline.py`, `test_rl_seed_eval.py`† | none |
@@ -209,14 +210,15 @@ preserve these files: `pre-driver-retirement-stage2`, `pre-driver-retirement-sta
    `docs/stat_arb_shrinkage_experiment.md` and `docs/trend_design.md`. The last is a
    frozen design document, so its citation would be resolved by a pinned commit, as for
    the removed files above.
-4. **A hazard to fix whether or not anything is archived.** `research/config.py` loads the
-   nearest `.env` at import, and the core-job tests listed in its row import it. Running
-   the suite in a checkout that holds broker credentials, or in a worktree nested inside
-   one, therefore loads those credentials into the test process despite
-   `PRISM_DISABLE_DOTENV=1`. Until that is fixed, set `PYTHON_DOTENV_DISABLED=1`, which
-   python-dotenv honours, when running the suite in such a checkout. That variable also
-   disables `prism.workspace.load_env`, so `tests/test_dotenv_guard.py`,
-   `tests/test_workspace.py` and `tests/test_release_check.py` have to be run without it.
+4. **A hazard, now fixed.** `research/config.py` loads a `.env` at import, and the
+   core-job tests listed in its row import it. Until 2026-10-16 it called
+   `dotenv.load_dotenv()`, which searched upward from `research/` with no checkout
+   boundary and ignored `PRISM_DISABLE_DOTENV`, so a test run or research driver in a
+   worktree nested inside a deployment checkout could load that checkout's broker
+   credentials. It now calls `prism.workspace.load_env()`, which honours the switch and
+   stops at the first checkout root; `tests/test_dotenv_guard.py` runs the import in a
+   subprocess against both. Builds before that change need `PYTHON_DOTENV_DISABLED=1`,
+   which python-dotenv honours, when the suite runs in such a checkout.
 
 ## Keeping this page in step with the tree
 

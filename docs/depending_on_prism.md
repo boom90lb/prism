@@ -99,7 +99,9 @@ enforced in the engine's own layout:
 
 - Secrets stay outside source. `.env` is gitignored; the rules are in `docs/security.md`. Set
   `PRISM_DISABLE_DOTENV=1` in an evaluation environment so that no command discovers a `.env`
-  file (builds from commit `10601d4` onward).
+  file (builds from commit `10601d4` onward; in a source checkout, the `research/` modules
+  honour it from 2026-10-16, when `research/config.py` began loading through
+  `prism.workspace.load_env`).
 - No import-time side effects. Importing `prism` reaches nothing and reads no credential.
 - Separate environments. The environment you evaluate a private signal in should not carry live
   API keys. The engine's own controls assume this: the mode defaults to paper, `--account
