@@ -231,7 +231,11 @@ def test_init_writes_a_project_and_refuses_to_overwrite_it(tmp_path: Path, capsy
     root = tmp_path / "my-strategy"
     assert main(["init", str(root)]) == 0
     assert (root / "specs" / "book.toml").is_file()
-    assert f"prism-trading=={prism.__version__}" in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert f"prism-trading=={prism.__version__}" in out
+    # The hint names the small fixture: the default 100 + 10 names take minutes
+    # to evaluate, 12 + 2 about a minute.
+    assert "--equities 12 --etfs 2" in out
     assert main(["init", str(root)]) == EXIT_REFUSED
     assert "already holds" in capsys.readouterr().err
 

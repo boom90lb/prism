@@ -421,7 +421,7 @@ def _cmd_init(args: argparse.Namespace) -> int:
     root = Path(args.directory).expanduser()
     written = write_template(root, force=args.force)
     print(f"wrote {len(written)} files into {root} (pinned to {ENGINE_PIN})")
-    print("next: cd into it, then `prism data synthetic --seed 7 --scenarios all`")
+    print("next: cd into it, then `prism data synthetic --seed 7 --scenarios all --equities 12 --etfs 2`")
     return 0
 
 
