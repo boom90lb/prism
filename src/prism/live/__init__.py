@@ -39,6 +39,10 @@ and nothing important may live only in memory:
 * ``daily``  — the one-cycle driver wiring delta-fetched panels → Signal
   → online construction (caps, stateful band, participation gate) → the
   decision protocol (``prism.scripts.paper_loop`` is its CLI shell).
+* ``deployment`` — the per-deployment seed (``{run-dir}/deployment.json``,
+  mode 0600) and the draws taken from it, such as the seeded rebalance phase
+  that keeps deployments started on the same day from trading on the same
+  days. Off unless a seeded mode is requested.
 * ``regime_step`` — the SPEC §7.7 regime step: per-cycle §7.5 telemetry
   through the ``prism.regime.fetch`` adapters, read by ``daily`` every
   session into the regime ledger (docs/regime_step.md); the de-gross

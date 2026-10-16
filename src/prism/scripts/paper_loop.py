@@ -57,6 +57,18 @@ second. A run that does submit says so on one line
 the decision bar and the order count; a run that submits nothing never prints
 it.
 
+**The rebalance phase.** By default a monthly book's first session sets its
+phase, so deployments that start on the same day trade on the same days.
+``--rebalance-phase seeded`` puts the book on the fixed session grid
+(``prism.io.sessions.grid_position``) at an offset drawn from the run
+directory's own seed (``prism.live.deployment``, ``{run-dir}/deployment.json``,
+mode 0600). The first submitting session of a new run directory
+(``--submit --allow-new-run-dir``) creates the seed; every later session and
+every rehearsal reads it, and a seeded run with no seed file is refused before
+any venue read. A new seeded book waits for its first grid date before it
+builds, and a grid date missed to an outage is caught up once
+(``prism.live.daily.run_daily_cycle``, ``phase_offset``).
+
 Fit policy (explicit, §7.7 model staleness): the signal is refit every run
 on the full trailing panel up to the decision bar. Causal for live use —
 fitting on bars ≤ *t* to decide at *t* sees no future — and at paper-book
@@ -91,6 +103,7 @@ from prism.live import (
 )
 from prism.live.authorization import refuse_an_unbindable_record, resolve_endpoint
 from prism.live.daily import require_published_panel, warn_if_stale_panel
+from prism.live.deployment import establish_deployment
 from prism.live.lockfile import run_dir_lock
 from prism.live.no_submit import no_submit_session
 from prism.live.safety import (
@@ -107,6 +120,7 @@ from prism.scripts.paper_books import (
     apply_certified_paper_pin,
     build_safety_config,
     default_panel_start,
+    last_published_session,
     resolve_cli_universe,
     scoped_order_id_prefix,
     valuation_masked_membership,
@@ -170,6 +184,18 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Refresh cadence in trading sessions; default 1 (daily) for ensemble, 21 "
         "(≈monthly) for momentum/trend — B1/T0 cadence.",
+    )
+    parser.add_argument(
+        "--rebalance-phase",
+        choices=("first-session", "seeded"),
+        default="first-session",
+        help="Which sessions a book with a cadence above one session refreshes on. 'first-session' (default, "
+        "unchanged behaviour): the first session refreshes and sets the phase. 'seeded': the book refreshes on "
+        "the fixed session grid at an offset drawn from this run directory's deployment seed "
+        "({run-dir}/deployment.json, mode 0600), so deployments that start together do not trade together; a "
+        "new book waits for its first grid date, and a missed grid date is caught up once. The seed is created "
+        "only by the first session of a new run directory (--submit --allow-new-run-dir); without it a seeded "
+        "run is refused. Refused with --profile research_paper and with a one-session cadence.",
     )
     parser.add_argument(
         "--max-missing",
@@ -411,6 +437,17 @@ def main(argv: list[str] | None = None) -> int:
             "--spinoff-mask applies to --book momentum only (the lookback-window mechanic, "
             "docs/bar_vendor_divergence.md §5)"
         )
+    if args.rebalance_phase == "seeded":
+        if args.profile == "research_paper":
+            raise SystemExit(
+                "--rebalance-phase seeded is refused with --profile research_paper: that profile is the "
+                "certified B1 paper path, whose refresh sessions are set by its first session"
+            )
+        if spec.decision_every(params) <= 1:
+            raise SystemExit(
+                "--rebalance-phase seeded needs a cadence above one session (--decision-every > 1): a book "
+                "that refreshes every session has no phase to set"
+            )
 
     # One writer per run directory: state.json and the ledgers are shared with
     # the morning sweep and any manual invocation, and the write-ahead protocol
@@ -448,6 +485,20 @@ def main(argv: list[str] | None = None) -> int:
             # And the directory must be the one the scheduled wrappers' switch
             # names: an established directory is not necessarily the live book.
             require_active_run_dir(args.run_dir, entry_point="the paper loop")
+        # The seeded phase's seed, read (or, on a new deployment's first submitting
+        # session, created) before the first venue read, so a seeded run with no
+        # seed is refused having read and sent nothing.
+        deployment = (
+            establish_deployment(
+                work_dir,
+                history=run_dir_history,
+                submit=args.submit,
+                allow_new_run_dir=args.allow_new_run_dir,
+                created_bar=last_published_session().isoformat(),
+            )
+            if args.rebalance_phase == "seeded"
+            else None
+        )
         universe = resolve_fetch_universe(symbols, broker, state=store.load())
         score_universe = list(universe.score)
         symbols = list(universe.fetch)
@@ -495,6 +546,14 @@ def main(argv: list[str] | None = None) -> int:
         )
 
         decision_every = spec.decision_every(params)
+        phase_offset = None if deployment is None else deployment.phase_offset(decision_every)
+        if deployment is not None:
+            logger.info(
+                "rebalance phase: seeded, session-grid offset %d of %d (deployment created %s)",
+                phase_offset,
+                decision_every,
+                deployment.created_bar,
+            )
         # Valuation-only extras are masked ineligible (momentum only): NaN-scored
         # names get an explicit 0.0 from the decile construct (its explicit-flat
         # pin), so a departed-but-held name exits at the next refresh and cannot
@@ -571,7 +630,15 @@ def main(argv: list[str] | None = None) -> int:
             order_id_prefix=scoped_order_id_prefix(spec.order_id_prefix, args.run_dir),
         )
         result = run_daily_cycle(
-            ctx, signal, close, volume, config, safety=safety, unrankable=unrankable, regime=regime_provider
+            ctx,
+            signal,
+            close,
+            volume,
+            config,
+            safety=safety,
+            unrankable=unrankable,
+            regime=regime_provider,
+            phase_offset=phase_offset,
         )
 
     held = result.target_weights[result.target_weights.abs() > 1e-9]

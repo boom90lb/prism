@@ -35,7 +35,8 @@ Cadence and ordering (one call per session, after the close):
    (``regime_gross_scale``) stays unarmed until
    docs/sizing_preregistration.md ratifies.
 4. **Cadence → score → construct.** On a refresh session (the decision
-   cadence has elapsed — daily by default, ≈monthly for B1) the signal
+   cadence has elapsed — daily by default, ≈monthly for B1; under a seeded
+   phase, the book's session-grid date has come) the signal
    scores the panel's last row and construction maps scores to capped
    weights (linear for the directional book, top/bottom-decile long/short
    for the neutral book; I-4, one sizing point). The online band holds names
@@ -84,7 +85,7 @@ from prism.assembly import (
     heuristic_book_rule,
     raw_book_weights,
 )
-from prism.composition import ComponentPlan
+from prism.composition import ComponentPlan, due_on_schedule
 from prism.io import sessions
 from prism.live.broker import Broker, Fill, Order, transmits_to_venue
 from prism.live.loop import (
@@ -512,6 +513,7 @@ def run_daily_cycle(
     regime: Callable[[str], dict] | None = None,
     regime_gross_scale: Callable[[dict], float] | None = None,
     run_dir: Path | None = None,
+    phase_offset: int | None = None,
 ) -> DailyCycleResult:
     """Run one settle → mark → score → construct → decide/submit cycle.
 
@@ -570,6 +572,23 @@ def run_daily_cycle(
     driver (and the scratch mirror under a rehearsal); with neither, nothing is
     recorded and ``DailyCycleResult.panel`` is None. A failure to record raises
     before any state changes: the cycle decides only on a recorded panel.
+
+    ``phase_offset`` (``None`` = off, bit-identical: the first refresh sets the
+    phase and ``config.decision_every`` sessions separate refreshes) puts the
+    refresh cadence on the fixed session grid of ``prism.io.sessions``: the book
+    refreshes where ``(grid_position - phase_offset) % decision_every == 0``.
+    A book with no refresh yet waits for its first grid date instead of
+    refreshing on its first session, and a missed grid date (an outage) is
+    caught up once, on the first session after more than ``decision_every`` have
+    elapsed, after which the book is back on its grid. The schedule is
+    :func:`prism.composition.due_on_schedule`, the predicate composition and the
+    evaluator use. The paper loop's ``--rebalance-phase seeded`` draws the
+    offset from the run directory's deployment seed
+    (:mod:`prism.live.deployment`), so deployments that start on the same day
+    do not refresh on the same day. It must be an integer in
+    ``[0, decision_every)`` with ``decision_every > 1`` (a book that refreshes
+    every session has no phase), and the decision bar must be an exchange
+    session in the bundled table; anything else raises before any state moves.
     """
     if regime_gross_scale is not None and regime is None:
         raise ValueError(
@@ -584,6 +603,8 @@ def run_daily_cycle(
             f"{signal.required_history}; refusing to score a truncated panel (N7)"
         )
     decision_bar = decision_bar or str(close.index[-1].date())
+    if phase_offset is not None:
+        _require_grid_schedule(phase_offset, config.decision_every, decision_bar)
 
     # 0. Record the panel this cycle decides on, before any state moves. The
     # refresh row in targets.jsonl cites its digest (step 4). The persisted
@@ -618,7 +639,7 @@ def run_daily_cycle(
     # weights — no re-score, no trades — so a monthly book rebalances monthly
     # while NAV still marks daily.
     refresh = halted is None and _is_refresh_session(
-        state, decision_bar, close.index, config.decision_every
+        state, decision_bar, close.index, config.decision_every, phase_offset
     )
     effective_max_gross, regime_scale = _effective_gross(
         config, refresh, regime_gross_scale, regime_state, decision_bar
@@ -1144,20 +1165,54 @@ def _is_refresh_session(
     decision_bar: str,
     index: pd.DatetimeIndex,
     decision_every: int,
+    phase_offset: int | None = None,
 ) -> bool:
     """Whether this session refreshes the book (SPEC §7.7 decision cadence).
 
     ``decision_every`` trading sessions must elapse between refreshes (1 = every
-    session, the frozen daily default). The first cycle, or a state with no
-    cadence anchor, always refreshes. The elapsed count is read off the panel's
-    own index — the trading calendar the loop already holds — so it matches the
-    backtest's bar-count cadence, not wall-clock months.
+    session, the frozen daily default). Without a ``phase_offset`` the first
+    cycle, or a state with no cadence anchor, always refreshes. The elapsed
+    count is read off the panel's own index — the trading calendar the loop
+    already holds — so it matches the backtest's bar-count cadence, not
+    wall-clock months.
+
+    With a ``phase_offset`` the book is on the session grid
+    (:func:`prism.composition.due_on_schedule`, the predicate composition uses):
+    due on its grid dates, waiting for the first one when it has never
+    refreshed, and catching up once after a missed one.
     """
     if decision_every <= 1:
         return True
     last_refresh = state.last_refresh_bar if state is not None else None
-    if last_refresh is None:
-        return True
-    dates = [str(d.date()) for d in index]
-    elapsed = sum(1 for dt in dates if last_refresh < dt <= decision_bar)
-    return elapsed >= decision_every
+    elapsed = 0
+    if last_refresh is not None:
+        dates = [str(d.date()) for d in index]
+        elapsed = sum(1 for dt in dates if last_refresh < dt <= decision_bar)
+    return due_on_schedule(
+        decision_every, phase_offset, last_refresh, decision_bar, elapsed=elapsed, owner="the live book"
+    )
+
+
+def _require_grid_schedule(phase_offset: int, decision_every: int, decision_bar: str) -> None:
+    """Refuse a grid schedule the cycle cannot honour, before any state moves (N7).
+
+    The offset is a residue of the refresh cycle, so it must be an integer in
+    ``[0, decision_every)``; a daily book has no phase to set; and the decision
+    bar must have a grid position, which a closed day or a date outside the
+    bundled session table does not.
+    """
+    if decision_every <= 1:
+        raise ValueError(
+            "phase_offset requires decision_every > 1: a book that refreshes every session has no phase to set"
+        )
+    if isinstance(phase_offset, bool) or not isinstance(phase_offset, int) or not 0 <= phase_offset < decision_every:
+        raise ValueError(
+            f"phase_offset must be an integer in [0, decision_every={decision_every}), got {phase_offset!r}"
+        )
+    try:
+        sessions.grid_position(dt.date.fromisoformat(decision_bar[:10]))
+    except ValueError as exc:
+        raise ValueError(
+            f"decision bar {decision_bar!r} has no session-grid position, so the seeded phase cannot place it: "
+            f"{exc}; refusing to decide (N7)"
+        ) from exc

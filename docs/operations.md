@@ -554,3 +554,40 @@ session or no refresh book predates it; FAIL when a row was owed and is missing,
 since the shadow step is shielded from the trading cycle and would otherwise
 fail every session with nothing but a log line to show for it, leaving the
 tracking read empty.
+
+## 2026-10-16: a seeded rebalance phase for new paper deployments (off by default)
+
+A monthly book's first session used to set its rebalance phase, so every
+deployment of this repository that started on the same day rebalanced on the
+same days and sent its orders into the same opening auctions.
+`python -m prism.scripts.paper_loop --rebalance-phase seeded` instead puts the
+book on a fixed session grid (`prism.io.sessions.grid_position`, session 0 is
+2006-01-03) and refreshes it where `(grid position − offset) mod
+decision_every = 0`. The offset is drawn from a random seed that belongs to the
+run directory.
+
+- **The seed.** `{run-dir}/deployment.json`, mode 0600, written once by the
+  first submitting session of a new run directory (`--submit
+  --allow-new-run-dir`) and never overwritten. Every later session and every
+  `--no-submit` rehearsal reads it. The offset is HMAC-SHA256 of
+  `rebalance_phase:<created_bar>` keyed by the seed, reduced to
+  `[0, decision_every)` (`prism.live.deployment`). Anyone holding the seed can
+  predict the deployment's trading days, so keep the file private. The
+  off-box backup (`ops/artifacts_sync.sh`) mirrors `runs/`, so the seed is in
+  the backup as well, and a restored run directory keeps its phase.
+- **Refusals.** A seeded run with no seed file is refused before any venue read:
+  a rehearsal of a new directory, or an established directory whose first
+  session ran without the flag. Seeded is also refused with `--profile
+  research_paper` and with a one-session cadence.
+- **Behaviour.** A new seeded book places no orders until its first grid date,
+  up to `decision_every − 1` sessions away, then builds in one session. A grid date missed
+  to an outage is caught up once, on the first session after more than
+  `decision_every` have elapsed, and the book is back on its grid at the next
+  grid date. The cadence is `prism.composition.due_on_schedule`, the predicate
+  the evaluator uses for grid-scheduled components.
+- **Not armed.** `ops/paper_loop_nightly.sh` does not pass the flag, and the
+  live book's schedule is unchanged. The default, `first-session`, decides
+  exactly as before. Limits: the session table ends 2027-12-31, after which a
+  seeded run refuses to decide; and the replay harness (`prism.live.replay`)
+  does not take an offset yet, so it replays a seeded run directory on the
+  first-session schedule.
