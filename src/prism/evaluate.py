@@ -109,6 +109,16 @@ from prism.io.events import (
     series_price_basis,
 )
 from prism.portfolio.construct import cap_book, closed_form_band, step_no_trade_band
+from prism.portfolio.vol_scale import (
+    FALLBACK_REASONS,
+    SLEEVE_BUFFER,
+    STATUSES,
+    VolScaleRule,
+    base_book_returns,
+    cap_gross,
+    decide_scale,
+    session_exposure,
+)
 from prism.spec import (
     Eligibility,
     LoadedComponent,
@@ -270,6 +280,12 @@ def smoke_evaluate(
             f"component(s) {gridded} declare tranches or phase_offset_bars, and the smoke path decides every "
             "update_every_bars sessions from the first decidable bar with no component state, so it would run a "
             "different schedule from the one declared; evaluate them with walk_forward_evaluate"
+        )
+    if spec.sizing is not None:
+        raise EvaluationError(
+            f"{spec.path} declares [sizing] rule={spec.sizing.rule!r}, and the smoke path decides on the "
+            "unscaled composition target; it would run a book the specification does not declare. Evaluate it "
+            "with walk_forward_evaluate(decision_coupling='account_state')"
         )
     if engine == REPRODUCTION_ENGINE and canonical is not None:
         raise EvaluationError(
@@ -1307,6 +1323,7 @@ def walk_forward_evaluate(
     )
     started = recorder.started()
     construction_record: dict[str, object] | None = None
+    sizing_output: _SizingOutput | None = None
     stateful: tuple[PortfolioBacktestResult, dict[str, object]] | None = None
     try:
         if decision_coupling == "account_state":
@@ -1319,6 +1336,7 @@ def walk_forward_evaluate(
                 stateful_result,
                 stateful_detail,
                 construction_record,
+                sizing_output,
             ) = _evaluate_stateful(
                 spec,
                 resolved,
@@ -1408,6 +1426,7 @@ def walk_forward_evaluate(
             untested_conclusions=untested_conclusions,
             calibration_hook=calibration_hook,
             construction_record=construction_record,
+            sizing=sizing_output,
         )
     except Exception as exc:
         recorder.failed(f"{type(exc).__name__}: {exc}")
@@ -1575,6 +1594,12 @@ def _refuse(
             f"decision_coupling='account_state' carries one continuous account across the sample; "
             f"fold_portfolio={fold_portfolio!r} asks for a forced liquidation at each fold boundary, which the "
             "state-coupled loop does not impose. Declare fold_portfolio='carry' (§3.8)"
+        )
+    if spec.sizing is not None and decision_coupling != "account_state":
+        raise RunRefused(
+            f"{spec.path} declares [sizing] rule={spec.sizing.rule!r}; the volatility scale is applied inside "
+            "the account_state loop, at each component's due bar, and decision_coupling="
+            f"{decision_coupling!r} would ignore it. Declare decision_coupling='account_state' (N7)"
         )
     if decision_coupling == "account_state" and engine != CANONICAL_ENGINE:
         raise RunRefused(
@@ -2396,6 +2421,7 @@ def _evaluate_stateful(
     PortfolioBacktestResult,
     dict[str, object],
     dict[str, object],
+    "_SizingOutput | None",
 ]:
     """Fit each fold, then decide every bar inside one continuous simulation (§3.7, §3.8).
 
@@ -2411,6 +2437,10 @@ def _evaluate_stateful(
     different charged dollars at different account sizes, because participation is trade
     dollars over dollar volume from current equity and rounding at the per-sid increment
     changes filled notional (§5, stage 4 exit).
+
+    A specification with a ``[sizing]`` block has its composition target scaled here, at
+    every scored bar, before construction (:class:`_VolSizing`); the last element of the
+    return is that run's sizing record, None without the block.
     """
     from prism.decisions import (  # local: the constructor stack is the construction extra's
         ArmPolicies,
@@ -2606,6 +2636,19 @@ def _evaluate_stateful(
     bar_records: list[dict[str, object]] = []
     flattened: set[int] = set()
     horizon = max(int(l.declarations["horizon_bars"]) for l in spec.components)
+    sizing: _VolSizing | None = None
+    if spec.sizing is not None:
+        sizing = _VolSizing(
+            spec.sizing,
+            groups={
+                component.component_id: [
+                    tranche.component_id for tranche in component.plans(combination=spec.strategy.combination)
+                ]
+                for component in plans_by_fold[0].fitted
+            },
+            session_index=resolved.session_index,
+            universe=universe,
+        )
 
     def hook(call: DecisionCall) -> pd.Series | None:
         nonlocal states
@@ -2622,6 +2665,8 @@ def _evaluate_stateful(
                 return None
             flattened.add(plan.fold.fold)
             states = {}
+            if sizing is not None:
+                sizing.reset(position)
             held = {sid: 0.0 for sid, held_position in call.state.positions.items() if held_position.shares}
             if not held:
                 return None
@@ -2645,6 +2690,8 @@ def _evaluate_stateful(
         if scored is None:
             return None
         states = dict(scored.composition.states)
+        if sizing is not None:
+            scored = sizing.size(scored, plan.plans, position=position, day=call.bar)
         outcome = _construct_at_bar(
             call,
             spec=spec,
@@ -2735,7 +2782,11 @@ def _evaluate_stateful(
         simulation, index=resolved.session_index, universe=resolved.universe, targets=targets
     )
     construction_record = _construction_record(bar_records, policies=policies, plans=plans_by_fold)
-    return targets, folds, warnings, cost_inputs, result, detail, construction_record
+    sizing_output = None
+    if sizing is not None:
+        sizing_output = sizing.finish(result)
+        warnings.extend(sizing_output.warnings())
+    return targets, folds, warnings, cost_inputs, result, detail, construction_record, sizing_output
 
 
 def _construct_at_bar(
@@ -2886,6 +2937,346 @@ def _defer_unpriced_entries(
         return target, []
     deferred = [str(sid) for sid in target.index[mask]]
     return target.where(~mask), deferred
+
+
+#: The columns of ``sizing_decisions.csv``, one row per scale decision.
+SIZING_DECISION_COLUMNS: tuple[str, ...] = (
+    "bar",
+    "component_id",
+    "plan_id",
+    "scale",
+    "sigma",
+    "status",
+    "reason",
+    "n_valid",
+    "zero_fraction",
+    "last_good",
+)
+
+#: What ``evaluation.sizing.base_book`` says the volatility was estimated on.
+SIZING_BASE_BOOK_NOTE = (
+    "per declared component: the mean of its holding tranches' unscaled sub-targets (an untranched component's "
+    "own sub-target), held at constant weights close to close, gross of costs, weights at the prior close only "
+    "(prism.portfolio.vol_scale.base_book_returns); built from this run's own decisions, so it has no returns "
+    "before the first test bar"
+)
+
+
+@dataclass(frozen=True)
+class _SizingOutput:
+    """A sized run's record: one row per session, one row per scale decision.
+
+    ``sessions`` is indexed like the accounted result (every session after the
+    first). Its realized columns (``gross``, ``long_over_equity``,
+    ``sleeve_fraction``) are the held book at that close
+    (:func:`prism.portfolio.vol_scale.session_exposure`); the decided columns
+    (``scale``, ``target_gross``, ``ceiling_factor``, ``scale:<plan>``) are as
+    of the latest decision at or before that close and fill from the next open.
+    ``scale`` is the account's scale, the plan scales weighted by the plans
+    holding a sub-target; it is NaN before the first decision and after a
+    reset.
+
+    The rule's ``max_gross`` bounds ``target_gross``, the target at each
+    decision. It does not bound ``gross``: between one plan's refreshes the
+    held book drifts with prices and whole-share rounding, so a book sized at
+    the ceiling can hold more than it at a later close. The column records
+    that rather than hiding it.
+    """
+
+    rule: VolScaleRule
+    sessions: pd.DataFrame
+    decisions: pd.DataFrame
+    plan_ids: tuple[str, ...]
+
+    def fallbacks(self) -> dict[str, int]:
+        """Fallback decisions by reason, every reason listed."""
+        if self.decisions.empty:
+            return {reason: 0 for reason in FALLBACK_REASONS}
+        counts = self.decisions.loc[self.decisions["status"] == "fallback", "reason"].value_counts()
+        return {reason: int(counts.get(reason, 0)) for reason in FALLBACK_REASONS}
+
+    def warnings(self) -> list[str]:
+        """What the run's warnings say about the rule: its failures and its ceiling."""
+        notes: list[str] = []
+        fallbacks = {reason: count for reason, count in self.fallbacks().items() if count}
+        if fallbacks:
+            notes.append(
+                f"[sizing] fell back to min(1, last good scale) on {sum(fallbacks.values())} of "
+                f"{len(self.decisions)} scale decisions ({fallbacks}); see sizing_decisions.csv"
+            )
+        ceiling = self.sessions["ceiling_factor"] if "ceiling_factor" in self.sessions else pd.Series(dtype=float)
+        if bool((ceiling < 1.0).any()):
+            notes.append(
+                f"[sizing] the account gross ceiling max_gross={self.rule.max_gross} bound on "
+                f"{int((ceiling < 1.0).sum())} session(s); see sizing.csv"
+            )
+        return notes
+
+    def summary(self, scored_index: pd.Index, *, sessions_path: Path, decisions_path: Path) -> dict[str, object]:
+        """``evaluation.sizing``: the rule, the decision counts, and the scale path on the scored sessions."""
+        statuses = self.decisions["status"].value_counts() if not self.decisions.empty else pd.Series(dtype=int)
+        scored = self.sessions.reindex(scored_index)
+        scale = scored["scale"].dropna()
+
+        def stat(values: pd.Series, how: str) -> float | None:
+            values = values.dropna()
+            return None if values.empty else float(getattr(values, how)())
+
+        return {
+            "rule": self.rule.to_dict(),
+            "base_book": SIZING_BASE_BOOK_NOTE,
+            "plans": list(self.plan_ids),
+            "n_decisions": int(len(self.decisions)),
+            "status_counts": {status: int(statuses.get(status, 0)) for status in STATUSES},
+            "fallback_reasons": self.fallbacks(),
+            "scored_sessions": {
+                "n": int(len(scored)),
+                "n_scaled": int(len(scale)),
+                "scale_mean": stat(scale, "mean"),
+                "scale_min": stat(scale, "min"),
+                "scale_max": stat(scale, "max"),
+                "at_cap_fraction": (
+                    None if scale.empty else float((scale >= self.rule.max_scale - 1e-12).mean())
+                ),
+                "target_gross_max": stat(scored["target_gross"], "max"),
+                "ceiling_sessions": int((scored["ceiling_factor"] < 1.0).sum()),
+                "gross_max": stat(scored["gross"], "max"),
+                "long_over_equity_mean": stat(scored["long_over_equity"], "mean"),
+                "sleeve_fraction_mean": stat(scored["sleeve_fraction"], "mean"),
+            },
+            "sleeve_buffer": SLEEVE_BUFFER,
+            "sessions_path": str(sessions_path),
+            "decisions_path": str(decisions_path),
+        }
+
+
+class _VolSizing:
+    """The ``[sizing]`` rule applied per component inside the account_state loop.
+
+    Each declared component has a *base book*: the mean of its holding plans'
+    unscaled sub-targets, weighted by plan weight (a tranche's weight is the
+    component's divided by the tranche count, so the mean is plain); for an
+    untranched component it is its sub-target. That is the book the component's
+    rank-to-weight rule produces at its own raw gross whatever share of its
+    tranches has been built, so a book entering one tranche a session is not
+    read as a quieter one. Its weights are recorded at every scored bar and
+    carried between scored bars, and its return at bar *t* is close to close
+    at the weights held at the close of *t - 1*, gross of costs
+    (:func:`prism.portfolio.vol_scale.base_book_returns`).
+
+    At a bar where a plan is due, its scale is decided from its component's
+    base-book returns through that bar -- before the bar's own weights are
+    recorded, so nothing decided at the bar enters its own estimate (N1) -- and
+    held until the plan is next due; the target it sizes fills from the next
+    open (N2). The account target is ``sum over plans of weight * scale *
+    sub_target``, then capped at the rule's ``max_gross``. With every scale at
+    1.0 and the ceiling slack it is composition's own target, bit for bit.
+
+    The base book is built from this run's decisions, so its returns start at
+    the first test bar and every plan's first ``lookback_bars`` sessions are
+    warm-up at scale 1. :meth:`reset` forgets everything when an excluded fold
+    flattens the book.
+    """
+
+    def __init__(
+        self,
+        rule: VolScaleRule,
+        *,
+        groups: Mapping[str, Sequence[str]],
+        session_index: pd.DatetimeIndex,
+        universe: Sequence[str],
+    ) -> None:
+        self.rule = rule
+        self.groups = {str(cid): tuple(str(pid) for pid in pids) for cid, pids in groups.items()}
+        self.group_of = {pid: cid for cid, pids in self.groups.items() for pid in pids}
+        self.plan_ids = tuple(pid for pids in self.groups.values() for pid in pids)
+        self.session_index = session_index
+        self.universe = pd.Index([str(sid) for sid in universe])
+        self._column = {sid: number for number, sid in enumerate(self.universe)}
+        self.decisions: list[dict[str, object]] = []
+        self._snapshots: dict[int, dict[str, float]] = {}
+        self._clear()
+
+    def _clear(self) -> None:
+        self._history: dict[str, list[tuple[int, np.ndarray | None]]] = {cid: [] for cid in self.groups}
+        self._scales: dict[str, float] = {}
+        self._last_good: dict[str, float] = {}
+        self._started: set[str] = set()
+
+    def reset(self, position: int) -> None:
+        """Forget the base books and every scale: the account was flattened and starts again."""
+        self._clear()
+        self._snapshots[position] = self._snapshot(math.nan, target_gross=0.0, ceiling=1.0)
+
+    def size(
+        self, scored: "_BarScores", plans: Sequence[ComponentPlan], *, position: int, day: str
+    ) -> "_BarScores":
+        """``scored`` with its account target scaled: decide every due plan's scale, then size."""
+        result = scored.composition
+        by_id = {plan.component_id: plan for plan in plans}
+        unknown = sorted(set(by_id) - set(self.group_of))
+        if unknown:
+            raise EvaluationError(f"{day}: plan(s) {unknown} belong to no declared component the sizing rule knows")
+        if not len(scored.close.index):
+            raise EvaluationError(f"{day}: the sizing rule was given an empty close panel (N7)")
+        panel_last = scored.close.index[-1]
+        returns: dict[str, np.ndarray] = {}
+        for output in result.component_outputs:
+            if not output.due:
+                continue
+            pid = str(output.component_id)
+            cid = self.group_of[pid]
+            if cid not in returns:
+                returns[cid] = self._base_returns(cid, scored.close, position)
+            decision = decide_scale(
+                returns[cid],
+                self.rule,
+                last_good=self._last_good.get(pid),
+                decision_bar=day,
+                panel_last_bar=panel_last,
+            )
+            self._scales[pid] = decision.scale
+            if decision.status == "ok":
+                self._last_good[pid] = decision.scale
+            row = decision.to_dict()
+            row.pop("decision_bar")
+            self.decisions.append({"bar": day, "component_id": cid, "plan_id": pid, **row})
+        for cid, pids in self.groups.items():
+            self._record_base(cid, position, self._base_weights(cid, pids, by_id, result.states))
+
+        target, ceiling = cap_gross(self._scaled_target(plans, result), float(self.rule.max_gross))
+        sized = pd.Series(0.0, index=scored.row.index, dtype=float)
+        sized.loc[target.index] = target.to_numpy(dtype=float)
+        holding = [
+            (abs(float(plan.weight)), self._scales[plan.component_id])
+            for plan in plans
+            if any(float(value) != 0.0 for value in result.states[plan.component_id].sub_targets.values())
+        ]
+        weight = sum(entry[0] for entry in holding)
+        account_scale = sum(entry[0] * entry[1] for entry in holding) / weight if weight > 0.0 else math.nan
+        self._snapshots[position] = self._snapshot(
+            account_scale, target_gross=float(np.nansum(np.abs(target.to_numpy(dtype=float)))), ceiling=ceiling
+        )
+        return dataclasses.replace(scored, row=sized)
+
+    def finish(self, result: PortfolioBacktestResult) -> _SizingOutput:
+        """The per-session and per-decision records, once the simulation has run."""
+        columns = ["scale", "target_gross", "ceiling_factor", *[f"scale:{pid}" for pid in self.plan_ids]]
+        snapshots = pd.DataFrame.from_dict(self._snapshots, orient="index", dtype=float)
+        snapshots = snapshots.reindex(columns=columns).sort_index()
+        # Each session carries the whole row of the latest decision at or before it,
+        # NaN included, so a reset's NaN scales are carried rather than filled over.
+        carried = snapshots.reindex(np.arange(len(self.session_index)), method="ffill")
+        carried.index = self.session_index
+        exposure = session_exposure(result.fill_weights)
+        sessions = pd.concat([exposure, carried.reindex(exposure.index)], axis=1)
+        sessions.index.name = "ts"
+        decisions = pd.DataFrame(self.decisions, columns=list(SIZING_DECISION_COLUMNS))
+        return _SizingOutput(rule=self.rule, sessions=sessions, decisions=decisions, plan_ids=self.plan_ids)
+
+    def _snapshot(self, scale: float, *, target_gross: float, ceiling: float) -> dict[str, float]:
+        return {
+            "scale": float(scale),
+            "target_gross": float(target_gross),
+            "ceiling_factor": float(ceiling),
+            **{f"scale:{pid}": float(self._scales.get(pid, math.nan)) for pid in self.plan_ids},
+        }
+
+    def _base_weights(
+        self,
+        cid: str,
+        pids: Sequence[str],
+        by_id: Mapping[str, ComponentPlan],
+        states: Mapping[str, ComponentState],
+    ) -> np.ndarray | None:
+        """The component's base book at this close over the universe.
+
+        None until some plan of the component first holds a non-zero
+        sub-target: before that there is no book, and its returns are NaN
+        rather than zero (warm-up). After it, a component with no holding plan
+        is a flat book, whose returns are zero.
+        """
+        holding = [
+            pid
+            for pid in pids
+            if states.get(pid) is not None and any(float(value) != 0.0 for value in states[pid].sub_targets.values())
+        ]
+        if holding:
+            self._started.add(cid)
+        elif cid not in self._started:
+            return None
+        vector = np.zeros(len(self.universe), dtype=float)
+        total = 0.0
+        for pid in holding:
+            held = states[pid].sub_targets
+            weight = float(by_id[pid].weight)
+            total += abs(weight)
+            try:
+                columns = np.fromiter((self._column[str(sid)] for sid in held), dtype=np.intp, count=len(held))
+            except KeyError as exc:
+                raise EvaluationError(
+                    f"plan {pid!r} holds a sub-target for {exc.args[0]!r}, which is not in the run's universe"
+                ) from None
+            values = np.fromiter((float(value) for value in held.values()), dtype=float, count=len(held))
+            np.add.at(vector, columns, weight * values)
+        if total > 0.0:
+            vector /= total
+        return vector
+
+    def _record_base(self, cid: str, position: int, vector: np.ndarray | None) -> None:
+        """Append this close's base weights; drop entries no later window can reach."""
+        history = self._history[cid]
+        history.append((position, vector))
+        floor = position - self.rule.lookback_bars
+        keep = 0
+        for number, (recorded, _) in enumerate(history):
+            if recorded <= floor:
+                keep = number
+        if keep:
+            del history[:keep]
+
+    def _base_returns(self, cid: str, close: pd.DataFrame, position: int) -> np.ndarray:
+        """The component's base-book returns over the window ending at ``position``."""
+        start = max(0, position - self.rule.lookback_bars)
+        stamps = self.session_index[start : position + 1]
+        weights = np.full((len(stamps), len(self.universe)), np.nan)
+        history = self._history[cid]
+        for number, (recorded, vector) in enumerate(history):
+            if vector is None:
+                continue
+            until = history[number + 1][0] if number + 1 < len(history) else position + 1
+            low, high = max(recorded, start), min(until, position + 1)
+            if low < high:
+                weights[low - start : high - start] = vector
+        frame = pd.DataFrame(weights, index=stamps, columns=self.universe)
+        prices = close.reindex(index=stamps, columns=self.universe)
+        return base_book_returns(prices, frame).to_numpy(dtype=float)[1:]
+
+    def _scaled_target(self, plans: Sequence[ComponentPlan], result: CompositionResult) -> pd.Series:
+        """``sum_plan weight * scale * sub_target`` on composition's index; NaN where no plan holds one.
+
+        The arithmetic and the order of the sum are ``prism.composition._account_target``'s,
+        so at scale 1.0 every entry is the same float.
+        """
+        index = result.targets.index
+        slot = {str(sid): number for number, sid in enumerate(index)}
+        total = np.full(len(index), np.nan)
+        for plan in plans:
+            held = result.states[plan.component_id].sub_targets
+            if not held:
+                continue
+            if plan.component_id not in self._scales:
+                raise EvaluationError(
+                    f"plan {plan.component_id!r} holds sub-targets and no scale was ever decided for it; the "
+                    "sizing rule saw a state it did not produce (N7)"
+                )
+            factor = float(plan.weight) * self._scales[plan.component_id]
+            places = np.fromiter((slot[str(sid)] for sid in held), dtype=np.intp, count=len(held))
+            values = np.fromiter((float(value) for value in held.values()), dtype=float, count=len(held))
+            contribution = factor * values
+            current = total[places]
+            total[places] = np.where(np.isnan(current), contribution, current + contribution)
+        return pd.Series(total, index=index, dtype=float)
 
 
 def _decision_marks(prices: pd.Series, index: pd.Index, *, state: object, bar: str) -> pd.Series:
@@ -3842,8 +4233,15 @@ def _write_record(
     untested_conclusions: Sequence[str],
     calibration_hook: object | None,
     construction_record: Mapping[str, object] | None = None,
+    sizing: "_SizingOutput | None" = None,
 ) -> tuple[ResultRecord, Path]:
-    """Build, validate and write the ``ResultRecord`` and its artifacts (§3.12)."""
+    """Build, validate and write the ``ResultRecord`` and its artifacts (§3.12).
+
+    A sized run also writes ``sizing.csv`` (one row per session) and
+    ``sizing_decisions.csv`` (one row per scale decision) and carries
+    ``evaluation.sizing``; a run without ``[sizing]`` writes neither and its
+    record has no such key.
+    """
     construction = _Construction.from_spec(spec)
     run_dir = workspace.results / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -3857,6 +4255,15 @@ def _write_record(
         path = run_dir / name
         frame.to_csv(path)
         written.append(path)
+    sizing_block: dict[str, object] = {}
+    if sizing is not None:
+        sessions_path, decisions_path = run_dir / "sizing.csv", run_dir / "sizing_decisions.csv"
+        sizing.sessions.to_csv(sessions_path)
+        sizing.decisions.to_csv(decisions_path, index=False)
+        written.extend([sessions_path, decisions_path])
+        sizing_block["sizing"] = sizing.summary(
+            scored.returns.index, sessions_path=sessions_path, decisions_path=decisions_path
+        )
     folds_path = run_dir / "folds.json"
     folds_path.write_text(json.dumps(resolved.fold_table.to_records(), indent=2) + "\n", encoding="utf-8")
     written.append(folds_path)
@@ -4014,6 +4421,7 @@ def _write_record(
                 for loaded in spec.components
             ],
             "folds": [fold.to_record() for fold in folds],
+            **sizing_block,
         },
         performance={
             "periodic_returns_path": str(run_dir / "returns.csv"),

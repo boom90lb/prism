@@ -633,6 +633,12 @@ def _cmd_run(args: argparse.Namespace) -> int:
             "`prism run` schedules the daily cycle by elapsed sessions only; running it would trade a schedule "
             "the specification does not declare. Evaluate the specification with `prism evaluate` instead"
         )
+    if spec.sizing is not None:
+        raise CommandError(
+            f"{spec.path} declares [sizing] rule={spec.sizing.rule!r}, and `prism run` trades the unscaled book; "
+            "running it would trade a size the specification does not declare. The rule is applied by the "
+            "account_state evaluator only"
+        )
     config = _daily_book_config(spec, loaded)
 
     dataset = _open_dataset(Dataset, workspace)

@@ -2,8 +2,10 @@
 
 A specification is the whole statement of what a strategy *is*: the universe it
 trades, the components it runs with their constructor arguments and schedules,
-the eligibility screen, the construction path, and the policy files that price
-and constrain it. This module turns that file into a resolved object, imports
+the eligibility screen, the construction path, the policy files that price
+and constrain it, and, optionally, a ``[sizing]`` rule that scales its book to a
+volatility target (``prism.portfolio.vol_scale``; it enters ``config_id`` only
+when declared). This module turns that file into a resolved object, imports
 and instantiates the components it names, and computes the identity every
 recorded result is filed under.
 
@@ -62,6 +64,7 @@ from prism.portfolio.construct import (
     construct_decile_neutral,
     construct_inverse_vol_targets,
 )
+from prism.portfolio.vol_scale import VolScaleError, VolScaleRule
 from prism.signal.base import Signal, check_declarations
 from prism.validation.trials import UNAVAILABLE as RECORD_UNAVAILABLE
 from prism.validation.trials import current_git_commit, stable_json_dumps
@@ -342,14 +345,23 @@ class Specification:
     policy: PolicyRefs
     components: tuple[LoadedComponent, ...]
     instantiated: bool
+    #: The ``[sizing]`` block, or None when the file declares none. Only
+    #: ``constant_vol`` exists (``prism.portfolio.vol_scale``); the evaluator's
+    #: account_state path applies it to each component's sub-targets.
+    sizing: VolScaleRule | None = None
 
     def resolved(self) -> dict[str, Any]:
         """The specification after defaults, as the plain dict ``config_id`` hashes.
 
         Policy paths, the calibration path, and the risk-model path are absent
         by construction: those files enter the identity as content (§3.12).
+        ``sizing`` appears only when declared, so a specification without a
+        ``[sizing]`` block keeps the identity it had before the block existed.
         """
-        return {"strategy": self.strategy.to_dict(), "construction": self.construction.to_dict()}
+        payload: dict[str, Any] = {"strategy": self.strategy.to_dict(), "construction": self.construction.to_dict()}
+        if self.sizing is not None:
+            payload["sizing"] = self.sizing.to_dict()
+        return payload
 
     def identity_payload(
         self,
@@ -457,12 +469,13 @@ def load_spec_table(
     ws = workspace if workspace is not None else resolve_workspace()
     spec_path = Path(path).expanduser()
 
-    _reject_unknown(table, ("strategy", "construction", "policy"), where=str(spec_path))
+    _reject_unknown(table, ("strategy", "construction", "policy", "sizing"), where=str(spec_path))
     strategy = _parse_strategy(_require_table(table, "strategy", where=str(spec_path)), where=str(spec_path))
     construction = _parse_construction(
         _require_table(table, "construction", where=str(spec_path)), root=ws.root, where=str(spec_path)
     )
     policy = _parse_policy(_require_table(table, "policy", where=str(spec_path)), root=ws.root, where=str(spec_path))
+    sizing = _parse_sizing(table["sizing"], strategy=strategy, where=str(spec_path)) if "sizing" in table else None
 
     expected_kind = KIND_FOR_COMBINATION[strategy.combination]
     if construction.kind != expected_kind:
@@ -494,6 +507,7 @@ def load_spec_table(
         policy=policy,
         components=components,
         instantiated=instantiate,
+        sizing=sizing,
     )
 
 
@@ -765,6 +779,35 @@ def _parse_grid(entry: Mapping[str, Any], *, update_every_bars: int, where: str)
             f"refresh cycle, so it must lie in [0, {update_every_bars})"
         )
     return {"tranches": tranches, "phase_offset_bars": offset}
+
+
+def _parse_sizing(table: Any, *, strategy: StrategySpec, where: str) -> VolScaleRule:
+    """The ``[sizing]`` block: the constant-volatility rule, every default resolved.
+
+    It scales each component's attributed sub-targets, so it needs the
+    position-space flow, whose account target is their sum; the calibrated flow
+    sizes from forecasts and has no sub-target to scale. Renormalization is
+    refused beside it: it would rescale the scaled book a second time to the
+    declared gross, undoing the volatility target whenever a component dropped
+    out.
+    """
+    label = f"{where} [sizing]"
+    try:
+        rule = VolScaleRule.from_mapping(table)
+    except VolScaleError as exc:
+        raise SpecError(f"{label}: {exc}") from None
+    if strategy.combination != "position_space":
+        raise SpecError(
+            f"{label} declares rule={rule.rule!r} under [strategy] combination={strategy.combination!r}; the rule "
+            "scales each component's sub-targets, which only combination = 'position_space' sums into the "
+            "account target"
+        )
+    if strategy.renormalize:
+        raise SpecError(
+            f"{label} declares rule={rule.rule!r} with [strategy] renormalize = true; renormalization would scale "
+            "the volatility-scaled book back to the declared gross whenever a component drops out"
+        )
+    return rule
 
 
 def _parse_eligibility(table: Any, *, where: str) -> Eligibility:
