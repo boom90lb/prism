@@ -28,9 +28,19 @@ development machine and takes longer on a cold one.
   against cash, subtract a cash return series first (`excess_sharpe_interval`), or turn a flat
   annual yield into a per-period return series with `constant_hurdle_returns`. A Sharpe ratio
   is never compared with a yield.
-- **Missing values.** The interval functions refuse non-finite input and fewer than three
-  periods. The functions in `prism.validation.metrics` (PSR, DSR, PBO and the rest) silently
-  drop non-finite values. Align and clean a series yourself before calling either kind.
+- **Missing values.** The functions do not treat non-finite input (NaN, ±inf) the same way.
+  Align and clean every series yourself before calling any of them.
+  - The interval functions (section 1) refuse it, and refuse fewer than three periods.
+  - PSR, DSR, `expected_max_sharpe*` and `periodic_sharpe` drop non-finite values from each
+    input without a warning, and so do the monitors of section 4. `rank_information_coefficient`
+    drops every pair with a non-finite member. `effective_breadth_from_cov` returns `NaN` when
+    any entry is non-finite.
+  - `probability_backtest_overfitting` neither drops nor refuses it. A strategy with a
+    non-finite value gets a Sharpe ratio of 0 in every half that contains that row, and that
+    can change PBO materially. On a 1,000 × 10 matrix of normal returns
+    (`numpy.random.default_rng(1)`, standard deviation 0.01, the last column given +0.003 a
+    period), PBO is 0.0 clean and 0.198 after the last column's entry in row 6 is set to NaN.
+    See section 3.
 - **Degenerate input** (constant returns, a single trial, too short a sample) gives `NaN` from
   the metrics functions and an exception from the interval functions. Neither returns a number
   that looks valid.
@@ -155,6 +165,10 @@ median.
 
 - The matrix must hold every configuration tried, on the same dates. A matrix of only the
   survivors understates PBO.
+- The matrix must be finite. A NaN or inf is not dropped and raises nothing: it gives that
+  strategy a Sharpe ratio of 0 in every half containing its row, which moves PBO without any
+  warning (the example under "Missing values" at the top of this page goes from 0.0 to
+  0.198).
 - The selection rule is fixed: the best in-sample Sharpe ratio.
 - In-sample and out-of-sample halves are not purged at slice boundaries, so serial dependence
   leaks a little across them.
