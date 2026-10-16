@@ -219,6 +219,50 @@ B is reported, not treated as a failure.
   new paths (for example `results/reproductions/<date>-french-<vintage>/` with
   a short read record under `docs/`). Nothing in this package writes there.
 
+**Addendum, 2026-10-16, written after the first network run.** Everything
+above was written before any download. The network run of 2026-10-14 at
+21:40 PT (2026-10-15 04:40 UTC; code commit `7a612e4`, `--with-factor-lab`,
+output kept outside the repository) has computed, on the French 202608 vintage,
+numbers that a later registration pinning that vintage would otherwise treat
+as unseen. This is a dependency on the planned `public_baseline_v1`
+registration, which is written in another work package and reads French
+momentum "at the vintage current at the registration commit": that is 202608
+unless French publishes a new vintage first. Before it is committed, its
+"prior exposure" list has to include these figures, and its statement that no
+post-publication Sharpe, tracking correlation, cost drag or hurdle had been
+computed on the pinned vintage has to be removed or corrected.
+
+- Files read: momentum `ecf82b116e6ec56d2b79a2f27bd1d1598c217b5c6c25caa55b945bdd8a2c0b78`
+  (85,269 bytes) and three-factor
+  `2f29e22546069914890a712680a6f81f3680ebc3543b52864484d209ca13a7db`
+  (178,184 bytes), both with `Last-Modified` 2026-09-25 21:55:02 GMT, vintage
+  line "202608 CRSP database", data through 2026-08-31.
+- Through 2026-08-31 (window B2), with the registered rule, warm-up and
+  2015-04-01 publication cut: post-publication Sharpe (the criterion-1 prior)
+  0.4446, t 1.50; full-sample Sharpe 0.8986; criterion-3 figure 0.3506. At the
+  recorded rf of 4.21% the hurdle is 0.3508, so the economics test fails by
+  0.0002. The rf recomputed from the file (252 sessions to 2026-08-31) is
+  4.00%; the hurdle is then 0.333 and the test passes.
+- Tracking correlation 0.895 (daily, 929 sessions) and cost drag 0.0474 are
+  the recorded values, unchanged, because the in-house side ends 2026-06-12.
+- Cut at 2026-07-31 (window B1), the prior is 0.46464 (recorded 0.46457) and
+  the criterion-3 figure 0.36856 (recorded 0.36849): history revisions alone
+  move them by less than 0.0001.
+- The same run computed every factor-lab series' Sharpe and prior on the
+  202608 French files (`priors_diff.json` of that output). A registration that
+  reads those series at that vintage must disclose them in the same way.
+
+Whether this exposure changes the vintage that registration pins, or its
+design, is for the orchestrator or the owner to decide; this package decides
+neither and changes no recorded verdict.
+
+One correction to §1, found while checking the factor-lab driver: its download
+cache `data/public/` is overwritten only with `--refresh-cache`, or when the
+cache manifest lacks a source or records a different URL. Otherwise the cached
+file is reused. The tracked records under `results/2026-09-factor-lab/` are
+rewritten on every rerun of any part other than `fetch`, as `docs/limitations.md`
+§7 now states.
+
 ## 9. Acceptance
 
 - This document is committed before the first run that downloads anything.
