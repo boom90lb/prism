@@ -26,6 +26,7 @@ recorded figures.
 |---|---|---|---|
 | **12−1 momentum** on the S&P 500: buy the top decile and sell the bottom decile by trailing 12-month return, skipping the latest month, rebalanced every 21 sessions. This is the book the paper account trades. | Net Sharpe 0.465 out of sample, 2021-03-30 to 2026-06-12 (21 purged folds, 1,308 sessions). Deflated Sharpe 0.19 against the 17 configurations its experiments tried. Price returns, without dividends. | Profitable after modeled costs (`net_edge`). Not significant after the multiple-testing adjustment, which needs a deflated Sharpe of 0.95. | [`results/demotion_b1/summary.json`](results/demotion_b1/summary.json), [`claim_packet.json`](results/demotion_b1/claim_packet.json) |
 | **Volatility-scaled momentum** (`vol_momentum_v1`): the same book scaled to 12% volatility by the Barroso–Santa-Clara rule (126-session window, gross capped at 2×). | Expected net Sharpe 0.368 (tracking correlation 0.895 × post-publication Sharpe 0.465 − cost drag 0.047) against a T-bill benchmark of 0.351 if idle cash earns nothing. The margin is +0.018 Sharpe, about +0.2%/yr at the 12% target volatility (derived: 0.018 × 12%). The results report's "about half a percent a year" uses another basis: the 4.7%/yr that 0.368 gives at the book's 12.7% realized volatility, less 4.2% bills. At a provisional 3.3% cash yield the benchmark is 0.224 and the margin +0.144 Sharpe, about +1.7%/yr at 12% (derived: 0.144 × 12%), or about +2.0%/yr on the report's basis. The post-publication Sharpe has t = 1.56 over 11.3 years, a standard error of about 0.30, or about 0.27 after tracking (derived). If the public series is cut at 2025-12, the figure is 0.312, below the benchmark. | Approved under the project's rules; not deployed. | [`results/2026-09-vol-momentum/summary.json`](results/2026-09-vol-momentum/summary.json), [results report](docs/vol_momentum_read_2026-09-24.md) §3, [benchmark restatement](docs/hurdle_restatement_2026-09-30.md), [fundamentals report](docs/fundamentals_read_2026-09-24.md) |
+| **Public baseline** (`public_baseline_v1`, T21): volatility-scaled momentum as 21 overlapping tranches, idle equity in a T-bill ETF. | Expected net Sharpe 0.358 (0.903 × 0.445 − 0.044) against a T-bill benchmark of 0.195; about +1.95%/yr over bills (derived: margin × 12%), +0.30%/yr if idle cash earns nothing. Deflated Sharpe 0.79 against 30 configurations. | Approved under the project's rules; not deployed. | [read record](docs/public_baseline_read_2026-10-16.md), [`summary.json`](results/2026-10-public-baseline/summary.json) |
 | **Daily residual reversion** on the S&P 500 | Uneconomic at retail cost over a completed experiment of 17 trials. | Published negative result. | [Certification 001](docs/certifications/001-residual-reversion-daily-negative.md) |
 | **ETF trend following** (T0–T4) | Net Sharpe 0.04, and it lost money in the momentum book's worst periods. | Not added. | [results report](docs/trend_t_series_read_2026-09-03.md) |
 | **Six accounting factors** and one combination | Tracking correlation × post-publication Sharpe of 0.08–0.24 per factor, against benchmarks of 0.35–0.48, before any cost. | None approved. | [results report](docs/fundamentals_read_2026-09-24.md) |
@@ -37,41 +38,51 @@ on are not quoted here. They are not expectations.
 [`erratum_2026-10-14.md`](docs/erratum_2026-10-14.md) corrects how several
 recorded results were described. It changes no verdict.
 
-### The public baseline: designed; registration and evaluation pending
+### The public baseline: tranched, volatility-scaled momentum (`public_baseline_v1`)
 
-The baseline this repository will offer, `public_baseline_v1`, is the
-volatility-scaled momentum book above. Its signal, universe and parameters are
-unchanged. It runs as 21 overlapping tranches, one of which rebalances each
-session, and holds idle equity above a 2% cash buffer in a T-bill ETF. **No
-version of it has been run on market data.** Its registration (a design
-document and parameter file committed before any run) is not yet in the
-repository. Until it is committed and the evaluation runs, no result exists
-for the baseline.
+The baseline this repository offers is the volatility-scaled momentum book
+above, unchanged in signal, universe and parameters, run as **21 overlapping
+tranches**: each holds 1/21 of capital and rebalances on its own session, so one
+tranche trades each day. Idle equity above a 2% cash buffer is held in a
+**T-bill ETF**, because a retail account earns nothing on short-sale proceeds.
+It was registered before any run ([design](docs/public_baseline_design.md)),
+evaluated on 30 pre-declared configurations, and **approved on all six of its
+replication criteria** ([read record](docs/public_baseline_read_2026-10-16.md),
+[`summary.json`](results/2026-10-public-baseline/summary.json)). Nothing here
+switches it on: the paper account still trades unscaled momentum, and changing
+that is the account owner's decision. [baseline.md](docs/baseline.md) is the
+page for users.
 
-What can be expected is worked out below by arithmetic from the recorded
-figures above. This is not an evaluation. The low and high cases, the
-assumptions and the arithmetic are in [limitations §12](docs/limitations.md#public-baseline).
-
-- **Mid case.** Post-publication Sharpe 0.41 × tracking 0.895 − cost drag
-  0.047 − a 0.015 allowance for fills that come later than the open gives an
-  expected net Sharpe of about 0.30 for the long–short book. That is about
-  3.7%/yr at 12% volatility.
-- **Against T-bills.** Holding the T-bill ETF, the account would earn about
-  **+1.26%/yr over bills**. The account's excess-over-bills Sharpe is about
-  **0.10**. That figure, not 0.30, is the one to compare with holding bills.
-  If idle cash earns nothing, the mid case is **−0.55%/yr** against bills.
-- **Uncertainty.** The standard error of the expected Sharpe, about 0.27, is
-  larger than the edge. The probability that the true expected excess return
-  is positive is about 0.65 with the T-bill holding and about 0.43 if idle
-  cash earns nothing. A deployment's own returns would take about 29 years to
-  reject a zero Sharpe for the long–short book at one-sided 95%.
-- **Crowding (illustration).** Every deployment computes the same portfolio.
-  Under assumed square-root impact, crowding cost uses up the mid-case
-  +1.26%/yr in a 10th-percentile-liquidity S&P 500 name at about $1.8M of
-  combined capital if every user trades in the same opening auction. That is
-  about 18 users at $100k. With 21 tranches the figure is about $37M (about 370
-  users), and with full-day execution about $3.7B. These are not measurements.
-  The assumptions are in [limitations §13](docs/limitations.md#13-capacity-and-crowding-no-record-measures-them).
+- **Expected net Sharpe 0.358** for the long–short book: tracking correlation
+  0.903 × post-publication Sharpe of scaled French momentum 0.445 (2015-04 to
+  2026-08, t 1.50) − cost drag 0.044. This is an expectation built from the
+  public series, not the in-house backtest.
+- **Against T-bills** (rf 4.00%): about **+1.95%/yr** with the T-bill ETF
+  holding, +1.76%/yr if idle cash earns a 3.3% broker yield, and only
+  **+0.30%/yr** if idle cash earns nothing. The account's excess-over-bills
+  Sharpe is about **0.16**, not 0.358.
+- **Uncertainty.** One standard error is about 0.27 Sharpe (±3.2%/yr), larger
+  than the edge. The probability that the true expected excess over bills is
+  positive is about 0.73 with the ETF and 0.54 if idle cash earns nothing.
+  Cut at 2025-12 the post-publication Sharpe is 0.401, and the idle-cash case
+  turns negative (−0.17%/yr). A deployment's own returns would take about 21
+  years to reject a zero Sharpe.
+- **Low decay.** The signal is slow: its rank correlation with later returns
+  rises from 0.029 at 1 session to 0.062 at 63, and momentum's public premium
+  has survived 33 years since publication at about half its earlier Sharpe.
+  The deflated Sharpe ratio against the 30 configurations tried is 0.79.
+- **Tranching costs nothing measurable and removes timing luck.** Across the 21
+  possible rebalance dates a single-date book's annual return ranged from 4.7%
+  to 8.2% (standard deviation 0.97%/yr); the tranched book sits at the middle,
+  and its paired Sharpe difference against the average date is +0.014
+  [−0.009, +0.037].
+- **Crowding (scenarios, not measurements).** Every deployment holds the same
+  names, so tranching spreads trading across days but does not diversify
+  holdings. Under assumed square-root impact, other users' trades use up the
+  whole edge at about **65 users of $100k** if everyone rebalances a
+  single-date book on the same day in the opening auction, about **548** for
+  the tranched book, and about 4,400 if the tranched book traded in the closing
+  auction. Users at $1M each: divide by ten. See the read record §9.
 
 ## What the evidence does not cover
 
@@ -86,10 +97,12 @@ assumptions and the arithmetic are in [limitations §12](docs/limitations.md#pub
 - **Delisted stocks.** The momentum record covers 574 of the 633 stocks that
   were ever in the index over its window (coverage 0.907). The missing names
   are mostly ones that left the index, so the gap flatters the backtest.
-- **Size.** Modeled cost does not grow with assets. The impact term that
-  depends on traded volume relative to market volume is zero in every record,
-  so no recorded figure says anything about capacity
-  ([limitations §13](docs/limitations.md#13-capacity-and-crowding-no-record-measures-them)).
+- **Size.** Before the public baseline, modeled cost did not grow with
+  assets: the impact term that depends on traded volume is zero in every
+  earlier record. `public_baseline_v1` charges it at an assumed coefficient
+  (`examples/reference/costs/retail_v3.toml`), and its capacity figures are
+  scenarios under assumed parameters; paper fills cannot measure impact
+  ([limitations §13](docs/limitations.md#13-capacity-and-crowding-measured-only-under-assumptions)).
 - **The approved rule is not what trades.** The paper account trades unscaled
   momentum. The volatility-scaled rule is approved but not deployed. Changing
   the live book is the account owner's decision.
@@ -100,10 +113,10 @@ assumptions and the arithmetic are in [limitations §12](docs/limitations.md#pub
 - **Small accounts.** Whole-share opening-auction orders need about $100k to
   hold the roughly 100-name book faithfully. At $10k the account holds a
   different portfolio ([account-size floor](docs/account_size_floor.md)).
-- **Taxes, timing luck and selection.** No figure is after tax. Every record
-  uses one rebalance phase, so timing luck is unmeasured. The volatility
-  scaling rule was chosen in a sizing experiment of 8 configurations, and no
-  figure is deflated for that choice.
+- **Taxes and selection.** No figure is after tax, and tranching about
+  quadruples wash-sale pairs (1,102 a year against 274 for a single-date
+  book). The volatility scaling rule was chosen in a sizing experiment of 8
+  configurations, and no figure is deflated for that choice.
 
 ## Quickstart: no keys, about a minute
 

@@ -345,7 +345,7 @@ None of these produced an approved configuration. Each results report states its
 
 <a id="public-baseline"></a>
 
-## 12. The public baseline: designed, registration and evaluation pending
+## 12. The public baseline: approved on its replication criteria, not deployed
 
 **What it is.** `public_baseline_v1` is the configuration this repository intends to offer as its
 public baseline. It is the volatility-scaled momentum book of section 10, with its signal,
@@ -354,11 +354,28 @@ capital and rebalances every 21 sessions on its own date, so exactly one tranche
 each session. A new deployment starts with empty tranches and reaches full size over 21 sessions.
 Idle own equity above a 2% cash buffer is held in a T-bill ETF. Short-sale proceeds earn nothing.
 
-**Status.** No version of it has been run on market data. Its registration, a design document
-and parameter file committed before any evaluation (`SPEC.md` section 4), is not yet in the
-repository. Until it is committed and the evaluation runs, nothing in this section is a result.
+**Status (2026-10-16).** Registered before any run (`docs/public_baseline_design.md`,
+`registrations/2026-10-public-baseline.toml`), evaluated on all 30 pre-declared configurations,
+and **approved on all six replication criteria**
+(`results/2026-10-public-baseline/summary.json`, read record
+`docs/public_baseline_read_2026-10-16.md`). The recorded figures, on French vintage 202608 and
+rf 4.00%:
 
-**What to expect, by arithmetic.** The table uses a normal approximation. Every input is a recorded
+- expected net Sharpe of the long–short book 0.903 × 0.445 − 0.044 = **0.358**;
+- governing benchmark 0.195 with the T-bill holding, so about **+1.95%/yr** over bills; +1.76%/yr
+  at a 3.3% broker yield; **+0.30%/yr** if idle cash earns nothing, which turns negative
+  (−0.17%/yr) when the public series is cut at 2025-12 and fails at rf 5%;
+- one standard error about 0.27 Sharpe, larger than the edge; probability the true expected
+  excess is positive about 0.73 with the T-bill holding and 0.54 with idle cash at zero;
+- deflated Sharpe 0.79 against the 30 configurations; tranching against the average single
+  date +0.014 Sharpe [−0.009, +0.037]; timing-luck spread across single dates 0.97%/yr.
+
+The 202608 vintage had already been read by the uncounted reproduction script before the
+registration was committed; the registration discloses this (`docs/public_baseline_design.md`,
+prior exposure). Nothing is switched on: the paper account still trades unscaled momentum.
+
+**What was expected before the run, by arithmetic** (kept for comparison with the record above;
+the run used no late-fill allowance and a later vintage). The table uses a normal approximation. Every input is a recorded
 figure or a stated assumption, and every output is derived from them; no market data was read to
 make it. The recorded inputs are:
 
@@ -455,9 +472,17 @@ How to read it:
 
 ---
 
-## 13. Capacity and crowding: no record measures them
+## 13. Capacity and crowding: measured only under assumptions
 
-**No recorded cost grows with assets.** Market impact that depends on an order's size relative to
+**Since 2026-10-16 one record charges size-dependent impact, at an assumed coefficient.**
+`public_baseline_v1` runs under `examples/reference/costs/retail_v3.toml`, whose participation
+term (126 bp, labelled an assumption) is charged on every fill, and its read record re-prices the
+recorded trades for other users trading the same book (§9 there). Those capacity figures, for
+example about 548 users of $100k before crowding uses up the tranched book's expected excess over
+bills in a 1% opening auction, are scenarios under assumed impact parameters and 2015–17 auction
+shares; paper fills cannot measure impact. Everything below describes the records before it.
+
+**No earlier recorded cost grows with assets.** Market impact that depends on an order's size relative to
 the market's traded volume is the term that would bring in capacity. It is
 `adv_impact_coeff` in the older records and `participation_coeff` in the engine's cost stacks.
 Its coefficient is 0.0 everywhere it is recorded. Checked on 2026-10-16 (Run): all 166 such

@@ -139,6 +139,17 @@ the certification under `docs/` remain as the research record.
   earlier verdicts assumed short proceeds earn bills and do not describe this
   convention. `examples/reference/costs/retail_v2.toml` carries it. Its rates
   are provisional listed figures until the account statement's are recorded.
+- **Public baseline ran 2026-10-16** (`public_baseline_v1`, replication route,
+  30 of 30, `docs/public_baseline_read_2026-10-16.md`). Volatility-scaled
+  momentum as 21 overlapping tranches with idle equity in a T-bill ETF (T21)
+  is approved on all six criteria: 0.903 × prior 0.445 − drag 0.044 = 0.358
+  against a 0.195 hurdle (rf 4.00%, French vintage 202608), about +1.95%/yr
+  over bills; +0.30%/yr if idle cash earns nothing. Tranching costs nothing
+  measurable (+0.014 [−0.009, +0.037]) and removes a 0.97%/yr timing-luck
+  spread; holdings overlap across users stays total. On the same vintage
+  `vol_momentum_v1`'s economics figure is 0.3506 against its recorded 0.3508
+  hurdle at rf 4.21% (passes at 4.00%). Arming T21, holding the ETF and
+  changing the live book are owner acts.
 
 ## 2. Invariants — a change that violates one is wrong, not the invariant
 

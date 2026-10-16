@@ -455,3 +455,10 @@ three-factor file, times 252. The lumpiness ratios of §9 come from
 dated 2022-10-28 → 2026-06-15, with T21-1m's divided by 10^1.5 and T21-25k's
 multiplied by 4^1.5 before dividing by P00's. The share of one-share fills is over
 the same fills.
+
+The per-row `targets.parquet`, `holdings.parquet` and `fills.parquet` files (about 61 MB)
+are not in the public repository: they hold per-name prices and holdings derived from
+vendor bars whose redistribution terms are unconfirmed (`NOTICE`), and they would roughly
+triple the size of a clone. They are kept by the operator and regenerate exactly from the
+driver at the registration commit with the registered dataset. Every other figure in this
+record recomputes from tracked files.
