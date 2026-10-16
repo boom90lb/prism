@@ -66,7 +66,13 @@ import numpy as np
 import pandas as pd
 
 from prism.io import sessions
-from prism.io.manifest import Manifest, ManifestError, canonical_json, hash_tree, sha256_bytes
+from prism.io.manifest import (
+    Manifest,
+    ManifestError,
+    canonical_json,
+    hash_tree,
+    sha256_bytes,
+)
 
 _ET = ZoneInfo("America/New_York")
 
@@ -1339,16 +1345,16 @@ class _Builder:
                 "scenario_applied_at_stage": {s: APPLIED_AT_STAGE[s] for s in self.spec.scenarios},
                 "scenarios_written_not_applied": written_not_applied,
                 "scenarios_written_not_applied_note": (
-                    "Rows for these scenarios are written in the final schema and are not applied to accounting at "
-                    "stage 1. They are minted on sids that belong to no index, so no stage 1 evaluation selects "
-                    "them. The stage 3 data layer reads them all -- revision selection, the adjustments table, "
-                    "terminal claims and the two visibility modes -- and stage 3b applies them to accounting "
-                    "through the canonical simulator; the recovery path arrives at stage 4."
+                    "Rows for these scenarios are written in the final schema on sids that belong to no index, so "
+                    "no evaluation over an index universe selects them or applies them to accounting. The data "
+                    "layer reads them all -- revision selection, the adjustments table, terminal claims and the "
+                    "two visibility modes (tests/test_synthetic_scenarios.py) -- and "
+                    "tests/test_adversarial_sessions.py drives each one through the canonical simulator."
                 ),
                 "scenario_cases": (
                     "coverage.scenarios carries one ScenarioCase per scenario id: the sids by role, the dates that "
                     "decide it, and the three-bar window (prior_bar, decision_bar, fill_bar) a session runs over. "
-                    "That is the address the stage 3b adversarial session set is built on."
+                    "That is the address tests/test_adversarial_sessions.py drives each scenario by."
                 ),
                 "membership_removal_announcement": (
                     "A removal is a revision of one membership row, so a single-revision fixture cannot make the "
@@ -1357,9 +1363,11 @@ class _Builder:
                 ),
                 "scenarios_unapplied_in_universe": in_universe_unapplied,
                 "stage1_unapplied_in_universe": (
-                    "The split and halt scenarios stay in the equity index. The retained reproduction engine applies "
-                    "no share change for a split and forward-fills a halted session, so a stage 1 evaluation reads "
-                    "the raw split as a price return and cannot see the halt; stage 3 corrects both."
+                    "The split and halt scenarios stay in the equity index. The reproduction engine "
+                    "(historical_constant_weight) applies no share change for a split and forward-fills a halted "
+                    "session, so an evaluation on it reads the raw split as a price return and cannot see the "
+                    "halt. The canonical simulator handles both: a split moves no equity and a halted holding is "
+                    "carried stale (tests/test_adversarial_sessions.py)."
                 ),
             },
             fit_cutoff=None,

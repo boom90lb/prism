@@ -425,6 +425,18 @@ def test_help_text_cites_no_internal_reference() -> None:
         assert not INTERNAL_REFERENCE.search(text), (parser.prog, INTERNAL_REFERENCE.search(text))
 
 
+def test_conform_output_cites_no_internal_reference(project: Path, capsys) -> None:
+    # The quickstart's second command. Its report, including the trusted-plugin
+    # statement every run prints, is a new user's first engine output.
+    # `prism evaluate --smoke` stdout is checked the same way in
+    # tests/test_evaluate.py, over a fixture that writes every scenario.
+    code = main(["--workspace", str(project), "conform", str(project / "specs" / "book.toml")])
+    printed = capsys.readouterr().out
+    assert code == 0, printed
+    assert "trusted executable code" in printed
+    assert not INTERNAL_REFERENCE.search(printed), INTERNAL_REFERENCE.search(printed)
+
+
 # --------------------------------------------------------------------------
 # run --broker alpaca: the authorized venue session (§3.10, §3.14)
 #

@@ -103,7 +103,7 @@ DEFAULT_RESCALE_FACTOR = 3.0
 RESCALE_RTOL = 1e-9
 
 TRUSTED_PLUGIN_STATEMENT = (
-    "A private plugin is trusted executable code [Q7]. It is imported into this process and runs with the "
+    "A private plugin is trusted executable code. It is imported into this process and runs with the "
     "engine's privileges: it can read the workspace, reach the network, and submit orders through any credential "
     "this process holds. `prism conform` checks declared behaviour on a sample of real bars, not intent; it is "
     "not a sandbox, it does not isolate the component, and a passing report is not a safety verdict. Install "

@@ -50,6 +50,7 @@ from prism.io.dataset import Dataset
 from prism.io.synthetic import EQUITY_INDEX, write_synthetic_dataset
 from prism.spec import load_spec
 from prism.workspace import Workspace
+from tests.test_cli import INTERNAL_REFERENCE
 
 START = dt.date(2026, 1, 1)
 END = dt.date(2027, 12, 31)
@@ -518,3 +519,8 @@ def test_the_prism_evaluate_smoke_command_prints_the_summary(
     assert "prism evaluate --smoke" in printed
     assert "historical_constant_weight" in printed
     assert RECORDING_STATEMENT in printed
+    # The fixture writes every scenario, so the summary prints both manifest notes
+    # on unapplied scenarios; like every user-visible message, they name no stage
+    # of the engine overhaul and no section of its unpublished specification.
+    assert "unexercised scenarios  " in printed and "in the universe but unapplied" in printed
+    assert not INTERNAL_REFERENCE.search(printed), INTERNAL_REFERENCE.search(printed)
