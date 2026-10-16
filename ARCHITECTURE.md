@@ -72,9 +72,9 @@ separate registration (`SPEC.md` §4).
 `PurgedWalkForward` yields train/test index pairs with purge and embargo; one
 splitter drives both training and the meta-learner's out-of-fold predictions.
 `metrics.py` implements the deflation-adjusted metrics and effective-breadth
-diagnostics; `capacity.py` the capacity curve and cost-toll lens; `trials.py`
-the canonical claim packet; `joint_crash.py` the uncounted B1-plus-trend
-stress diagnostic.
+diagnostics; `capacity.py` the capacity curve, the cost-toll lens and the
+crowding re-pricing of recorded trades; `trials.py` the canonical claim packet;
+`joint_crash.py` the uncounted B1-plus-trend stress diagnostic.
 
 ### Signals — `src/prism/signal/`
 The typed Signal contract (`SPEC.md` §7.1) and its nodes: `momentum_node.py`
