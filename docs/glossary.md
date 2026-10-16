@@ -48,7 +48,7 @@ name. Where this page and the contract differ, the contract governs.
 
 | Term in the records | Plain meaning |
 |---|---|
-| claim tier, claim ladder | How strong a result is, from weakest to strongest (SPEC §3): `no_claim`; `mechanics_clean`, the pipeline ran and the accounting conserves capital; `gross_edge`, profitable before costs and the breadth checks pass; `net_edge`, profitable after modeled costs; `robust_edge`, also significant after the multiple-testing adjustment. In the momentum record's rules that means a deflated Sharpe ratio of at least 0.95. |
+| claim tier, claim ladder | How strong a result is, from weakest to strongest (SPEC §3): `no_claim`; `mechanics_clean`, the pipeline ran and the accounting conserves capital; `gross_edge`, profitable before costs and the breadth checks pass; `net_edge`, profitable after modeled costs; `robust_edge`, also significant after the multiple-testing adjustment, or passing the replication tests of the published-factor route. In the momentum record's rules the adjustment means a deflated Sharpe ratio of at least 0.95. |
 | DSR | Deflated Sharpe ratio (Bailey and López de Prado, 2014): the probability that the true Sharpe ratio is above zero after correcting for the number of configurations tried and for non-normal returns. |
 | hurdle, after-cost hurdle | The T-bill benchmark expressed as a Sharpe ratio: what a strategy must earn to beat holding bills, after crediting what its idle cash earns. The formula is in SPEC §3 and the code is `prism.validation.hurdle.tbill_hurdle`. |
 | cash convention | Which cash earns interest in a backtest. From 2026-09-25, idle own cash earns the account's cash yield and short-sale proceeds earn nothing; earlier experiments assumed idle cash earned nothing. |
