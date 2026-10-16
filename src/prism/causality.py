@@ -12,10 +12,12 @@ Two output shapes are understood:
 
 * ``output="cross_section"``: ``fn(close, ...)`` returns the scores for the *last* bar of
   the panel it is handed, one value per asset (a Series) or a single number. This is the
-  contract of :meth:`prism.signal.base.Signal.score`.
-* ``output="panel"``: ``fn(close, ...)`` returns a DataFrame (or a Series) indexed by the
-  bars it was handed, as vectorized pandas code usually does. The check reads the row of
-  each bar it compares.
+  contract of :meth:`prism.signal.base.Signal.score`. Its labels must not change with the
+  number of bars handed in (assets the panel has as columns may come and go), because a
+  per-bar result read this way would never be compared with the causal reference.
+* ``output="panel"``: ``fn(close, ...)`` returns a DataFrame (or a Series, or an array with
+  one row per bar) indexed by the bars it was handed, as vectorized pandas code usually
+  does. The check reads the row of each bar it compares.
 
 ``output="auto"`` (the default) chooses from the first output: see :func:`check_causality`.
 
@@ -55,8 +57,12 @@ it is handed (a module-level frame, a file, a network call) is not tested, becau
 cutting the panels changes nothing it reads. A look-ahead on a code path the data never
 exercises (a backward fill on a panel without gaps, a corporate-action branch that never
 fires) is not seen. Look-ahead longer than ``future_bars`` is not seen, nor is one that
-shows only at bars outside the check window. The panels are trusted: a revised price history
-or a universe chosen with hindsight carries the future into every prefix. Without a
+shows only at bars outside the check window. A cross-section output is tested as the
+function is used one bar at a time, so a per-bar result whose labels never change with the
+number of bars handed in (a fixed-length array such as ``x.shift(-1).tail(30).to_numpy()``)
+is read as a cross section and its rows are never compared. The panels are trusted: a
+revised price history or a universe chosen with hindsight carries the future into every
+prefix. Without a
 ``factory``, the causal reference is computed by the same function object that is later
 handed the full panel; state kept between calls is then not isolated, and a cache filled
 on the first, shortest prefix can hide a leak. A passing report is evidence about this
@@ -246,11 +252,30 @@ def check_causality(
     ``output`` says how to read the function's result: ``"cross_section"`` (values for
     the last bar handed in), ``"panel"`` (a time-indexed result whose row at each check
     bar is read) or ``"auto"``. In ``"auto"`` the first output decides once for the whole
-    run: a DataFrame or 2-D array is a panel; a Series whose labels are all bars of the
-    panel handed in is a panel; any other Series, a 1-D array or a number is a cross
-    section. A Series whose labels are all bars is refused as ambiguous when they are also
-    the first panel's columns, or when the bars are not dates (with a 0..n-1 index a
-    positional cross section looks like a time series); pass ``output`` explicitly then.
+    run:
+
+    * a DataFrame or 2-D array is a panel, except a one-row frame indexed by the last bar
+      handed in (``.tail(1)``), which is that bar's cross section;
+    * a 1-D array with one value per bar handed in is a panel; any other 1-D array is a
+      cross section;
+    * a Series whose labels are all bars of the panel handed in is a panel, except one
+      holding only the last bar on a date index, which is one number for that bar;
+    * a Series numbered 0..n-1 with one value per bar handed in is refused: it is a
+      per-bar result that lost its bar index;
+    * any other Series, or a number, is a cross section.
+
+    A 1-D array or 0..n-1 Series is refused as ambiguous when its length is both the
+    number of bars handed in and the first panel's column count. A Series whose labels are
+    all bars is refused as ambiguous when they are also the first panel's columns, or when
+    the bars are not dates (with a 0..n-1 index a positional cross section looks like a
+    time series). Pass ``output`` explicitly in those cases. In cross-section mode, chosen
+    or passed, an output whose labels change from one call to the next is refused unless
+    they are all columns of the first panel.
+
+    In panel mode, a full-panel output with no row for a check bar that the output on data
+    ending at that bar had, and no row for any earlier bar, is refused as an output that
+    holds only its last bars; with rows for earlier bars, the missing row fails
+    ``causality``, because which rows the function returns then depends on later bars.
 
     ``rtol`` is the relative tolerance of every comparison, default 0 (bitwise).
 
@@ -280,19 +305,29 @@ def check_causality(
 
     # The causal reference: every check bar scored on data ending at that bar, oldest first.
     reference: dict[int, pd.Series] = {}
+    reference_has_row: dict[int, bool] = {}
     for position in positions:
         scorer = score if factory is None else _fresh(factory)
-        reference[position] = run.values_at(scorer, position, "the causal reference")
+        out = run.call(scorer, position + 1, "the causal reference")
+        reference[position] = run.extract(out, position + 1, position, "the causal reference")
+        reference_has_row[position] = run.has_row(out, position)
 
     # The full panel first, so that anything it leaves behind is in place for the rescoring.
     full = run.call(score, n_rows, "the full panel")
     full_rows: Difference | None = None
+    full_row_missing = False
     if run.mode == "panel":
         for position in reversed(positions):
             got = run.extract(full, n_rows, position, "the full panel")
             full_rows = run.compare(reference[position], got, index[position])
             if full_rows is not None:
+                if reference_has_row[position] and not run.has_row(full, position):
+                    run.refuse_truncated(full, position, "the full panel")
+                    full_row_missing = True
                 break
+    else:
+        # Not compared with the reference, but read, so that its shape and labels are checked.
+        run.extract(full, n_rows, n_rows - 1, "the full panel")
     rescored = run.sweep(score, reversed(positions), reference, "a prefix rescored after the full panel")
     warm = run.sweep(score, positions, reference, "a prefix rescored in order with state retained")
 
@@ -312,7 +347,7 @@ def check_causality(
     mode = run.mode
     assert mode is not None  # resolved by the first call of the causal reference
     checks = (
-        _causality_check(mode, window, full_rows, rescored),
+        _causality_check(mode, window, full_rows, full_row_missing, rescored),
         _cache_check(window, warm),
         _determinism_check(determinism),
         _coverage_check(covered, window, training_rows),
@@ -347,7 +382,18 @@ def assert_causal(score: ScoreFunction, *panels: Panel, **kwargs: Any) -> Causal
 # --------------------------------------------------------------------------
 
 
-def _causality_check(mode: str, window: int, full_rows: Difference | None, rescored: Difference | None) -> Check:
+def _causality_check(
+    mode: str, window: int, full_rows: Difference | None, full_row_missing: bool, rescored: Difference | None
+) -> Check:
+    if full_rows is not None and full_row_missing:
+        return Check(
+            "causality",
+            FAIL,
+            "the full panel's output has no row for a check bar that the output on data ending at that bar had, "
+            "while it has rows for earlier bars, so which rows the function returns depends on later bars: "
+            f"{full_rows}",
+            full_rows,
+        )
     if full_rows is not None:
         return Check(
             "causality",
@@ -421,6 +467,9 @@ class _Run:
         self.index = frames[0].index
         self.mode: str | None = None if output == "auto" else output
         self.rtol = rtol
+        # In cross-section mode: the labels of the first output read, and the rows it was handed.
+        self.labels: pd.Index | None = None
+        self.labels_rows = 0
 
     def call(self, fn: ScoreFunction, rows: int, arm: str) -> Any:
         """``fn`` on copies of the first ``rows`` rows, so a function that mutates its input cannot alter the panel."""
@@ -454,13 +503,60 @@ class _Run:
         if self.mode is None:
             self.mode = _resolve_mode(out, handed, self.frames[0], arm)
         if self.mode == "cross_section":
-            values = _cross_section_values(out, arm)
-        else:
-            values = _panel_values(out, handed, self.index[position], arm)
-        return _numeric(values, arm)
+            values = _numeric(_cross_section_values(out, handed, self.frames[0], arm), arm)
+            self._same_labels(values.index, rows, arm)
+            return values
+        return _numeric(_panel_values(out, handed, self.index[position], arm), arm)
+
+    def has_row(self, out: Any, position: int) -> bool:
+        """Whether a panel-mode output holds a row for the bar at ``position``; always true in cross-section mode."""
+        if self.mode != "panel" or isinstance(out, np.ndarray):
+            return True
+        return bool(self.index[position] in out.index)
+
+    def refuse_truncated(self, out: Any, position: int, arm: str) -> None:
+        """Refuse an output that lacks the check bar's row and every earlier one: it holds only its last bars."""
+        earliest = _earliest_bar(out, self.index)
+        if earliest is not None and earliest < position:
+            return
+        first_row = "it has no rows" if earliest is None else f"its first row is {self.index[earliest]}"
+        raise CausalityCheckError(
+            f"{arm} returned no row for the check bar {self.index[position]}, which the output on data ending at "
+            f"that bar had, and none for any earlier bar ({first_row}): the function returns only the last bar(s) "
+            "it is handed, for example with .tail(1), so its rows cannot be compared bar by bar. Return a row for "
+            "every bar handed in, or, if it scores only the last bar, return that bar's values (.iloc[-1]) and pass "
+            "output='cross_section'"
+        )
 
     def compare(self, reference: pd.Series, observed: pd.Series, bar: Any) -> Difference | None:
         return _first_difference(reference, observed, bar=bar, rtol=self.rtol)
+
+    def _same_labels(self, labels: pd.Index, rows: int, arm: str) -> None:
+        """Refuse a cross section whose labels change between calls, unless they are all the first panel's columns.
+
+        One value per asset for the last bar cannot have labels that depend on how many bars the function was
+        handed; labels that do (positions 0..n-1, dates) are a per-bar result read as a cross section, where
+        nothing would compare the full panel's values with the causal reference. Assets that are present at some
+        bars and dropped at others are columns of the panel, and are allowed.
+        """
+        if self.labels is None:
+            self.labels, self.labels_rows = labels, rows
+            return
+        if len(labels) == len(self.labels) and bool(labels.isin(self.labels).all()):
+            return
+        first = self.frames[0]
+        if isinstance(first, pd.DataFrame) and bool(labels.isin(first.columns).all()):
+            if bool(self.labels.isin(first.columns).all()):
+                return
+        raise CausalityCheckError(
+            f"{arm} returned {len(labels)} label(s) when handed {rows} bar(s), but the first output read as a cross "
+            f"section had {len(self.labels)} when handed {self.labels_rows}, and they are not all columns of the "
+            "first panel. A cross section holds one value per asset for the last bar handed in, so its labels "
+            "cannot depend on how many bars the function is handed; this looks like one value per bar. Return a "
+            "result indexed by the panel's bars (or an array with one row per bar handed in) and read it with "
+            "output='panel'; if the labels really are assets, return every one at every call, NaN where a value "
+            "is missing"
+        )
 
 
 def _fresh(factory: Callable[[], ScoreFunction]) -> ScoreFunction:
@@ -474,15 +570,30 @@ def _fresh(factory: Callable[[], ScoreFunction]) -> ScoreFunction:
 
 
 def _resolve_mode(out: Any, handed: pd.Index, first: Panel, arm: str) -> str:
+    dated_bars = isinstance(handed, (pd.DatetimeIndex, pd.PeriodIndex))
+    columns = first.columns if isinstance(first, pd.DataFrame) else None
     if isinstance(out, pd.DataFrame):
-        return "panel"
+        # A one-row frame indexed by the last bar handed in (``.tail(1)``) is that bar's cross section.
+        return "cross_section" if _last_bar_only(out.index, handed) else "panel"
     if isinstance(out, np.ndarray):
-        return "panel" if out.ndim == 2 else "cross_section"
+        if out.ndim == 2:
+            return "panel"
+        if out.ndim == 1 and len(out) == len(handed):
+            if columns is not None and len(columns) == len(out):
+                raise CausalityCheckError(
+                    f"{arm} returned a 1-D array of {len(out)} values, which is both the number of bars handed in "
+                    "and the number of columns of the first panel, so it is unclear whether it holds one value per "
+                    "asset or one value per bar; pass output='cross_section' or output='panel'"
+                )
+            return "panel"
+        return "cross_section"
     if isinstance(out, pd.Series):
         labels = out.index
+        if dated_bars and _last_bar_only(labels, handed) and not (columns is not None and labels.isin(columns).all()):
+            # ``.tail(1)`` of a per-bar Series: one number for the last bar.
+            return "cross_section"
         if len(labels) > 0 and bool(labels.isin(handed).all()):
-            dated_bars = isinstance(handed, (pd.DatetimeIndex, pd.PeriodIndex))
-            also_columns = isinstance(first, pd.DataFrame) and bool(labels.isin(first.columns).all())
+            also_columns = columns is not None and bool(labels.isin(columns).all())
             if also_columns or not dated_bars:
                 raise CausalityCheckError(
                     f"{arm} returned a Series whose labels are all bars of the panel, but "
@@ -491,16 +602,50 @@ def _resolve_mode(out: Any, handed: pd.Index, first: Panel, arm: str) -> str:
                     "output='cross_section' or output='panel'"
                 )
             return "panel"
+        if len(labels) == len(handed) and labels.equals(pd.RangeIndex(len(labels))):
+            if columns is not None and len(columns) == len(labels):
+                raise CausalityCheckError(
+                    f"{arm} returned a Series numbered 0 to {len(labels) - 1}, which is both the number of bars "
+                    "handed in and the number of columns of the first panel, so it is unclear whether it holds one "
+                    "value per asset or one value per bar; pass output='cross_section', or index a per-bar result "
+                    "by the panel's bars"
+                )
+            raise CausalityCheckError(
+                f"{arm} returned a Series numbered 0 to {len(labels) - 1}, one value per bar handed in, without the "
+                "bars as its index: it looks like a per-bar result that lost its index (for example through "
+                "reset_index(drop=True)), and read as a cross section nothing would compare its values with the "
+                "causal reference. Index it by the panel's bars, for example pd.Series(values, index=close.index)"
+            )
     return "cross_section"
 
 
-def _cross_section_values(out: Any, arm: str) -> pd.Series:
+def _last_bar_only(labels: pd.Index, handed: pd.Index) -> bool:
+    """Whether ``labels`` is exactly the last bar handed in, as ``.tail(1)`` of a per-bar result gives."""
+    return len(labels) == 1 and bool(labels.isin(handed[-1:]).all())
+
+
+def _earliest_bar(out: Any, index: pd.Index) -> int | None:
+    """The position in ``index`` of the earliest bar a time-indexed output has a row for, or None."""
+    positions = index.get_indexer(out.index)
+    positions = positions[positions >= 0]
+    return int(positions.min()) if positions.size else None
+
+
+def _cross_section_values(out: Any, handed: pd.Index, first: Panel, arm: str) -> pd.Series:
     if isinstance(out, pd.Series):
+        columns = first.columns if isinstance(first, pd.DataFrame) else None
+        if _last_bar_only(out.index, handed) and not (columns is not None and out.index.isin(columns).all()):
+            # One number for the last bar, labelled by that bar (``.tail(1)`` of a per-bar Series).
+            return pd.Series([out.iloc[0]], index=[SCALAR_LABEL])
         return out
     if isinstance(out, pd.DataFrame):
+        if _last_bar_only(out.index, handed):
+            # One value per asset for the last bar, as a one-row frame (``.tail(1)``).
+            return out.iloc[0]
         raise CausalityCheckError(
-            f"{arm} returned a DataFrame, but with output='cross_section' a function returns one value per asset "
-            "(a Series) or one number for the last bar; for a time-indexed result use output='panel'"
+            f"{arm} returned a DataFrame with {len(out.index)} row(s), but with output='cross_section' a function "
+            "returns one value per asset for the last bar (a Series, or a one-row frame indexed by that bar) or one "
+            "number; for a time-indexed result use output='panel'"
         )
     if isinstance(out, np.ndarray):
         if out.ndim != 1:

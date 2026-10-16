@@ -1,6 +1,6 @@
 """The function-level look-ahead checker, ``prism.causality``.
 
-Three groups of tests:
+Four groups of tests:
 
 * **Parity with the strict suite.** ``prism.conformance.check_component`` runs the same
   prefix comparisons on a ``Signal``. On the components that suite's own tests use (an
@@ -11,9 +11,13 @@ Three groups of tests:
   case also pins the expected verdict, so the two cannot agree by both being wrong.
 * **Behaviour on plain functions**: the leaks vectorized pandas code actually contains
   (a forward return, a full-sample z-score, a centred window, a backward fill, a cached
-  feature) are caught, honest functions pass, and the documented blind spots (look-ahead
-  longer than the withheld future, a code path the data never exercises, state without a
-  factory) are pinned as blind spots so that a change to them is visible.
+  feature) are caught, including when they are returned as 1-D numpy arrays with one value
+  per bar; honest functions pass; and the documented blind spots (look-ahead longer than
+  the withheld future, a code path the data never exercises, state without a factory) are
+  pinned as blind spots so that a change to them is visible.
+* **Output shapes**: a per-bar result is never read as a cross section without a refusal,
+  ``.tail(1)`` is a cross section, and a panel output that holds only its last bars is
+  refused rather than reported as look-ahead.
 * **Hygiene**: the module imports numpy and pandas and nothing else from this package,
   and the example runs.
 """
@@ -331,6 +335,108 @@ def test_numpy_outputs(close) -> None:
     rolled = check_causality(lambda c: np.roll(c.to_numpy(), -1, axis=0), close)
     assert rolled.output == "panel"
     assert rolled.check("causality").status == "FAIL"
+
+
+#: Leaks written as a 1-D array (or, for one case, a frame turned into one), as numpy or numba
+#: single-asset code returns them: one value per bar, no bar index.
+PER_BAR_ARRAY_LEAKS = {
+    "next bar's price": (lambda s: s.shift(-1).to_numpy(), "series"),
+    "np.roll by one bar": (lambda s: np.roll(s.to_numpy(), -1), "series"),
+    "full-sample z-score": (lambda s: ((s - s.mean()) / s.std()).to_numpy(), "series"),
+    "next-day log return aligned to today": (lambda s: np.r_[np.diff(np.log(s.to_numpy())), np.nan], "series"),
+    "cross-sectional mean five bars ahead": (lambda c: c.mean(axis=1).shift(-5).to_numpy(), "frame"),
+}
+
+
+@pytest.mark.parametrize("name", list(PER_BAR_ARRAY_LEAKS))
+def test_a_leak_in_a_one_dimensional_array_with_one_value_per_bar_is_caught(close, name) -> None:
+    fn, panel = PER_BAR_ARRAY_LEAKS[name]
+    report = check_causality(fn, close["asset_0"] if panel == "series" else close)
+
+    assert report.output == "panel"
+    assert report.check("causality").status == "FAIL"
+    assert not report.ok
+
+
+def test_an_honest_one_dimensional_array_with_one_value_per_bar_passes(close) -> None:
+    report = check_causality(lambda s: s.pct_change(20).to_numpy(), close["asset_0"])
+
+    assert report.ok, report.text()
+    assert report.output == "panel"
+
+
+def test_a_series_numbered_by_position_with_one_value_per_bar_is_refused(close) -> None:
+    with pytest.raises(CausalityCheckError, match="lost its index"):
+        check_causality(lambda s: s.shift(-1).reset_index(drop=True), close["asset_0"])
+
+
+#: Per-bar results whose labels change with the number of bars handed in, read as cross sections.
+CHANGING_LABELS = {
+    "an explicit cross section that is one value per bar": (lambda s: s.shift(-1).to_numpy(), "cross_section"),
+    "an array one shorter than the bars": (lambda s: np.diff(s.to_numpy()), "auto"),
+    "dates moved one bar back": (lambda s: s.shift(-1, freq="B"), "auto"),
+    "a monthly resample": (lambda s: s.resample("ME").last(), "auto"),
+}
+
+
+@pytest.mark.parametrize("name", list(CHANGING_LABELS))
+def test_a_cross_section_whose_labels_change_with_the_bars_handed_in_is_refused(close, name) -> None:
+    """A per-bar result read as a cross section would never be compared with the reference."""
+    fn, output = CHANGING_LABELS[name]
+    with pytest.raises(CausalityCheckError, match="cannot depend on how many bars"):
+        check_causality(fn, close["asset_0"], output=output)
+
+
+def test_a_cross_section_of_assets_that_come_and_go_is_allowed(close) -> None:
+    """Labels that are all columns of the panel may change: assets drop in and out."""
+    above_median = check_causality(lambda c: c.iloc[-1].where(c.iloc[-1] > c.iloc[-1].median()).dropna(), close)
+
+    assert above_median.ok, above_median.text()
+    assert above_median.output == "cross_section"
+
+
+def test_an_array_as_long_as_both_the_bars_handed_in_and_the_columns_is_refused(close) -> None:
+    first_prefix = N_BARS - causality.DEFAULT_CHECK_WINDOW_BARS - causality.DEFAULT_FUTURE_BARS + 1
+    wide = pd.DataFrame(
+        np.repeat(close.to_numpy()[:, :1], first_prefix, axis=1),
+        index=close.index,
+        columns=[f"asset_{i}" for i in range(first_prefix)],
+    )
+
+    with pytest.raises(CausalityCheckError, match="unclear whether it holds one value per asset"):
+        check_causality(lambda c: (c.iloc[-1] / c.iloc[-21]).to_numpy(), wide)
+    assert check_causality(lambda c: (c.iloc[-1] / c.iloc[-21]).to_numpy(), wide, output="cross_section").ok
+
+
+def test_an_output_holding_only_the_last_bar_is_that_bars_cross_section(close) -> None:
+    """``.tail(1)`` is a cross section, not a panel missing every check bar."""
+    frame = check_causality(lambda c: c.pct_change(20).tail(1), close)
+    series = check_causality(lambda s: s.pct_change(20).tail(1), close["asset_0"])
+    explicit = check_causality(lambda c: c.pct_change(20).tail(1), close, output="cross_section")
+
+    for report in (frame, series, explicit):
+        assert report.ok, report.text()
+        assert report.output == "cross_section"
+
+
+def test_a_panel_output_holding_only_its_last_bars_is_refused_not_reported_as_lookahead(close) -> None:
+    for tail in (1, causality.DEFAULT_FUTURE_BARS + 3):
+        with pytest.raises(CausalityCheckError, match="returns only the last bar"):
+            check_causality(lambda c, k=tail: c.pct_change(20).tail(k), close, output="panel")
+
+
+def test_a_row_missing_only_from_the_full_panels_output_fails_causality(close) -> None:
+    def drops_the_row_25_bars_from_the_end(c: pd.DataFrame) -> pd.DataFrame:
+        out = c.pct_change(20)
+        return out.drop(out.index[-25])
+
+    report = check_causality(drops_the_row_25_bars_from_the_end, close)
+
+    assert report.output == "panel"
+    causal = report.check("causality")
+    assert causal.status == "FAIL"
+    assert "which rows the function returns depends on later bars" in causal.detail
+    assert causal.difference is not None and causal.difference.bar == close.index[N_BARS - 25]
 
 
 def test_rtol_relaxes_every_comparison(close) -> None:

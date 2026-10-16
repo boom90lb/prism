@@ -52,17 +52,49 @@ too, for a single asset. Every panel is cut at the same row.
 
 | `output=` | The function returns | The check reads |
 |---|---|---|
-| `"cross_section"` | Values for the *last* bar it was handed: one per asset (a Series or a 1-D array) or one number. This is the contract of `prism.signal.base.Signal.score`. | The whole output. |
+| `"cross_section"` | Values for the *last* bar it was handed: one per asset (a Series, a 1-D array, or a one-row frame indexed by that bar, as `.tail(1)` gives) or one number. This is the contract of `prism.signal.base.Signal.score`. | The whole output. Its labels must be the same at every call, unless they are all columns of the first panel. |
 | `"panel"` | A result indexed by the bars it was handed: a DataFrame, a Series, or an array with one row per bar. This is what vectorized pandas code returns. | The row of each bar being compared. A bar missing from the output (for example after `dropna()`) counts as NaN. |
-| `"auto"` (default) | Decided once, from the first output. A DataFrame or 2-D array is a panel. A Series whose labels are all bars of the panel handed in is a panel. Any other Series, a 1-D array or a number is a cross section. | |
+| `"auto"` (default) | Decided once, from the first output, by the rules below. | |
 
-`"auto"` refuses to guess when a Series's labels are all bars *and* also all columns, or are
-all bars of an index that is not made of dates (for example a 0..n-1 integer index, where a
-positional cross section looks like a time series). Pass `output=` explicitly in those cases.
+The rules `"auto"` applies to the first output:
+
+- A DataFrame or a 2-D array is a panel, except a one-row frame indexed by the last bar handed
+  in (`.tail(1)`), which is that bar's cross section.
+- A 1-D array with one value per bar handed in is a panel. Any other 1-D array is a cross
+  section.
+- A Series whose labels are all bars of the panel handed in is a panel, except one that holds
+  only the last bar on a date index, which is read as one number for that bar.
+- A Series numbered 0..n−1 with one value per bar handed in is refused: it is a per-bar result
+  that lost its bar index, for example through `reset_index(drop=True)`. Index it by the
+  panel's bars.
+- Any other Series, or a number, is a cross section.
+
+`"auto"` refuses to guess when a 1-D array or a 0..n−1 Series is as long as both the bars handed
+in and the first panel's columns, when a Series's labels are all bars *and* also all columns, or
+when they are all bars of an index that is not made of dates (for example a 0..n−1 integer
+index, where a positional cross section looks like a time series). Pass `output=` explicitly in
+those cases.
+
+Why the label rule matters: read as a cross section, a function is tested as it would be used
+one bar at a time, called on data ending at *t* with its output taken as the decision at *t*.
+The full panel's output is then never compared with the causal reference. A per-bar result
+written as an array or a positional Series, such as `x.shift(-1).to_numpy()`, would pass that
+way while leaking the next bar when it is computed once over the whole history and read row by
+row. Such a result's labels change with the number of bars it is handed, so in cross-section
+mode, chosen or passed, an output whose labels change from one call to the next is refused,
+unless they are all columns of the first panel (assets that drop in and out).
+
 A panel output must be indexed by the panel's own bars. A result indexed by other dates, for
 example month-ends from a `resample`, is not supported: `"panel"` refuses it when no label is a
-bar and reads NaN for the bars it lacks, and `"auto"` reads it as a cross section, which catches
-only leaks through retained state. Return the result on the panel's bars before checking it.
+bar and reads NaN for the bars it lacks, and `"auto"` reads a Series of them as a cross section,
+which is refused as soon as a new month-end label appears in the bars the check hands in.
+Return the result on the panel's bars before checking it.
+
+In panel mode, a full-panel output that has no row for a check bar is handled in one of two
+ways, when the output computed on data ending at that bar did have one. If the full output also
+has no row for any earlier bar, it holds only its last bars (`.tail(k)`), and the check refuses
+it as an output-shape error rather than reporting look-ahead. If it does have earlier rows, the
+missing row fails `causality`: which rows the function returns depends on later bars.
 
 ## Geometry
 
@@ -139,7 +171,9 @@ A failed check is a result, not an exception. `CausalityCheckError` (a `ValueErr
 check could not be run: the panels are unsorted or misaligned, the panel is too short, the
 function raised (its exception is chained as `__cause__`, and the message names the call and
 the bar it ended at), or it returned something that cannot be compared (text, duplicate
-labels, a frame where one value per asset was expected). `assert_causal` raises
+labels, a frame where one value per asset was expected, an output whose shape `"auto"` cannot
+read without guessing, a cross section whose labels change with the bars handed in, or a panel
+output that holds only its last bars). `assert_causal` raises
 `LookaheadDetected`, an `AssertionError` that carries the report as `.report`.
 
 ## Stateful code: always pass a factory
@@ -176,6 +210,13 @@ not a proof.
 - **Look-ahead that only shows at other bars.** Only `check_window_bars` bars are compared.
   A leak confined to, say, month-end bars is missed unless one falls in the window. Widen the
   window or run the check at several cut points.
+- **A per-bar result with fixed labels, read as a cross section.** The label rule above catches a
+  per-bar array or Series whose length or dates grow with the panel. A fixed-length one, such
+  as `x.shift(-1).tail(30).to_numpy()`, has the same 30 positions at every call, so it is read
+  as one value per asset for the last bar and its rows are never compared. A monthly resample
+  is refused only once a new month-end appears among the bars handed in. If a function's
+  output is one value per bar, return it on the panel's bars and check it with
+  `output="panel"`.
 - **Isolation without a factory**, as above.
 - **Whether the panel is point-in-time.** The checker trusts the panels it is handed. A price
   history that was revised after the fact, or a universe chosen with hindsight (survivorship),
