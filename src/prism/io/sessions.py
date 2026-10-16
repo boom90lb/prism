@@ -327,3 +327,34 @@ def previous_session(date: dt.date) -> dt.date:
     raise SessionTableRangeError(
         f"no session before {date.isoformat()} within the bundled table (starts {COVERAGE_START.isoformat()})"
     )
+
+
+# --------------------------------------------------------------------------
+# The rebalance grid
+# --------------------------------------------------------------------------
+
+#: Session 0 of the rebalance grid: the first session of 2006 (January 2 was
+#: the observed New Year's Day closure). A grid position counts sessions from
+#: here, so it depends on this table and on nothing else: every deployment
+#: computes the same position for the same date, and a component scheduled at
+#: ``(grid_position - offset) % every == 0`` refreshes on the same sessions
+#: wherever and whenever it started. The epoch is fixed; widening the table to
+#: earlier years gives those years negative positions and moves none of these.
+GRID_EPOCH = dt.date(2006, 1, 3)
+
+_EPOCH_INDEX = _SESSIONS.index(GRID_EPOCH)
+_GRID_POSITIONS: dict[dt.date, int] = {date: number - _EPOCH_INDEX for number, date in enumerate(_SESSIONS)}
+
+
+def grid_position(date: dt.date) -> int:
+    """The number of sessions from ``GRID_EPOCH`` to the session ``date``; the epoch itself is 0.
+
+    Raises :class:`NotASessionError` for a covered date the exchange does not
+    trade, because a closed day has no place on a session grid, and
+    :class:`SessionTableRangeError` outside the table.
+    """
+    _require_covered(date)
+    position = _GRID_POSITIONS.get(date)
+    if position is None:
+        raise NotASessionError(f"{date.isoformat()} is not a session ({status(date)}); it has no grid position")
+    return position
