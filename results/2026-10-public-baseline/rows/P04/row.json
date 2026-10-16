@@ -1,0 +1,190 @@
+{
+  "code_commit": "47a42c2fd73c384d0e909771b855f646130493dc",
+  "config_id": "ebf631a7c673c2908adfb1833901f2a4b16a4955d41e5fd16ac8e6e9123fe741",
+  "data_id": "bedf8c4c0f0c2195ce5aace938f4ad38e23e6b69b57075080073004692d46eef",
+  "engine": {
+    "final_cash": 138814.424802228,
+    "max_stale_marks": 1,
+    "n_decision_bars": 51,
+    "n_events_applied": 0,
+    "n_fills": 5156,
+    "n_orders": 5156,
+    "pending_orders_at_end": 0
+  },
+  "executable_return": "next_open_fill_marked_close_to_close",
+  "fill_model": "full_next_open",
+  "fold_table_sha256": "59ddc263643508417a5b21cb3acd8f8a43df2cc76702f271db94c7e0696de476",
+  "kind": "new",
+  "mechanics": {
+    "held_gross_max": 1.465604690401444,
+    "held_gross_sessions_above_ceiling": 0,
+    "n4": {
+      "absolute_tolerance": 1e-06,
+      "identity": "E_t - E_t-1 = held_t-1 * (mark_t - mark_t-1) + fills * (mark_t - fill_price) + event equity - trade cost - holding cost",
+      "max_abs_residual": 1.0618350643198937e-10,
+      "n_sessions": 1620,
+      "n_unmarked_holdings": 0,
+      "pass": true,
+      "relative_tolerance": 1e-09,
+      "worst_bar": "2023-06-07"
+    },
+    "pass": true,
+    "scale_fallback_reasons": {},
+    "scale_fallbacks": 0,
+    "scale_fallbacks_above_bound": 0,
+    "target_gross_max": 1.3318952276396798,
+    "target_gross_within_ceiling": true
+  },
+  "memory_after": {
+    "peak_mb": 568.17578125,
+    "rss_mb": 528.19140625
+  },
+  "memory_before": {
+    "peak_mb": 207.4375,
+    "rss_mb": 199.03125
+  },
+  "record_path": "/home/b90/prism/.worktrees/lane-engine/results/run-939897d0b2f245c7/record.json",
+  "record_sha256": "4a36ebd3bbc668a30170a5b3f113e49371db3c4ae7a775e5332c8ab6dab0d62b",
+  "row": "P04",
+  "run_id": "run-939897d0b2f245c7",
+  "seconds": 57.2003653049469,
+  "sizing": {
+    "base_book": "per declared component: the mean of its holding tranches' unscaled sub-targets (an untranched component's own sub-target), held at constant weights close to close, gross of costs, weights at the prior close only (prism.portfolio.vol_scale.base_book_returns); built from this run's own decisions, so it has no returns before the first test bar",
+    "fallback_reasons": {
+      "decision_bar_not_last_bar": 0,
+      "degenerate_sigma": 0,
+      "insufficient_returns": 0,
+      "zero_returns": 0
+    },
+    "n_decisions": 51,
+    "plans": [
+      "momentum"
+    ],
+    "rule": {
+      "annualization_bars": 252,
+      "lookback_bars": 126,
+      "max_gross": 2.0,
+      "max_scale": 2.0,
+      "max_zero_return_fraction": 0.05,
+      "rule": "constant_vol",
+      "target_vol": 0.12
+    },
+    "scored_sessions": {
+      "at_cap_fraction": 0.0,
+      "ceiling_sessions": 0,
+      "gross_max": 1.465604690401444,
+      "long_over_equity_mean": 0.5344111679083648,
+      "n": 1056,
+      "n_scaled": 1052,
+      "scale_max": 1.3318952276396798,
+      "scale_mean": 1.0679896699812883,
+      "scale_min": 0.6473439630174774,
+      "sleeve_fraction_mean": 0.4455888320916353,
+      "target_gross_max": 1.3318952276396798
+    },
+    "sleeve_buffer": 0.02,
+    "status_counts": {
+      "fallback": 0,
+      "ok": 45,
+      "warmup": 6
+    }
+  },
+  "specification": {
+    "evaluation": {
+      "capital": 100000.0,
+      "cost_refresh": "fold",
+      "decision_coupling": "account_state",
+      "engine": "canonical",
+      "fill_model": "full_next_open",
+      "fold_portfolio": "carry",
+      "partition": null,
+      "scored_last": "2026-06-12",
+      "share_increment": 1.0,
+      "visibility_mode": "research_vintage"
+    },
+    "row": "P04",
+    "specification": {
+      "construction": {
+        "band": {
+          "mode": "off"
+        },
+        "eligibility_exit": "reduce_only",
+        "kind": "heuristic",
+        "max_gross": 2.0,
+        "max_symbol_abs_weight": 0.1,
+        "participation": {
+          "base": "initial_capital",
+          "floor_dollars": 0.0,
+          "max_participation": 0.05,
+          "statistic": "median",
+          "window_bars": 20
+        },
+        "spread": {
+          "mode": "bucket"
+        },
+        "step_order": "construct_band_cap_participation"
+      },
+      "policy": {
+        "costs": "examples/reference/costs/retail_v3.toml",
+        "execution": "examples/reference/profiles/execution_alpaca.toml",
+        "monitoring": "examples/reference/policies/monitoring.toml",
+        "profile": "examples/reference/profiles/experiment_v1.toml",
+        "recovery": "examples/reference/policies/recovery.toml"
+      },
+      "sizing": {
+        "annualization_bars": 252,
+        "lookback_bars": 126,
+        "max_gross": 2.0,
+        "max_scale": 2.0,
+        "max_zero_return_fraction": 0.05,
+        "rule": "constant_vol",
+        "target_vol": 0.12
+      },
+      "strategy": {
+        "combination": "position_space",
+        "components": [
+          {
+            "horizon_bars": 21,
+            "id": "momentum",
+            "params": {
+              "horizon_bars": 21,
+              "lookback_bars": 252,
+              "skip_bars": 21
+            },
+            "path": "prism.signal.momentum_node:MomentumSignalNode",
+            "phase_offset_bars": 17,
+            "to_weights": "decile_long_short",
+            "to_weights_params": {
+              "decile": 0.1,
+              "max_gross": 1.0,
+              "max_symbol_abs_weight": 0.1
+            },
+            "tranches": 1,
+            "update_every_bars": 21,
+            "valid_for_bars": 21,
+            "weight": 1.0
+          }
+        ],
+        "eligibility": {
+          "dollar_volume_window": 20,
+          "exclude_asset_classes": [],
+          "listing_seasoning_bars": 0,
+          "membership_required": true,
+          "min_median_dollar_volume": 1000000.0,
+          "min_price": 5.0,
+          "return_history_bars": 252
+        },
+        "name": "public_baseline_v1:P04",
+        "renormalize": false,
+        "universe_index": "sp500"
+      }
+    }
+  },
+  "specification_sha256": "e858311bce97c14d35a5924e4fb0c347833a3c64ab340e7e72bfdd8e1c572d30",
+  "started_at": 1792153131.2489555,
+  "trial_log": "/home/b90/prism/.worktrees/lane-engine/trials/public_baseline_v1.jsonl",
+  "warnings": [
+    "accounting_engine=canonical, decision_coupling=account_state: shares are the state, fills happen at the next open under the declared [fills] policy, holding costs accrue per bar and events are applied on their effective dates. Each decision is constructed inside the simulation against the marked equity and the marked position book of its own bar: the participation restriction is measured on trade dollars over dollar volume from that equity, batch rounding rounds at the per-sid increment against it, and the reduce-only box is written on the held position (\u00a73.7, \u00a73.8).",
+    "the cost stack declares dollar_volume.spread_bucket.refresh='decision' and this run was asked for cost_refresh='fold'; the run's cadence is what was applied, and each fold's spread was bucketed from that fold's own formation window (\u00a73.8)"
+  ]
+}

@@ -1,0 +1,123 @@
+id = "public_baseline_v1"
+source = "registrations/2026-10-public-baseline.toml"
+timezone = "America/New_York"
+convention = "inclusive_session_dates"
+
+[[fold]]
+index = 0
+formation_start = 2020-12-31
+formation_end = 2022-03-28
+test_start = 2022-03-29
+test_end = 2022-06-28
+
+[[fold]]
+index = 1
+formation_start = 2021-04-05
+formation_end = 2022-06-28
+test_start = 2022-06-29
+test_end = 2022-09-27
+
+[[fold]]
+index = 2
+formation_start = 2021-07-02
+formation_end = 2022-09-27
+test_start = 2022-09-28
+test_end = 2022-12-27
+
+[[fold]]
+index = 3
+formation_start = 2021-10-01
+formation_end = 2022-12-27
+test_start = 2022-12-28
+test_end = 2023-03-29
+
+[[fold]]
+index = 4
+formation_start = 2021-12-31
+formation_end = 2023-03-29
+test_start = 2023-03-30
+test_end = 2023-06-29
+
+[[fold]]
+index = 5
+formation_start = 2022-04-01
+formation_end = 2023-06-29
+test_start = 2023-06-30
+test_end = 2023-09-28
+
+[[fold]]
+index = 6
+formation_start = 2022-07-05
+formation_end = 2023-09-28
+test_start = 2023-09-29
+test_end = 2023-12-28
+
+[[fold]]
+index = 7
+formation_start = 2022-10-03
+formation_end = 2023-12-28
+test_start = 2023-12-29
+test_end = 2024-04-01
+
+[[fold]]
+index = 8
+formation_start = 2023-01-03
+formation_end = 2024-04-01
+test_start = 2024-04-02
+test_end = 2024-07-01
+
+[[fold]]
+index = 9
+formation_start = 2023-04-04
+formation_end = 2024-07-01
+test_start = 2024-07-02
+test_end = 2024-09-30
+
+[[fold]]
+index = 10
+formation_start = 2023-07-06
+formation_end = 2024-09-30
+test_start = 2024-10-01
+test_end = 2024-12-30
+
+[[fold]]
+index = 11
+formation_start = 2023-10-04
+formation_end = 2024-12-30
+test_start = 2024-12-31
+test_end = 2025-04-02
+
+[[fold]]
+index = 12
+formation_start = 2024-01-04
+formation_end = 2025-04-02
+test_start = 2025-04-03
+test_end = 2025-07-03
+
+[[fold]]
+index = 13
+formation_start = 2024-04-05
+formation_end = 2025-07-03
+test_start = 2025-07-07
+test_end = 2025-10-02
+
+[[fold]]
+index = 14
+formation_start = 2024-07-08
+formation_end = 2025-10-02
+test_start = 2025-10-03
+test_end = 2026-01-02
+
+[[fold]]
+index = 15
+formation_start = 2024-10-04
+formation_end = 2026-01-02
+test_start = 2026-01-05
+test_end = 2026-04-06
+
+[[fold]]
+index = 16
+formation_start = 2025-01-06
+formation_end = 2026-04-06
+test_start = 2026-04-07
+test_end = 2026-06-12
