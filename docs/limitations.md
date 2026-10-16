@@ -275,16 +275,18 @@ long public return series rather than by an in-house backtest
 - **The approval figure.** Tracking correlation 0.895 with the scaled public momentum series ×
   post-publication Sharpe 0.465 (2015-04 to 2026-07, t 1.56 over 11.3 years) − cost drag 0.047 =
   0.368, against a T-bill benchmark of 0.351 computed as if idle cash earns nothing. The margin is
-  0.018 Sharpe, which the results report puts at about half a percent a year over T-bills (its
-  section 3).
+  0.018 Sharpe, about 0.2 percent a year at the 12 percent target volatility. The results report's
+  "about half a percent a year" over T-bills (its section 3) is on another basis: the 4.7 percent a
+  year that 0.368 gives at the book's 12.7 percent realized volatility, less 4.2 percent bills.
 - **It rests on seven months.** Cut at 2025-12, the post-publication Sharpe is 0.401 and the figure
   would be 0.312, below the benchmark (`docs/fundamentals_read_2026-09-24.md`; erratum E6). The
   pinned Ken French file has since been replaced by a newer vintage, so the registered inputs
   cannot be downloaded again.
 - **The margin depends on what idle cash earns.** Restated at the provisional 3.3 percent broker
   cash yield, the benchmark is 0.224 and the margin about 0.14 Sharpe, roughly 1.7 percent a year
-  (`docs/hurdle_restatement_2026-09-30.md`). That yield is a listed rate, not one taken from an
-  account statement.
+  at 12 percent volatility, or about 2.0 percent on the results report's 12.7 percent basis, its
+  addendum's "about 2%" (`docs/hurdle_restatement_2026-09-30.md`). That yield is a listed rate,
+  not one taken from an account statement.
 - **It is not traded.** The paper account trades the unscaled momentum book. Arming the scaling
   rule, and replacing the crash-conditional sizing rule `SPEC.md` section 6 still names, are
   decisions reserved to the account owner. Its stop rule runs on later data; the first forward
