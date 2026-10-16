@@ -102,6 +102,7 @@ from prism.live.broker import (
     OrderRejected,
     transmits_to_venue,
 )
+from prism.live.buying_power import fit_opening_orders
 from prism.live.lockfile import (
     DEFAULT_MAX_HEARTBEAT_AGE_SECONDS,
     LockHandle,
@@ -1058,6 +1059,7 @@ def decide_and_submit(
     now: datetime | None = None,
     panel: Mapping[str, Any] | None = None,
     components: Sequence[ComponentState] | None = None,
+    buying_power_check: bool = False,
 ) -> list[Order]:
     """One decision step: reconcile → decide once → write ahead → submit.
 
@@ -1097,6 +1099,14 @@ def decide_and_submit(
     book's tranche schedule and sub-targets advance atomically with the decision
     they produced (:mod:`prism.live.tranches`). ``None`` leaves them as loaded;
     a resumed decision never rewrites them.
+
+    ``buying_power_check`` (default off: nothing is read and nothing changes)
+    reads the venue's buying power once for a new decision, after sizing and
+    before authorization, the order guard and the write-ahead persist. When the
+    orders that open or extend positions need more than it, each opening
+    quantity is scaled down by one factor and the shortfall is logged at
+    WARNING (:func:`prism.live.buying_power.fit_opening_orders`); a batch that
+    fits is unchanged. A resumed decision is not re-checked.
     """
     states, action_context, freshness_by_sid = apply_freshness(freshness, states, action_context)
     gate = authorize_session(ctx, intent, states=states, action_context=action_context, now=now)
@@ -1142,6 +1152,15 @@ def decide_and_submit(
                 whole_shares=whole_shares,
                 order_id_prefix=ctx.order_id_prefix,
             )
+            if buying_power_check:
+                orders = _fit_buying_power(
+                    ctx,
+                    orders,
+                    state.positions,
+                    decision_bar,
+                    whole_shares=whole_shares,
+                    min_order_notional=min_order_notional,
+                )
             if gate is not None:
                 # The batch is authorized as a unit, at write-ahead time, before the
                 # persist and before any submission (§3.10).
@@ -1179,6 +1198,43 @@ def decide_and_submit(
         # persisted set unchanged on every ordinary pass.
         submit_pending(ctx, state, state.open_pending_orders, gate=gate, now=now)
         return list(state.pending_orders)
+
+
+def _fit_buying_power(
+    ctx: LiveLoopContext,
+    orders: list[Order],
+    positions: Mapping[str, float],
+    decision_bar: str,
+    *,
+    whole_shares: bool,
+    min_order_notional: float,
+) -> list[Order]:
+    """The buying-power pre-check of :func:`decide_and_submit`: one venue read, then the fit."""
+    available = float(ctx.broker.buying_power())
+    fitted, fit = fit_opening_orders(
+        orders, positions, available, whole_shares=whole_shares, min_order_notional=min_order_notional
+    )
+    if fit.binding:
+        logger.warning(
+            "BUYING POWER: the opening orders of %s need %.2f of buying power and the venue reports %.2f; every "
+            "opening quantity is scaled by %.4f (%d order(s) scaled, %d dropped, %.2f opening after the fit). "
+            "Closing orders are unchanged. The book will sit below its target until buying power allows",
+            decision_bar,
+            fit.required,
+            fit.buying_power,
+            fit.factor,
+            len(fit.scaled),
+            len(fit.dropped),
+            fit.fitted,
+        )
+    else:
+        logger.info(
+            "buying power %s: opening orders need %.2f of the venue's %.2f; nothing scaled",
+            decision_bar,
+            fit.required,
+            fit.buying_power,
+        )
+    return fitted
 
 
 def submit_pending(

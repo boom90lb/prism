@@ -54,6 +54,12 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 
 from prism.io import sessions
+from prism.live.cash_holding import (
+    DEFAULT_BAND,
+    DEFAULT_BUFFER,
+    CashHolding,
+    CashHoldingError,
+)
 from prism.live.daily import EXCHANGE_TZ, DailyBookConfig
 from prism.live.safety import SafetyConfig
 from prism.portfolio.vol_scale import VolScaleRule
@@ -620,3 +626,57 @@ def resolve_tranches(
         )
     return count
 
+
+
+# ------------------------------------------------------------- cash holding
+
+
+def resolve_cash_holding(
+    symbol: str | None,
+    *,
+    buffer: float | None,
+    band: float | None,
+    book: str,
+    universe: Sequence[str],
+    profile: "RiskProfile | None" = None,
+) -> CashHolding | None:
+    """The T-bill holding ``--cash-sleeve`` names, or None when it is not given.
+
+    The holding sits beside the momentum book only, whose membership mask keeps
+    the ETF out of the ranked cross-section. It adds a long position of up to
+    the idle equity, which no risk profile's gross pin allows for, so it is
+    refused under every ``--profile``. The ETF may not be in the configured
+    universe: it is priced, never ranked. ``--cash-sleeve-buffer`` and
+    ``--cash-sleeve-band`` mean nothing without it. Each refusal is a
+    ``SystemExit`` raised before the writer lock and any venue read.
+    """
+    if symbol is None:
+        named = (("--cash-sleeve-buffer", buffer), ("--cash-sleeve-band", band))
+        given = [name for name, value in named if value is not None]
+        if given:
+            raise SystemExit(f"{' and '.join(given)} set the T-bill holding and need --cash-sleeve SYMBOL")
+        return None
+    if book != "momentum":
+        raise SystemExit(
+            f"--cash-sleeve applies to --book momentum only (got {book!r}): that book keeps the ETF out of the ranked "
+            "cross-section"
+        )
+    if profile is not None:
+        raise SystemExit(
+            f"--cash-sleeve is refused with --profile {profile.profile_id}: profiles pin the book's gross and only "
+            "tighten, and the holding adds a long position of up to the idle equity"
+        )
+    try:
+        holding = CashHolding(
+            symbol=symbol,
+            buffer=DEFAULT_BUFFER if buffer is None else buffer,
+            band=DEFAULT_BAND if band is None else band,
+        )
+    except CashHoldingError as exc:
+        raise SystemExit(f"--cash-sleeve: {exc}") from None
+    if holding.symbol in {str(s).strip().upper() for s in universe}:
+        raise SystemExit(
+            f"--cash-sleeve {holding.symbol} is in the configured universe; the T-bill holding is priced and never "
+            "ranked, so it cannot also be a scored name"
+        )
+    return holding

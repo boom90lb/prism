@@ -52,6 +52,12 @@ and nothing important may live only in memory:
   grid, built one per grid date (staged entry) and exited one per grid date
   (wind-down), their states persisted in ``LoopState.components``. Off unless
   ``run_daily_cycle(tranches=...)`` is given a count above one.
+* ``cash_holding`` — idle own equity above a cash buffer held in a T-bill ETF
+  beside the decile book, set every session within a band and the per-order
+  bound. Off unless ``run_daily_cycle(cash_holding=...)`` is given.
+* ``buying_power`` — the pre-check that scales a decision's opening orders
+  down together when they need more than the venue's buying power. Off unless
+  ``decide_and_submit(buying_power_check=True)``.
 * ``regime_step`` — the SPEC §7.7 regime step: per-cycle §7.5 telemetry
   through the ``prism.regime.fetch`` adapters, read by ``daily`` every
   session into the regime ledger (docs/regime_step.md); the de-gross

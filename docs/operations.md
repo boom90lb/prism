@@ -718,3 +718,65 @@ uses.
   book, are owner acts (SPEC §6). The replay harness takes `tranches` on the
   epoch grid (base 0); it takes no seeded phase. `prism-doctor` has no tranche
   check yet.
+
+## 2026-10-16: a T-bill ETF holding for idle equity and a buying-power check (off by default)
+
+`python -m prism.scripts.paper_loop --book momentum --cash-sleeve SGOV` holds the
+equity the stock long side does not use, less a 2% cash buffer, in a T-bill ETF
+beside the decile book. The target is `max(0, 1 − buffer − L)` of equity, where
+`L` is the stock long side of the book the cycle decided (after the caps, the
+band and the participation gate). Short-sale proceeds are collateral and are not
+invested; only idle own equity is. At the recorded mean volatility scale (long
+side about 0.54 of equity) the holding is about 0.44 of equity; at a scale of
+1.96 or more it is zero. Code: `prism.live.cash_holding`, applied in
+`prism.live.daily.run_daily_cycle(cash_holding=...)`.
+
+- **Not ranked.** The ETF is fetched and priced every session whether held or
+  not (`resolve_fetch_universe(..., unscored=...)`, and a held position must
+  price), and the momentum membership mask keeps it out of the ranked
+  cross-section, so the stock book is the one decided without it. A symbol in
+  the universe file is refused.
+- **When it trades.** On every session that is not halted, refresh or not: the
+  holding is left alone while it is within the band (default 0.02 of equity) of
+  its target and otherwise moved to the target. A target of zero sells any
+  holding, even inside the band, because the ETF would then be held on a margin
+  debit. `--wind-down` sets the target to zero, so the holding is sold with the
+  tranches.
+- **Order size.** One session's change is at most the per-order bound
+  (`--max-order-fraction`, default 2 × the per-name cap = 20% of equity) less
+  one share, so the order passes that guard after whole-share rounding. A 0.44
+  holding is therefore built over three sessions (0.199, 0.199, then the rest
+  on 100,000 at $100 a share). During a 21-tranche staged entry the long side
+  is small at first, so the holding is built toward a larger target and then
+  trimmed as the tranches fill. An account where one share exceeds the bound is
+  refused.
+- **Record.** `DailyCycleResult.cash_holding` and one log line every session;
+  each refresh row of `targets.jsonl` carries the decision under
+  `cash_holding` (long side, held weight, target, applied weight, step bound,
+  action `hold` / `rebalance` / `bounded`).
+- **Stopping it.** Pass `--cash-sleeve-buffer 1` (target zero) until the ETF is
+  sold, or run `--wind-down`. Simply removing `--cash-sleeve` while the ETF is
+  held makes the next refresh exit it in one order, which the per-order bound
+  refuses: the session stops before anything is persisted.
+- **Distributions.** Alpaca paper accounts do not credit dividends, so the paper
+  NAV omits the ETF's monthly distributions. Their histories are in
+  `data/distributions/SGOV.csv` and `BIL.csv` (issuer files captured
+  2026-10-16, provenance beside each), for forward reads to add back.
+
+`--buying-power-check` (default off) reads the venue's buying power before a
+new decision is persisted. When the orders that open or extend positions need
+more notional than that, every opening quantity is scaled down by one factor
+(rounded down to whole shares) and a `BUYING POWER` warning names the
+shortfall; closing orders are unchanged, and a batch that fits is unchanged.
+Alpaca states buying power as notional (twice the excess equity in a 2x
+margin account), so this is the same test as the 50% initial requirement fitting
+the excess. For a 4x account Alpaca reports intraday buying power, which can
+exceed what the account may hold overnight; the check does not see that case.
+Code: `prism.live.buying_power`, called from `decide_and_submit`.
+
+Neither is armed. `ops/paper_loop_nightly.sh` passes neither flag, and with both
+off the cycle decides exactly as before (tests compare every result field and
+ledger byte). The holding is refused under any `--profile` and with a book
+other than momentum. Holding the ETF changes the live book and is an owner act
+(SPEC §6). The replay harness takes neither, and `prism-doctor` has no holding
+check yet.

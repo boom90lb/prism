@@ -89,6 +89,25 @@ sessions; it must start on a flat account and in its own run directory.
 ``--wind-down`` sets each tranche flat on its own date, so the book exits over
 21 sessions. With ``--vol-scale`` each tranche is scaled at its own refresh.
 
+**The T-bill holding.** ``--cash-sleeve SGOV`` (default none) holds the equity
+the stock long side does not use, less a 2% cash buffer, in a T-bill ETF
+(``prism.live.cash_holding``): ``max(0, 1 - buffer - L)`` of equity, ``L`` the
+long side of the decided book. The ETF is fetched and priced but never ranked,
+it trades only when it has drifted more than the band (2% of equity) from that
+target, and one session's change stays inside the per-order bound
+(``--max-order-fraction``, 20% of equity by default), so the holding is built
+over a few sessions. ``--wind-down`` sells it with the book. It needs ``--book
+momentum`` and is refused under any ``--profile``. Not armed by the nightly
+wrapper. Removing the flag while the ETF is held makes the next refresh exit
+it in one order, which the per-order bound refuses: lower it first with
+``--cash-sleeve-buffer 1`` (target zero), or under ``--wind-down``.
+
+**The buying-power check.** ``--buying-power-check`` (default off) reads the
+venue's buying power before each new decision is persisted and, when the
+orders that open or extend positions need more, scales them down together and
+says so at WARNING (``prism.live.buying_power``). Alpaca reports intraday
+buying power for a 4x account, which can exceed overnight capacity.
+
 Fit policy (explicit, §7.7 model staleness): the signal is refit every run
 on the full trailing panel up to the decision bar. Causal for live use —
 fitting on bars ≤ *t* to decide at *t* sees no future — and at paper-book
@@ -144,6 +163,7 @@ from prism.scripts.paper_books import (
     build_safety_config,
     default_panel_start,
     last_published_session,
+    resolve_cash_holding,
     resolve_cli_universe,
     resolve_tranches,
     resolve_vol_scale,
@@ -252,6 +272,38 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="With --tranches 3 or 21: set each tranche flat on its own refresh date instead of re-scoring it, so "
         "the book exits one tranche per date over one cycle. Pass the same --tranches and other flags the book "
         "runs with. The kill switch still stops everything at once.",
+    )
+    parser.add_argument(
+        "--cash-sleeve",
+        default=None,
+        metavar="SYMBOL",
+        help="Hold idle own equity in this T-bill ETF (e.g. SGOV; BIL). Default none (unchanged behaviour). The "
+        "target is max(0, 1 - buffer - L) of equity, L the stock long side of the decided book; the ETF is "
+        "priced, never ranked, rebalanced only when it drifts more than the band from the target, and changed by "
+        "at most the per-order bound (--max-order-fraction) less one share per session. --wind-down sells it. "
+        "Requires --book momentum; refused with any --profile and with a symbol in the universe.",
+    )
+    parser.add_argument(
+        "--cash-sleeve-buffer",
+        type=float,
+        default=None,
+        help="With --cash-sleeve: equity kept as cash beside the ETF, as a fraction of equity (default 0.02). "
+        "1 sets the target to zero, which sells the holding over a few sessions.",
+    )
+    parser.add_argument(
+        "--cash-sleeve-band",
+        type=float,
+        default=None,
+        help="With --cash-sleeve: the drift from the target, in weight units, below which the ETF is not traded "
+        "(default 0.02).",
+    )
+    parser.add_argument(
+        "--buying-power-check",
+        action="store_true",
+        help="Before a new decision is persisted, compare the notional of the orders that open or extend positions "
+        "with the venue's buying power and, when they do not fit, scale them down together (WARNING; closing "
+        "orders unchanged). Default off (unchanged behaviour). For a 4x account Alpaca reports intraday buying "
+        "power, which can exceed what the account may hold overnight.",
     )
     parser.add_argument(
         "--max-missing",
@@ -516,6 +568,15 @@ def main(argv: list[str] | None = None) -> int:
         wind_down=args.wind_down,
         profile=resolved_profile,
     )
+    # The T-bill holding's refusals (book, profile, a ranked symbol), likewise.
+    cash_holding = resolve_cash_holding(
+        args.cash_sleeve,
+        buffer=args.cash_sleeve_buffer,
+        band=args.cash_sleeve_band,
+        book=args.book,
+        universe=symbols,
+        profile=resolved_profile,
+    )
 
     # One writer per run directory: state.json and the ledgers are shared with
     # the morning sweep and any manual invocation, and the write-ahead protocol
@@ -567,7 +628,9 @@ def main(argv: list[str] | None = None) -> int:
             if args.rebalance_phase == "seeded"
             else None
         )
-        universe = resolve_fetch_universe(symbols, broker, state=store.load())
+        # The T-bill holding is fetched and priced whether held or not, and never ranked.
+        unscored = () if cash_holding is None else (cash_holding.symbol,)
+        universe = resolve_fetch_universe(symbols, broker, state=store.load(), unscored=unscored)
         score_universe = list(universe.score)
         symbols = list(universe.fetch)
         valuation_extras = list(universe.valuation_only)
@@ -591,7 +654,7 @@ def main(argv: list[str] | None = None) -> int:
             symbols,
             start_date=start_date,
             max_missing=max_missing,
-            required=sorted(universe.held),
+            required=sorted(set(universe.held) | set(unscored)),
         )
         logger.info(
             "panels: %d bars x %d symbols through %s (source=%s)",
@@ -640,6 +703,16 @@ def main(argv: list[str] | None = None) -> int:
                 0 if phase_offset is None else phase_offset,
                 "; WIND-DOWN: each tranche goes flat on its own date" if args.wind_down else "",
             )
+        if cash_holding is not None:
+            logger.info(
+                "T-bill holding: %s, target max(0, 1 - %.2f - long side), band %.2f%s",
+                cash_holding.symbol,
+                cash_holding.buffer,
+                cash_holding.band,
+                "; WIND-DOWN: target zero" if args.wind_down else "",
+            )
+        if args.buying_power_check:
+            logger.info("buying-power check: on (opening orders fitted inside the venue's buying power)")
         # Valuation-only extras are masked ineligible (momentum only): NaN-scored
         # names get an explicit 0.0 from the decile construct (its explicit-flat
         # pin), so a departed-but-held name exits at the next refresh and cannot
@@ -728,6 +801,8 @@ def main(argv: list[str] | None = None) -> int:
             vol_scale=vol_scale,
             tranches=tranches,
             wind_down=args.wind_down,
+            cash_holding=cash_holding,
+            buying_power_check=args.buying_power_check,
         )
 
     held = result.target_weights[result.target_weights.abs() > 1e-9]

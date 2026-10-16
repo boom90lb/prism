@@ -49,7 +49,10 @@ Cadence and ordering (one call per session, after the close):
    ``<run_dir>/sizing.jsonl``, and constructs the scaled book. A tranched
    book (``tranches > 1``, default off; :mod:`prism.live.tranches`) decides on
    every session one of its tranches is due, re-scoring only the due tranches
-   and composing the account target from every tranche's sub-targets.
+   and composing the account target from every tranche's sub-targets. With a
+   T-bill holding (``cash_holding``, default off; :mod:`prism.live.cash_holding`)
+   the idle equity above a cash buffer is then set in an ETF on every session
+   that is not halted, within a band and a per-order bound.
 5. **Decide/submit.** ``decide_and_submit`` persists the decision before
    the first submit and submits idempotently (N2 crash window).
 6. **Monitor.** After the mark-to-market NAV is appended to the equity
@@ -95,6 +98,13 @@ from prism.assembly import (
 from prism.composition import ComponentPlan, due_on_schedule
 from prism.io import sessions
 from prism.live.broker import Broker, Fill, Order, transmits_to_venue
+from prism.live.cash_holding import TARGETS_LEDGER_KEY as CASH_HOLDING_KEY
+from prism.live.cash_holding import (
+    CashHolding,
+    apply_cash_holding,
+    log_decision,
+    require_cash_holding_inputs,
+)
 from prism.live.loop import (
     LiveLoopContext,
     append_concordance_ledger,
@@ -240,6 +250,9 @@ class DailyCycleResult:
     # count, base grid offset, wind-down flag, the tranches due this session,
     # how many have been built and any withheld entries. None for the single book.
     tranches: dict | None = None
+    # The T-bill holding's decision this session (``prism.live.cash_holding``):
+    # None when the holding is off or the session halted.
+    cash_holding: dict | None = None
 
 
 @dataclass(frozen=True)
@@ -253,10 +266,12 @@ class HeldUniverse:
 
     * ``score`` — the configured universe, the only names that may be *ranked*.
       A departed name must be able to leave the book but never re-enter it.
-    * ``valuation_only`` — held names outside ``score``. Fetched so they can be
-      marked and exited; masked out of scoring by the caller, where the decile
-      construct's explicit-flat pin turns them into exit orders at the next
-      refresh.
+    * ``valuation_only`` — held names outside ``score``, and the ``unscored``
+      names the caller asked to price (the T-bill holding). Fetched so they can
+      be marked, exited or sized; masked out of scoring by the caller, where the
+      decile construct's explicit-flat pin turns a held name outside ``score``
+      into an exit order at the next refresh unless a later step (the cash
+      holding) sets its weight.
     * ``fetch`` — ``score`` + ``valuation_only``, in that order.
     * ``held`` — the broker-truth position book (nonzero shares) the split was
       derived from. Every one of these names MUST come back priced, which is
@@ -274,6 +289,7 @@ def resolve_fetch_universe(
     broker: Broker,
     *,
     state: LoopState | None = None,
+    unscored: Sequence[str] = (),
 ) -> HeldUniverse:
     """Reconcile the configured universe against the broker's actual book.
 
@@ -294,23 +310,37 @@ def resolve_fetch_universe(
     never make a name *required* to price, because a position the venue has
     already closed must not be able to fail the fetch.
 
-    Raises only on an empty configured universe; a broker read that fails
-    raises from the broker (loudly, before any vendor call).
+    ``unscored`` (default empty, unchanged behaviour) names symbols to fetch and
+    price that are never ranked, whether held or not: the T-bill holding of
+    :mod:`prism.live.cash_holding`. They join ``valuation_only`` and are not
+    reported as outside names; a symbol that is also in the configured universe
+    is refused, since it cannot be both ranked and not.
+
+    Raises on an empty configured universe and on that overlap; a broker read
+    that fails raises from the broker (loudly, before any vendor call).
     """
     score = tuple(dict.fromkeys(str(s).strip().upper() for s in configured if str(s).strip()))
     if not score:
         raise ValueError("empty configured universe — nothing to score (N7)")
+    priced = {str(s).strip().upper() for s in unscored if str(s).strip()}
+    overlap = sorted(priced & set(score))
+    if overlap:
+        raise ValueError(
+            f"{overlap} are both in the configured universe and named unscored; a name is either ranked or "
+            "priced only, never both (N7)"
+        )
     held = {str(s): float(q) for s, q in broker.positions().items() if float(q) != 0.0}
     persisted = {str(s) for s, q in (state.positions if state is not None else {}).items() if float(q) != 0.0}
 
-    valuation_only = tuple(sorted((set(held) | persisted) - set(score)))
-    if valuation_only:
+    outside = tuple(sorted((set(held) | persisted) - set(score) - priced))
+    valuation_only = tuple(sorted(set(outside) | priced))
+    if outside:
         logger.warning(
             "%d held name(s) are outside the configured universe %s; fetching them for "
             "valuation/exit only (masked out of scoring, so they exit at the next refresh "
             "and cannot re-enter)",
-            len(valuation_only),
-            list(valuation_only),
+            len(outside),
+            list(outside),
         )
     if held and not persisted:
         # The 2026-07-23 class: a run directory with no memory of the account's
@@ -553,6 +583,8 @@ def run_daily_cycle(
     vol_scale: VolScaleRule | None = None,
     tranches: int = 1,
     wind_down: bool = False,
+    cash_holding: CashHolding | None = None,
+    buying_power_check: bool = False,
 ) -> DailyCycleResult:
     """Run one settle → mark → score → construct → decide/submit cycle.
 
@@ -668,6 +700,23 @@ def run_daily_cycle(
     holds an untranched book, and a first tranched decision on an account that
     holds positions. With ``tranches=1`` the cycle refuses a run directory that
     holds tranche states.
+
+    ``cash_holding`` (``None`` = off, bit-identical) holds the idle own equity in
+    a T-bill ETF (:mod:`prism.live.cash_holding`): on every session that is not
+    halted, after the book's target is decided, the ETF's weight is set to
+    ``max(0, 1 - buffer - L)``, ``L`` the stock long side of that target, when the
+    held weight is more than ``band`` away from it, in steps no larger than the
+    per-order bound of ``safety`` less one share. Under ``wind_down`` its target
+    is zero. A refresh row of the targets ledger carries the decision under
+    ``cash_holding``. The caller must fetch the ETF as a priced, unscored name
+    (``resolve_fetch_universe(..., unscored=...)``) and keep it out of the
+    signal's cross-section; the cycle refuses, before any state moves, a book
+    other than ``decile_neutral`` and a panel without a usable close for it.
+
+    ``buying_power_check`` (``False`` = off, bit-identical) has
+    :func:`prism.live.loop.decide_and_submit` fit the opening orders inside the
+    venue's buying power (:mod:`prism.live.buying_power`), scaling them down
+    together, loudly, when they do not fit.
     """
     if regime_gross_scale is not None and regime is None:
         raise ValueError(
@@ -691,6 +740,8 @@ def run_daily_cycle(
             regime_gross_scale=regime_gross_scale,
             targets_ledger=ctx.targets_ledger,
         )
+    if cash_holding is not None:
+        require_cash_holding_inputs(cash_holding, book=config.book, close=close)
     decision_bar = decision_bar or str(close.index[-1].date())
     if phase_offset is not None:
         _require_grid_schedule(phase_offset, config.decision_every, decision_bar)
@@ -833,6 +884,22 @@ def run_daily_cycle(
     else:
         targets = prev_weights  # hold the filled book: no decision this session
 
+    # 3c. The T-bill holding (default off): idle own equity above the buffer, set
+    # after the book's target on every session that is not halted.
+    cash_record: dict | None = None
+    if cash_holding is not None and halted is None:
+        targets, cash_decision = apply_cash_holding(
+            cash_holding,
+            targets,
+            prev_weights,
+            prices=prices,
+            equity=equity,
+            max_order_fraction=None if safety is None else safety.max_order_fraction,
+            wind_down=wind_down,
+        )
+        cash_record = cash_decision.to_row()
+        log_decision(cash_decision, decision_bar)
+
     # 4. Write-ahead decide and idempotent submit. Skipped entirely under a
     # halt — a persisted-but-unsubmitted decision would resume trading on the
     # next non-halted run, which is not what a kill switch means.
@@ -848,6 +915,8 @@ def run_daily_cycle(
                 **(_panel_provenance(panel_record) or {}),
                 TARGETS_LEDGER_KEY: targets_ledger_record(live_scale),
             }
+        if cash_record is not None and refresh:
+            panel_fields = {**(panel_fields or {}), CASH_HOLDING_KEY: cash_record}
         orders = decide_and_submit(
             ctx,
             decision_bar,
@@ -861,6 +930,7 @@ def run_daily_cycle(
             ),
             panel=panel_fields,
             components=None if tranche_decision is None else tranche_decision.components,
+            buying_power_check=buying_power_check,
         )
         logger.info(
             "decision %s: %d orders %s, equity %.2f, gross %.4f",
@@ -910,6 +980,7 @@ def run_daily_cycle(
             if tranche_session is None
             else tranche_session.record() if tranche_decision is None else tranche_decision.record
         ),
+        cash_holding=cash_record,
     )
 
 
