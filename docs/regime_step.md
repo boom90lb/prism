@@ -146,7 +146,7 @@ python -m prism.scripts.paper_loop --book momentum \
 `--regime` (default off) constructs `RegimeTelemetry.from_env()` — a missing
 `FRED_API_KEY` fails loud at startup, before any venue call: the operator
 armed the regime record, so a cycle without one must not run quietly. The
-nightly wrapper (`/home/b90/bin/prism_paper_loop_nightly.sh`) is not touched
+nightly wrapper (`~/bin/prism_paper_loop_nightly.sh`, a link to `ops/paper_loop_nightly.sh`) is not touched
 by this change; the integrator activates the flag there.
 
 ## 7. Evidence

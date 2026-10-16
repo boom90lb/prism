@@ -59,11 +59,11 @@ for promotion (§3.12). The certified reproduction is
 :mod:`prism.scripts.reproduce`, which is unchanged and still runs under
 ``historical_constant_weight``.
 
-Usage::
+Usage, from the repository root::
 
     python -m prism.scripts.engine_comparison \\
-        --recorded /home/b90/prism/results/demotion_b1 \\
-        --cache-dir /home/b90/prism/data --out engine_comparison.json
+        --recorded results/demotion_b1 \\
+        --cache-dir data --out engine_comparison.json
 """
 
 from __future__ import annotations
@@ -80,7 +80,13 @@ from prism.evaluate import CanonicalSettings, EvaluationResult, walk_forward_eva
 from prism.execution.cost_model import CostStack
 from prism.io.dataset import Dataset
 from prism.logging_utils import configure_logging
-from prism.scripts.reproduce import ARMS, FOLD_TABLE, FOLD_TABLE_SHA256, ReproductionError, execution_from_recorded
+from prism.scripts.reproduce import (
+    ARMS,
+    FOLD_TABLE,
+    FOLD_TABLE_SHA256,
+    ReproductionError,
+    execution_from_recorded,
+)
 from prism.scripts.reproduce import open_dataset as _open_dataset
 from prism.spec import load_spec
 from prism.validation.trials import CANONICAL_ENGINE, REPRODUCTION_ENGINE

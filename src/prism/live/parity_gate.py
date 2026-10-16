@@ -121,7 +121,7 @@ WHAT_WOULD_CLOSE_DECISION_PARITY: dict[str, Any] = {
     "bar_source": (
         "any source that can serve daily open and close bars for these dates offline. The live "
         "loop read them from Alpaca and persisted none, and the local store "
-        "(/home/b90/prism/data/store) holds 15 symbols with a latest bar of 2026-07-06, which "
+        "(<repo>/data/store) holds 15 symbols with a latest bar of 2026-07-06, which "
         "reaches neither the universe nor the dates. Restoring them means a vendor pull into the "
         "bar store, not a code change."
     ),

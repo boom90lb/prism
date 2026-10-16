@@ -6,8 +6,8 @@
 #
 # Setup (operator's act): create a topic on an ntfy server (ntfy.sh, or a
 # self-hosted one; the topic name is the only secret, so make it unguessable),
-# then put in $REPO/.env:
-#   PRISM_ALERT_CMD=/home/b90/prism/ops/alert_curl.sh
+# then put in <repo>/.env, where <repo> is the checkout's absolute path:
+#   PRISM_ALERT_CMD=<repo>/ops/alert_curl.sh
 #   PRISM_ALERT_URL=https://ntfy.sh/<topic>
 # and subscribe to the topic from a phone or desktop client.
 #

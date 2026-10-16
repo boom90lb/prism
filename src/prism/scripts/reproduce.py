@@ -33,15 +33,15 @@ Every arm runs with ``kind = "reproduction"``, which
 evidence: reproducing a recorded result answers no new research question and
 must not deflate anything.
 
-Usage::
+Usage, from the repository root::
 
     python -m prism.scripts.reproduce --case demotion_b1 \\
-        --recorded /home/b90/prism/results/demotion_b1 \\
-        --cache-dir /home/b90/prism/data
+        --recorded results/demotion_b1 \\
+        --cache-dir data
 
     python -m prism.scripts.reproduce --case trend_t0 \\
-        --recorded /home/b90/prism/results/trend_t0 \\
-        --cache-dir /home/b90/prism/data
+        --recorded results/trend_t0 \\
+        --cache-dir data
 
 The dataset is built once under ``<workspace>/data/frozen/<case>`` and reused;
 an import refuses rather than overwrites unless the directory is removed first,
