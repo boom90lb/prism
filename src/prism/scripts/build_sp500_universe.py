@@ -285,7 +285,7 @@ def main() -> None:
 
     universe_path = out_dir / f"{index}_pit_{args.asof}.txt"
     membership_path = out_dir / f"{index}_membership_{args.asof}.parquet"
-    write_universe_file(window, universe_path, asof=args.asof, source="wikipedia")
+    write_universe_file(window, universe_path, index=index, asof=args.asof, source="wikipedia")
     membership.to_parquet(membership_path)
     logger.info(
         "Wrote %d window-active members (of %d ever-members; %d intervals) -> %s",
@@ -324,7 +324,9 @@ def main() -> None:
         coverage_path = out_dir / f"{index}_coverage_{args.asof}.json"
         coverage_path.write_text(json.dumps(coverage.to_dict(), indent=2))
         resolved_path = out_dir / f"{index}_pit_resolved_{args.asof}.txt"
-        write_universe_file(coverage.resolved, resolved_path, asof=args.asof, source="wikipedia+twelvedata_resolved")
+        write_universe_file(
+            coverage.resolved, resolved_path, index=index, asof=args.asof, source="wikipedia+twelvedata_resolved"
+        )
         current_path = out_dir / f"{index}_current.txt"
         _write_current_members(membership, args.asof, current_path, workspace.data, index=index)
         result["coverage_file"] = str(coverage_path)

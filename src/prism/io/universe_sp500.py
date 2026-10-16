@@ -145,6 +145,12 @@ CONSTITUENTS_ARTICLE: dict[str, str] = {
     "sp400": "List of S&P 400 companies",
 }
 
+#: Each index's name as a written universe file's header gives it.
+INDEX_NAME: dict[str, str] = {
+    "sp500": "S&P 500",
+    "sp400": "S&P 400",
+}
+
 #: The article holding each index's "Selected changes" table, by the first date
 #: it held it. The S&P 500 table moved to its own article on 2026-08-11
 #: (revision 1368903080 created it; list-article revision 1368903137 removed it).
@@ -651,21 +657,29 @@ def compute_coverage(
     )
 
 
-def write_universe_file(symbols: Iterable[str], path: str | Path, *, asof: str, source: str = "wikipedia") -> None:
-    """Write the ever-member union in the ``load_universe`` format.
+def write_universe_file(
+    symbols: Iterable[str], path: str | Path, *, index: str, asof: str, source: str = "wikipedia"
+) -> None:
+    """Write a window's index members in the ``load_universe`` format.
 
-    Mirrors ``data/universe/2026-05-30.txt``: a comment header documenting the
-    survivorship caveat, then one symbol per line.
+    A comment header naming ``index`` (a key of ``CONSTITUENTS_ARTICLE``) and
+    its caveats, then one symbol per line, sorted and de-duplicated. The list
+    is not survivorship-free: the changes tables it is built from are selected
+    rather than complete, and a price-resolved list also drops the removed
+    names the vendor has no bars for.
     """
+    if index not in INDEX_NAME:
+        raise ValueError(f"unknown index {index!r}; the universe header names one of {sorted(INDEX_NAME)}")
     syms = sorted({normalize_ticker(s) for s in symbols})
     header = (
-        f"# Survivorship-bias-free S&P 500 universe (union of all ever-members), as of {asof}.\n"
-        f"# Source: {source} 'List of S&P 500 companies' (current + 'Selected changes').\n"
+        f"# {INDEX_NAME[index]} universe as of {asof}: tickers that were index members at some time in the "
+        "build window.\n"
+        f"# Source: {source}.\n"
+        f"# Membership: Wikipedia '{CONSTITUENTS_ARTICLE[index]}' constituents and the index's changes table.\n"
         "# One symbol per line; '#' starts a comment; blank lines ignored.\n"
-        "# Includes names since removed by delisting/acquisition/relegation. Price\n"
-        "# coverage for those is partial and is recorded in the companion coverage\n"
-        "# JSON -- missing delisted prices are a *measured* survivorship leak, not a\n"
-        "# silent drop.\n"
+        "# Includes names since removed by delisting, acquisition or a change of index.\n"
+        "# Not survivorship-free: the changes tables are selected rather than complete, and price\n"
+        "# coverage for removed names is partial; the companion coverage JSON records how much.\n"
     )
     Path(path).write_text(header + "\n".join(syms) + "\n")
 
