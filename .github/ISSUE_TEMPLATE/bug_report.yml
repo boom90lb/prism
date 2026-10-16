@@ -1,0 +1,86 @@
+name: Bug report
+description: Something in the code, the packaging or the documentation is wrong.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For a security problem (a leaked credential, an order sent without the documented opt-ins, a `.env` read when it should not be), do not use this form: follow [SECURITY.md](https://github.com/boom90lb/prism/blob/main/SECURITY.md) instead.
+
+        Never paste API keys, account numbers, alert or heartbeat URLs, or the contents of `.env`. Logs are redacted for the key formats the code knows about, but check before pasting.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you saw, including the full error message if there was one.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: The commands you ran, in order. A report reproduced from a fresh clone on synthetic data (`prism data synthetic`, which needs no keys) is much easier to check.
+      placeholder: |
+        uv sync --extra construction
+        uv run prism ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Prism version and commit
+      description: Output of `prism --version`, and `git rev-parse --short HEAD` if you run from a checkout.
+    validations:
+      required: true
+  - type: dropdown
+    id: python
+    attributes:
+      label: Python version
+      description: CI tests 3.12 and 3.14 on Linux.
+      options:
+        - "3.12"
+        - "3.13"
+        - "3.14"
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: Ubuntu 24.04, WSL2 on Windows 11, macOS 15, ...
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Install or packaging
+        - Data download or caching
+        - Backtest or evaluation
+        - Paper trading
+        - Command line
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Paste only the lines that matter. This is shown as plain text.
+      render: text
+  - type: checkboxes
+    id: no-secrets
+    attributes:
+      label: Before submitting
+      options:
+        - label: I removed credentials, account numbers and alert or heartbeat URLs from everything above.
+          required: true

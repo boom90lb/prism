@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security problem
+    url: https://github.com/boom90lb/prism/blob/main/SECURITY.md
+    about: Report security problems privately as SECURITY.md describes, not in a public issue.
