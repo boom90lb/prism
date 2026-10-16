@@ -833,7 +833,9 @@ def _levered_book_evidence(run_dir: Path) -> list[str]:
     sizing = read_rows(run_dir / "sizing.jsonl")
     if sizing:
         evidence.append(f"the book is volatility-scaled up to 2x gross ({len(sizing)} sizing.jsonl row(s))")
-    if any(isinstance(row.get("cash_holding"), dict) for row in read_rows(run_dir / "targets.jsonl")):
+    if read_rows(run_dir / "cash_holding.jsonl"):
+        evidence.append("the book holds a T-bill ETF beside its shorts (cash_holding.jsonl records it)")
+    elif any(isinstance(row.get("cash_holding"), dict) for row in read_rows(run_dir / "targets.jsonl")):
         evidence.append("the book holds a T-bill ETF beside its shorts (targets.jsonl records cash_holding)")
     return evidence
 
@@ -965,39 +967,35 @@ def check_vol_scale_fallback(run_dir: Path) -> CheckResult:
 
 
 def check_cash_holding_drift(run_dir: Path) -> CheckResult:
-    """The T-bill holding against its target, from the newest ``cash_holding`` record in ``targets.jsonl``.
+    """The T-bill holding against its target, from the newest record in ``cash_holding.jsonl``.
 
-    The cycle moves the holding to its target when it drifts more than the
-    band, by at most the per-order bound per session (``prism.live.cash_holding``).
-    Two things warn. After the decision, the holding still sits more than the
-    band from its target: it is being built or sold over several sessions,
-    which is expected for a few sessions after a start or a large change in the
-    long side, and means its orders are not filling if it persists. And, when
-    the previous record is from the previous session, the holding marked now
-    differs by more than the band from what that session decided. The record is
-    written on refresh sessions only, which for a monthly single book is once a
-    cycle.
+    The cycle records the holding's decision on every session it decides,
+    refresh or not (``prism.live.cash_holding``), and moves the holding to its
+    target when it drifts more than the band, by at most the per-order bound
+    per session. Two things warn. After the decision, the holding still sits
+    more than the band from its target: it is being built or sold over several
+    sessions, which is expected for a few sessions after a start or a large
+    change in the long side, and means its orders are not filling if it
+    persists. And, when the previous record is from the previous session, the
+    holding marked now differs by more than the band from what that session
+    decided.
     """
     from prism.io import sessions
-    from prism.live.cash_holding import TARGETS_LEDGER_KEY
+    from prism.live.cash_holding import LEDGER_FILENAME
     from prism.live.ledgers import read_rows
 
-    path = run_dir / "targets.jsonl"
-    rows = [row for row in read_rows(path) if isinstance(row.get(TARGETS_LEDGER_KEY), dict) and "refresh_bar" in row]
+    path = run_dir / LEDGER_FILENAME
+    rows = [row for row in read_rows(path) if "decision_bar" in row]
     if not rows:
-        return _result(
-            "cash-holding-drift", True, f"no {TARGETS_LEDGER_KEY} record in {path} — the T-bill holding is not in use"
-        )
-    bar = str(rows[-1]["refresh_bar"])
-    record = rows[-1][TARGETS_LEDGER_KEY]
+        return _result("cash-holding-drift", True, f"no record in {path} — the T-bill holding is not in use")
+    bar = str(rows[-1]["decision_bar"])
+    record = rows[-1]
     try:
         symbol = str(record["symbol"])
         held, target, weight, band = (float(record[key]) for key in ("held_weight", "target_weight", "weight", "band"))
         action = str(record.get("action"))
     except (KeyError, TypeError, ValueError) as exc:
-        return _result(
-            "cash-holding-drift", False, f"{path}: {bar} {TARGETS_LEDGER_KEY} record unreadable ({exc})", warn=True
-        )
+        return _result("cash-holding-drift", False, f"{path}: {bar} record unreadable ({exc})", warn=True)
     residual = abs(weight - target)
     detail = (
         f"{symbol} at {bar}: held {held:.4f}, target {target:.4f}, decided {weight:.4f} of equity "
@@ -1011,10 +1009,10 @@ def check_cash_holding_drift(run_dir: Path) -> CheckResult:
             "long side, and a sign its orders are not filling if it persists"
         )
     if len(rows) > 1:
-        previous_bar = str(rows[-2]["refresh_bar"])
+        previous_bar = str(rows[-2]["decision_bar"])
         try:
             consecutive = sessions.next_session(date.fromisoformat(previous_bar[:10])) == date.fromisoformat(bar[:10])
-            decided_before = float(rows[-2][TARGETS_LEDGER_KEY]["weight"])
+            decided_before = float(rows[-2]["weight"])
         except (KeyError, TypeError, ValueError):
             consecutive, decided_before = False, float("nan")
         if consecutive and abs(held - decided_before) > band:

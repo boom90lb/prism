@@ -99,9 +99,12 @@ from prism.assembly import (
 from prism.composition import ComponentPlan, due_on_schedule
 from prism.io import sessions
 from prism.live.broker import Broker, Fill, Order, transmits_to_venue
+from prism.live.cash_holding import LEDGER_FILENAME as CASH_HOLDING_LEDGER
 from prism.live.cash_holding import TARGETS_LEDGER_KEY as CASH_HOLDING_KEY
 from prism.live.cash_holding import (
     CashHolding,
+    CashHoldingDecision,
+    append_cash_holding_ledger,
     apply_cash_holding,
     log_decision,
     require_cash_holding_inputs,
@@ -712,8 +715,10 @@ def run_daily_cycle(
     ``max(0, 1 - buffer - L)``, ``L`` the stock long side of that target, when the
     held weight is more than ``band`` away from it, in steps no larger than the
     per-order bound of ``safety`` less one share. Under ``wind_down`` its target
-    is zero. A refresh row of the targets ledger carries the decision under
-    ``cash_holding``. The caller must fetch the ETF as a priced, unscored name
+    is zero. Every such session appends the decision to
+    ``{run-dir}/cash_holding.jsonl`` once the decision is persisted, and a
+    refresh row of the targets ledger also carries it under ``cash_holding``.
+    The caller must fetch the ETF as a priced, unscored name
     (``resolve_fetch_universe(..., unscored=...)``) and keep it out of the
     signal's cross-section; the cycle refuses, before any state moves, a book
     other than ``decile_neutral`` and a panel without a usable close for it.
@@ -903,6 +908,7 @@ def run_daily_cycle(
     # 3c. The T-bill holding (default off): idle own equity above the buffer, set
     # after the book's target on every session that is not halted.
     cash_record: dict | None = None
+    cash_decision: CashHoldingDecision | None = None
     if cash_holding is not None and halted is None:
         targets, cash_decision = apply_cash_holding(
             cash_holding,
@@ -952,6 +958,8 @@ def run_daily_cycle(
             buying_power_check=buying_power_check,
             ledger_targets=ledger_targets,
         )
+        if cash_decision is not None:
+            _record_cash_holding(_cash_holding_ledger(ctx, run_dir), decision_bar, cash_decision)
         logger.info(
             "decision %s: %d orders %s, equity %.2f, gross %.4f",
             decision_bar,
@@ -977,7 +985,9 @@ def run_daily_cycle(
         # the return and tracking reads. Telemetry, shielded like the regime
         # provider: it can never take down a cycle whose orders are already
         # persisted and whose NAV is already marked.
-        monitor_read = _monitor_read(ctx, decision_bar, close, tbill_monitor)
+        monitor_read = _monitor_read(
+            ctx, decision_bar, close, tbill_monitor, cash_holding_ledger=_cash_holding_ledger(ctx, run_dir)
+        )
     return DailyCycleResult(
         decision_bar=decision_bar,
         settled_fills=settled,
@@ -1147,6 +1157,27 @@ def _record_tranched_sizing(ctx: LiveLoopContext, run_dir: Path | None, row: dic
         logger.info(message, *arguments)
 
 
+def _cash_holding_ledger(ctx: LiveLoopContext, run_dir: Path | None) -> Path | None:
+    """``<run_dir>/cash_holding.jsonl``, ``run_dir`` defaulting to the directory holding the targets ledger."""
+    if run_dir is not None:
+        return Path(run_dir) / CASH_HOLDING_LEDGER
+    if ctx.targets_ledger is not None:
+        return Path(ctx.targets_ledger).parent / CASH_HOLDING_LEDGER
+    return None
+
+
+def _record_cash_holding(path: Path | None, decision_bar: str, decision: CashHoldingDecision) -> None:
+    """Step 4c: this session's T-bill holding decision, once the decision is persisted.
+
+    One row per decided session, idempotent per bar, so the doctor and the
+    T-bill monitor read the holding on every session it trades, not only on the
+    refresh sessions that write a ``targets.jsonl`` row. With no run directory
+    there is nowhere to record and nothing is written.
+    """
+    if path is not None:
+        append_cash_holding_ledger(path, decision_bar, decision)
+
+
 def _panel_provenance(record: PanelRecord | None) -> dict[str, Any] | None:
     """The fields the refresh row in ``targets.jsonl`` carries for its panel."""
     if record is None:
@@ -1305,7 +1336,12 @@ def _shadow_record(ctx: LiveLoopContext, decision_bar: str, close: pd.DataFrame)
 
 
 def _monitor_read(
-    ctx: LiveLoopContext, decision_bar: str, close: pd.DataFrame, tbill: TbillReference | None = None
+    ctx: LiveLoopContext,
+    decision_bar: str,
+    close: pd.DataFrame,
+    tbill: TbillReference | None = None,
+    *,
+    cash_holding_ledger: Path | None = None,
 ) -> dict:
     """The live monitor after this cycle's NAV mark, shielded so it can never kill a cycle.
 
@@ -1370,19 +1406,29 @@ def _monitor_read(
             tracking.get("n_unmatched"),
         )
     if tbill is not None:
-        read["tbill"] = _tbill_read(ctx, decision_bar, tbill)
+        read["tbill"] = _tbill_read(ctx, decision_bar, tbill, cash_holding_ledger=cash_holding_ledger)
     return read
 
 
-def _tbill_read(ctx: LiveLoopContext, decision_bar: str, tbill: TbillReference) -> dict:
+def _tbill_read(
+    ctx: LiveLoopContext, decision_bar: str, tbill: TbillReference, *, cash_holding_ledger: Path | None = None
+) -> dict:
     """The report-only T-bill-referenced return read, shielded like the registered one.
 
-    A failure is logged at WARNING and recorded as ``unavailable`` with the
-    error; it never changes the registered read or the cycle.
+    The T-bill ETF's share of each session comes from the per-session holding
+    record when the run directory has one (``cash_holding.jsonl``). A failure is
+    logged at WARNING and recorded as ``unavailable`` with the error; it never
+    changes the registered read or the cycle.
     """
     assert ctx.equity_ledger is not None
+    holding = cash_holding_ledger if cash_holding_ledger is not None and cash_holding_ledger.exists() else None
     try:
-        read = tbill_monitor_read(ctx.equity_ledger, tbill, targets_ledger_path=ctx.targets_ledger)
+        read = tbill_monitor_read(
+            ctx.equity_ledger,
+            tbill,
+            targets_ledger_path=ctx.targets_ledger,
+            cash_holding_ledger_path=holding,
+        )
     except Exception as exc:  # noqa: BLE001 — report-only telemetry, never a cycle precondition
         logger.warning(
             "LIVE MONITOR: T-BILL READ FAILED for %s (%s: %s) — report only; the registered read stands (N7)",

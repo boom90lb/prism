@@ -7,6 +7,7 @@ registered read is the same dict key for key and the new read lands under ``tbil
 
 from __future__ import annotations
 
+import json
 import logging
 from dataclasses import fields as dataclass_fields
 from pathlib import Path
@@ -97,6 +98,54 @@ def test_held_exposure_takes_the_latest_book_decided_by_the_previous_close() -> 
     assert found["etf_symbols"] == ["SGOV"] and found["source"] == "targets ledger"
     none = held_book_exposure(None, prev)
     assert none["source"] is None and none["long_over_equity_mean"] == 0.0 and none["n_sessions_without_book"] == 5
+
+
+def test_held_exposure_takes_the_etf_share_from_the_per_session_record_when_there_is_one() -> None:
+    # A monthly book: one targets row, whose holding record is the first, bounded step of the build.
+    rows = [
+        {"refresh_bar": "2026-07-06", "targets": {"AAA": 0.5, "BBB": -0.5, "SGOV": 0.199},
+         "cash_holding": {"symbol": "SGOV", "weight": 0.199}},
+    ]
+    holding = [
+        {"decision_bar": "2026-07-02", "symbol": "SGOV", "weight": 0.199},  # bought before the first book
+        {"decision_bar": "2026-07-06", "symbol": "SGOV", "weight": 0.199},
+        {"decision_bar": "2026-07-07", "symbol": "SGOV", "weight": 0.398},
+        {"decision_bar": "2026-07-08", "symbol": "SGOV", "weight": 0.48},
+    ]
+    prev = ["2026-07-02", "2026-07-06", "2026-07-07", "2026-07-08", "2026-07-09"]
+    found = held_book_exposure(rows, prev, holding_rows=holding)
+    assert found["n_sessions_without_book"] == 1
+    assert found["long_over_equity_mean"] == pytest.approx(4 * 0.5 / 5)  # the ETF is not stock long side
+    assert found["sleeve_fraction_mean"] == pytest.approx((0.199 + 0.199 + 0.398 + 0.48 + 0.48) / 5)
+    assert found["source"] == "targets ledger and cash-holding ledger" and found["etf_symbols"] == ["SGOV"]
+    # Without the record, the refresh row's weight stands for every later session.
+    assert held_book_exposure(rows, prev)["sleeve_fraction_mean"] == pytest.approx(4 * 0.199 / 5)
+
+
+def test_the_cycle_records_the_holding_every_session_and_the_tbill_read_uses_it(tmp_path) -> None:
+    from dataclasses import replace
+
+    from prism.live.cash_holding import LEDGER_FILENAME
+    from tests.test_live_cash_holding import CONFIG, HOLDING, _ctx, _cycle, _panel
+
+    close, volume = _panel()
+    ctx = _ctx(tmp_path)
+    monthly = replace(CONFIG, decision_every=21)
+    results = [
+        _cycle(ctx, close, volume, t, cash_holding=HOLDING, config=monthly, tbill_monitor=REFERENCE)
+        for t in range(3, 9)
+    ]
+    recorded = [json.loads(line) for line in (tmp_path / LEDGER_FILENAME).read_text().splitlines()]
+    assert [row["decision_bar"] for row in recorded] == [r.decision_bar for r in results]
+    assert [row["weight"] for row in recorded] == [r.cash_holding["weight"] for r in results]
+    exposure = results[-1].monitor_read["tbill"]["exposure"]
+    assert exposure["source"] == "targets ledger and cash-holding ledger"
+    # Five return sessions held the ETF at the weights decided at each previous close.
+    expected = sum(r.cash_holding["weight"] for r in results[:-1]) / 5
+    assert exposure["sleeve_fraction_mean"] == pytest.approx(expected)
+    # A same-bar re-run resumes and records nothing new.
+    _cycle(ctx, close, volume, 8, cash_holding=HOLDING, config=monthly)
+    assert len((tmp_path / LEDGER_FILENAME).read_text().splitlines()) == len(results)
 
 
 # ---------------------------------------------------------------------------

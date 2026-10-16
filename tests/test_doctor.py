@@ -896,27 +896,25 @@ def _single_sizing(bar, status, reason=None, scale=1.0, schedule="panel"):
 
 
 def _holding_rows(run_dir, records):
-    """``records``: (refresh bar, held, target, decided) as the cycle writes them under ``cash_holding``."""
+    """``records``: (decision bar, held, target, decided) as the cycle writes them to ``cash_holding.jsonl``."""
     run_dir.mkdir(parents=True, exist_ok=True)
     rows = [
         {
-            "refresh_bar": bar,
-            "cash_holding": {
-                "symbol": "SGOV",
-                "long_weight": 0.5,
-                "held_weight": held,
-                "target_weight": target,
-                "weight": decided,
-                "step_bound": 0.199,
-                "action": "hold" if decided == held else "rebalance",
-                "wind_down": False,
-                "buffer": 0.02,
-                "band": 0.02,
-            },
+            "decision_bar": bar,
+            "symbol": "SGOV",
+            "long_weight": 0.5,
+            "held_weight": held,
+            "target_weight": target,
+            "weight": decided,
+            "step_bound": 0.199,
+            "action": "hold" if decided == held else "rebalance",
+            "wind_down": False,
+            "buffer": 0.02,
+            "band": 0.02,
         }
         for bar, held, target, decided in records
     ]
-    (run_dir / "targets.jsonl").write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
+    (run_dir / "cash_holding.jsonl").write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
 
 
 def test_the_book_feature_checks_pass_on_a_run_directory_that_uses_none_of_them(tmp_path):
@@ -1128,9 +1126,32 @@ def test_cash_holding_drift_warns_when_the_previous_sessions_order_did_not_fill(
     _holding_rows(tmp_path, [("2026-10-14", 0.30, 0.48, 0.48), ("2026-10-15", 0.30, 0.48, 0.48)])
     result = check_cash_holding_drift(tmp_path)
     assert result.status == "WARN" and "did not fill as decided" in result.detail
-    # A month apart (a monthly single book), the sessions in between traded unrecorded: no fill check.
+    # Two records a month apart (the sessions in between did not run): no fill check.
     _holding_rows(tmp_path, [("2026-09-15", 0.30, 0.48, 0.48), ("2026-10-15", 0.47, 0.48, 0.47)])
     assert check_cash_holding_drift(tmp_path).status == "PASS"
+
+
+def test_cash_holding_drift_reads_the_holding_between_a_monthly_books_refreshes(tmp_path):
+    """The holding trades on sessions a monthly book does not refresh; the check reads those sessions too."""
+    from dataclasses import replace
+
+    from prism.scripts.doctor import check_cash_holding_drift
+    from tests.test_live_cash_holding import CONFIG, HOLDING, _ctx, _cycle, _panel
+
+    close, volume = _panel()
+    ctx = _ctx(tmp_path)
+    monthly = replace(CONFIG, decision_every=21)
+    for t in range(3, 7):  # one refresh, then three sessions that only trade the holding
+        _cycle(ctx, close, volume, t, cash_holding=HOLDING, config=monthly)
+    assert len(_targets_rows(tmp_path)) == 1
+    result = check_cash_holding_drift(tmp_path)
+    assert result.status == "PASS" and f"at {close.index[6].date()}" in result.detail
+    assert "decided 0.4800" in result.detail and "(hold, band 0.0200)" in result.detail
+
+
+def _targets_rows(run_dir):
+    path = run_dir / "targets.jsonl"
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
 # Tranche state ----------------------------------------------------------------------

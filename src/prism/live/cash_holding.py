@@ -25,6 +25,14 @@ because with no idle equity any ETF held is financed by a margin debit. Under
 guard after whole-share rounding, and a holding of 44% of equity is built over
 three sessions. Without a bound the change is not limited.
 
+**Records.** Every session the holding is decided on appends one row to
+``{run-dir}/cash_holding.jsonl`` (:data:`LEDGER_FILENAME`): the decision bar and
+the decision, after the session's decision is persisted, idempotent per bar.
+The holding trades on sessions the book does not refresh, so a record kept only
+on refresh rows of ``targets.jsonl`` (which also carry the decision, under
+``cash_holding``) would describe a monthly book's holding once a cycle; the
+doctor's drift check and the T-bill monitor read the per-session record.
+
 **Not scored.** The ETF is priced, never ranked: the caller fetches it as an
 unscored name (``resolve_fetch_universe(..., unscored=...)``) and keeps it out
 of the scored cross-section (the momentum book's membership mask). The cycle
@@ -38,9 +46,12 @@ from __future__ import annotations
 import logging
 import math
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Mapping
 
 import pandas as pd
+
+from prism.live import ledgers
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +68,9 @@ CASH_HOLDING_BOOK = "decile_neutral"
 
 #: The key the refresh row of ``targets.jsonl`` carries the holding's decision under.
 TARGETS_LEDGER_KEY = "cash_holding"
+
+#: The per-session record of the holding's decisions, in the run directory.
+LEDGER_FILENAME = "cash_holding.jsonl"
 
 
 class CashHoldingError(ValueError):
@@ -226,6 +240,17 @@ def apply_cash_holding(
     return decided, decision
 
 
+def append_cash_holding_ledger(path: Path | str, decision_bar: str, decision: CashHoldingDecision) -> bool:
+    """Append this session's decision as ``{"decision_bar": ..., **decision.to_row()}``.
+
+    Idempotent per decision bar (:func:`prism.live.ledgers.append_monotone`): a
+    same-bar re-run, which resumes the persisted decision, finds its row and
+    writes nothing. Returns True when written.
+    """
+    row = {"decision_bar": str(decision_bar), **decision.to_row()}
+    return ledgers.append_monotone(Path(path), "decision_bar", row)
+
+
 def require_cash_holding_inputs(holding: CashHolding, *, book: str, close: pd.DataFrame) -> None:
     """Refuse a holding the cycle cannot run, before any state moves (N7).
 
@@ -273,7 +298,9 @@ __all__ = [
     "CashHoldingError",
     "DEFAULT_BAND",
     "DEFAULT_BUFFER",
+    "LEDGER_FILENAME",
     "TARGETS_LEDGER_KEY",
+    "append_cash_holding_ledger",
     "apply_cash_holding",
     "holding_target",
     "log_decision",

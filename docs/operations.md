@@ -772,10 +772,14 @@ side about 0.54 of equity) the holding is about 0.44 of equity; at a scale of
   is small at first, so the holding is built toward a larger target and then
   trimmed as the tranches fill. An account where one share exceeds the bound is
   refused.
-- **Record.** `DailyCycleResult.cash_holding` and one log line every session;
-  each refresh row of `targets.jsonl` carries the decision under
-  `cash_holding` (long side, held weight, target, applied weight, step bound,
-  action `hold` / `rebalance` / `bounded`).
+- **Record.** `DailyCycleResult.cash_holding` and one log line every session,
+  and one row per decided session in `{run-dir}/cash_holding.jsonl` (decision
+  bar, long side, held weight, target, applied weight, step bound, action
+  `hold` / `rebalance` / `bounded`), written once the decision is persisted.
+  Each refresh row of `targets.jsonl` also carries the decision under
+  `cash_holding`, but for a monthly book that is once a cycle while the holding
+  trades on other sessions too, so the doctor's drift check and the T-bill
+  monitor read `cash_holding.jsonl`.
 - **Stopping it.** Pass `--cash-sleeve-buffer 1` (target zero) until the ETF is
   sold, or run `--wind-down`. Simply removing `--cash-sleeve` while the ETF is
   held makes the next refresh exit it in one order, which the per-order bound
@@ -844,21 +848,22 @@ it.
   Promoting any of them to a failure is the owner's decision.
   - `margin-cushion`: the newest `margin.jsonl` row's cushion below 25%, or a
     read two or more weekdays old. With no record it passes, unless
-    `sizing.jsonl` or a `cash_holding` record in `targets.jsonl` shows a
-    scaled book or a T-bill holding, which draw on margin. The 25% line is a
+    `sizing.jsonl`, `cash_holding.jsonl` or a `cash_holding` record in
+    `targets.jsonl` shows a scaled book or a T-bill holding, which draw on
+    margin. The 25% line is a
     monitoring choice: an unscaled long/short book at FINRA's minimums (25% of
     the long side, 30% of the short) sits near 72%, the same book at gross 2
     near 45%.
   - `vol-scale-fallback`: two or more consecutive `sizing.jsonl` rows whose
     scale fell back to `min(1, last good scale)`; a tranched row counts when any
     due tranche fell back, and a warm-up is not a fallback.
-  - `cash-holding-drift`: after the newest recorded decision the holding is
-    more than its band from target (it is being built or sold within the
-    per-order bound, expected for a few sessions after a start or a large change
-    in the long side), or, when the previous record is from the previous
-    session, the holding marked now is more than the band away from what that
-    session decided (an order that did not fill). The record is written on
-    refresh sessions only, so for a monthly single book it is a monthly read.
+  - `cash-holding-drift`: after the newest decision in `cash_holding.jsonl`
+    the holding is more than its band from target (it is being built or sold
+    within the per-order bound, expected for a few sessions after a start or a
+    large change in the long side), or, when the previous record is from the
+    previous session, the holding marked now is more than the band away from
+    what that session decided (an order that did not fill). The record is
+    written on every session the holding is decided, refresh or not.
   - `tranche-state`: tranche states the cycle could not have written: ids
     other than `decile_neutral/t00..tK-1`, grid offsets that are not
     `(base + j·s) mod (s·K)`, non-finite sub-targets, a tranche holding a

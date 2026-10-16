@@ -55,6 +55,7 @@ import numpy as np
 import pandas as pd
 
 from prism.io import sessions
+from prism.live.ledgers import read_rows
 from prism.live.loop import (
     read_equity_ledger,
     read_shadow_ledger,
@@ -340,22 +341,42 @@ def detection_horizon_years(sharpe_annual: float, *, alpha: float = 0.05) -> flo
     return (NormalDist().inv_cdf(1.0 - alpha) / sharpe) ** 2
 
 
-def held_book_exposure(rows: Sequence[Mapping[str, Any]] | None, prev_bars: Sequence[str]) -> dict[str, Any]:
+def held_book_exposure(
+    rows: Sequence[Mapping[str, Any]] | None,
+    prev_bars: Sequence[str],
+    *,
+    holding_rows: Sequence[Mapping[str, Any]] | None = None,
+) -> dict[str, Any]:
     """The stock long side and T-bill ETF share of the book held through each return session.
 
     For the session whose previous bar is ``prev``, the book is the latest
     targets-ledger row whose ``refresh_bar`` is on or before ``prev``: decided
     at or before the previous close and filled at the session's open. Its long
-    side is the sum of its positive weights other than the ETF's; the ETF's
-    share is the ``cash_holding`` decision's ``weight`` (zero without one).
-    Before the first row no book is held, so both are zero. ``rows=None`` (no
-    targets ledger) gives zeros and says so in ``source``.
+    side is the sum of its positive weights other than the ETF's. The ETF's
+    share is the decided ``weight`` of the latest per-session holding record
+    (``holding_rows``, ``cash_holding.jsonl``) on or before ``prev``, because
+    the holding trades on sessions the book does not refresh; without that
+    record it is the ``cash_holding`` decision the targets row carries (zero
+    without one), which for a book that refreshes less often than daily is the
+    holding as of its last refresh. Before the first targets row no stock book
+    is held, so the long side is zero; the per-session record counts the ETF
+    from its first decision, which may come first. ``rows=None`` (no targets
+    ledger) gives a zero long side and says so in ``source``.
     """
     n = len(prev_bars)
     long_side = np.zeros(n, dtype=float)
     sleeve = np.zeros(n, dtype=float)
     symbols: set[str] = set()
     without = n
+    held = sorted(holding_rows or [], key=lambda row: str(row["decision_bar"])[:10])
+    held_keys = [str(row["decision_bar"])[:10] for row in held]
+    symbols.update(str(row["symbol"]) for row in held if row.get("symbol") is not None)
+    if holding_rows is not None:
+        # The holding trades whether or not a stock book is held yet.
+        for i, prev in enumerate(prev_bars):
+            found = bisect_right(held_keys, str(prev)[:10]) - 1
+            if found >= 0:
+                sleeve[i] = float(held[found].get("weight", 0.0))
     if rows:
         ordered = sorted(rows, key=lambda row: str(row["refresh_bar"])[:10])
         keys = [str(row["refresh_bar"])[:10] for row in ordered]
@@ -366,14 +387,18 @@ def held_book_exposure(rows: Sequence[Mapping[str, Any]] | None, prev_bars: Sequ
                 without += 1
                 continue
             row = ordered[at]
-            holding = row.get("cash_holding") or {}
-            symbol = holding.get("symbol")
-            if symbol is not None:
-                symbols.add(str(symbol))
-                sleeve[i] = float(holding.get("weight", 0.0))
-            long_side[i] = sum(max(0.0, float(w)) for s, w in (row.get("targets") or {}).items() if s != symbol)
+            excluded = set(symbols)
+            if holding_rows is None:
+                holding = row.get("cash_holding") or {}
+                symbol = holding.get("symbol")
+                if symbol is not None:
+                    symbols.add(str(symbol))
+                    sleeve[i] = float(holding.get("weight", 0.0))
+                excluded = set() if symbol is None else {str(symbol)}
+            long_side[i] = sum(max(0.0, float(w)) for s, w in (row.get("targets") or {}).items() if s not in excluded)
     return {
-        "source": None if rows is None else "targets ledger",
+        "source": None if rows is None else "targets ledger"
+        + ("" if holding_rows is None else " and cash-holding ledger"),
         "n_sessions": n,
         "n_sessions_without_book": int(without),
         "long_over_equity_mean": float(long_side.mean()) if n else 0.0,
@@ -387,6 +412,7 @@ def tbill_monitor_read(
     reference: TbillReference,
     *,
     targets_ledger_path: Path | str | None = None,
+    cash_holding_ledger_path: Path | str | None = None,
     alpha: float = 0.05,
     bound: float = DEFAULT_NAV_RETURN_BOUND,
     method: str = "empirical_bernstein",
@@ -400,8 +426,9 @@ def tbill_monitor_read(
         return_hurdle_annual = rf - (rf - fee) * s - y * max(0, 1 - L/E - s)
 
     with ``L/E`` the stock long side and ``s`` the T-bill ETF's share of equity
-    of the book held through each session (:func:`held_book_exposure`),
-    averaged over the sessions the read covers; ``y`` is
+    of the book held through each session (:func:`held_book_exposure`; ``s``
+    from ``cash_holding_ledger_path``, the per-session holding record, when it
+    is given), averaged over the sessions the read covers; ``y`` is
     ``reference.cash_yield`` and ``fee`` ``reference.etf_fee_annual``. With no
     ETF and ``y = 0`` the hurdle is the bill rate itself.
 
@@ -425,7 +452,8 @@ def tbill_monitor_read(
     if targets_ledger_path is None and reference.cash_yield != 0.0:
         raise ValueError("a non-zero cash yield needs the targets ledger: the idle fraction it applies to is unknown")
     rows = read_targets_ledger(Path(targets_ledger_path)) if targets_ledger_path is not None else None
-    exposure = held_book_exposure(rows, prev_bars)
+    holding_rows = read_rows(Path(cash_holding_ledger_path)) if cash_holding_ledger_path is not None else None
+    exposure = held_book_exposure(rows, prev_bars, holding_rows=holding_rows)
     sd = float(np.std(returns, ddof=1)) if returns.size >= 2 else float("nan")
     vol = sd * math.sqrt(TBILL_PERIODS_PER_YEAR) if math.isfinite(sd) and sd > 0.0 else None
     sleeve = exposure["sleeve_fraction_mean"]
