@@ -3,8 +3,14 @@
 Index membership lists and the reviews that map tickers to SEC filers.
 
 - **S&P 500 and S&P 400 membership** (`sp*_membership_*.parquet`, `sp*_pit_*.txt`,
-  `sp*_coverage_*.json`, `sp400_exits_*.json`, `sp500_sources_*.json`). Rebuilt from pinned
-  Wikipedia revisions by `src/prism/io/universe_sp500.py`. Membership is keyed by ticker, the
+  `sp*_coverage_*.json`, `sp400_exits_*.json`, `sp500_sources_*.json`). Built from Wikipedia's
+  S&P 500, 400 and 600 tables with the parsers in `src/prism/io/universe_sp500.py` (earlier
+  versions of them for the older builds): the S&P 500 files by
+  `src/prism/scripts/build_sp500_universe.py` or its predecessors, the S&P 400 files by
+  `src/prism/scripts/build_sp400_resolved.py`, and the S&P 400-only and combined S&P 900 files by
+  `research/scripts/build_breadth_dataset.py`. Only the 2026-09-25 S&P 500 build pins the article
+  revisions it read, in `sp500_sources_2026-09-25.json`; the earlier S&P 500 builds and the
+  S&P 400 and S&P 900 files do not. Membership is keyed by ticker, the
   `*_pit_*` lists are unions of every past member, and the coverage files list which members had
   price data. These are approximations built from public text, not index data from S&P Dow Jones
   Indices.
