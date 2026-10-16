@@ -1032,10 +1032,10 @@ def distribution_entitlement(event: Event | Mapping[str, Any], shares: float) ->
 def distribution_amounts(events: pd.DataFrame | Sequence[Event], close: pd.DataFrame) -> pd.DataFrame:
     """Per-share cash on the ex-date session, shaped like ``close`` and zero elsewhere.
 
-    The conventions, which are the recorded trend driver's and are duplicated
-    here by value with this citation rather than imported
-    (``research/arbitrage/trend_walk_forward.py:425-486``; ``prism`` imports no
-    research module, SPEC §7):
+    The conventions are the recorded trend driver's,
+    ``research/arbitrage/trend_walk_forward.py:425-486`` (removed; last present at commit 5fcac33869e9),
+    duplicated here by value with this citation rather than imported
+    (``prism`` imports no research module, SPEC §7):
 
     * an ex-date that is not a session on ``close``'s calendar credits the next
       session, which is the same forward roll the availability derivation makes;
@@ -1104,8 +1104,8 @@ def total_return_close(close: pd.DataFrame, distributions: pd.DataFrame) -> pd.D
     reinvestment at the ex-date close. This is the recorded trend convention
     ``split_adjusted_total_return_dividends_as_cash``
     (``results/trend_t0/config.json``), duplicated by value from
-    ``research/arbitrage/trend_walk_forward.py:494-511`` with this citation
-    rather than imported (SPEC §7).
+    ``research/arbitrage/trend_walk_forward.py:494-511`` (removed; last present at commit 5fcac33869e9)
+    with this citation rather than imported (SPEC §7).
 
     Scoring only. Costs, participation, fills, valuation, and every limit are
     computed on the as-traded close whatever a component's ``scoring_basis``

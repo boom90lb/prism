@@ -117,8 +117,8 @@ def cost_toll(returns: pd.Series, costs: pd.DataFrame) -> dict[str, float]:
 
     NB: ``cost_to_gross`` divides by ``sum(|gross_t|)`` (per-period magnitude,
     robust to sign-cancelling PnL). The fold-level ``cost_to_gross_pnl`` from
-    ``research.arbitrage.residual_walk_forward._fold_cost_share`` divides by
-    ``|sum(gross_t)|`` (net PnL magnitude) — a deliberately different statistic;
+    ``research/arbitrage/residual_walk_forward.py::_fold_cost_share`` (removed; last present at commit 5fcac33869e9)
+    divides by ``|sum(gross_t)|`` (net PnL magnitude) — a deliberately different statistic;
     the two will not reconcile numerically.
 
     Returns NaN fields on empty input rather than raising, so a monitor can call

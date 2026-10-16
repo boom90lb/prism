@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import re
 from pathlib import Path
 
 import pandas as pd
@@ -180,8 +181,12 @@ def test_the_manifest_names_the_scenarios_it_wrote_without_applying_them(fixture
     assert assumptions["scenarios_written_not_applied"] == sorted(name for name, s in SCENARIOS.items() if s.stage > 1)
     assert assumptions["scenario_applied_at_stage"]["spinoff"] == 3
     assert assumptions["scenario_applied_at_stage"]["recovery"] == 4
-    assert "stage 3" in assumptions["scenarios_written_not_applied_note"]
-    assert "stage 1" in assumptions["stage1_unapplied_in_universe"]
+    # The smoke summary prints both notes, so they say what applies each scenario rather than
+    # naming an overhaul stage.
+    assert "canonical simulator" in assumptions["scenarios_written_not_applied_note"]
+    assert "canonical simulator" in assumptions["stage1_unapplied_in_universe"]
+    for key in ("scenarios_written_not_applied_note", "stage1_unapplied_in_universe", "scenario_cases"):
+        assert not re.search(r"\bstage \d|§\s?3\.|\[Q\d", assumptions[key]), key
     # The other half of section 4's "written but not exercised" table: these
     # two sids are inside the equity index, so an evaluation selects them.
     assert assumptions["scenarios_unapplied_in_universe"] == ["halt", "split"]

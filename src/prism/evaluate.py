@@ -158,8 +158,9 @@ VISIBILITY_MODES: tuple[str, ...] = MODES
 DEFAULT_CAPITAL = 1.0
 
 RECORDING_STATEMENT = (
-    "No ResultRecord and no trial-log row were written. The recording protocol, the trial ledger, and the fold "
-    "table are stage 2's; a smoke run answers no research question and enters no selection set."
+    "No result record and no trial-log row were written. A recorded evaluation on a frozen fold table runs from "
+    "Python through prism.evaluate.walk_forward_evaluate; a smoke run answers no research question and enters no "
+    "selection set."
 )
 
 
@@ -222,7 +223,7 @@ class SmokeResult:
             lines.append(f"unexercised scenarios  {', '.join(self.unexercised_scenarios)}")
             lines.append(f"  {self.unexercised_note}")
         else:
-            lines.append("unexercised scenarios  none: every scenario the fixture writes is applied at this stage")
+            lines.append("unexercised scenarios  none: every scenario the fixture writes is applied by this run")
         if self.in_universe_unapplied_scenarios:
             lines.append(f"  ... and in the universe but unapplied  {', '.join(self.in_universe_unapplied_scenarios)}")
             lines.append(f"  {self.in_universe_unapplied_note}")
@@ -265,8 +266,9 @@ def smoke_evaluate(
         raise EvaluationError(f"capital must be > 0, got {capital!r}")
     if spec.strategy.combination != "position_space":
         raise StageNotAvailableError(
-            f"[strategy] combination={spec.strategy.combination!r} runs the calibrated convex flow (F2), whose "
-            "estimator and solver arrive at stage 4; the smoke path runs combination='position_space'",
+            f"[strategy] combination={spec.strategy.combination!r} runs the calibrated convex construction, which "
+            "the smoke path does not run. Evaluate it through prism.evaluate.walk_forward_evaluate with "
+            "decision_coupling='account_state'; the smoke path runs combination='position_space'",
             stage=4,
         )
     if not spec.components:
@@ -1571,10 +1573,10 @@ def _refuse(
             )
     if spec.strategy.combination != "position_space" and decision_coupling != "account_state":
         raise StageNotAvailableError(
-            f"[strategy] combination={spec.strategy.combination!r} runs the calibrated convex flow (F2), whose "
-            "constructor sizes against current equity and therefore needs decision_coupling='account_state'; "
+            f"[strategy] combination={spec.strategy.combination!r} runs the calibrated convex construction, "
+            "whose constructor sizes against current equity and therefore needs decision_coupling='account_state'; "
             "the targets-only loop decides every bar before the first fill and cannot evaluate the "
-            "participation restriction or batch rounding at all (§3.7, §3.8)",
+            "participation restriction or batch rounding at all",
             stage=4,
         )
     if not spec.components:
@@ -1877,8 +1879,9 @@ class _Construction:
         base = str(gate.get("base", PARTICIPATION_BASES[0]))
         if base not in PARTICIPATION_BASES:
             raise ConstructionError(
-                f"{spec.path} [construction.participation]: base {base!r} needs the marked equity of the canonical "
-                f"engine, which arrives at stage 3; the reproduction engine honors {PARTICIPATION_BASES}"
+                f"{spec.path} [construction.participation]: base {base!r} is not available; this bound is a "
+                f"fraction of {PARTICIPATION_BASES} only. A per-name participation limit on current equity is the "
+                "participation_per_name policy limit of the decision_coupling='account_state' path"
             )
         spread = dict(options.get("spread") or {})
         spread_mode = str(spread.get("mode", "flat"))
@@ -1996,15 +1999,15 @@ def _apply_construction(
 ) -> pd.Series:
     """One decision through the band, the re-cap and the participation bound (§3.7).
 
-    The order is the recorded driver's
-    (`research/arbitrage/residual_walk_forward.py:239-257`), duplicated with
-    this citation rather than imported: the band steps the *held* book toward
-    the fresh target, the caps are re-applied because a per-name blend can
-    exceed them, the bound shrinks whatever trade survives, and the row that
-    comes out is both the emitted target and tomorrow's held state — so
-    unfilled demand has to clear the band again rather than accumulating
-    invisibly. A sid under a ``liquidate`` instruction skips the band, because
-    the flat is the decision and not a target to be damped (§3.3).
+    The order is the recorded driver's,
+    `research/arbitrage/residual_walk_forward.py:239-257` (removed; last present at commit 5fcac33869e9),
+    duplicated with this citation rather than imported: the band steps the
+    *held* book toward the fresh target, the caps are re-applied because a
+    per-name blend can exceed them, the bound shrinks whatever trade survives,
+    and the row that comes out is both the emitted target and tomorrow's held
+    state — so unfilled demand has to clear the band again rather than
+    accumulating invisibly. A sid under a ``liquidate`` instruction skips the
+    band, because the flat is the decision and not a target to be damped (§3.3).
     """
     stepped = step_no_trade_band(held, raw, band)
     exempt = [sid for sid in dict.fromkeys(liquidate) if sid in raw.index]
@@ -2054,8 +2057,9 @@ def _evaluate_folds(
     ``fold_portfolio = "reset"`` the targets of the last two decision rows of
     every fold are zero, so the liquidation fills at the following open inside
     the fold and nothing fills on its own decision bar — the recorded driver's
-    mechanic (`research/arbitrage/walk_forward.py:264`), duplicated with this
-    citation rather than imported, because ``prism`` imports no research module.
+    mechanic, `research/arbitrage/walk_forward.py:264` (removed; last present at commit 5fcac33869e9),
+    duplicated with this citation rather than imported, because ``prism``
+    imports no research module.
 
     The decision loop only reads a panel on a bar where some component is due
     or expiring. On any other bar the emitted row is the held book, which is
@@ -3195,8 +3199,8 @@ def _fold_cost_inputs(
     formation window's dollar volume, and the closed-form band's variance comes
     from replaying the rank-to-weight rule over the same window and taking the
     variance of its day-over-day target changes. The replay is discarded after
-    the estimate and feeds nothing forward — the same discipline the recorded
-    driver states at `research/arbitrage/residual_walk_forward.py:444-462`.
+    the estimate and feeds nothing forward — the same discipline the recorded driver states at
+    `research/arbitrage/residual_walk_forward.py:444-462` (removed; last present at commit 5fcac33869e9).
     """
     view = resolved.view_at(train_end)
     columns = list(universe)
@@ -3375,8 +3379,8 @@ def _charged_spread(
     ``once`` prices the whole sample from the first fold's formation window.
     One simulation runs over the stitched target sequence, and the first
     formation window precedes every test bar in it, so that vector is causal
-    everywhere — which is the convention the recorded driver states and applies
-    (`research/arbitrage/residual_walk_forward.py:428-433`).
+    everywhere — which is the convention the recorded driver states and applies:
+    `research/arbitrage/residual_walk_forward.py:428-433` (removed; last present at commit 5fcac33869e9).
 
     ``fold`` prices each fold's test bars from that fold's own formation
     window, as a day-by-name frame. It is the cadence §3.6 defines and it is
@@ -3641,10 +3645,11 @@ def _scored_index(
 ) -> tuple[pd.DatetimeIndex, list[dict[str, object]]]:
     """The bars the record's metrics are taken on, and the folds left out.
 
-    Metrics are taken on test rows only, as the recorded driver does
-    (`research/arbitrage/walk_forward.py:414`). A fold the calibration hook
-    excluded contributes no bar, and the exclusion with its reason is recorded,
-    because a silently dropped fold changes what every per-fold number averages.
+    Metrics are taken on test rows only, as the recorded driver does:
+    `research/arbitrage/walk_forward.py:414` (removed; last present at commit 5fcac33869e9).
+    A fold the calibration hook excluded contributes no bar, and the exclusion
+    with its reason is recorded, because a silently dropped fold changes what
+    every per-fold number averages.
     """
     positions: list[int] = []
     excluded: list[dict[str, object]] = []
@@ -3665,9 +3670,10 @@ def _slice_result(full: PortfolioBacktestResult, index: pd.Index, *, capital: fl
     """One continuous simulation, scored on the test rows only.
 
     The equity path is re-compounded from the sliced returns so it opens at the
-    scenario's capital, exactly as ``_slice_portfolio_result``
-    (`research/arbitrage/walk_forward.py:400`) does; the returns themselves come
-    from the single stitched simulation and are never re-run per fold.
+    scenario's capital, exactly as ``_slice_portfolio_result`` does in
+    `research/arbitrage/walk_forward.py:278-295` (removed; last present at commit 5fcac33869e9);
+    the returns themselves come from the single stitched simulation and are
+    never re-run per fold.
     """
     kept = full.returns.index.intersection(index)
     if kept.empty:
@@ -4140,7 +4146,9 @@ def _coverage(resolved: _Resolved, *, untested_conclusions: Sequence[str]) -> di
     untested = list(untested_conclusions)
     unapplied = [str(item) for item in assumptions.get("scenarios_written_not_applied", ())]
     if unapplied:
-        untested.append("scenarios written into the dataset but not applied by this stage: " + ", ".join(unapplied))
+        untested.append(
+            "scenarios written into the dataset but not applied by this evaluation: " + ", ".join(unapplied)
+        )
     return {
         "membership_coverage": float(len(priced)) / float(len(resolved.universe)) if resolved.universe else 0.0,
         "missing_securities": missing,
@@ -4151,8 +4159,8 @@ def _coverage(resolved: _Resolved, *, untested_conclusions: Sequence[str]) -> di
         "bias_status": "unquantified",
         "unavailable_reason": (
             "terminal outcomes, the provisional and quarantined sid counts and a quantified survivorship bias "
-            "come from the security master and the events table (io/security_master.py, io/events.py), which "
-            "arrive at stage 3"
+            "would come from the security master and the events table (io/security_master.py, io/events.py), "
+            "which this coverage block does not read"
         ),
         "n_universe": len(resolved.universe),
     }
@@ -4172,8 +4180,8 @@ def _calibration_block(
         ],
         "hook": "declared" if hooked else "none",
         "note": (
-            "the shared-slope estimator (calibration.py::fit_calibration) arrives at stage 4; stage 2 calls the "
-            "hook once per fold on that fold's training window and records what it returns (§3.4)"
+            "this path does not run the shared-slope estimator (calibration.py::fit_calibration); it calls the "
+            "hook once per fold on that fold's training window and records what it returns"
         ),
     }
 

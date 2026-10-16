@@ -21,7 +21,7 @@ decides arrive as a background event on somebody's next `uv sync`. An exact pin 
 an act you perform, on a day you chose, with the comparison in front of you.
 
 Pin the engine and version your strategy configuration separately. An engine release does not
-change or promote your configuration, and your configuration change is not an engine upgrade. The
+change or approve your configuration, and your configuration change is not an engine upgrade. The
 two identities are already distinct in every record the engine writes: `engine_version` and
 `config_id` are separate fields of the authorization record and of every result.
 
@@ -94,9 +94,14 @@ The earlier INCOMPLETE receipt in section 4 is retained as history.
 
 ## 3. Keep evaluation environments away from live credentials
 
-Three rules, from the launch brief Q20 and enforced in the engine's own layout:
+Three rules, from question Q20 of the [engine design brief](prism_engine_decisions.md) and
+enforced in the engine's own layout:
 
-- Secrets stay outside source. `.env` is gitignored; the rules are in `docs/security.md`.
+- Secrets stay outside source. `.env` is gitignored; the rules are in `docs/security.md`. Set
+  `PRISM_DISABLE_DOTENV=1` in an evaluation environment so that no command discovers a `.env`
+  file (builds from commit `10601d4` onward; in a source checkout, the `research/` modules
+  honour it from 2026-10-16, when `research/config.py` began loading through
+  `prism.workspace.load_env`).
 - No import-time side effects. Importing `prism` reaches nothing and reads no credential.
 - Separate environments. The environment you evaluate a private signal in should not carry live
   API keys. The engine's own controls assume this: the mode defaults to paper, `--account
@@ -125,8 +130,9 @@ folded into a pass.
 
 **It does not publish.** There is no upload path in the script, and
 `tests/test_release_check.py::test_the_script_has_no_publish_path` asserts on the source text
-that none is added later. Uploading a distribution is an owner act: it makes a name and a version
-permanent for everyone, and it is not something a check should be able to do by accident.
+that none is added later. Uploading a distribution is the maintainer's decision: it makes a name
+and a version permanent for everyone, and it is not something a check should be able to do by
+accident.
 
 ### The six checks
 
@@ -195,8 +201,8 @@ Four things worth reading off that run:
 
 - It does not audit any dependency's behaviour. See section 2.
 - It does not verify a signature. There is none to verify: the artifacts here are unsigned, and
-  signing is an owner act tied to a key this repository does not hold. The reproducible build plus
-  the recorded hashes are what a third party can check today.
+  signing is the maintainer's decision, tied to a key this repository does not hold. The
+  reproducible build plus the recorded hashes are what a third party can check today.
 - It does not check the index-served artifact, because nothing is published. Once a release is
   published, the same check should be run against the downloaded artifact and its hash compared
   with the one recorded at build time.

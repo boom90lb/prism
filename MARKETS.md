@@ -1,12 +1,22 @@
 # MARKETS — zero-budget market structure analysis (mid-2026)
 
-Companion to `SPEC.md`; the analysis behind the market-scope table in
-`SPEC.md`. The lens throughout: a US individual, retail latency
+Companion to `SPEC.md`: the analysis behind its scope (section 8). The lens
+throughout: a US individual, retail latency
 (seconds to minutes), daily-to-weekly horizon, exactly $0 data and
 infrastructure budget, in a regulatory environment in flux. Regulatory
 claims are tagged **verified / likely / uncertain**; rule numbers and
 thresholds are asserted only where a primary source was checked. Everything
 is as of mid-2026 — re-confirm before it drives capital.
+
+> **Read with three later changes (2026-10-15).** The data budget is no longer
+> exactly $0: the contract allows spending up to about $1,000 a year
+> (`SPEC.md` section 5). Stooq no longer serves scripted downloads (section 1
+> below). And `SPEC.md` section 8 names US equities and ETFs as the execution
+> market and excludes options, direct futures, cash Treasuries, spot FX, and
+> crypto shorting, perpetuals and margin, whatever section 2 below concludes;
+> widening what capital is exposed to is the owner's decision, and any market
+> series may still be a signal input. In-house terms are explained in the
+> [glossary](docs/glossary.md).
 
 **Bottom line.** Two markets are executable at $0 with a viable retail
 horizon — **US cash equities/ETFs** and **crypto spot majors**. Four more —
@@ -47,9 +57,12 @@ bid/offer. Settlement is T+1 (since May 2024).
 **Data at $0.** Alpaca's free tier is IEX-only — measured at ~5% of
 consolidated volume across the 2026 S&P 500 (per-name median 4.8%,
 `results/iex_eligibility_2026-07-17.json`) — thin and not representative of
-the true best bid/offer. Also free: historical daily/minute bars, Stooq
-daily backfill, SEC EDGAR, FINRA transparency files. Real-time consolidated
-data is paid. **The binding scarcity is data quality, not access.**
+the true best bid/offer. Also free: Alpaca's historical daily and minute bars
+(with a free key), SEC EDGAR, FINRA transparency files. Stooq, listed here in
+mid-2026 as a free daily backfill, now answers scripted requests with a
+JavaScript proof-of-work page instead of data and is not usable (checked
+2026-10-15). Real-time consolidated data is paid. **The binding scarcity is
+data quality, not access.**
 
 **Execution at $0.** Alpaca: free paper environment on the full API,
 commission-free live equities/ETFs, $0 borrow on 5,000+ easy-to-borrow
@@ -94,8 +107,8 @@ profits off-venue; keep a minimal working float.
 **Verdict — CORE-CANDIDATE, time-series lane, not cross-sectional core.**
 Access is best-in-class, but two correlated majors give effectively one
 independent bet — so crypto cannot use the residual/breadth machinery that
-is the system's thesis and must carry its own net-edge evidence bar
-(`SPEC.md`, time-series carve-out). Name one US execution venue and
+is the system's thesis and would have to carry its own after-cost evidence
+(`SPEC.md` section 3). Name one US execution venue and
 price the book off *its* real fee; Alpaca crypto is a paper/validation
 fallback, not the priced home. Minimum hold ~1 hour on the cheapest venue
 (round-trip ~4–6 bp); the 24/7 clock demands a continuously monitored
@@ -117,7 +130,7 @@ constant-maturity yields (daily, history to 1962), slope series, real and
 breakeven rates, and Treasury.gov's daily par curve — all free, all EOD
 with ~1-day lag. Level, slope, and curvature imprint the
 recession/expansion and easing/tightening state and condition every other
-sleeve. A duration-ETF sleeve would just be macro beta competing for the
+strategy. A duration-ETF sleeve would just be macro beta competing for the
 same capital; it stays a documented, deferrable satellite.
 
 ---
@@ -157,7 +170,7 @@ What $0 does buy is first-class regime signal: VIX and VIX3M daily closes
 on FRED (history to 1990), the VIX9D/VIX/VIX3M term-structure slope from
 Cboe's pages, and realized vol from free underlying bars. The
 term-structure slope and the realized-versus-implied spread are high-value
-overlays for sizing and crisis de-grossing. Direct options trading is
+overlays for sizing and for cutting exposure in a crisis. Direct options trading is
 deferred: the spread-plus-fee tax kills daily-horizon spread-taking, and
 short-premium adds margin/assignment/tail complexity the stack is not
 built to manage.
@@ -205,8 +218,8 @@ Which structural laws bind, by market:
 - **Counterparty/custody risk** is the binding operational law in crypto;
   variation-margin path dependence plays the same role in futures.
 
-**The $0 data spine** (the free-tier spine): one keyed pair —
-Twelve Data + Alpaca — for the price/execution spine, plus unauthenticated
+**The free data stack** (`docs/free_tier_profile.md`): one keyed pair —
+Twelve Data + Alpaca — for prices and execution, plus unauthenticated
 official sources (FRED, Treasury, Cboe, SEC EDGAR) for the regime layer.
 One measured caveat: Twelve Data resolves retired/renamed tickers to
 whatever instrument currently owns the symbol (8 of ~574 caches quarantined

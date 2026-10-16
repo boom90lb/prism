@@ -3,9 +3,10 @@
 One console script, one vocabulary: ``init``, ``data``, ``conform``,
 ``evaluate``, ``compare``, ``run``, ``reconcile``, ``replay``, ``check``,
 ``trials``, ``folds``, ``upgrade-diff``. Every command the specification
-declares is parsed here from the first release, because a command that exits
-saying which stage delivers it is a schedule an operator can read, while an
-``invalid choice`` traceback is a surprise.
+declares is parsed here from the first release. A command or option this
+release does not run from the command line exits saying so and naming what
+does work today, because a pointer is something an operator can act on, while
+an ``invalid choice`` traceback is a surprise.
 
 Three duties, in this order, before any command writes (§3.1): resolve the
 workspace and create it, load ``.env``, then configure logging under
@@ -15,10 +16,11 @@ project directory and must not scatter a workspace across whatever directory
 the operator happened to be standing in.
 
 Exit codes: 0 success, 1 a refusal or a failure with a named cause, 2 a command
-whose delivery stage has not landed (and argparse's own usage errors). A report
-that could not cover everything it was asked about also exits 2, under the
-`prism.live.parity_gate` convention: 1 something failed, 2 something could not
-be evaluated and nothing failed, 0 everything asked about was answered.
+or option this release does not run from the command line (and argparse's own
+usage errors). A report that could not cover everything it was asked about also
+exits 2, under the `prism.live.parity_gate` convention: 1 something failed, 2
+something could not be evaluated and nothing failed, 0 everything asked about
+was answered.
 """
 
 from __future__ import annotations
@@ -45,22 +47,43 @@ logger = logging.getLogger("prism.cli")
 EXIT_LATER_STAGE = 2
 EXIT_REFUSED = 1
 
+#: What works today in place of each ``prism data`` subcommand this release
+#: does not run from the command line.
+_DATA_INSTEAD: dict[str, str] = {
+    "fetch": "no vendor download is wired to the command line. Load files you already have with "
+    "`prism data ingest --format csv|parquet --mapping <file> <path>`, or import per-symbol caches written "
+    "by prism.io.loader.DataLoader with `prism data import-legacy --cache-dir <dir>`",
+    "manifest": "`prism data synthetic`, `prism data ingest` and `prism data import-legacy` each write "
+    "manifest.json under the vintage label their --vintage option names",
+    "status": "the workspace's data/manifest.json records the dataset id, vintage, as-of date and coverage",
+    "universe": "`prism-build-universe` rebuilds the point-in-time S&P 500 membership files under data/universe/",
+}
+
+#: What works today in place of a resident `prism run` loop.
+_ONCE_INSTEAD = (
+    "pass --once to run one session and exit. Scheduled paper trading is "
+    "`python -m prism.scripts.paper_loop`, run each weekday evening by ops/paper_loop_nightly.sh "
+    "(docs/quickstart.md, section 6)"
+)
+
 
 class CommandError(RuntimeError):
     """A command refused with a cause worth printing without a traceback."""
 
 
 class LaterStage(RuntimeError):
-    """A declared command whose delivery stage has not landed.
+    """A declared command or option that this release does not run from the command line.
 
-    Carries the stage so the message always names it: a user reading the
-    refusal learns when the capability arrives, not merely that it is absent.
+    The message always names what works today instead (a narrower form of the
+    command, another command, or the Python interface that does the job), so a
+    user reading the refusal learns where to go, not merely that the path is
+    absent. The class keeps its original name; the exit code is
+    ``EXIT_LATER_STAGE``.
     """
 
-    def __init__(self, what: str, stage: int, delivers: str) -> None:
-        super().__init__(f"{what} is not delivered until stage {stage}: {delivers}")
+    def __init__(self, what: str, instead: str) -> None:
+        super().__init__(f"{what} is not available from the command line in this release: {instead}")
         self.what = what
-        self.stage = stage
 
 
 # --------------------------------------------------------------------------
@@ -99,13 +122,16 @@ def build_parser() -> argparse.ArgumentParser:
     synthetic.add_argument(
         "--scenarios",
         default="all",
-        help="'all' or a comma-separated subset of the twelve scenario ids of §3.2",
+        help="'all' or a comma-separated subset of the twelve scenario ids: membership, split, distribution, "
+        "halt, costs, rounding, spinoff, ticker_reuse, revision, rebase, delisting, recovery",
     )
     synthetic.add_argument("--equities", type=int, default=100, help="number of synthetic equities")
     synthetic.add_argument("--etfs", type=int, default=10, help="number of synthetic ETFs")
     synthetic.add_argument("--vintage", default="synthetic_v1", help="the vintage the manifest names")
 
-    fetch = data_sub.add_parser("fetch", help="vendor download into the tables of §3.2")
+    fetch = data_sub.add_parser(
+        "fetch", help="vendor download into the dataset tables (not available in this release)"
+    )
     fetch.add_argument("--source", required=True)
     fetch.add_argument("--symbols", required=True)
     fetch.add_argument("--start")
@@ -113,7 +139,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     ingest = data_sub.add_parser("ingest", help="local files under a declared column mapping")
     ingest.add_argument("--format", choices=("parquet", "csv"), required=True)
-    ingest.add_argument("--mapping", required=True, help="the §3.2 mapping file: columns, lag, revision policy")
+    ingest.add_argument("--mapping", required=True, help="the mapping file: columns, publication lag, revision policy")
     ingest.add_argument("--vintage", default="local_v1", help="the vintage label the manifest carries")
     ingest.add_argument(
         "--symbol-from-filename",
@@ -130,16 +156,20 @@ def build_parser() -> argparse.ArgumentParser:
     legacy.add_argument("--interval", default="1d", help="the bar interval to import")
     legacy.add_argument("--symbols", help="a file of symbols, one per line, restricting the import")
 
-    manifest = data_sub.add_parser("manifest", help="write manifest.json")
+    manifest = data_sub.add_parser("manifest", help="write manifest.json (not available in this release)")
     manifest.add_argument("--freeze", action="store_true", help="name a vintage")
 
-    data_sub.add_parser("status", help="coverage, provisional sids, last ingestion per source")
+    data_sub.add_parser(
+        "status", help="coverage, provisional sids, last ingestion per source (not available in this release)"
+    )
 
-    universe = data_sub.add_parser("universe", help="rebuild the point-in-time membership table")
+    universe = data_sub.add_parser(
+        "universe", help="rebuild the point-in-time membership table (not available in this release)"
+    )
     universe.add_argument("--index", required=True)
     universe.add_argument("--asof")
 
-    conform = sub.add_parser("conform", help="the component and dataset conformance suite of §3.3")
+    conform = sub.add_parser("conform", help="check every component of a specification against the component contract")
     conform.add_argument("spec", help="the specification to conform")
 
     evaluate = sub.add_parser("evaluate", help="walk-forward evaluation of a specification")
@@ -153,7 +183,7 @@ def build_parser() -> argparse.ArgumentParser:
     evaluate.add_argument("--freeze-scores", dest="freeze_scores")
     evaluate.add_argument("--smoke", action="store_true", help="the fixed engineering run on the synthetic fixture")
 
-    compare = sub.add_parser("compare", help="the comparison report of §3.12")
+    compare = sub.add_parser("compare", help="compare recorded evaluations (not available in this release)")
     compare.add_argument("records", nargs="*")
     compare.add_argument("--registration")
     compare.add_argument("--repricing")
@@ -163,13 +193,17 @@ def build_parser() -> argparse.ArgumentParser:
 
     trials = sub.add_parser("trials", help="evidence history")
     trials_sub = trials.add_subparsers(dest="subcommand", metavar="<subcommand>")
-    trials_reconcile = trials_sub.add_parser("reconcile", help="close orphaned started rows")
+    trials_reconcile = trials_sub.add_parser(
+        "reconcile", help="close orphaned started rows (not available in this release)"
+    )
     trials_reconcile.add_argument("--log")
     trials_reconcile.add_argument("--source")
 
     folds = sub.add_parser("folds", help="fold tables")
     folds_sub = folds.add_subparsers(dest="subcommand", metavar="<subcommand>")
-    folds_import = folds_sub.add_parser("import", help="write a fold table from recorded fold windows")
+    folds_import = folds_sub.add_parser(
+        "import", help="write a fold table from recorded fold windows (not available in this release)"
+    )
     folds_import.add_argument("--from", dest="from_path", required=True)
     folds_import.add_argument("--out", required=True)
 
@@ -183,12 +217,11 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument(
         "--reason",
         default=None,
-        help="why the account lock is being broken; required with --break-lock, because §3.10 records "
-        "who broke a lock, when, and why in the run directory, and a break with no stated reason "
-        "records no why",
+        help="why the account lock is being broken; required with --break-lock, because the run directory "
+        "records who broke a lock, when, and why, and a break with no stated reason records no why",
     )
 
-    reconcile = sub.add_parser("reconcile", help="reconcile a run against the venue (§3.11)")
+    reconcile = sub.add_parser("reconcile", help="reconcile a run against the venue (not available in this release)")
     reconcile.add_argument("run", help="the run directory")
 
     replay = sub.add_parser("replay", help="replay recorded sessions")
@@ -208,21 +241,25 @@ def build_parser() -> argparse.ArgumentParser:
         "--expect-session",
         dest="expect_session",
         action="store_true",
-        help="assert a session should have been decided by now: the §3.11 freshness table is printed and a "
+        help="assert a session should have been decided by now: the freshness table is printed and a "
         "missed session, or a run directory that has decided nothing at all, is a failure rather than a note",
     )
-    check.add_argument("--monitor", action="store_true", help="run the telemetry read of §3.11 instead")
+    check.add_argument(
+        "--monitor",
+        action="store_true",
+        help="run the paper account's monitoring statistics instead (not available in this release)",
+    )
     check.add_argument(
         "--asof",
         default=None,
         help="the decision clock to evaluate against (default: today). A replayed session is evaluated "
-        "against its recorded decision bar, never against wall-clock time (§3.11)",
+        "against its recorded decision bar, never against wall-clock time",
     )
     check.add_argument(
         "--account",
         choices=("paper", "live"),
         default="paper",
-        help="the mode the endpoint and authorization checks are evaluated for (§3.10); `check` writes "
+        help="the mode the endpoint and authorization checks are evaluated for; `check` writes "
         "nothing and reaches no venue, so unlike `run --account` it carries a default",
     )
     check.add_argument(
@@ -372,7 +409,7 @@ def _refusal_types() -> tuple[type[BaseException], ...]:
 
 
 # --------------------------------------------------------------------------
-# Commands that stage 1 delivers
+# Commands this release runs
 # --------------------------------------------------------------------------
 
 
@@ -384,7 +421,7 @@ def _cmd_init(args: argparse.Namespace) -> int:
     root = Path(args.directory).expanduser()
     written = write_template(root, force=args.force)
     print(f"wrote {len(written)} files into {root} (pinned to {ENGINE_PIN})")
-    print("next: cd into it, then `prism data synthetic --seed 7 --scenarios all`")
+    print("next: cd into it, then `prism data synthetic --seed 7 --scenarios all --equities 12 --etfs 2`")
     return 0
 
 
@@ -396,17 +433,7 @@ def _cmd_data(args: argparse.Namespace) -> int:
     if args.subcommand == "import-legacy":
         return _cmd_data_import_legacy(args)
     if args.subcommand != "synthetic":
-        raise LaterStage(
-            f"`prism data {args.subcommand}`",
-            3,
-            "the vendor fetch path, the manifest freeze, the status read and the universe rebuild arrive "
-            "with the rest of the data contract"
-            + (
-                "; `prism-build-universe` rebuilds the point-in-time membership table today"
-                if args.subcommand == "universe"
-                else ""
-            ),
-        )
+        raise LaterStage(f"`prism data {args.subcommand}`", _DATA_INSTEAD[args.subcommand])
     from prism.io.synthetic import resolve_scenarios, write_synthetic_dataset
 
     workspace = _open_workspace(args, "data-synthetic")
@@ -518,45 +545,54 @@ def _cmd_conform(args: argparse.Namespace) -> int:
 
 
 def _cmd_evaluate(args: argparse.Namespace) -> int:
-    """``--smoke`` only at stage 1: the fixed engineering run on the synthetic fixture."""
+    """``--smoke`` only: the fixed, unrecorded engineering run on the workspace dataset.
+
+    A recorded evaluation is the Python interface
+    :func:`prism.evaluate.walk_forward_evaluate`; every option below that needs
+    one refuses and names it.
+    """
     if not args.smoke:
         raise LaterStage(
             "`prism evaluate` without --smoke",
-            2,
-            "a recorded evaluation needs the ResultRecord, the run-recording protocol and the "
-            "trial log, which arrive with the full evaluator",
+            "`--smoke` runs the unrecorded engineering check on the workspace dataset. A recorded "
+            "walk-forward evaluation, with its result record and trial-log rows, runs from Python through "
+            "prism.evaluate.walk_forward_evaluate and a frozen prism.validation.walk_forward.FoldTable "
+            "(docs/onboarding.md, section 2)",
         )
     if args.engine == "canonical":
         raise LaterStage(
             "`--engine canonical`",
-            3,
-            "the canonical accounting engine needs execution/portfolio_state.py, "
-            "execution/accounting.py and execution/simulate.py",
+            "the share-holding engine charges dollars against a declared cost stack, and the command line "
+            "has no option to declare one. Pass engine='canonical' and a prism.evaluate.CanonicalSettings to "
+            "prism.evaluate.smoke_evaluate or walk_forward_evaluate; here, `--smoke` runs "
+            "`--engine historical_constant_weight`",
         )
     if args.registration or args.arm:
         raise LaterStage(
             "`--registration` / `--arm`",
-            2,
-            "a registration binds a run to a declared selection set, which needs the trial log",
+            "a run bound to a pre-registered experiment and one of its variants goes through "
+            "prism.evaluate.walk_forward_evaluate(registration=..., arm_id=...), which records it in the "
+            "trial log",
         )
     if args.visibility == "replay_recorded":
         raise LaterStage(
             "`--visibility replay_recorded`",
-            3,
-            "both visibility modes arrive with the data contract; stage 1 evaluates " "research_vintage only",
+            "`--smoke` reads the dataset in research_vintage mode. The replay_recorded mode is "
+            "prism.evaluate.walk_forward_evaluate(visibility_mode='replay_recorded') or "
+            "prism.io.dataset.Dataset.view('replay_recorded', ...)",
         )
     if args.vintage:
         raise LaterStage(
             "`--vintage`",
-            3,
-            "the vintage is read from the dataset manifest at stage 1; selecting among frozen "
-            "vintages arrives with the two visibility modes",
+            "a workspace dataset carries one vintage, the one its manifest.json names, and `--smoke` reads "
+            "it. To evaluate another vintage, point --workspace at the workspace that holds it",
         )
     if args.freeze_scores:
         raise LaterStage(
             "`--freeze-scores`",
-            4,
-            "the frozen score panel is the registration's shared input, and stage 4 opens with it",
+            "nothing in this release writes the frozen score panel a registration can name, so a "
+            "registration that names one refuses every run until its freeze record exists "
+            "(prism.registration.Registration.check_freeze_record)",
         )
     from prism.evaluate import smoke_evaluate
     from prism.spec import load_spec
@@ -594,21 +630,19 @@ def _cmd_run(args: argparse.Namespace) -> int:
         raise CommandError(
             "`--account live --broker synthetic` names no account: a live account is a venue's, and a "
             "synthetic session reaches no venue. Run a live account with `--broker alpaca`, which reads "
-            "the authorization record of §3.10 before it constructs a client, or run the synthetic "
+            "the account's authorization record before it constructs a client, or run the synthetic "
             "session with `--account paper`"
         )
     if args.stage is not None:
         raise LaterStage(
             "`--stage decide|submit|sweep` on a synthetic session",
-            5,
-            "the three separately scheduled stages exchange durable state, and the synthetic driver "
-            "replays a whole cycle in one process",
+            "a synthetic session decides, submits and fills one whole cycle in one process, so run it without "
+            "--stage. The separate submit and sweep steps run with `--broker alpaca`",
         )
     if not args.once:
         raise LaterStage(
             "`prism run` without --once",
-            5,
-            "the resident loop is the operating workflow; stage 1 runs one session and exits",
+            _ONCE_INSTEAD,
         )
 
     from prism.io.dataset import Dataset
@@ -622,9 +656,8 @@ def _cmd_run(args: argparse.Namespace) -> int:
     if len(spec.components) != 1:
         raise LaterStage(
             f"a {len(spec.components)}-component specification in `prism run`",
-            5,
-            "an operating session over a composed book runs through assemble; stage 1 replays "
-            "the single-component daily cycle of §4",
+            "`prism run` replays the daily cycle of a single-component specification. "
+            "`prism evaluate <spec> --smoke` runs a specification that combines several components",
         )
     loaded = spec.components[0]
     config = _daily_book_config(spec, loaded)
@@ -747,15 +780,14 @@ def _venue_session(args: argparse.Namespace) -> int:
     if not args.once:
         raise LaterStage(
             "`prism run` without --once",
-            5,
-            "the resident loop is the operating workflow; a stage runs one invocation and exits",
+            _ONCE_INSTEAD,
         )
     if args.stage not in ("submit", "sweep"):
         raise LaterStage(
             "`prism run --broker alpaca` without `--stage submit|sweep`" if args.stage is None else "`--stage decide`",
-            5,
-            "the decide stage constructs the book over a live dataset view through assemble; the submit "
-            "and sweep stages, which read only the durable pending-order record, run today",
+            "`--stage submit` and `--stage sweep` run here against the run directory's pending-order record. "
+            "Deciding a session for an Alpaca account is the paper loop, `python -m prism.scripts.paper_loop` "
+            "with --no-submit or --submit, which builds its book from its own options, not from a specification",
         )
 
     workspace = _open_workspace(args, "run")
@@ -764,9 +796,9 @@ def _venue_session(args: argparse.Namespace) -> int:
     if record is None:
         raise AuthorizationRefused(
             f"no authorization record for the {args.account} account at "
-            f"{run_dir / AUTHORIZATION_FILENAME}: state S4b permits nothing and every broker write is "
-            "refused, C0 included. Refusing before a client is constructed and before a credential is "
-            "read (§3.10)"
+            f"{run_dir / AUTHORIZATION_FILENAME}. Without one every broker write is refused, cancelling an "
+            "open order included (operating state S4b). Refusing before a client is constructed and before "
+            "a credential is read"
         )
     spec = load_spec(Path(args.spec).expanduser(), workspace=workspace)
     broker = venue_broker(args.account, time_in_force="day" if args.stage == "sweep" else "opg")
@@ -840,8 +872,8 @@ def _break_execution_lock(args: argparse.Namespace) -> int:
 
     if not args.reason or not args.reason.strip():
         raise CommandError(
-            "`--break-lock` requires `--reason`: §3.10 records who broke a lock, when, and why, and a "
-            "break with no stated reason records no why"
+            "`--break-lock` requires `--reason`: the run directory records who broke a lock, when, and "
+            "why, and a break with no stated reason records no why"
         )
     workspace = _open_workspace(args, "run")
     synthetic = args.broker == "synthetic"
@@ -855,7 +887,7 @@ def _break_execution_lock(args: argparse.Namespace) -> int:
         if record is None:
             raise AuthorizationRefused(
                 f"no authorization record at {run_dir / AUTHORIZATION_FILENAME}: the record is what names "
-                "the account whose lock this would break, so there is no lock to name (§3.10)"
+                "the account whose lock this would break, so there is no lock to name"
             )
         account_id = record.account_id
     path = account_lock_path(account_id)
@@ -906,15 +938,15 @@ def _who_is_running() -> str:
 
 
 # --------------------------------------------------------------------------
-# Commands whose stage has not landed
+# Commands this release does not run from the command line
 # --------------------------------------------------------------------------
 
 
 def _cmd_compare(args: argparse.Namespace) -> int:
     raise LaterStage(
         "`prism compare`",
-        2,
-        "a comparison reads ResultRecords, and the record and the trial log arrive with the " "full evaluator",
+        "compare recorded evaluations from Python with prism.validation.compare.compare_reevaluation, or "
+        "reprice recorded fills with compare_repricing (docs/onboarding.md, section 3, has a worked script)",
     )
 
 
@@ -923,8 +955,7 @@ def _cmd_trials(args: argparse.Namespace) -> int:
         raise CommandError("`prism trials` needs a subcommand; the vocabulary declares `reconcile`")
     raise LaterStage(
         "`prism trials reconcile`",
-        2,
-        "there is no trial log to reconcile until the run-recording protocol writes one",
+        "close orphaned started rows from Python with prism.validation.trials.reconcile_trial_log(<log path>)",
     )
 
 
@@ -933,16 +964,16 @@ def _cmd_folds(args: argparse.Namespace) -> int:
         raise CommandError("`prism folds` needs a subcommand; the vocabulary declares `import`")
     raise LaterStage(
         "`prism folds import`",
-        2,
-        "frozen fold tables are imported from recorded fold windows with the full evaluator",
+        "build the table from recorded fold windows in Python with "
+        "prism.validation.walk_forward.FoldTable.from_records(...), then write it with .write_toml(<path>)",
     )
 
 
 def _cmd_reconcile(args: argparse.Namespace) -> int:
     raise LaterStage(
         "`prism reconcile`",
-        5,
-        "reconciliation against a venue's fills is part of the operating workflow",
+        "`prism-doctor --network` compares the Alpaca account's positions with the run directory's "
+        "state.json; the Python interface is prism.live.reconcile.reconcile",
     )
 
 
@@ -1020,10 +1051,8 @@ def _cmd_check(args: argparse.Namespace) -> int:
     if args.monitor:
         raise LaterStage(
             "`prism check --monitor`",
-            5,
-            "the monitoring read is driven by policies/monitoring.toml, whose schema and reader "
-            "registry are the monitoring half of this stage; `prism.scripts.paper_monitor` runs the "
-            "anytime read today",
+            "`python -m prism.scripts.paper_monitor --run-dir <run>` computes the paper account's monitoring "
+            "statistics; `prism check <run>` without --monitor runs the offline health checks",
         )
 
     run_dir = Path(args.run).expanduser()
@@ -1253,9 +1282,8 @@ def _daily_book_config(spec: "Specification", loaded: "LoadedComponent") -> "Dai
         return DailyBookConfig(book="inverse_vol", vol_ewma_bars=int(params["vol_ewma_bars"]), **common)
     raise LaterStage(
         f"to_weights = {rule!r} in `prism run`",
-        5,
-        "the live daily cycle constructs the decile and inverse-vol books; the remaining rules "
-        "reach an operating session through the composed book that assemble drives",
+        "`prism run` builds the decile_long_short and sign_inverse_vol rules; "
+        "`prism evaluate <spec> --smoke` evaluates every rule, this one included",
     )
 
 

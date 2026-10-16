@@ -10,7 +10,8 @@ that is both is split before it is reviewed.
   refuses. It is judged on correctness, on interface compatibility, and on tests.
 - **A reference-policy change** alters what the reference strategy is: its signal parameters, its
   cost stack, its risk policy, its universe, its execution profile. It is judged on evidence,
-  under the registration rules, and it is not an improvement because it improves a number.
+  under the pre-registration rules of `SPEC.md` section 4, and it is not an improvement because
+  it improves a number. In-house terms are explained in the [glossary](glossary.md).
 
 The third rule sits over both: **merging code never authorizes a live configuration.** Section 3.
 
@@ -65,29 +66,35 @@ under `trials/`.
 
 **What a reviewer asks.**
 
-1. **Is there a registration?** Register, then run (`SPEC.md` section 4). The registration is a
-   tracked document under `docs/` following the `*_design.md` or `*_preregistration.md` pattern,
-   or a declared registration file under `registrations/`, and the registration is the commit
-   that adds it. A comparison that was not declared before it ran is exploratory and is recorded
-   as exploratory. Standardization and weighting alternatives are not free diagnostics: each is a
-   declared arm or it is not run.
-2. **What does this change claim, and at what tier?** The tiers are `no_claim`,
-   `mechanics_clean`, `gross_edge`, `net_edge`, `robust_edge`, and the record carries which one
-   it reached.
-3. **Does it promote anything?** Almost certainly not, and the burden is on the change to show
-   otherwise. A same-sample comparison can kill a configuration and can never promote one; the
-   reference book's promotion stays under the prospective rules of `SPEC.md` section 4, which
-   require out-of-sample data after the registration date. That
-   sentence is not editorial, it is what the stage 4 comparison record itself writes into its
-   `promotion_check` field.
+1. **Is there a pre-registration?** Register, then run (`SPEC.md` section 4). The registration
+   is a tracked document under `docs/` following the `*_design.md` or `*_preregistration.md`
+   pattern, or a declared registration file under `registrations/`, and the registration is the
+   commit that adds it. It states the configurations to be tried, the data, the costs, the stop
+   criterion and the approval rule before anything runs. A comparison that was not declared
+   before it ran is exploratory and is recorded as exploratory. Standardization and weighting
+   alternatives are not free diagnostics: each is a declared variant or it is not run.
+2. **What does this change claim, and at what evidence tier?** The tiers are `no_claim`,
+   `mechanics_clean` (the pipeline ran and the accounting conserves capital), `gross_edge`
+   (profitable before costs), `net_edge` (profitable after modeled costs) and `robust_edge`
+   (also significant after the multiple-testing adjustment), and the record carries which one it
+   reached.
+3. **Does it approve anything for the live book?** Almost certainly not, and the burden is on the
+   change to show otherwise. A comparison on the same data a configuration was chosen on can
+   reject it and can never approve it; the reference book's approval stays under the rules of
+   `SPEC.md` section 4, which require data from after the registration date or, for a published
+   factor, its long public record. That sentence is not editorial: the construction comparison
+   record (`results/2026-09-construction/comparison.json`) writes it into its `promotion_check`
+   field.
 4. **Does the trial ledger stay honest?** Every evaluated configuration is a ledger row, NaN and
    degenerate outcomes included. Ledgers are append-only and editing or deleting a row is
-   falsification. A claim deflates against its own selection set, never against a pooled ledger
-   of incommensurable strategies and never against fewer rows than were run. Closed sets stay
-   closed: a new idea is a new registration, not a new row in a set whose kill rule has fired
-   (`SPEC.md` section 4).
-5. **Does it rewrite a certified artifact?** Anything under `results/` cited by a file in
-   `docs/certifications/` is never rewritten. A correction is a new artifact with a new id.
+   falsification. A claim is deflated against the full set of configurations its own experiment
+   tried, never against a pooled ledger of incommensurable strategies and never against fewer
+   rows than were run. A completed experiment stays closed: a new idea is a new
+   pre-registration, not a new row in an experiment whose stop criterion has fired (`SPEC.md`
+   section 4).
+5. **Does it rewrite a certified artifact?** Anything under `results/` cited by a published
+   result in `docs/certifications/` is never rewritten. A correction is a new artifact with a new
+   id.
 6. **Are the limitations updated?** If the change adds or moves a published number,
    `docs/limitations.md` moves with it in the same change. A result whose limitations are
    documented in a later change was published without them.
@@ -148,9 +155,10 @@ arbitrary private Python. Its integrity rests on filesystem permissions. It answ
 question: did the owner approve this process, on this host, against this account, for this
 action.
 
-**The owner acts it cannot replace.** Opening, funding or resizing a real-money account, arming
-crash-conditional de-grossing, changing the live book's configuration, restarting or repointing
-the scheduler, and publishing a distribution. None of these is a merge.
+**The account-owner decisions it cannot replace.** Opening, funding or resizing a real-money
+account, switching on a sizing rule such as the crash-conditional exposure cut, changing the live
+book's configuration, restarting or repointing the scheduler, and publishing a distribution. None
+of these is a merge.
 
 ---
 
