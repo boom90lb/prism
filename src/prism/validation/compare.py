@@ -1,4 +1,8 @@
-"""Comparison and repricing reports (engine specification §3.12, "Comparison recording").
+"""Comparison and repricing reports, and studentized Sharpe-ratio intervals.
+
+The interval functions (:func:`sharpe_interval`, :func:`sharpe_difference_interval`,
+:func:`excess_sharpe_interval`) take plain return arrays and are usable on their own; their
+assumptions and limits are in ``docs/statistics.md``.
 
 ``compare`` distinguishes two kinds of input and produces one report.
 
@@ -15,8 +19,8 @@
   is why the deviation is reported rather than presented as an outcome.
 
 **Units.** Returns are compared with returns. A hurdle is a *return series* — the declared
-cash series accrued per period — and never a scalar yield or a Sharpe number
-(§3.12 **[Q21]**). :func:`require_return_series` enforces that at the boundary:
+cash series accrued per period — and never a scalar yield or a Sharpe number.
+:func:`require_return_series` enforces that at the boundary:
 :func:`constant_hurdle_returns` is the only sanctioned way to turn an annual yield into
 something comparable, and it produces a series, not a bar for a Sharpe to clear.
 
@@ -26,7 +30,9 @@ declared in :class:`SharpeBootstrapSpec` before the run: frequency, block length
 least the decision interval), resample count, seed, and scheme. The interval is studentized
 (a bootstrap-t on the Sharpe difference, standardized by a HAC standard error from the
 influence function of the moment functional, in the manner of Ledoit and Wolf 2008) and is
-reported beside the difference in means.
+reported beside the difference in means. It is not their procedure exactly: the kernel, the
+bootstrap-world standard error, the interval shape and the block-length choice all differ,
+as ``docs/statistics.md`` lists, and the output has not been cross-checked against their code.
 
 Both the point Sharpe and every resampled Sharpe use the project's ``ddof=1`` estimator
 (:func:`prism.validation.metrics.periodic_sharpe`), while the studentizing standard error is
@@ -94,7 +100,7 @@ def require_return_series(value: Any, name: str) -> np.ndarray:
     """Return ``value`` as a 1-D float array, or raise if it is not a return series.
 
     A scalar is refused with the reason spelled out: a yield or a Sharpe number is not a
-    return series, and comparing one with a return series is the units error §3.12 forbids.
+    return series, and comparing one with a return series is a units error.
     Use :func:`constant_hurdle_returns` to accrue an annual yield into per-period returns.
     """
     if isinstance(value, (pd.Series, pd.Index)):
@@ -127,10 +133,9 @@ def constant_hurdle_returns(
     """Accrue a flat annual yield into a per-period *return* series.
 
     This is the unit conversion that makes a yield comparable with a strategy's returns:
-    ``annual_rate / periods_per_year`` per period. It is a convenience for a flat rate; a
-    registration that names a cash series (``[benchmark].cash_series``, §3.13) accrues the
-    realized series instead and records it, and that recorded series is what a promotion
-    rule and a comparison read.
+    ``annual_rate / periods_per_year`` per period. It is a convenience for a flat rate; when
+    a realized cash series is available (for example a daily T-bill return series), accrue
+    and record that instead, and compare against it.
     """
     if periods_per_year < 1:
         raise ValueError(f"periods_per_year must be >= 1, got {periods_per_year}")
@@ -147,7 +152,7 @@ def excess_returns(net_returns: Any, cash_returns: Any) -> np.ndarray:
     """``net - cash``, element-wise, on two aligned per-period return series.
 
     Both arguments must be return series: this is the return-versus-hurdle read that
-    replaces comparing a Sharpe with a yield (§3.12 migration row for `SPEC.md:80`).
+    replaces comparing a Sharpe with a yield.
     """
     net = require_return_series(net_returns, "net_returns")
     cash = require_return_series(cash_returns, "cash_returns")
@@ -166,9 +171,11 @@ def excess_returns(net_returns: Any, cash_returns: Any) -> np.ndarray:
 
 @dataclass(frozen=True)
 class SharpeBootstrapSpec:
-    """The registration's ``[sharpe_bootstrap]`` block, resolved (§3.12).
+    """The declared bootstrap for the Sharpe intervals (a registration's ``[sharpe_bootstrap]`` block).
 
-    ``block_bars`` is the block length in bars and must be at least the decision interval,
+    Every parameter is fixed before the run, so an interval reproduces exactly from the
+    same inputs and spec. ``block_bars`` is the block length in bars and must be at least
+    the decision interval (``decision_interval_bars``, the bars between rebalances),
     so a block spans at least one decision. ``hac_lags`` defaults to ``block_bars - 1``, the
     dependence the block length already declares; it is recorded either way.
     """
@@ -189,7 +196,7 @@ class SharpeBootstrapSpec:
         if int(self.block_bars) < int(self.decision_interval_bars):
             raise ValueError(
                 f"block_bars={int(self.block_bars)} is shorter than the decision interval "
-                f"{int(self.decision_interval_bars)} bars; a block must span at least one decision (§3.12)"
+                f"{int(self.decision_interval_bars)} bars; a block must span at least one decision"
             )
         if not 0.5 < float(self.confidence) < 1.0:
             raise ValueError(f"confidence must lie in (0.5, 1.0), got {self.confidence}")
@@ -366,8 +373,8 @@ def sharpe_difference_interval(
 
     Both arms are resampled on the *same* blocks, so the interval describes the difference
     on one sample rather than two independently drawn ones. The series must be aligned and
-    of equal length: excluding a fold from one arm and keeping it in the other is refused
-    upstream (§3.4) and would be undetectable here.
+    of equal length: a period dropped from one arm and kept in the other cannot be detected
+    here, so align the series before calling.
     """
     left = require_return_series(returns_a, "returns_a")
     right = require_return_series(returns_b, "returns_b")
@@ -428,9 +435,9 @@ def sharpe_interval(
 ) -> SharpeInterval:
     """Studentized interval for one series' Sharpe, reported against zero.
 
-    Applied to an excess-return series (``net - cash``) this is the promotion rule's read:
-    "periodic net excess Sharpe positive against the declared cash series", stated on
-    returns rather than as a Sharpe compared with a yield.
+    Applied to an excess-return series (``net - cash``) it answers whether the strategy's
+    Sharpe ratio over cash is positive, stated on returns rather than as a Sharpe ratio
+    compared with a yield (:func:`excess_sharpe_interval` does the subtraction).
     """
     values = require_return_series(returns, "returns")
     n_periods = values.size

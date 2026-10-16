@@ -28,6 +28,9 @@ set anniversaries and are never events.
 
 One security per company per session, by the rule of ``prism.io.fundamental_panel``:
 index members first, then the more liquid security, then the security id.
+
+Guide, file schemas and limits: ``docs/earnings_dates.md``; an offline example:
+``examples/point_in_time/earnings_dates.py``.
 """
 
 from __future__ import annotations

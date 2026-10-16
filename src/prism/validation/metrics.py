@@ -20,10 +20,11 @@ for honest backtest reporting:
   * `deflated_sharpe_ratio(returns, trial_sharpes)` — Bailey & López de
     Prado (2014). PSR with the benchmark set to the *expected maximum*
     Sharpe under the null of no skill across N trials (`expected_max_sharpe`
-    via the False Strategy Theorem). This is the half of audit M3 that
-    needed a real hyperparameter-grid trial count before it could be
-    computed honestly — the trial Sharpes are the per-config OOS Sharpes
-    from the sweep, and N is the (honestly counted) grid size.
+    via the False Strategy Theorem). The trial Sharpes are the out-of-sample
+    Sharpes of every configuration tried, and N is the number of
+    configurations tried, counted honestly.
+
+Usage, assumptions and limits: ``docs/statistics.md``.
 """
 
 from __future__ import annotations
@@ -203,10 +204,10 @@ def expected_max_sharpe_with_n(trial_sharpes: ArrayLike, n_trials: int) -> float
     """``expected_max_sharpe`` with an explicit trial count N (>= observed).
 
     Uses the observed cross-trial Sharpe dispersion but raises the benchmark to a
-    pre-registered design-grid size, so a run can be deflated against the number of
-    configurations *searched* (the False Strategy Theorem's N) rather than only the
-    number written to the ledger. ``n_trials`` is floored at the observed count, so
-    ``expected_max_sharpe`` is the special case N == len(trial_sharpes).
+    declared number of configurations, so a result can be deflated against the number
+    of configurations *searched* (the False Strategy Theorem's N) rather than only the
+    number whose Sharpe ratios are at hand. ``n_trials`` is floored at the observed
+    count, so ``expected_max_sharpe`` is the special case N == len(trial_sharpes).
     """
     arr = _to_array(trial_sharpes)
     n_obs = arr.size
@@ -228,9 +229,9 @@ def deflated_sharpe_ratio_with_n(
     """``deflated_sharpe_ratio`` deflated against an explicit N (>= observed).
 
     Identical PSR core (same skew/kurtosis adjustment) as ``deflated_sharpe_ratio``;
-    only the benchmark trial count differs, via ``expected_max_sharpe_with_n``. Lets
-    the residual path deflate against a pre-registered researcher design grid rather
-    than the handful of runs in the ledger (audit V-2 interim floor).
+    only the benchmark trial count differs, via ``expected_max_sharpe_with_n``. Use it
+    when more configurations were searched than there are trial Sharpe ratios to pass,
+    for example a declared search grid of which only some runs were kept.
     """
     sr_null = expected_max_sharpe_with_n(trial_sharpes, n_trials)
     if not np.isfinite(sr_null):
@@ -272,6 +273,12 @@ def probability_backtest_overfitting(
         the IS-best strategy is OOS below-median.
 
     PBO is the mean of the overfit indicator across all splits.
+
+    Conventions to know when comparing with other implementations: a split whose
+    IS-best strategy lands exactly on the OOS median (possible only when N is odd)
+    has logit 0 and is counted as *not* overfit; tied OOS Sharpes are ranked by
+    column order; and the last ``T mod n_splits`` rows are dropped so the slices
+    are equal.
 
     Returns NaN if there are <2 strategies, <2 splits, or T is too small
     to slice cleanly (`T < n_splits * 2`).
@@ -355,8 +362,8 @@ def _block_sharpe(block: np.ndarray) -> np.ndarray:
 #
 # The diagnostic carries no hurdle and no viability verdict. Whether a book clears
 # an after-cost bar is a comparison of return series and lives in
-# `prism.validation.compare` (engine specification §3.12): returns are compared
-# with returns, and no Sharpe number is compared with a yield.
+# `prism.validation.compare`: returns are compared with returns, and no Sharpe
+# number is compared with a yield.
 #
 # All quantities are PERIODIC at one common input frequency (e.g. daily);
 # annualize both sides consistently or not at all.
@@ -400,7 +407,7 @@ def effective_breadth_from_cov(cov: Union[np.ndarray, pd.DataFrame]) -> float:
     misleading: a book dominated by one large eigenvalue (one common factor) has
     ``N_eff -> 1`` regardless of name count, while a flat spectrum gives
     ``N_eff -> N``. Compute it on the covariance of the *traded residuals* so it
-    reflects what the book actually bets on (SPEC.md §7.2).
+    reflects what the book actually bets on.
 
     Returns NaN for an empty/degenerate matrix. Tiny negative eigenvalues from
     round-off are clipped to 0.
@@ -428,9 +435,6 @@ def information_ratio_ceiling(information_coefficient: float, effective_breadth_
     is a *periodic* information coefficient (rank IC at the decision horizon);
     ``N_eff`` is effective breadth on the same cross-section. Returns NaN on
     non-finite / negative-breadth input.
-
-    The function is unchanged from the pre-overhaul engine; only this docstring is
-    corrected (engine specification §3.12 migration row for SPEC.md N6).
     """
     ic = float(information_coefficient)
     br = float(effective_breadth_value)
@@ -517,7 +521,7 @@ def breadth_diagnostic(
     information_coefficient: float,
     effective_breadth_value: float,
 ) -> dict[str, float]:
-    """Breadth accounting per SPEC.md N6, with no hurdle and no verdict.
+    """Breadth accounting by the fundamental law of active management, with no hurdle and no verdict.
 
     Reports three numbers and one flag, all periodic at one common frequency:
 
@@ -536,9 +540,9 @@ def breadth_diagnostic(
 
     The diagnostic deliberately carries no ``after_cost_hurdle``, no ``viable`` flag
     and no ``viability_margin``. Whether a book clears an after-cost bar is a
-    comparison of return series and lives in :mod:`prism.validation.compare`
-    (engine specification §3.12 **[Q19], [Q21]**): returns are compared with returns,
-    and a Sharpe number is never compared with a yield.
+    comparison of return series and lives in :mod:`prism.validation.compare`:
+    returns are compared with returns, and a Sharpe number is never compared with a
+    yield.
 
     Returns a JSON-friendly dict of floats (``exceeds_diagnostic`` as 1.0/0.0/NaN) so
     it can be embedded in a record. Non-finite or negative-breadth input propagates to

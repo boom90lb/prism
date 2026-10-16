@@ -1,17 +1,29 @@
-"""Validation utilities (purged walk-forward, metrics, conformal)."""
+"""Validation utilities.
+
+Purged and rolling walk-forward splits, Sharpe-ratio inference (studentized block-bootstrap
+intervals, the probabilistic and deflated Sharpe ratios, the probability of backtest
+overfitting), anytime-valid monitors, breadth diagnostics, hurdles, and the trial ledger.
+The statistics functions are documented, with their assumptions and limits, in
+``docs/statistics.md``.
+"""
 
 from prism.validation.anytime import (
     anytime_confidence_sequence,
     anytime_monitor_read,
+    empirical_bernstein_confidence_sequence,
+    empirical_bernstein_monitor_read,
 )
 from prism.validation.compare import (
     ComparisonArm,
     ComparisonRefused,
     SharpeBootstrapSpec,
+    SharpeInterval,
     compare_reevaluation,
     compare_repricing,
+    constant_hurdle_returns,
     excess_sharpe_interval,
     sharpe_difference_interval,
+    sharpe_interval,
 )
 from prism.validation.hurdle import (
     HurdleInputs,
@@ -21,9 +33,17 @@ from prism.validation.hurdle import (
 from prism.validation.metrics import (
     breadth_diagnostic,
     calmar_ratio,
+    deflated_sharpe_ratio,
+    deflated_sharpe_ratio_with_n,
+    effective_breadth,
+    effective_breadth_from_cov,
+    expected_max_sharpe,
+    expected_max_sharpe_with_n,
+    information_ratio_ceiling,
     periodic_sharpe,
     probabilistic_sharpe_ratio,
     probability_backtest_overfitting,
+    rank_information_coefficient,
 )
 from prism.validation.trials import (
     CLAIM_GROSS_EDGE,
@@ -94,6 +114,7 @@ __all__ = [
     "RollingFold",
     "RollingWalkForward",
     "SharpeBootstrapSpec",
+    "SharpeInterval",
     "anytime_confidence_sequence",
     "anytime_monitor_read",
     "CLAIM_GROSS_EDGE",
@@ -123,17 +144,29 @@ __all__ = [
     "compare_reevaluation",
     "compare_repricing",
     "compute_trial_metrics",
+    "constant_hurdle_returns",
     "current_git_commit",
     "current_git_state",
+    "deflated_sharpe_ratio",
+    "deflated_sharpe_ratio_with_n",
+    "effective_breadth",
+    "effective_breadth_from_cov",
     "emit_research_claim_packet",
+    "empirical_bernstein_confidence_sequence",
+    "empirical_bernstein_monitor_read",
     "excess_sharpe_interval",
+    "expected_max_sharpe",
+    "expected_max_sharpe_with_n",
+    "information_ratio_ceiling",
     "periodic_sharpe",
     "probabilistic_sharpe_ratio",
     "probability_backtest_overfitting",
+    "rank_information_coefficient",
     "reconcile_trial_log",
     "record_schema_problems",
     "resolve_fold_geometry",
     "sharpe_difference_interval",
+    "sharpe_interval",
     "stable_config_hash",
     "summary_claim_fields",
     "tbill_hurdle",

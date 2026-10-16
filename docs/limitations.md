@@ -203,6 +203,27 @@ instead is order-sizing and extraction parity on those sessions. The distinction
 close it, is `docs/engine_overhaul_operating_changes.md` section 1.3; the user-facing consequence
 is `docs/versioning.md` section 3.
 
+**The published-factor evaluations, byte for byte.** The volatility-scaled momentum approval and
+the public factor lab read Kenneth French's daily files of the 202607 vintage. French rewrites
+those files in place at fixed URLs, the 202607 bytes are no longer served, and the Internet
+Archive holds no copy of them (capture index checked 2026-10-14). The two registered drivers
+behave differently from a clone. The volatility-scaled momentum driver
+(`research/scripts/vol_momentum_replication.py`) refuses any file hash other than the registered
+one, so it cannot be rerun. The factor-lab driver (`research/scripts/factor_lab.py`) checks no
+hash: it downloads whatever vintage is served and records its hash. Rerunning any of its parts
+other than `--part fetch` rewrites the tracked `results/2026-09-factor-lab/sources.json`, and the
+`priors`, `fidelity` and default `all` parts also rewrite `priors.json`, `correlations/` and
+`fidelity.json` there, with numbers from another vintage. The `sizing` part refuses a second run at its ledger
+check, but only after `sources.json` has been rewritten. Do not rerun either driver to check the
+record. What a clone can check is
+`python -m research.scripts.reproduce_public` (`docs/public_reproduction_design.md`). Offline, it
+recomputes the four recorded criteria from the tracked series, rebuilds the in-house side from
+its tracked inputs, and checks that the recorded reference follows the registered rule. With
+network access, it downloads the current files into a directory of the caller's choosing and
+measures how far they differ from the record. Its output is a reproduction, not a new evaluation:
+it adds no ledger row and changes no verdict, and a number computed on a later vintage describes
+that vintage only.
+
 **The minimum supported live account size.** Undetermined. The engine design brief
 (`docs/prism_engine_decisions.md`, Q22) declines to encode a figure from one synthetic rounding
 exercise, and the account sizes in the construction comparison are scenarios, not a supported
