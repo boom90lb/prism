@@ -33,6 +33,10 @@ Outputs: ``{out}/facts.parquet``, ``{out}/filings.parquet``,
 ``{out}/ticker_cik.parquet`` (accepted ticker-interval → CIK rows),
 ``{out}/manifest.json`` (every payload's hash), and the tracked coverage ledger
 ``{ledger_dir}/edgar_coverage_{asof}.json``.
+
+The default directories are inside the repository, where the maintainer's store lives.
+``docs/edgar_point_in_time.md`` documents every output's schema and shows a run that passes
+``--cache-dir``, ``--out-dir`` and ``--ledger-dir`` and writes nothing into the checkout.
 """
 
 from __future__ import annotations

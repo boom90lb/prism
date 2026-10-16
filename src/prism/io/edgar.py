@@ -33,6 +33,9 @@ and :func:`latest_instant` read the canonical fields in :data:`FIELDS`.
 Nothing here decides which company a ticker was on a given date: that mapping,
 and its coverage ledger, belong to the builder
 (``prism.scripts.build_fundamentals``).
+
+Guide, file schemas and limits: ``docs/edgar_point_in_time.md``; an offline example:
+``examples/point_in_time/edgar_fundamentals.py``.
 """
 
 from __future__ import annotations
