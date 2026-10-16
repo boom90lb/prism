@@ -50,7 +50,7 @@ for the baseline.
 
 What can be expected is worked out below by arithmetic from the recorded
 figures above. This is not an evaluation. The low and high cases, the
-assumptions and the arithmetic are in [limitations §12](docs/limitations.md#12-the-public-baseline-designed-registration-and-evaluation-pending).
+assumptions and the arithmetic are in [limitations §12](docs/limitations.md#public-baseline).
 
 - **Mid case.** Post-publication Sharpe 0.41 × tracking 0.895 − cost drag
   0.047 − a 0.015 allowance for fills that come later than the open gives an

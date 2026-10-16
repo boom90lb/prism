@@ -322,6 +322,8 @@ None of these produced an approved configuration. Each results report states its
 
 ---
 
+<a id="public-baseline"></a>
+
 ## 12. The public baseline: designed, registration and evaluation pending
 
 **What it is.** `public_baseline_v1` is the configuration this repository intends to offer as its
