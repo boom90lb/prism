@@ -17,7 +17,9 @@ here:
   so every shipped example keeps the identity it had before they existed, and
   tranches are refused under the calibrated flow and under renormalization;
 * the engine: a single-phase book placed on the grid at its own phase is the
-  same book, bit for bit, and a tranched book refreshes one tranche per bar;
+  same book, bit for bit, and a tranched book refreshes one tranche per bar,
+  holds each tranche in shares between its refreshes and orders only what the
+  refreshing tranche moves;
 * the refusals: the paths that cannot honour a grid schedule say so (N7).
 """
 
@@ -761,18 +763,34 @@ def test_a_tranched_book_refreshes_one_tranche_per_bar_and_enters_in_stages(
     engine_root, tmp_path, monkeypatch
 ) -> None:
     calls: list[tuple[str, list[str], int]] = []
+    touched: dict[str, set[str]] = {}
     real_compose = evaluate_module.compose
+    real_simulate = evaluate_module.simulate
+    simulations: list = []
 
     def spy(plans, **kwargs):
+        prior = kwargs.get("states") or {}
         result = real_compose(plans, **kwargs)
         due = [output.component_id for output in result.component_outputs if output.due]
         holding = sum(1 for state in result.states.values() if any(v != 0.0 for v in state.sub_targets.values()))
         calls.append((kwargs["decision_bar"], due, holding))
+        names: set[str] = set()
+        for pid in due:
+            for source in (prior.get(pid), result.states[pid]):
+                if source is not None:
+                    names |= {sid for sid, value in source.sub_targets.items() if value != 0.0}
+        touched[kwargs["decision_bar"]] = names
         gross = float(result.targets.abs().sum())
         assert gross <= 1.0 + 1e-12, f"{kwargs['decision_bar']}: tranched gross {gross} above the rule's cap"
         return result
 
+    def observed(*args, **kwargs):
+        simulation = real_simulate(*args, **kwargs)
+        simulations.append(simulation)
+        return simulation
+
     monkeypatch.setattr(evaluate_module, "compose", spy)
+    monkeypatch.setattr(evaluate_module, "simulate", observed)
     result = _run(engine_root, tmp_path, "tranched", "tranches = 5\n")
 
     tested = [day for fold in result.folds for day in fold.decisions]
@@ -783,9 +801,18 @@ def test_a_tranched_book_refreshes_one_tranche_per_bar_and_enters_in_stages(
         assert (_position(bar) - int(tranche[-2:])) % 5 == 0, f"{bar}: {tranche} is off its grid offset"
     assert [holding for _, _, holding in calls[:6]] == [1, 2, 3, 4, 5, 5], "staged entry, one tranche a session"
     assert result.record.evaluation["engine"]["n_fills"] > 0
-    # The synthetic panel stops pricing a name some tranche still targets; its entry
-    # waits for a priced bar instead of failing to round, and the run says so.
-    assert any("deferred" in warning for warning in result.record.warnings)
+
+    # Each tranche holds its shares between its own refreshes, so a session's orders are the refreshing
+    # tranche's change: names it held or now holds. The only other order is a catch-up of a position that
+    # came apart from the tranches' holdings. On this panel every one is the second half of a sign flip:
+    # the rounding step's zero-crossing clamp took the account to flat on the refresh bar, and the tranches'
+    # side opens from flat on the next.
+    (simulation,) = simulations
+    intents = [(batch.decision_bar, intent.sid) for batch in simulation.decisions for intent in batch.intents]
+    outside = [(bar, sid) for bar, sid in intents if sid not in touched[bar]]
+    assert intents and len(outside) < 0.05 * len(intents)
+    held = simulation.shares.fillna(0.0)
+    assert all(held.at[bar, sid] == 0.0 for bar, sid in outside), [(b, s, held.at[b, s]) for b, s in outside]
 
 
 def test_an_unpriced_entry_is_deferred_and_nothing_else_is() -> None:
@@ -802,3 +829,67 @@ def test_an_unpriced_entry_is_deferred_and_nothing_else_is() -> None:
     pd.testing.assert_series_equal(deferred_target, expected)
     same, none = evaluate_module._defer_unpriced_entries(target.drop("new_unpriced"), marks=marks, shares=shares)
     assert none == [] and same.equals(target.drop("new_unpriced"))
+
+
+def _drifting_panel(labels: list[str]) -> pd.DataFrame:
+    """AAA up 1% a session, BBB down 1%, CCC and DDD flat: the four names of SCORES."""
+    index = pd.DatetimeIndex([pd.Timestamp(day, tz="America/New_York") for day in labels])
+    steps = np.arange(len(labels), dtype=float)
+    return pd.DataFrame(
+        {"AAA": 100.0 * 1.01**steps, "BBB": 50.0 * 0.99**steps, "CCC": np.full(len(labels), 20.0),
+         "DDD": np.full(len(labels), 10.0)},
+        index=index,
+    )
+
+
+def test_tranche_holdings_hold_shares_between_refreshes_and_decide_only_what_a_refresh_moves() -> None:
+    labels = TWO_YEARS[:12]
+    plans = tranche_plans(_plan(update_every_bars=3, valid_for_bars=6), 3, _position(labels[0]) % 3)
+    panel = _drifting_panel(labels)
+    equity = 100_000.0
+    holdings = evaluate_module._TrancheHoldings(split_factors={7: {"AAA": 2.0}})
+    factors = {plan.component_id: float(plan.weight) for plan in plans}
+    states, held, before = None, {}, {}
+    for upto in range(len(labels)):
+        result = compose(plans, decision_bar=labels[upto], scoring_panels={"price": panel.iloc[: upto + 1]},
+                         sessions=labels[: upto + 1], states=states)
+        states = result.states
+        row = pd.Series(0.0, index=pd.Index(list(SCORES)), dtype=float)
+        row.loc[result.targets.index] = result.targets.to_numpy(dtype=float)
+        scored = evaluate_module._BarScores(
+            day=labels[upto], members=tuple(SCORES), close=panel.iloc[: upto + 1], volume=panel.iloc[: upto + 1],
+            eligible=pd.Series(True, index=list(SCORES)), ineligible=(), composition=result, row=row, adv=None,
+        )
+        if upto == 9:
+            held["DDD"] = 5.0  # a position no tranche holds: caught up to flat
+        decided = holdings.target(scored, plans, factors=factors, equity=equity, position=upto, held=held,
+                                  increment=1.0)
+        (due,) = [output.component_id for output in result.component_outputs if output.due]
+        price = panel.iloc[upto]
+        for pid, shares in holdings.shares.items():
+            if pid == due:
+                # A refresh sizes the tranche at its weight of this close's equity, at this close's prices.
+                expected = {sid: factors[pid] * 0.5 * equity / price[sid] for sid in ("AAA", "BBB")}
+                assert shares == pytest.approx(expected, rel=1e-15)
+            elif pid in before:
+                factor = {"AAA": 2.0} if upto == 7 else {}
+                assert shares == {sid: count * factor.get(sid, 1.0) for sid, count in before[pid].items()}, (
+                    f"{labels[upto]}: tranche {pid} did not refresh, so it holds its shares (split-restated only)")
+        totals = {sid: sum(shares.get(sid, 0.0) for shares in holdings.shares.values()) for sid in ("AAA", "BBB")}
+        for sid, count in totals.items():
+            assert decided.row[sid] == pytest.approx(count * price[sid] / equity, rel=1e-15)
+        assert np.isnan(decided.row["CCC"]), "no tranche holds CCC and the account does not: no decision"
+        assert np.isnan(decided.row["DDD"]) == (upto != 9) and (upto != 9 or decided.row["DDD"] == 0.0)
+        assert decided.ceiling == 1.0 and decided.gross == pytest.approx(
+            sum(abs(count) * price[sid] for sid, count in totals.items()) / equity, rel=1e-15)
+        before = {pid: dict(shares) for pid, shares in holdings.shares.items()}
+        held = {sid: float(round(count)) for sid, count in totals.items()}
+
+    # A binding ceiling scales every tranche alike and decides every name: the whole book trades.
+    unscaled = {pid: dict(shares) for pid, shares in holdings.shares.items()}
+    capped = holdings.target(scored, plans, factors=factors, equity=equity, position=len(labels) - 1, held=held,
+                             increment=1.0, max_gross=0.5)
+    assert capped.ceiling == pytest.approx(0.5 / decided.gross) and capped.gross == pytest.approx(0.5)
+    assert not capped.row.isna().any() and capped.row[["CCC", "DDD"]].tolist() == [0.0, 0.0]
+    for pid, shares in holdings.shares.items():
+        assert shares == pytest.approx({sid: count * capped.ceiling for sid, count in unscaled[pid].items()})

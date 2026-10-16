@@ -276,6 +276,90 @@ def buffered_decile_row(scores_t: np.ndarray, previous_sign: np.ndarray, decile:
     return row
 
 
+def capped_proportional(raw: np.ndarray, total: float, cap: float) -> np.ndarray:
+    """Weights proportional to ``raw`` that sum to ``total`` with none above ``cap``.
+
+    Water-filling: a name whose proportional share would exceed ``cap`` is held at
+    ``cap`` and the rest of ``total`` is shared again, in proportion, among the others,
+    until no share exceeds the cap. Shares among uncapped names keep the proportions of
+    ``raw``. When ``len(raw) * cap <= total`` every name sits at ``cap`` and the weights
+    sum to ``len(raw) * cap``, never more: a cap is down-only, as in :func:`cap_book`.
+    ``raw`` must be finite and positive.
+    """
+    raw = np.asarray(raw, dtype=float)
+    if not (np.isfinite(raw).all() and (raw > 0.0).all()):
+        raise ValueError("capped_proportional needs finite, positive raw weights")
+    if not (np.isfinite(total) and total >= 0.0):
+        raise ValueError(f"total must be finite and >= 0, got {total}")
+    if not cap > 0.0:
+        raise ValueError(f"cap must be > 0, got {cap}")
+    n = raw.shape[0]
+    if n == 0:
+        return np.zeros(0)
+    if n * cap <= total:
+        return np.full(n, float(cap))
+    weights = np.zeros(n)
+    capped = np.zeros(n, dtype=bool)
+    while True:
+        free = np.flatnonzero(~capped)
+        budget = total - cap * float(capped.sum())
+        share = budget * raw[free] / raw[free].sum()
+        over = share > cap
+        if not over.any():
+            weights[free] = share
+            weights[capped] = cap
+            return weights
+        capped[free[over]] = True
+
+
+def liquidity_weighted_decile_row(
+    scores_t: np.ndarray,
+    liquidity: np.ndarray,
+    decile: float,
+    *,
+    leg_gross: float = 0.5,
+    max_symbol_abs_weight: float = 1.0,
+) -> np.ndarray:
+    """One top/bottom-decile long-short row, each leg weighted by the square root of liquidity.
+
+    The legs hold exactly the names :func:`_decile_row` holds (the same count per side and
+    the same stable tie order); only the weights differ. Within each leg a name's weight is
+    proportional to ``sqrt(liquidity)``, the leg sums to ``leg_gross`` (``+`` long, ``-``
+    short) and no name exceeds ``max_symbol_abs_weight`` (:func:`capped_proportional`).
+    Liquidity weighting is the capacity lever of Korajczyk and Sadka (2004, Journal of
+    Finance 59(3)): in their tests equal-weighted momentum does best before costs and worst
+    after them. The square-root form is a declared choice, not a parameter fitted to
+    returns.
+
+    ``liquidity`` is the per-name statistic the caller declares (for the spec rule
+    ``decile_neutral_sqrt_dv``, the trailing median dollar volume). A leg member without a
+    finite, positive value raises: there is no weight to give it, and a silent zero would
+    change the leg's membership (N7). A cross-section too thin for one name per side emits a
+    zero row.
+    """
+    scores_t = np.asarray(scores_t, dtype=float)
+    liquidity = np.asarray(liquidity, dtype=float)
+    if liquidity.shape != scores_t.shape:
+        raise ValueError(f"liquidity has shape {liquidity.shape}, scores {scores_t.shape}")
+    if not 0.0 < decile <= 0.5:
+        raise ValueError(f"decile must be in (0, 0.5], got {decile}")
+    legs = np.sign(_decile_row(scores_t, decile))
+    row = np.zeros(scores_t.shape[0])
+    for sign in (1.0, -1.0):
+        members = np.flatnonzero(legs == sign)
+        if members.size == 0:
+            continue
+        values = liquidity[members]
+        missing = members[~(np.isfinite(values) & (values > 0.0))]
+        if missing.size:
+            raise ValueError(
+                f"{missing.size} leg member(s) at position(s) {missing.tolist()} have no finite, positive "
+                "liquidity to weight by"
+            )
+        row[members] = sign * capped_proportional(np.sqrt(values), leg_gross, max_symbol_abs_weight)
+    return row
+
+
 def construct_inverse_vol_targets(
     scores: pd.DataFrame,
     close: pd.DataFrame,

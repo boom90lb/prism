@@ -33,7 +33,7 @@ cannot be imported, does not name a ``Signal``, or will not accept its declared
 parameters is refused with a message naming the path — never an ImportError
 traceback from inside somebody else's module.
 
-The four rank-to-weight rules live here too, because a rule name and its
+The rank-to-weight rules live here too, because a rule name and its
 ``to_weights_params`` are configuration: they are declared in the specification,
 they enter ``config_id``, and the engine may not run a rule it cannot name.
 ``decile_long_short`` and ``sign_inverse_vol`` delegate to
@@ -63,6 +63,7 @@ from prism.portfolio.construct import (
     cap_book,
     construct_decile_neutral,
     construct_inverse_vol_targets,
+    liquidity_weighted_decile_row,
 )
 from prism.portfolio.vol_scale import VolScaleError, VolScaleRule
 from prism.signal.base import Signal, check_declarations
@@ -83,11 +84,20 @@ KIND_FOR_COMBINATION: dict[str, str] = {"position_space": "heuristic", "calibrat
 #: against one, and a missing policy is a silent default (§4).
 POLICY_KEYS: tuple[str, ...] = ("profile", "costs", "execution", "monitoring", "recovery")
 
-#: The rank-to-weight vocabulary of §3.3. Four names, no extension point: a rule
+#: The rank-to-weight vocabulary of §3.3. A closed list, no extension point: a rule
 #: the engine cannot name is a rule nothing can reproduce.
 TO_WEIGHTS_RULES: tuple[str, ...] = (
-    "decile_long_short", "decile_long_short_buffered", "sign_inverse_vol", "top_k_equal_weight", "none",
+    "decile_long_short",
+    "decile_long_short_buffered",
+    "decile_neutral_sqrt_dv",
+    "sign_inverse_vol",
+    "top_k_equal_weight",
+    "none",
 )
+
+#: The rules that weight names by their trailing dollar volume, and so need the
+#: price and volume panels at the decision bar (:func:`rule_dollar_volume`).
+DOLLAR_VOLUME_RULES: frozenset[str] = frozenset({"decile_neutral_sqrt_dv"})
 
 #: The three schedule fields the component table carries (§3.3), all required.
 SCHEDULE_FIELDS: tuple[str, ...] = ("horizon_bars", "update_every_bars", "valid_for_bars")
@@ -125,6 +135,12 @@ TO_WEIGHTS_PARAMS: dict[str, dict[str, Any]] = {
         "max_gross": 1.0,
         "max_symbol_abs_weight": 1.0,
     },
+    "decile_neutral_sqrt_dv": {
+        "decile": _REQUIRED,
+        "dollar_volume_window": 20,
+        "max_gross": 1.0,
+        "max_symbol_abs_weight": 1.0,
+    },
     "sign_inverse_vol": {
         "vol_ewma_bars": 63,
         "annualization_bars": 252,
@@ -134,7 +150,9 @@ TO_WEIGHTS_PARAMS: dict[str, dict[str, Any]] = {
     "top_k_equal_weight": {"k": _REQUIRED, "max_gross": 1.0, "max_symbol_abs_weight": 1.0},
     "none": {},
 }
-_INT_PARAMS: frozenset[str] = frozenset({"k", "vol_ewma_bars", "annualization_bars"})
+_INT_PARAMS: frozenset[str] = frozenset({"k", "vol_ewma_bars", "annualization_bars", "dollar_volume_window"})
+#: The smallest value each integer parameter takes; a median over one bar is a median.
+_INT_MINIMUM: dict[str, int] = {"k": 1, "dollar_volume_window": 1}
 
 #: The distribution the engine version is read from (§3.12). ``prism`` is the
 #: pre-rename name and is consulted second so the loader works in a checkout
@@ -907,10 +925,10 @@ def resolve_to_weights_params(
             continue
         value = given[key]
         if key in _INT_PARAMS:
-            resolved[key] = _coerce_int(value, key=key, where=where, minimum=1 if key == "k" else 2)
+            resolved[key] = _coerce_int(value, key=key, where=where, minimum=_INT_MINIMUM.get(key, 2))
         else:
             resolved[key] = _coerce_float(value, key=key, where=where)
-    if rule == "decile_long_short" and not 0.0 < float(resolved["decile"]) <= 0.5:
+    if rule in ("decile_long_short", "decile_neutral_sqrt_dv") and not 0.0 < float(resolved["decile"]) <= 0.5:
         raise SpecError(f"{where}: decile must be in (0, 0.5], got {resolved['decile']!r}")
     if rule == "decile_long_short_buffered" and not (
         0.0 < float(resolved["decile"]) <= float(resolved["hold_quantile"]) <= 0.5
@@ -935,6 +953,7 @@ def apply_to_weights(
     close: pd.DataFrame | None = None,
     no_decision: Iterable[str] | None = None,
     previous: Mapping[str, float] | None = None,
+    dollar_volume: pd.DataFrame | None = None,
 ) -> pd.Series:
     """Turn one decision bar's cross-section of scores into target weights.
 
@@ -953,6 +972,16 @@ def apply_to_weights(
     component's own sub-targets from its last decision (sid -> weight), whose signs say
     which leg each name was in. It never sees fills or held shares, only the rule's own
     last output.
+
+    ``decile_neutral_sqrt_dv`` holds the names ``decile_long_short`` holds and weights each
+    leg by the square root of the name's median dollar volume over the last
+    ``dollar_volume_window`` bars of ``dollar_volume`` (bar x sid, ending at the decision
+    bar; :func:`rule_dollar_volume` builds it). Each leg sums to ``0.5 * min(1, max_gross)``
+    with no name above ``max_symbol_abs_weight``
+    (``prism.portfolio.construct.liquidity_weighted_decile_row``). Like the eligibility
+    screen's, the median does not skip gaps, so under a declared screen on the same window
+    every rankable name has one; a rankable name without a finite, positive median is
+    refused.
     """
     if not isinstance(scores, pd.Series):
         raise SpecError(f"scores must be a pandas Series indexed by sid, got {type(scores).__name__}")
@@ -985,6 +1014,8 @@ def apply_to_weights(
             float(resolved["max_symbol_abs_weight"]),
         )
         weights = capped.iloc[0]
+    elif rule == "decile_neutral_sqrt_dv":
+        weights = _decile_neutral_sqrt_dv(values, dollar_volume=dollar_volume, params=resolved, label=scores.name)
     elif rule == "sign_inverse_vol":
         weights = _sign_inverse_vol(values, close=close, params=resolved)
     else:
@@ -1003,6 +1034,93 @@ def apply_to_weights(
 def _numeric_scores(scores: pd.Series) -> pd.Series:
     """Coerce a score cross-section to float, non-finite values becoming NaN."""
     return pd.to_numeric(scores, errors="coerce").replace([np.inf, -np.inf], np.nan).astype(float)
+
+
+def rule_dollar_volume(
+    rule: str,
+    params: Mapping[str, Any] | None,
+    price: pd.DataFrame | None,
+    volume: pd.DataFrame | None,
+) -> pd.DataFrame | None:
+    """The trailing dollar-volume panel ``rule`` weights by, or None for a rule that reads none.
+
+    ``price`` is the as-traded close panel the eligibility screen reads and ``volume`` its
+    volume panel, both ending at the decision bar. The result is their product over the
+    rule's last ``dollar_volume_window`` bars, on ``price``'s bars and columns, so it is the
+    same dollar volume the screen's median is taken of. Every rule outside
+    :data:`DOLLAR_VOLUME_RULES` returns None without reading either panel.
+    """
+    if rule not in DOLLAR_VOLUME_RULES:
+        return None
+    if price is None or volume is None:
+        raise SpecError(
+            f"to_weights={rule!r} weights names by their trailing dollar volume, so it needs the price and "
+            "volume panels at the decision bar; one of them was not supplied"
+        )
+    window = int(resolve_to_weights_params(rule, params)["dollar_volume_window"])
+    tail = price.tail(window)
+    numeric = tail.apply(pd.to_numeric, errors="coerce")
+    shares = volume.reindex(index=tail.index, columns=tail.columns).apply(pd.to_numeric, errors="coerce")
+    return numeric * shares
+
+
+def _decile_neutral_sqrt_dv(
+    scores: pd.Series,
+    *,
+    dollar_volume: pd.DataFrame | None,
+    params: Mapping[str, Any],
+    label: object,
+) -> pd.Series:
+    """One decision bar of ``liquidity_weighted_decile_row`` (see :func:`apply_to_weights`)."""
+    if dollar_volume is None:
+        raise SpecError(
+            "to_weights='decile_neutral_sqrt_dv' needs the trailing dollar-volume panel "
+            "(prism.spec.rule_dollar_volume); it weights each leg by the square root of median dollar volume"
+        )
+    window = int(params["dollar_volume_window"])
+    if len(dollar_volume) < window:
+        raise SpecError(
+            f"to_weights='decile_neutral_sqrt_dv' at {label}: the dollar-volume panel has {len(dollar_volume)} "
+            f"bar(s), fewer than dollar_volume_window={window}"
+        )
+    median = (
+        dollar_volume.tail(window)
+        .apply(pd.to_numeric, errors="coerce")
+        .median(axis=0, skipna=False)
+        .reindex(scores.index)
+    )
+    liquid = median.to_numpy(dtype=float)
+    rankable = np.isfinite(scores.to_numpy(dtype=float))
+    missing = [str(sid) for sid in scores.index[rankable & ~(np.isfinite(liquid) & (liquid > 0.0))]]
+    if missing:
+        shown = ", ".join(missing[:10]) + (f" and {len(missing) - 10} more" if len(missing) > 10 else "")
+        raise SpecError(
+            f"to_weights='decile_neutral_sqrt_dv' at {label}: {len(missing)} rankable name(s) have no finite, "
+            f"positive median dollar volume over the last {window} bar(s) ({shown}). Declare "
+            "[strategy.eligibility] min_median_dollar_volume > 0 on the same window, so a name without one is "
+            "not ranked (N7)"
+        )
+    leg_gross = 0.5 * min(1.0, float(params["max_gross"]))
+    cap = float(params["max_symbol_abs_weight"])
+    row = liquidity_weighted_decile_row(
+        scores.to_numpy(dtype=float),
+        liquid,
+        float(params["decile"]),
+        leg_gross=leg_gross,
+        max_symbol_abs_weight=cap,
+    )
+    for side, leg in (("long", row[row > 0.0]), ("short", -row[row < 0.0])):
+        if leg.size and leg.size * cap < leg_gross:
+            logger.warning(
+                "decile_neutral_sqrt_dv at %s: the %s leg's %d name(s) cannot reach %.6g under "
+                "max_symbol_abs_weight=%.6g; every one sits at the cap",
+                label,
+                side,
+                leg.size,
+                leg_gross,
+                cap,
+            )
+    return pd.Series(row, index=scores.index, dtype=float)
 
 
 def _sign_inverse_vol(scores: pd.Series, *, close: pd.DataFrame | None, params: Mapping[str, Any]) -> pd.Series:

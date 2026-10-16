@@ -58,7 +58,12 @@ import numpy as np
 import pandas as pd
 
 from prism.signal.base import Signal
-from prism.spec import TO_WEIGHTS_RULES, apply_to_weights, resolve_to_weights_params
+from prism.spec import (
+    TO_WEIGHTS_RULES,
+    apply_to_weights,
+    resolve_to_weights_params,
+    rule_dollar_volume,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -253,11 +258,19 @@ def tranche_plans(plan: ComponentPlan, k: int, base_offset: int) -> tuple[Compon
     Tranche ``j`` holds ``plan.weight / k`` and refreshes every
     ``update_every_bars`` sessions at grid offset ``(base_offset + j *
     (update_every_bars // k)) % update_every_bars``, so with ``k ==
-    update_every_bars`` exactly one tranche refreshes on every session. The
-    account target is the sum of the tranches' sub-targets in position space,
-    which is how Jegadeesh and Titman (1993) built overlapping momentum
-    portfolios: the book holds the same names, and its trades are spread over
-    the cycle instead of landing on one session.
+    update_every_bars`` exactly one tranche refreshes on every session.
+    Jegadeesh and Titman (1993) built overlapping momentum portfolios this way:
+    each tranche is formed on its own date and held until its next one, so the
+    book is the average of the tranches and its trades are spread over the
+    cycle instead of landing on one session.
+
+    :func:`compose`'s account target is the sum of the tranches' sub-targets as
+    weights. Traded as it stands on every session, that would rebalance every
+    drifted tranche back to constant weights whenever any one refreshes. The
+    evaluator therefore holds each tranche in shares between its refreshes and
+    orders only what the refreshing tranche changes
+    (``prism.evaluate._TrancheHoldings``); a live tranched book has to do the
+    same to trade the book that was evaluated.
 
     Ids are ``"<component_id>/tNN"``; one tranche keeps the plan's own id, so a
     single-phase book on the grid reads exactly like the plan it came from. The
@@ -593,7 +606,14 @@ def _compose_one(
             elif mark == "liquidate":
                 flat.add(str(sid))
 
-    values = _rule_values(plan, raw, close, no_decision=no_decision, previous=state.sub_targets)
+    dollar_volume = (
+        None
+        if plan.weights_fn is not None
+        else rule_dollar_volume(plan.to_weights, plan.to_weights_params, scoring_panels.get("price"), volume)
+    )
+    values = _rule_values(
+        plan, raw, close, no_decision=no_decision, previous=state.sub_targets, dollar_volume=dollar_volume
+    )
     if flat:
         values = values.copy()
     for sid in flat:
@@ -728,8 +748,13 @@ def _rule_values(
     *,
     no_decision: Collection[str],
     previous: Mapping[str, float] | None = None,
+    dollar_volume: pd.DataFrame | None = None,
 ) -> pd.Series:
     """The rank-to-weight rule's output for this cross-section.
+
+    ``dollar_volume`` is the trailing dollar-volume panel a liquidity-weighted rule reads,
+    built from the ``price`` scoring panel and ``volume`` (``prism.spec.rule_dollar_volume``);
+    it is None for every other rule.
 
     The rule runs over the whole cross-section before any state rule, so a name
     the rule declines gets an explicit 0.0 (a full exit) and only a no-decision
@@ -755,6 +780,7 @@ def _rule_values(
         close=close,
         no_decision=no_decision,
         previous=previous,
+        dollar_volume=dollar_volume,
     )
 
 

@@ -622,6 +622,35 @@ ENGINE_EXECUTABLE_RETURN: Mapping[str, str] = {
     CANONICAL_ENGINE: "next_open_fill_marked_close_to_close",
 }
 
+#: ``conventions.executable_return`` of a canonical run whose declared fill model does not
+#: fill every order at the next open. ``split_open_close`` fills half of each order at the
+#: next open and the rest at that session's close, so its return is a different
+#: measurement from the engine's default and is labelled as one. A fill model not listed
+#: here keeps the engine's label: ``participation_capped`` still fills at the next open.
+FILL_MODEL_EXECUTABLE_RETURN: Mapping[str, str] = {
+    "split_open_close": "split_open_close_fill_marked_close_to_close",
+}
+
+
+def executable_return(engine: str, fill_model: str | None = None) -> str:
+    """The ``conventions.executable_return`` label of a run on ``engine`` under ``fill_model``.
+
+    The engine's own label (:data:`ENGINE_EXECUTABLE_RETURN`), except a canonical run
+    under a fill model listed in :data:`FILL_MODEL_EXECUTABLE_RETURN`.
+    """
+    if engine == CANONICAL_ENGINE and fill_model in FILL_MODEL_EXECUTABLE_RETURN:
+        return FILL_MODEL_EXECUTABLE_RETURN[str(fill_model)]
+    return ENGINE_EXECUTABLE_RETURN[engine]
+
+
+def _recorded_fill_model(evaluation: Mapping[str, Any]) -> str | None:
+    """``evaluation.engine.settings.fills.model`` where the record carries it, else None."""
+    detail = evaluation.get("engine")
+    settings = detail.get("settings") if isinstance(detail, Mapping) else None
+    fills = settings.get("fills") if isinstance(settings, Mapping) else None
+    model = fills.get("model") if isinstance(fills, Mapping) else None
+    return None if model is None else str(model)
+
 FOLD_PORTFOLIOS = ("reset", "carry")
 BIAS_STATUSES = ("unquantified", "estimated")
 ARTIFACT_STATUSES = ("present", "unavailable")
@@ -910,10 +939,12 @@ def _engine_label_problems(payload: Mapping[str, Any], evaluation: Mapping[str, 
 
     conventions = payload.get("conventions") if isinstance(payload.get("conventions"), Mapping) else {}
     executable = conventions.get("executable_return")
-    expected_return = ENGINE_EXECUTABLE_RETURN[str(engine)]
+    fill_model = _recorded_fill_model(evaluation)
+    expected_return = executable_return(str(engine), fill_model)
     if executable is not None and executable != UNAVAILABLE and executable != expected_return:
+        under = "" if fill_model is None else f" under fills.model {fill_model!r}"
         problems.append(
-            f"conventions.executable_return: {executable!r} on a record naming accounting_engine {engine!r}, "
+            f"conventions.executable_return: {executable!r} on a record naming accounting_engine {engine!r}{under}, "
             f"which measures {expected_return!r} (§3.8)"
         )
 

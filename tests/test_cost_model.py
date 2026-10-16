@@ -22,6 +22,8 @@ from __future__ import annotations
 
 import hashlib
 import itertools
+import tomllib
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -39,7 +41,10 @@ from prism.execution.cost_model import (
     charge_weights,
 )
 from prism.execution.portfolio_state import state_from_shares
-from prism.execution.target_weights import PortfolioBacktestResult, backtest_target_weights
+from prism.execution.target_weights import (
+    PortfolioBacktestResult,
+    backtest_target_weights,
+)
 
 # The eight keys of the reproduction cost row, in order. The order is part of the
 # contract: ``backtest_target_weights`` builds its ``costs`` frame from these dicts and
@@ -868,3 +873,82 @@ def test_a_missing_spread_never_falls_back_to_zero() -> None:
     assert model.half_spread_bps("AAA", "2026-05-04") == 3.0
     assert model.half_spread_bps("AAA", "2026-05-05") == 12.0
     assert model.half_spread_bps("BBB", "2026-05-04") == 12.0
+
+
+# ---------------------------------------------------------------------------
+# The shipped reference stacks
+# ---------------------------------------------------------------------------
+
+REFERENCE_COSTS = Path(__file__).resolve().parents[1] / "examples" / "reference" / "costs"
+
+#: Content ids of the reference stacks that existed before retail_v3. retail_v1's id is
+#: recorded in results/2026-09-*/comparison.json; a change here re-identifies every
+#: record that cites it.
+REFERENCE_STACK_IDS = {
+    "retail_v1": "4cc998252c75a004496096bdf3ea62b573947d61cb310eb8d78055c58c46a8f0",
+    "retail_v2": "357c89803e12d823cb96438b15aa35ae47ffcd2ff4e295ea08e054f1d2ec9a35",
+}
+
+
+def _reference_stack(name: str) -> CostStack:
+    return CostStack.from_mapping(tomllib.loads((REFERENCE_COSTS / f"{name}.toml").read_text(encoding="utf-8")))
+
+
+@pytest.mark.parametrize("name", sorted(REFERENCE_STACK_IDS))
+def test_the_existing_reference_stacks_keep_their_ids(name: str) -> None:
+    assert _reference_stack(name).stack_id == REFERENCE_STACK_IDS[name]
+
+
+def test_retail_v3_is_retail_v2_with_no_cash_income_and_a_square_root_impact_term() -> None:
+    """Two declared changes and nothing else; the loader's convexity rule passes."""
+    v2, v3 = _reference_stack("retail_v2"), _reference_stack("retail_v3")
+    assert v3.cash_income_bps_annual == 0.0
+    assert v3.cash_income_bps_annual <= v3.financing_bps_annual
+    assert v3.impact.participation_model == "sqrt"
+    # Y * sigma = 0.7 * 1.8% a day, in bp.
+    assert v3.impact.participation_coeff == 126.0
+    assert v3.dollar_volume["impact"].estimator == "same_bar"
+    assert v3.dollar_volume["impact"].floor_dollars == 100_000.0
+
+    differing = {
+        key for key in v2.declaration() if key != "sources" and v2.declaration()[key] != v3.declaration()[key]
+    }
+    assert differing == {"cash_income_bps_annual", "impact"}
+    impact_v2, impact_v3 = v2.declaration()["impact"], v3.declaration()["impact"]
+    assert {key for key in impact_v2 if impact_v2[key] != impact_v3[key]} == {"participation_coeff"}
+    assert v3.stack_id not in REFERENCE_STACK_IDS.values()
+
+    sources = tomllib.loads((REFERENCE_COSTS / "retail_v3.toml").read_text(encoding="utf-8"))["source"]
+    assert sources["impact"]["class"] == "assumption"
+    assert "Almgren" in sources["impact"]["reference"] and "Toth" in sources["impact"]["reference"]
+
+
+def test_the_canonical_engine_prices_an_active_participation_term_against_each_fill_sessions_volume() -> None:
+    """``prism.evaluate._impact_dollar_volume``: what the engine binds as ``CostInputs.adv_impact``.
+
+    Nothing for a stack whose term is inert, so retail_v1 and retail_v2 runs bind exactly the
+    inputs they always did; close times volume keyed by bar for retail_v3, which the cost model
+    reads at each fill's own bar; and a refusal for an estimator the engine does not implement.
+    """
+    from prism.evaluate import EvaluationError, _impact_dollar_volume  # noqa: PLC0415 - the engine's helper
+
+    index = pd.DatetimeIndex(["2026-05-01", "2026-05-04"]).tz_localize("America/New_York")
+    closes = pd.DataFrame({"AAA": [10.0, 11.0], "BBB": [20.0, np.nan]}, index=index)
+    volumes = pd.DataFrame({"AAA": [1_000.0, 2_000.0], "BBB": [500.0, 700.0]}, index=index)
+    for name in ("retail_v1", "retail_v2"):
+        assert _impact_dollar_volume(_reference_stack(name), closes, volumes) is None
+    v3 = _reference_stack("retail_v3")
+    panel = _impact_dollar_volume(v3, closes, volumes)
+    assert list(panel.index) == ["2026-05-01", "2026-05-04"]
+    assert panel.loc["2026-05-04", "AAA"] == 22_000.0 and np.isnan(panel.loc["2026-05-04", "BBB"])
+    model = CostModel(v3, CostInputs(as_of="2026-05-04", adv_impact=panel), equity=100_000.0)
+    # Below the $100k floor the floor prices it; a fill on a bar with no statistic is refused.
+    assert model._adv_impact("AAA", "2026-05-04") == 100_000.0
+    with pytest.raises(CostStackError, match="dollar_volume.impact"):
+        model._adv_impact("BBB", "2026-05-04")
+
+    declared = v3.declaration()
+    declared["dollar_volume"]["impact"] = dict(declared["dollar_volume"]["impact"], estimator="median",
+                                               window_bars=20, refresh="decision")
+    with pytest.raises(EvaluationError, match="same_bar"):
+        _impact_dollar_volume(CostStack.from_mapping(declared), closes, volumes)

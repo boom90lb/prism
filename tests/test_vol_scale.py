@@ -684,7 +684,10 @@ def test_the_ceiling_binds_when_the_cap_would_pass_it(engine_root, tmp_path) -> 
 
 
 def test_a_rule_pinned_at_scale_one_is_the_unscaled_book_bit_for_bit(engine_root, plain, tmp_path) -> None:
-    pinned = _run(engine_root, tmp_path, "pinned", SIZED.format(target=1e6, cap=1.0, extra=""))
+    # The ceiling is set out of reach: each tranche holds its shares between refreshes, so the account
+    # target drifts above a ceiling of 1.0 (the default, max_scale), and a binding ceiling is a different
+    # book from the unsized one, which has none (test_the_ceiling_binds_when_the_cap_would_pass_it).
+    pinned = _run(engine_root, tmp_path, "pinned", SIZED.format(target=1e6, cap=1.0, extra="max_gross = 10.0\n"))
     pd.testing.assert_series_equal(pinned.scored.returns, plain.scored.returns, check_exact=True)
     assert pinned.record.evaluation["engine"]["n_fills"] == plain.record.evaluation["engine"]["n_fills"]
 
