@@ -27,7 +27,7 @@ contract:
 2. The command surface: `prism <command>` and its arguments.
 3. The on-disk formats: the specification schema, the durable loop state
    (`STATE_SCHEMA_VERSION`, `src/prism/live/state.py:66`), the authorization record schema, the
-   result and trial record schemas, and the claim packet.
+   result and trial record schemas, and the claim packet (the manifest of a recorded result).
 4. The declared behaviour of the refusal controls: authorization, the account-keyed execution
    lock, freshness, and the endpoint allowlist. A control that refuses today does not start
    permitting under a patch.
@@ -44,10 +44,10 @@ Three further things the number does not promise:
   (`src/prism/spec.py:339`), so the same specification file resolves to a different `config_id`
   under a different engine. Results recorded under two engine versions are not the same
   configuration, and the record says so rather than papering over it.
-- **Not the reference strategy.** An engine release does not change or promote the reference
-  configuration. The reference book is versioned separately (launch brief Q2,
-  `docs/prism_engine_decisions.md`), and its promotion stays under the prospective rules of
-  `SPEC.md` section 4.
+- **Not the reference strategy.** An engine release does not change or approve the reference
+  configuration. The reference book is versioned separately (question Q2 of the
+  [engine design brief](prism_engine_decisions.md)), and its approval for live use stays under
+  the rules of `SPEC.md` section 4.
 - **Not profitability, and not safety.** Local authorization records what the account owner
   approved. It is not a profitability certificate and does not sandbox private Python
   (`src/prism/live/authorization.py`, module docstring).
@@ -144,7 +144,7 @@ compared only when both sides recorded an order set; a side that recorded none l
 produced, which means running the upgraded engine over the recorded sessions, which needs the bar
 panels those sessions scored. The shipped capture has none. Its manifest records
 `panels.status = "unavailable"`, 119 of 119 symbols with no bar at any of the five sessions, and
-the stage 5 parity gate reports decision-parity NOT COMPARED, 0 of 5 sessions
+the engine overhaul's parity check reports decision parity NOT COMPARED, 0 of 5 sessions
 (`docs/engine_overhaul_parity_gate.json`; the reasoning is `docs/engine_overhaul_operating_changes.md`
 section 1.3). Run 2026-09-09 against the shipped fixture with no candidate supplied:
 
@@ -211,7 +211,7 @@ does not rename the history that used it.
 
 ## 5. What to re-verify after an upgrade
 
-In this order. Steps 1 to 5 are offline and cost minutes. Step 6 is an owner act.
+In this order. Steps 1 to 5 are offline and cost minutes. Step 6 is the account owner's to take.
 
 **1. Confirm what you are actually running.** Two identities, not one.
 `prism.spec.engine_version()` gives the distribution version;

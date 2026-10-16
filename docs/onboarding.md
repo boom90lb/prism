@@ -3,8 +3,10 @@
 Use a private project for strategy code and policy, and install the `prism-trading`
 engine as a dependency. The Python import stays `prism`. These journeys cover a
 first evaluation, a private signal, a comparison, and an operating review. The
-[owner migration](owner_migration.md) demonstrates the corresponding move of an
-existing research project and its trial history to an installed wheel.
+guide to [research from an installed release](owner_migration.md) shows the
+corresponding move of an existing research project and its trial history to an
+installed wheel. Terms these journeys use are defined in the
+[glossary](glossary.md).
 
 The examples below use synthetic data or read existing artifacts. Their results
 establish engineering behavior; they do not establish market edge or authorize
@@ -41,9 +43,12 @@ export PYTHON_DOTENV_DISABLED=1
 Run these in an environment without broker credentials. The CLI searches for
 `.env` upward from the current directory and stops at the first checkout root
 (a `.git` entry), so a nested worktree does not inherit the parent checkout's
-credentials; a private project with its own `.env` still is one. `PYTHON_DOTENV_DISABLED=1` disables
-loading with the release's installed `python-dotenv`; it does not clear credentials
-already exported in the shell. The synthetic commands require no credentials.
+credentials; a private project with its own `.env` still is one.
+`PYTHON_DOTENV_DISABLED=1` disables loading with the release's installed
+`python-dotenv`; it does not clear credentials already exported in the shell.
+Builds from commit `10601d4` onward also honour `PRISM_DISABLE_DOTENV=1`, the
+engine's own switch ([security](security.md), section 2). The synthetic
+commands require no credentials.
 
 `prism init` writes a private package with an exact `prism-trading==0.4.0` pin,
 example signal modules, two specifications, policies, costs, and a fold table.
@@ -78,7 +83,7 @@ This is a local-artifact check, not an index installation or a prospective resul
 The template's `strategies/my_signal.py` implements `TrailingReturnRank`.
 Keep engine code in the installed package and put your change in `strategies/`.
 This deliberately simple example reverses the score to exercise a private import
-and a distinct configuration identity. It is not a new research registration.
+and a distinct configuration identity. It is not a new pre-registered experiment.
 
 From the `my-strategy` directory above:
 
@@ -124,45 +129,50 @@ The verification asserted that the smoke journeys created neither trial rows
 nor result records. The reference template remained available beside the private
 specification.
 
-For research, first commit a registration describing the selection set, sample,
-universe, cost stack, search procedure, kill rule, and promotion rule under the
-[operating contract](../SPEC.md). Then use the package's
-`prism.evaluate.walk_forward_evaluate` with a frozen
-`prism.validation.walk_forward.FoldTable`, the registration, and declared accounting
-settings. It records started and terminal rows, train-only fits, fold geometry,
-input identities, costs, and provenance. Synthetic datasets are forced onto the
-engineering channel. The function and its focused examples are in
-[`evaluate.py`](../src/prism/evaluate.py) and
+For research, first commit a pre-registration: a design document, committed
+before anything runs, that states the configurations you will try, the sample,
+the universe, the cost assumptions, the search procedure, the stop criterion and
+the approval rule ([operating contract](../SPEC.md#4-the-trial-ledger-is-the-whole-authorization-system)).
+Then use the package's `prism.evaluate.walk_forward_evaluate` with a frozen
+`prism.validation.walk_forward.FoldTable`, the registration, and declared
+accounting settings. It records started and terminal rows in the trial log,
+train-only fits, fold geometry, input identities, costs, and provenance. Runs on
+synthetic data are recorded as engineering checks: capped at the
+`mechanics_clean` tier and never counted as trials. The function and its
+focused examples are in [`evaluate.py`](../src/prism/evaluate.py) and
 [`test_walk_forward_evaluate.py`](../tests/test_walk_forward_evaluate.py).
 
-**CLI boundary:** `prism evaluate` currently delivers the smoke path above.
-Full recorded evaluation, registered evaluation, and `--engine canonical` remain
-refused by the CLI even though their Python APIs exist. A command appearing in
-`--help` is not evidence that its handler executes it. The owner migration shows
-a released-package reproduction through the full Python evaluator.
+**CLI boundary:** `prism evaluate` runs the smoke path above and nothing else.
+Recorded evaluation, evaluation bound to a registration, and `--engine canonical`
+are refused by the CLI, with exit 2, even though their Python interfaces exist.
+In the 0.4.0 wheel the refusal reads "not delivered until stage N"; later builds
+name the Python interface to use instead, and `--help` marks the commands that
+are not available. The guide to [research from an installed release](owner_migration.md)
+shows a reproduction through the full Python evaluator.
 
 ## 3. Interpret a comparison and recompute one
 
 The [construction comparison](../results/2026-09-construction/comparison.json)
 and its [text rendering](../results/2026-09-construction/comparison.txt) are a
-worked example: three registered arms across six capital scenarios. All eighteen
-studentized Sharpe-difference intervals include zero, and the registration permits
-no promotion from this same-sample read. The largest displayed return is not a
-selection rule.
+worked example: three pre-registered construction variants across six account
+sizes. All eighteen studentized Sharpe-difference intervals include zero, and the
+experiment's design rules out approving any variant from this comparison,
+because it was run on the same data the variants were chosen on. The largest
+displayed return is not a selection rule.
 
 For any comparison, check these fields before ranking performance:
 
-| Read | Meaning |
+| Field | Meaning |
 | --- | --- |
-| `registration`, `runs`, and each arm's `run_id` | The actual evaluated selection set and source records. |
+| `registration`, `runs`, and each arm's `run_id` | The set of configurations actually evaluated, and their source records. |
 | Provenance flags | Whether fills were simulated, data synthetic, the channel engineering, or the sample prospective. Missing values remain unavailable. |
 | `conditions_held_fixed` and `conditions_that_differ` | Data, vintage, visibility, accounting engine, cost refresh, and capital must be interpreted explicitly. Capital scenarios are separate comparison blocks. |
 | Fold coverage and exclusions | Different samples cannot be treated as a paired comparison. |
 | Net returns, cost decomposition, turnover, and repairs | Gross performance omits the costs and implementation behavior needed to judge the result. |
 | Sharpe difference, interval, and method | Check frequency, block length, seed, resamples, and uncertainty assumptions. A Sharpe is not a Treasury yield. |
-| `promotion_check` and the trial ledger | A comparison reads evidence; it neither creates an independent trial nor promotes a strategy. |
+| `promotion_check` and the trial ledger | A comparison reads evidence; it neither creates an independent trial nor approves a strategy. |
 
-`prism compare` currently exits 2 with a deferred-handler message. The implemented
+`prism compare` exits 2 because the CLI does not run it. The implemented
 comparison API is `prism.validation.compare.compare_reevaluation`. Save the
 following as `compare_records.py` in your private project. It reads two existing
 post-overhaul `record.json` files and their adjacent `returns.csv` files, and
@@ -245,7 +255,7 @@ Do not feed the preceding smoke runs to this API: they write no records, and
 `compare_reevaluation` refuses engineering-channel records. The receipt checks
 that refusal. For repricing, `compare_repricing` holds recorded fills fixed and
 reports a counterfactual cost diagnostic. Changing a constructor's cost inputs
-requires a new registered evaluation, because its decisions may change.
+requires a new pre-registered evaluation, because its decisions may change.
 
 ## 4. Review operations and assess an upgrade
 
@@ -253,9 +263,10 @@ An operator needs a pinned engine, versioned project inputs, durable state,
 recorded decisions, independent missed-session checks, and an authorization bound
 to the account and configuration. Read [operations](operations.md),
 [operating differences](engine_overhaul_operating_changes.md), and the
-[deployment gate](../SPEC.md) before adopting the overhaul for a book.
-The current overhaul's decision-parity gate remains incomplete and the owner
-review of the operating differences remains outstanding.
+[deployment gate](../SPEC.md#6-deployment-gate) before adopting the overhaul
+for a book. The engine overhaul's decision-parity check is still incomplete,
+because no recorded session could be compared, and the maintainer has not yet
+reviewed its operating differences.
 
 Inspect the supported command surface without starting a session:
 
@@ -266,11 +277,12 @@ Inspect the supported command surface without starting a session:
 ```
 
 `run` requires an explicit paper or live account. The default broker is synthetic.
-The Alpaca path implements submission and sweep stages against previously prepared
-intent; the full specification-driven decide stage and resident loop are still
-refused. `prism reconcile` and `prism check --monitor` are also deferred CLI
-handlers. Paper operation still requires the separately reviewed operating setup;
-this walkthrough starts no broker session and changes no scheduler.
+The Alpaca path runs the submit and sweep steps against orders already decided
+and saved; deciding a session from a specification, and a resident loop, are
+still refused. `prism reconcile` and `prism check --monitor` are also not run
+from the CLI. Paper operation uses the separately reviewed paper loop
+([quickstart](quickstart.md)); this walkthrough starts no broker session and
+changes no scheduler.
 
 Exercise the independent missed-session check against an empty synthetic run:
 
