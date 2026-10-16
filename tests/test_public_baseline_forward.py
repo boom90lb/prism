@@ -56,14 +56,16 @@ def test_the_registered_clock_starts_after_the_registration_and_reads_every_63_s
     assert clock.registered == dt.date(2026, 10, 16) and clock.first_forward == dt.date(2026, 10, 19)
     # Three whole 63-session windows cover lookback 126 + refresh 21 = 147 sessions.
     assert clock.warmup_sessions == 189 and clock.test_sessions == 63 and clock.formation_sessions == 312
-    assert [(r.name, r.threshold) for r in clock.reads] == [("read_1", 126), ("read_2", 189), ("read_3", 252)]
+    # Reads are scheduled every 63 sessions for as long as the bundled session table runs.
+    assert [(r.name, r.threshold) for r in clock.reads[:3]] == [("read_1", 126), ("read_2", 189), ("read_3", 252)]
+    assert [r.threshold for r in clock.reads] == [126 + 63 * k for k in range(len(clock.reads))]
     for read in clock.reads:
         held = sessions.sessions_between(clock.first_forward, sessions.previous_session(read.asof))
         assert len(held) == read.threshold, read.name
-    assert [str(r.asof) for r in clock.reads] == ["2027-04-21", "2027-07-22", "2027-10-20"]
-    # A fourth read (315 sessions) falls past the bundled session table and is not scheduled.
+    assert [str(r.asof) for r in clock.reads[:3]] == ["2027-04-21", "2027-07-22", "2027-10-20"]
+    # The read after the last scheduled one falls past the session table and is not scheduled.
     with pytest.raises(sessions.SessionTableRangeError):
-        fwd.shift_sessions(clock.first_forward, 315)
+        fwd.shift_sessions(clock.first_forward, clock.reads[-1].threshold + 63)
 
 
 def test_a_read_is_refused_before_its_scheduled_asof_and_taken_at_it(registered) -> None:
