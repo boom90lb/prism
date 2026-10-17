@@ -441,8 +441,10 @@ def run_forward(root: Path, baseline: pb.Baseline, clock: Clock, read: Scheduled
     del seen
     record.update(
         run_id=result.run_id, config_id=result.config_id, data_id=result.data_id,
-        record_path=str(result.record_path), record_sha256=pb._sha256(Path(result.record_path).read_bytes()),
-        trial_log=str(result.log_path), seconds=time.time() - started, memory_after=pb._rss(),
+        # Workspace-relative, so a published read names no machine path (docs/security.md rule 8).
+        record_path=workspace.relative(result.record_path),
+        record_sha256=pb._sha256(Path(result.record_path).read_bytes()),
+        trial_log=workspace.relative(result.log_path), seconds=time.time() - started, memory_after=pb._rss(),
         executable_return=result.record.conventions["executable_return"],
         fill_model=result.record.evaluation["engine"]["settings"]["fills"]["model"],
         sizing={key: value for key, value in result.record.evaluation["sizing"].items()

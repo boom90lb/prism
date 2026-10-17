@@ -201,6 +201,7 @@ Paths:
   data/distributions/SPY.provenance.json   (the fund's own CUSIP, as
   data/distributions/PDBC.provenance.json   published by its issuer)
   data/distributions/UUP.provenance.json
+  data/distributions/BIL.provenance.json
 
 The first two files carry CUSIPs from Alpaca's corporate-action records (118
 distinct identifiers between them).
@@ -267,6 +268,10 @@ Paths: no raw bars are stored. Records and return series computed from them:
   results/2026-09-fundamentals/returns/*.csv
   results/2026-09-earnings/returns/*.csv
   results/2026-09-vol-momentum/*  (in_house|* columns)
+  results/2026-10-public-baseline/series.csv  (in_house|* columns)
+  results/2026-10-public-baseline/rows/*/series.csv
+  results/2026-10-public-baseline/capacity/*.csv
+  results/demotion_b1/returns.csv
   results/iex_eligibility_*.json  (consolidated dollar-volume medians,
                                    cons_med_* fields)
   data/universe/sp*_pit_resolved_*.txt  (tickers resolved against Twelve Data)

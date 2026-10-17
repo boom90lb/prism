@@ -11,7 +11,7 @@
  "fetch_method": "curl -L GET inside the default sandbox (no sandbox override), desktop Chrome User-Agent; Date header Fri, 16 Oct 2026 09:03:58 GMT; no Last-Modified header served",
  "http_status": 200,
  "content_type": "application/vnd.ms-excel",
- "raw_file": "/tmp/claude-1000/-home-b90-prism/83aa8297-6173-4d66-b6d2-1ea9e759253e/scratchpad/wpl4_dl/sgov_fund.xls",
+ "raw_file": "sgov_fund.xls (not tracked; sha256 recorded here)",
  "raw_file_bytes": 704711,
  "sha256": "080f3af03726041bebc93183a13868b8b31e870f445c8f6f53f7e9596990ff50",
  "fetched": true,
@@ -38,7 +38,7 @@
  "cross_check": {
   "source": "the same table embedded server-side in the issuer product page HTML (PerformanceV3 component, containersByNameMap.distributions.subContainersByNameMap.table.dataPointsByNameMap), parsed with html.parser and json.loads",
   "url": "https://www.ishares.com/us/products/314116/ishares-0-3-month-treasury-bond-etf",
-  "raw_file": "/tmp/claude-1000/-home-b90-prism/83aa8297-6173-4d66-b6d2-1ea9e759253e/scratchpad/wpl4_dl/sgov_page.html",
+  "raw_file": "sgov_page.html (not tracked; sha256 recorded here)",
   "raw_file_bytes": 1759579,
   "sha256": "4454c36c0ed9344a23c7a45b25ccfede2ec88805aed06a6b0afa41b397a833ac",
   "captured_at": "2026-10-16T02:03:14-07:00",

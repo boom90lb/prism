@@ -59,6 +59,10 @@ is wrong by construction.
    machine's hostname as this host, so rows written before the label existed,
    which carry the hostname and absolute paths, still reconcile. Those rows
    stay as written, because ledgers are append-only (`SPEC.md` section 4).
+   `trials/public_baseline_v1.jsonl` and its run outputs under
+   `results/2026-10-public-baseline/` were written by code from before the
+   label existed and carry the operator's hostname and absolute paths
+   (`docs/public_baseline_read_2026-10-16.md`, section 15).
 
 ## 3. Incident record
 

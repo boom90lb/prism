@@ -1279,9 +1279,10 @@ def evaluate_row(
         run_id=result.run_id,
         config_id=result.config_id,
         data_id=result.data_id,
-        record_path=str(result.record_path),
+        # Workspace-relative, so a published row names no machine path (docs/security.md rule 8).
+        record_path=Workspace(root).relative(result.record_path),
         record_sha256=_sha256(Path(result.record_path).read_bytes()),
-        trial_log=str(result.log_path),
+        trial_log=Workspace(root).relative(result.log_path),
         seconds=time.time() - started,
         memory_after=_rss(),
         executable_return=result.record.conventions["executable_return"],
